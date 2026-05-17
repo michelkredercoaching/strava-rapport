@@ -1,0 +1,607 @@
+
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Strava Trainingsrapport — Michel Kreder Coaching</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --zwart:#0d0d0d;
+  --wit:#fafafa;
+  --oranje:#fc4c02;
+  --grijs:#f0f0ee;
+  --mid:#888;
+  --groen:#2e7d4f;
+  --rood:#c0392b;
+}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);color:var(--wit);overflow:hidden;}
+
+/* ===== SCHERMEN ===== */
+.scherm{position:fixed;inset:0;display:flex;flex-direction:column;overflow-y:auto;opacity:0;pointer-events:none;transition:opacity .35s ease;}
+.scherm.actief{opacity:1;pointer-events:all;}
+
+/* ===== HEADER ===== */
+.header{display:flex;justify-content:space-between;align-items:center;padding:20px 28px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;background:var(--zwart);}
+.logo{font-size:10px;letter-spacing:4px;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;}
+.stap-indicator{font-size:10px;letter-spacing:3px;color:var(--oranje);text-transform:uppercase;font-weight:600;}
+
+/* ===== DEMO NAV ===== */
+.demo-nav{position:fixed;bottom:0;left:0;right:0;z-index:999;display:flex;gap:0;border-top:1px solid rgba(255,255,255,0.1);background:rgba(13,13,13,0.97);backdrop-filter:blur(10px);}
+.nb{flex:1;padding:11px 4px;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;background:transparent;border:none;color:rgba(255,255,255,0.3);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;}
+.nb:hover,.nb.actief{color:var(--oranje);}
+.nb.actief{border-top:1px solid var(--oranje);margin-top:-1px;}
+
+/* ===== S1: LANDING ===== */
+#s1{background:var(--zwart);}
+.hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 28px 100px;text-align:center;}
+.hero-eyebrow{font-size:9px;letter-spacing:5px;text-transform:uppercase;color:var(--oranje);margin-bottom:24px;font-weight:600;}
+.hero-titel{font-family:'DM Serif Display',serif;font-size:clamp(48px,12vw,80px);line-height:1.0;margin-bottom:24px;letter-spacing:-1px;}
+.hero-titel em{font-style:italic;color:var(--oranje);}
+.hero-sub{font-size:15px;color:rgba(255,255,255,0.6);line-height:1.7;max-width:380px;margin-bottom:40px;font-weight:400;}
+.hero-sub strong{color:var(--wit);font-weight:600;}
+.hero-stats{display:flex;gap:0;margin-bottom:20px;border:1px solid rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;}
+.hstat{flex:1;padding:16px 12px;text-align:center;}
+.hstat+.hstat{border-left:1px solid rgba(255,255,255,0.1);}
+.hstat-n{display:block;font-family:'DM Serif Display',serif;font-size:26px;color:var(--wit);margin-bottom:4px;}
+.hstat-l{display:block;font-size:8px;letter-spacing:2.5px;color:var(--mid);text-transform:uppercase;font-weight:600;}
+.hero-prijs-note{font-size:11px;color:rgba(255,255,255,0.3);letter-spacing:1px;margin-bottom:32px;}
+.hero-cta{display:block;width:100%;max-width:340px;padding:18px 24px;background:var(--oranje);color:#fff;font-size:14px;font-weight:700;letter-spacing:.5px;border:none;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;margin-bottom:16px;}
+.hero-cta:hover{background:#e04300;transform:translateY(-1px);}
+.trust-row{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;}
+.tr-item{font-size:11px;color:rgba(255,255,255,0.35);display:flex;align-items:center;gap:5px;}
+.tr-dot{width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,0.15);}
+.ideal-pill{background:#cd0067;color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:2px;letter-spacing:.5px;}
+
+/* ===== S2: STRAVA ===== */
+#s2{background:var(--zwart);}
+.strava-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px 100px;text-align:center;}
+.strava-icon{width:64px;height:64px;margin:0 auto 28px;background:var(--oranje);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.strava-titel{font-family:'DM Serif Display',serif;font-size:32px;margin-bottom:12px;line-height:1.2;}
+.strava-sub{font-size:14px;color:rgba(255,255,255,0.5);line-height:1.6;max-width:320px;margin-bottom:36px;}
+.strava-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:320px;padding:16px 24px;background:var(--oranje);color:#fff;font-size:14px;font-weight:700;border:none;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;margin-bottom:20px;}
+.strava-btn:hover{background:#e04300;}
+.strava-uitleg{display:flex;flex-direction:column;gap:10px;width:100%;max-width:320px;margin-bottom:24px;}
+.strava-stap{display:flex;align-items:center;gap:12px;text-align:left;padding:12px;border:1px solid rgba(255,255,255,0.07);border-radius:4px;}
+.strava-stap-nr{width:24px;height:24px;border-radius:50%;border:1px solid var(--oranje);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--oranje);flex-shrink:0;}
+.strava-stap-txt{font-size:12px;color:rgba(255,255,255,0.5);line-height:1.4;}
+.strava-privacy{font-size:10px;color:rgba(255,255,255,0.2);letter-spacing:.5px;}
+
+/* ===== S3: ANALYSE ===== */
+#s3{background:var(--zwart);}
+.analyse-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px 100px;text-align:center;}
+.analyse-avatar{width:56px;height:56px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);overflow:hidden;margin:0 auto 24px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;}
+.analyse-status{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--oranje);margin-bottom:16px;font-weight:600;}
+.analyse-tekst{font-family:'DM Serif Display',serif;font-size:24px;line-height:1.3;margin-bottom:32px;min-height:60px;transition:opacity .3s;}
+.progress-bar{width:240px;height:2px;background:rgba(255,255,255,0.1);border-radius:1px;margin:0 auto 32px;overflow:hidden;}
+.progress-vul{height:100%;background:var(--oranje);border-radius:1px;transition:width .4s ease;width:0%;}
+.scan-lijst{display:flex;flex-direction:column;gap:8px;width:100%;max-width:300px;margin:0 auto;}
+.scan-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:3px;font-size:12px;text-align:left;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.3);transition:all .3s;}
+.scan-item.actief{background:rgba(252,76,2,0.08);border-color:rgba(252,76,2,0.2);color:rgba(255,255,255,0.7);}
+.scan-item.klaar{background:rgba(46,125,79,0.08);border-color:rgba(46,125,79,0.2);color:rgba(255,255,255,0.5);}
+.scan-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.15);flex-shrink:0;transition:all .3s;}
+.scan-item.actief .scan-dot{background:var(--oranje);box-shadow:0 0 6px var(--oranje);}
+.scan-item.klaar .scan-dot{background:var(--groen);}
+
+/* ===== S4: UNLOCK ===== */
+#s4{background:var(--zwart);}
+.unlock-wrap{flex:1;display:flex;flex-direction:column;padding:24px 24px 100px;}
+.unlock-alert{background:rgba(252,76,2,0.08);border:1px solid rgba(252,76,2,0.2);border-radius:4px;padding:14px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;}
+.unlock-alert-icon{font-size:16px;flex-shrink:0;margin-top:1px;}
+.unlock-alert-txt{font-size:12px;color:rgba(255,255,255,0.6);line-height:1.5;}
+.unlock-alert-txt strong{color:var(--oranje);font-weight:700;}
+.preview-titel{font-family:'DM Serif Display',serif;font-size:22px;margin-bottom:4px;}
+.preview-sub{font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:20px;}
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.metric-kaart{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:4px;padding:14px;}
+.metric-kaart.alert{border-color:rgba(252,76,2,0.3);background:rgba(252,76,2,0.05);}
+.metric-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);margin-bottom:6px;font-weight:600;}
+.metric-waarde{font-family:'DM Serif Display',serif;font-size:28px;color:var(--wit);margin-bottom:4px;}
+.metric-waarde.rood{color:var(--oranje);}
+.metric-sub{font-size:10px;color:rgba(255,255,255,0.3);}
+.diagnose-blok{background:rgba(255,255,255,0.03);border-left:2px solid var(--oranje);padding:14px 16px;margin-bottom:16px;border-radius:0 4px 4px 0;}
+.diagnose-zin{font-size:13px;color:rgba(255,255,255,0.55);line-height:1.6;margin-bottom:6px;}
+.diagnose-zin:last-child{margin-bottom:0;}
+.blur-sectie{filter:blur(5px);opacity:.4;pointer-events:none;user-select:none;margin-bottom:16px;}
+.blur-label{font-size:9px;letter-spacing:3px;color:var(--mid);text-transform:uppercase;font-weight:600;margin-bottom:8px;}
+.blur-balk{height:8px;background:rgba(255,255,255,0.1);border-radius:4px;margin-bottom:6px;}
+.unlock-box{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:20px;margin-bottom:16px;}
+.unlock-box-titel{font-size:14px;font-weight:700;margin-bottom:6px;}
+.unlock-box-sub{font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:16px;line-height:1.5;}
+.unlock-items{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.unlock-item{display:flex;align-items:center;gap:10px;font-size:12px;color:rgba(255,255,255,0.6);}
+.unlock-item::before{content:'✓';color:var(--groen);font-weight:700;font-size:13px;flex-shrink:0;}
+.prijs-rij{display:flex;align-items:baseline;gap:8px;margin-bottom:16px;}
+.prijs-groot{font-family:'DM Serif Display',serif;font-size:42px;color:var(--wit);}
+.prijs-label{font-size:11px;color:rgba(255,255,255,0.3);}
+.betaal-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:17px;background:var(--oranje);color:#fff;font-size:14px;font-weight:700;border:none;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;margin-bottom:12px;}
+.betaal-btn:hover{background:#e04300;}
+.betaal-methoden{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.betaal-pill{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:3px;padding:4px 10px;font-size:10px;color:rgba(255,255,255,0.4);font-weight:600;}
+.betaal-pill.ideal{background:rgba(205,0,103,0.15);border-color:rgba(205,0,103,0.3);color:#ff4db2;}
+.betaal-trust{font-size:10px;color:rgba(255,255,255,0.2);text-align:center;letter-spacing:.5px;}
+
+/* ===== S5: RAPPORT ===== */
+#s5{background:var(--zwart);}
+.rapport-wrap{flex:1;padding:20px 20px 100px;}
+.rapport-header-blok{margin-bottom:20px;}
+.rapport-naam{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--mid);margin-bottom:6px;font-weight:600;}
+.rapport-titel{font-family:'DM Serif Display',serif;font-size:26px;margin-bottom:6px;}
+.rapport-datum{font-size:11px;color:rgba(255,255,255,0.3);}
+.score-rij{display:flex;gap:10px;margin-bottom:20px;}
+.score-kaart{flex:1;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:4px;padding:14px;text-align:center;}
+.score-kaart.kritiek{border-color:rgba(192,57,43,0.4);background:rgba(192,57,43,0.06);}
+.score-n{font-family:'DM Serif Display',serif;font-size:32px;margin-bottom:3px;}
+.score-n.rood{color:var(--rood);}
+.score-n.oranje{color:var(--oranje);}
+.score-n.groen{color:var(--groen);}
+.score-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);font-weight:600;}
+.sectie-titel{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--mid);font-weight:600;margin-bottom:12px;}
+.audit-rij{margin-bottom:6px;}
+.audit-lbl{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px;color:rgba(255,255,255,0.7);}
+.audit-lbl span{font-size:11px;color:var(--mid);}
+.audit-track{height:4px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden;margin-bottom:12px;}
+.audit-balk{height:100%;border-radius:2px;transition:width 1s ease;}
+.audit-balk.oranje{background:var(--oranje);}
+.audit-balk.groen{background:var(--groen);}
+.audit-balk.rood{background:var(--rood);}
+.kritiek-blok{background:rgba(192,57,43,0.08);border:1px solid rgba(192,57,43,0.2);border-radius:4px;padding:14px;margin-bottom:16px;}
+.kritiek-label{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--rood);font-weight:700;margin-bottom:6px;}
+.kritiek-tekst{font-size:13px;color:rgba(255,255,255,0.65);line-height:1.6;}
+.zone-grid{display:flex;gap:6px;align-items:flex-end;height:80px;margin-bottom:16px;}
+.zone-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.zone-bar-wrap{flex:1;width:100%;display:flex;align-items:flex-end;}
+.zone-bar{width:100%;border-radius:2px 2px 0 0;transition:height 1s ease;min-height:2px;}
+.zone-lbl{font-size:8px;color:var(--mid);font-weight:600;}
+.zone-pct{font-size:9px;color:rgba(255,255,255,0.5);}
+.aanbeveling-lijst{display:flex;flex-direction:column;gap:8px;margin-bottom:20px;}
+.aanbeveling{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:4px;padding:12px 14px;font-size:12px;color:rgba(255,255,255,0.6);line-height:1.5;display:flex;gap:10px;align-items:flex-start;}
+.aanbeveling-nr{width:20px;height:20px;border-radius:50%;background:var(--oranje);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0;margin-top:1px;}
+.upsell-blok{background:rgba(252,76,2,0.06);border:1px solid rgba(252,76,2,0.15);border-radius:6px;padding:18px;margin-bottom:16px;}
+.upsell-titel{font-size:14px;font-weight:700;margin-bottom:6px;}
+.upsell-sub{font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:14px;line-height:1.5;}
+.upsell-btn{display:block;width:100%;padding:14px;background:var(--oranje);color:#fff;font-size:13px;font-weight:700;border:none;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:center;}
+
+/* ===== S6: EMAIL ===== */
+#s6{background:#e8e8e6;}
+.email-wrap{flex:1;padding:20px 12px 100px;max-width:600px;margin:0 auto;width:100%;}
+.email-client-bar{background:#fff;border-radius:8px 8px 0 0;padding:12px 16px;border-bottom:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:center;}
+.email-client-bar span{font-size:11px;color:#999;}
+.email-kaart{background:#fff;padding:0 0 32px;border-radius:0 0 8px 8px;}
+.email-banner{background:var(--zwart);padding:20px 24px;text-align:center;margin-bottom:0;}
+.email-banner-logo{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:4px;}
+.email-banner-titel{font-family:'DM Serif Display',serif;font-size:20px;color:#fff;}
+.email-body{padding:24px 24px 0;}
+.email-aanhef{font-size:14px;color:#333;margin-bottom:14px;line-height:1.6;}
+.email-sectie-titel{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:#999;font-weight:700;margin-bottom:10px;}
+.email-metric-rij{display:flex;gap:8px;margin-bottom:16px;}
+.email-metric{flex:1;background:#f7f7f7;border-radius:4px;padding:12px;text-align:center;border:1px solid #ebebeb;}
+.email-metric.alert{border-color:rgba(252,76,2,0.3);background:rgba(252,76,2,0.04);}
+.email-metric-n{font-family:'DM Serif Display',serif;font-size:24px;color:#1a1a1a;margin-bottom:2px;}
+.email-metric-n.rood{color:var(--oranje);}
+.email-metric-lbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#aaa;font-weight:600;}
+.email-diagnose{background:#f7f7f7;border-left:3px solid var(--oranje);padding:12px 14px;margin-bottom:16px;border-radius:0 4px 4px 0;font-size:12px;color:#555;line-height:1.6;}
+.email-cta-blok{background:var(--zwart);border-radius:4px;padding:18px;text-align:center;margin-bottom:16px;}
+.email-cta-txt{font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:12px;line-height:1.5;}
+.email-cta-btn{display:inline-block;padding:13px 28px;background:var(--oranje);color:#fff;font-size:13px;font-weight:700;border-radius:3px;text-decoration:none;}
+.email-footer{font-size:10px;color:#bbb;text-align:center;padding:16px 24px 0;line-height:1.6;}
+
+/* ===== S7: BEDANKT ===== */
+#s7{background:var(--zwart);}
+.bedankt-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px 100px;text-align:center;}
+.check-cirkel{width:64px;height:64px;border-radius:50%;border:1px solid rgba(46,125,79,0.4);display:flex;align-items:center;justify-content:center;margin:0 auto 28px;background:rgba(46,125,79,0.08);}
+.bedankt-titel{font-family:'DM Serif Display',serif;font-size:32px;margin-bottom:12px;}
+.bedankt-sub{font-size:14px;color:rgba(255,255,255,0.5);line-height:1.7;max-width:300px;margin-bottom:32px;}
+.bedankt-stappen{display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;margin-bottom:28px;}
+.bedankt-stap{display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:4px;text-align:left;}
+.bedankt-stap-icon{font-size:18px;flex-shrink:0;}
+.bedankt-stap-txt{font-size:12px;color:rgba(255,255,255,0.5);line-height:1.4;}
+.bedankt-stap-txt strong{display:block;color:rgba(255,255,255,0.8);margin-bottom:2px;font-size:13px;}
+.bedankt-note{font-size:11px;color:rgba(255,255,255,0.2);letter-spacing:.5px;}
+
+/* ===== S8: FOUT ===== */
+#s8{background:var(--zwart);}
+.fout-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px 100px;text-align:center;}
+.fout-cirkel{width:64px;height:64px;border-radius:50%;border:1px solid rgba(192,57,43,0.4);display:flex;align-items:center;justify-content:center;margin:0 auto 28px;background:rgba(192,57,43,0.08);}
+.fout-titel{font-family:'DM Serif Display',serif;font-size:28px;margin-bottom:12px;}
+.fout-sub{font-size:14px;color:rgba(255,255,255,0.5);line-height:1.7;max-width:300px;margin-bottom:28px;}
+.fout-opties{display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px;}
+.fout-btn-primary{padding:16px;background:var(--oranje);color:#fff;font-size:14px;font-weight:700;border:none;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.fout-btn-secondary{padding:14px;background:transparent;color:rgba(255,255,255,0.4);font-size:13px;border:1px solid rgba(255,255,255,0.1);border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;}
+.fout-contact{margin-top:20px;font-size:11px;color:rgba(255,255,255,0.2);}
+.fout-contact a{color:rgba(255,255,255,0.35);text-decoration:none;}
+
+/* ANIMATIES */
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.fade-up{animation:fadeUp .5s ease both;}
+</style>
+</head>
+<body>
+
+<!-- ===== S1: LANDING ===== -->
+<div id="s1" class="scherm actief">
+  <header class="header">
+    <span class="logo">Michel Kreder Coaching</span>
+    <span class="stap-indicator">Trainingsrapport</span>
+  </header>
+  <div class="hero">
+    <div class="hero-eyebrow">Voor serieuze wielrenners</div>
+    <h1 class="hero-titel">Stop met<br>trainen<br>voor <em>niks.</em></h1>
+    <p class="hero-sub">Koppel je Strava. Ontdek binnen 60 seconden <strong>precies waar jij progressie laat liggen.</strong></p>
+    <div class="hero-stats">
+      <div class="hstat"><span class="hstat-n">60</span><span class="hstat-l">sec analyse</span></div>
+      <div class="hstat"><span class="hstat-n">€19</span><span class="hstat-l">eenmalig</span></div>
+      <div class="hstat"><span class="hstat-n">100%</span><span class="hstat-l">persoonlijk</span></div>
+    </div>
+    <p class="hero-prijs-note">Eenmalig · geen abonnement · geen verborgen kosten</p>
+    <button class="hero-cta" onclick="gaNaar('s2')">Ontdek waar je progressie laat liggen →</button>
+    <div class="trust-row">
+      <div class="tr-item"><span class="ideal-pill">iDEAL</span> Direct betalen</div>
+      <span class="tr-dot"></span>
+      <div class="tr-item">🔒 SSL versleuteld</div>
+      <span class="tr-dot"></span>
+      <div class="tr-item">Via Mollie</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== S2: STRAVA ===== -->
+<div id="s2" class="scherm">
+  <header class="header">
+    <span class="logo">Michel Kreder Coaching</span>
+    <span class="stap-indicator">Stap 1 / 3</span>
+  </header>
+  <div class="strava-wrap">
+    <div class="strava-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
+    </div>
+    <h2 class="strava-titel">Koppel je<br>Strava account</h2>
+    <p class="strava-sub">We lezen je laatste 90 dagen trainingsdata uit. Veilig, eenmalig, alleen-lezen toegang.</p>
+    <button class="strava-btn" onclick="startAnalyse()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
+      Verbinden met Strava
+    </button>
+    <div class="strava-uitleg">
+      <div class="strava-stap"><div class="strava-stap-nr">1</div><div class="strava-stap-txt">Log in op Strava en geef toegang</div></div>
+      <div class="strava-stap"><div class="strava-stap-nr">2</div><div class="strava-stap-txt">AI analyseert je trainingsdata (60 sec)</div></div>
+      <div class="strava-stap"><div class="strava-stap-nr">3</div><div class="strava-stap-txt">Betaal €19 en ontvang je volledige rapport</div></div>
+    </div>
+    <p class="strava-privacy">🔒 Alleen-lezen · Geen opslag · AVG-conform</p>
+  </div>
+</div>
+
+<!-- ===== S3: ANALYSE ===== -->
+<div id="s3" class="scherm">
+  <header class="header">
+    <span class="logo">Michel Kreder Coaching</span>
+    <span class="stap-indicator">Stap 2 / 3</span>
+  </header>
+  <div class="analyse-wrap">
+    <div class="analyse-avatar">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+    </div>
+    <div class="analyse-status">Analyse bezig</div>
+    <div class="analyse-tekst" id="analyseTekst">Trainingsdata ophalen...</div>
+    <div class="progress-bar"><div class="progress-vul" id="progVul"></div></div>
+    <div class="scan-lijst">
+      <div class="scan-item actief" id="si0"><div class="scan-dot"></div>Zoneverdeling analyseren</div>
+      <div class="scan-item" id="si1"><div class="scan-dot"></div>Herstelbelasting controleren</div>
+      <div class="scan-item" id="si2"><div class="scan-dot"></div>VO2max prikkels detecteren</div>
+      <div class="scan-item" id="si3"><div class="scan-dot"></div>Prestatieplateaus zoeken</div>
+      <div class="scan-item" id="si4"><div class="scan-dot"></div>Trainingsbalans berekenen</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== S4: UNLOCK ===== -->
+<div id="s4" class="scherm">
+  <header class="header">
+    <span class="logo">Michel Kreder Coaching</span>
+    <span class="stap-indicator">Stap 3 / 3</span>
+  </header>
+  <div class="unlock-wrap">
+    <div class="unlock-alert">
+      <div class="unlock-alert-icon">⚡</div>
+      <div class="unlock-alert-txt"><strong>2 prestatielekken gevonden.</strong> Je trainingsstructuur veroorzaakt vermoeidheid zonder maximale progressie.</div>
+    </div>
+    <div class="preview-titel">Jouw preview</div>
+    <div class="preview-sub">Deels zichtbaar — ontgrendel voor volledig rapport</div>
+    <div class="metrics-grid">
+      <div class="metric-kaart"><div class="metric-label">Trainingsuren/week</div><div class="metric-waarde">7.4u</div><div class="metric-sub">Laatste 90 dagen</div></div>
+      <div class="metric-kaart alert"><div class="metric-label">VO2max sessies</div><div class="metric-waarde rood">0</div><div class="metric-sub">Van 38 trainingen</div></div>
+      <div class="metric-kaart"><div class="metric-label">Gem. intensiteit</div><div class="metric-waarde">67%</div><div class="metric-sub">Van max. hartslag</div></div>
+      <div class="metric-kaart alert"><div class="metric-label">Herstelratio</div><div class="metric-waarde rood">1:4</div><div class="metric-sub">Ideaal is 1:2</div></div>
+    </div>
+    <div class="diagnose-blok">
+      <div class="diagnose-zin">Je traint vaak hard, maar zelden effectief.</div>
+      <div class="diagnose-zin">Je herstelbelasting is hoger dan je adaptatie.</div>
+      <div class="diagnose-zin">Je lichaam krijgt <strong style="color:var(--oranje)">0 VO2max prikkels</strong> — de motor groeit niet.</div>
+    </div>
+    <div class="blur-sectie">
+      <div class="blur-label">Limiterende factor</div>
+      <div class="blur-balk" style="width:80%"></div>
+      <div class="blur-balk" style="width:60%"></div>
+      <div class="blur-label" style="margin-top:12px">Actieplan (3 stappen)</div>
+      <div class="blur-balk" style="width:90%"></div>
+      <div class="blur-balk" style="width:70%"></div>
+      <div class="blur-balk" style="width:55%"></div>
+    </div>
+    <div class="unlock-box">
+      <div class="unlock-box-titel">Volledig rapport — €19</div>
+      <div class="unlock-box-sub">Eenmalig. Geen abonnement. Direct beschikbaar.</div>
+      <div class="unlock-items">
+        <div class="unlock-item">Volledige zoneverdeling analyse</div>
+        <div class="unlock-item">Jouw limiterende factor benoemd</div>
+        <div class="unlock-item">Persoonlijk 3-stappen actieplan</div>
+        <div class="unlock-item">Directe aanbevelingen per trainingstype</div>
+        <div class="unlock-item">Rapport per email (PDF)</div>
+      </div>
+      <div class="prijs-rij">
+        <div class="prijs-groot">€19</div>
+        <div class="prijs-label">eenmalig · geen verborgen kosten</div>
+      </div>
+      <button class="betaal-btn" onclick="gaNaar('s5')">
+        <span class="ideal-pill">iDEAL</span> Betaal nu en ontvang rapport
+      </button>
+      <div class="betaal-methoden">
+        <span class="betaal-pill ideal">iDEAL</span>
+        <span class="betaal-pill">Creditcard</span>
+        <span class="betaal-pill">Bancontact</span>
+        <span class="betaal-pill">PayPal</span>
+      </div>
+      <div class="betaal-trust">🔒 Veilig betalen via iDEAL &amp; Mollie · Direct beschikbaar na betaling</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== S5: RAPPORT ===== -->
+<div id="s5" class="scherm">
+  <header class="header">
+    <span class="logo">Michel Kreder Coaching</span>
+    <span class="stap-indicator">Jouw rapport</span>
+  </header>
+  <div class="rapport-wrap">
+    <div class="rapport-header-blok">
+      <div class="rapport-naam">Trainingsrapport</div>
+      <div class="rapport-titel">Jouw prestatieprofiel</div>
+      <div class="rapport-datum">Gegenereerd op 17 mei 2026</div>
+    </div>
+    <div class="score-rij">
+      <div class="score-kaart">
+        <div class="score-n oranje">62</div>
+        <div class="score-lbl">Prestatiescore</div>
+      </div>
+      <div class="score-kaart kritiek">
+        <div class="score-n rood">0</div>
+        <div class="score-lbl">VO2max sessies</div>
+      </div>
+      <div class="score-kaart">
+        <div class="score-n groen">7.4u</div>
+        <div class="score-lbl">Uur/week gem.</div>
+      </div>
+    </div>
+
+    <div class="sectie-titel" style="margin-bottom:12px">Trainingsaudit</div>
+    <div class="audit-rij">
+      <div class="audit-lbl">Duurvermogen <span>Goed</span></div>
+      <div class="audit-track"><div class="audit-balk groen" style="width:74%"></div></div>
+    </div>
+    <div class="audit-rij">
+      <div class="audit-lbl">Zoneverdeling <span>Kritiek</span></div>
+      <div class="audit-track"><div class="audit-balk rood" style="width:22%"></div></div>
+    </div>
+    <div class="audit-rij">
+      <div class="audit-lbl">Herstelbalans <span>Matig</span></div>
+      <div class="audit-track"><div class="audit-balk oranje" style="width:41%"></div></div>
+    </div>
+    <div class="audit-rij">
+      <div class="audit-lbl">Intensiteitsverdeling <span>Kritiek</span></div>
+      <div class="audit-track"><div class="audit-balk rood" style="width:18%"></div></div>
+    </div>
+
+    <div class="sectie-titel" style="margin-top:16px;margin-bottom:12px">Zoneverdeling (90 dagen)</div>
+    <div class="zone-grid">
+      <div class="zone-col">
+        <div class="zone-bar-wrap"><div class="zone-bar" style="height:82%;background:rgba(46,125,79,0.7)"></div></div>
+        <div class="zone-lbl">Z1</div><div class="zone-pct">12%</div>
+      </div>
+      <div class="zone-col">
+        <div class="zone-bar-wrap"><div class="zone-bar" style="height:100%;background:var(--oranje)"></div></div>
+        <div class="zone-lbl">Z2</div><div class="zone-pct">61%</div>
+      </div>
+      <div class="zone-col">
+        <div class="zone-bar-wrap"><div class="zone-bar" style="height:44%;background:var(--oranje)"></div></div>
+        <div class="zone-lbl">Z3</div><div class="zone-pct">27%</div>
+      </div>
+      <div class="zone-col">
+        <div class="zone-bar-wrap"><div class="zone-bar" style="height:0%;background:var(--rood)"></div></div>
+        <div class="zone-lbl">Z4</div><div class="zone-pct">0%</div>
+      </div>
+      <div class="zone-col">
+        <div class="zone-bar-wrap"><div class="zone-bar" style="height:0%;background:var(--rood)"></div></div>
+        <div class="zone-lbl">Z5</div><div class="zone-pct">0%</div>
+      </div>
+    </div>
+
+    <div class="kritiek-blok">
+      <div class="kritiek-label">⚠ Kritieke bevinding</div>
+      <div class="kritiek-tekst">In 90 dagen heb je <strong style="color:#e87070">0 VO2max-sessies</strong> gedaan. Dit is de primaire oorzaak van jouw prestatiepplateau. Je motor krijgt geen groeiprikkel.</div>
+    </div>
+
+    <div class="sectie-titel">Jouw actieplan</div>
+    <div class="aanbeveling-lijst">
+      <div class="aanbeveling"><div class="aanbeveling-nr">1</div>Voeg 1x per week een korte intervaltraining toe: 5 × 4 min op Z5 met 3 min herstel. Dit activeert je VO2max adaptatie direct.</div>
+      <div class="aanbeveling"><div class="aanbeveling-nr">2</div>Verlaag je Z3 volume met 30%. Vervang middelhoge intensiteit door echte Z2 (praten mogelijk) of echte Z5 — nooit ertussenin.</div>
+      <div class="aanbeveling"><div class="aanbeveling-nr">3</div>Voeg 1 volledige rustdag toe per week. Je herstelratio is 1:4, ideaal is 1:2. Zonder herstel geen adaptatie.</div>
+    </div>
+
+    <div class="upsell-blok">
+      <div class="upsell-titel">Klaar voor echte progressie?</div>
+      <div class="upsell-sub">Dit rapport laat zien waar het mis gaat. Een persoonlijk trainingsschema laat zien hoe je het oplost — week voor week.</div>
+      <button class="upsell-btn" onclick="gaNaar('s1')">Bekijk persoonlijke trainingsschema's →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== S6: EMAIL ===== -->
+<div id="s6" class="scherm" style="background:#e8e8e6;">
+  <div class="email-wrap">
+    <div class="email-client-bar">
+      <span>📧 Inbox · michel@...</span>
+      <span>Nu · van Michel Kreder Coaching</span>
+    </div>
+    <div class="email-kaart">
+      <div class="email-banner">
+        <div class="email-banner-logo">Michel Kreder Coaching</div>
+        <div class="email-banner-titel">Jouw trainingsrapport is klaar</div>
+      </div>
+      <div class="email-body">
+        <p class="email-aanhef">Hey,<br><br>Je rapport is gegenereerd. Hier is een samenvatting van wat we gevonden hebben.</p>
+        <div class="email-sectie-titel">Jouw prestatiescore</div>
+        <div class="email-metric-rij">
+          <div class="email-metric"><div class="email-metric-n">62</div><div class="email-metric-lbl">Score</div></div>
+          <div class="email-metric alert"><div class="email-metric-n rood">0</div><div class="email-metric-lbl">VO2max sessies</div></div>
+          <div class="email-metric"><div class="email-metric-n">7.4u</div><div class="email-metric-lbl">Uur/week</div></div>
+        </div>
+        <div class="email-diagnose">
+          Je traint consistent, maar zonder de juiste prikkels. In 90 dagen heb je <strong>0 VO2max sessies</strong> gedaan. Dit is de hoofdreden waarom je progressie stagneert.
+        </div>
+        <div class="email-cta-blok">
+          <div class="email-cta-txt">Je volledige rapport met actieplan staat klaar in je persoonlijke dashboard.</div>
+          <a class="email-cta-btn" href="#">Bekijk volledig rapport →</a>
+        </div>
+        <div class="email-footer">
+          Michel Kreder Coaching · michelkredercoaching.nl<br>
+          Je ontvangt deze mail omdat je een Strava rapport hebt aangevraagd.<br>
+          <a href="#" style="color:#bbb;">Uitschrijven</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== S7: BEDANKT ===== -->
+<div id="s7" class="scherm">
+  <header class="header">
+    <span class="logo">Michel Kreder Coaching</span>
+    <span class="stap-indicator">Betaling verwerkt</span>
+  </header>
+  <div class="bedankt-wrap">
+    <div class="check-cirkel">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2e7d4f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    </div>
+    <h2 class="bedankt-titel">Betaling geslaagd.</h2>
+    <p class="bedankt-sub">Je rapport wordt nu gegenereerd. Dit duurt maximaal 60 seconden.</p>
+    <div class="bedankt-stappen">
+      <div class="bedankt-stap">
+        <div class="bedankt-stap-icon">✅</div>
+        <div class="bedankt-stap-txt"><strong>Betaling bevestigd</strong>€19 via iDEAL · Mollie</div>
+      </div>
+      <div class="bedankt-stap">
+        <div class="bedankt-stap-icon">⚙️</div>
+        <div class="bedankt-stap-txt"><strong>Rapport wordt gegenereerd</strong>AI analyseert jouw Strava data</div>
+      </div>
+      <div class="bedankt-stap">
+        <div class="bedankt-stap-icon">📧</div>
+        <div class="bedankt-stap-txt"><strong>Email onderweg</strong>Rapport en PDF komen binnen 2 min aan</div>
+      </div>
+    </div>
+    <p class="bedankt-note">Geen email ontvangen? Check je spam of stuur een bericht via michelkredercoaching.nl</p>
+  </div>
+</div>
+
+<!-- ===== S8: FOUT ===== -->
+<div id="s8" class="scherm">
+  <header class="header">
+    <span class="logo">Michel Kreder Coaching</span>
+    <span class="stap-indicator">Er ging iets mis</span>
+  </header>
+  <div class="fout-wrap">
+    <div class="fout-cirkel">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c0392b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <h2 class="fout-titel">Oeps. Dat ging niet goed.</h2>
+    <p class="fout-sub">Er is iets misgegaan tijdens de analyse of betaling. Je bent <strong style="color:var(--wit)">niet</strong> in rekening gebracht.</p>
+    <div class="fout-opties">
+      <button class="fout-btn-primary" onclick="gaNaar('s2')">Opnieuw proberen</button>
+      <button class="fout-btn-secondary" onclick="gaNaar('s1')">Terug naar start</button>
+    </div>
+    <p class="fout-contact">Blijft het fout gaan? Mail naar <a href="mailto:info@michelkredercoaching.nl">info@michelkredercoaching.nl</a></p>
+  </div>
+</div>
+
+<!-- ===== DEMO NAV ===== -->
+<div class="demo-nav">
+  <button class="nb actief" id="nb1" onclick="gaNaar('s1')">Landing</button>
+  <button class="nb" id="nb2" onclick="gaNaar('s2')">Strava</button>
+  <button class="nb" id="nb3" onclick="startAnalyse()">Analyse</button>
+  <button class="nb" id="nb4" onclick="gaNaar('s4')">Unlock</button>
+  <button class="nb" id="nb5" onclick="toonRapport()">Rapport</button>
+  <button class="nb" id="nb6" onclick="gaNaar('s6')">Email</button>
+  <button class="nb" id="nb7" onclick="gaNaar('s7')">Bedankt</button>
+  <button class="nb" id="nb8" onclick="gaNaar('s8')">Fout</button>
+</div>
+
+<script>
+const schermen = ['s1','s2','s3','s4','s5','s6','s7','s8'];
+const knoppen  = ['nb1','nb2','nb3','nb4','nb5','nb6','nb7','nb8'];
+
+function gaNaar(id) {
+  schermen.forEach(s => {
+    document.getElementById(s).classList.remove('actief');
+  });
+  knoppen.forEach((k,i) => {
+    document.getElementById(k).classList.remove('actief');
+    if('s'+(i+1) === id) document.getElementById(k).classList.add('actief');
+  });
+  const el = document.getElementById(id);
+  el.classList.add('actief');
+  el.scrollTop = 0;
+}
+
+function startAnalyse() {
+  gaNaar('s3');
+  const stappen = [
+    'Zoneverdeling analyseren...',
+    'Herstelbelasting controleren...',
+    'VO2max prikkels detecteren...',
+    'Prestatieplateaus zoeken...',
+    'Trainingsbalans berekenen...'
+  ];
+  const tekst = document.getElementById('analyseTekst');
+  const prog  = document.getElementById('progVul');
+  for(let j=0;j<5;j++){
+    const el = document.getElementById('si'+j);
+    el.className = 'scan-item';
+  }
+  document.getElementById('si0').className = 'scan-item actief';
+  prog.style.width = '0%';
+  tekst.textContent = stappen[0];
+  let i = 0;
+  const iv = setInterval(() => {
+    document.getElementById('si'+i).className = 'scan-item klaar';
+    i++;
+    prog.style.width = `${(i/stappen.length)*100}%`;
+    if(i >= stappen.length) {
+      clearInterval(iv);
+      tekst.textContent = '2 prestatielekken gevonden';
+      setTimeout(() => gaNaar('s4'), 1000);
+      return;
+    }
+    tekst.style.opacity = '0';
+    setTimeout(() => {
+      tekst.textContent = stappen[i];
+      tekst.style.opacity = '1';
+      document.getElementById('si'+i).className = 'scan-item actief';
+    }, 200);
+  }, 1000);
+}
+
+function toonRapport() {
+  gaNaar('s5');
+}
+</script>
+</body>
+</html>
