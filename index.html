@@ -259,7 +259,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
     </div>
     <h2 class="strava-titel">Koppel je<br>Strava account</h2>
     <p class="strava-sub">We lezen je laatste 90 dagen trainingsdata uit. Veilig, eenmalig, alleen-lezen toegang.</p>
-    <button class="strava-btn" onclick="startAnalyse()">
+    <button class="strava-btn" onclick="verbindStrava()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
       Verbinden met Strava
     </button>
@@ -363,21 +363,21 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
   </header>
   <div class="rapport-wrap">
     <div class="rapport-header-blok">
-      <div class="rapport-naam">Trainingsrapport</div>
+      <div class="rapport-naam" id="rapportNaam">Trainingsrapport</div>
       <div class="rapport-titel">Jouw prestatieprofiel</div>
       <div class="rapport-datum">Gegenereerd op 17 mei 2026</div>
     </div>
     <div class="score-rij">
       <div class="score-kaart">
-        <div class="score-n oranje">62</div>
+        <div class="score-n oranje" id="scoreGetal">62</div>
         <div class="score-lbl">Prestatiescore</div>
       </div>
       <div class="score-kaart kritiek">
-        <div class="score-n rood">0</div>
+        <div class="score-n rood" id="vo2maxGetal">0</div>
         <div class="score-lbl">VO2max sessies</div>
       </div>
       <div class="score-kaart">
-        <div class="score-n groen">7.4u</div>
+        <div class="score-n groen" id="urenGetal">7.4u</div>
         <div class="score-lbl">Uur/week gem.</div>
       </div>
     </div>
@@ -586,9 +586,60 @@ function startAnalyse() {
   }, 1000);
 }
 
-function toonRapport() {
+function toonRapport(data) {
   gaNaar('s5');
-  vulTrainingsblokken(7.4); // dit wordt straks de echte waarde van Strava
+  
+  if (data) {
+    // Vul met echte Strava data
+    const score = document.getElementById('scoreGetal');
+    const vo2 = document.getElementById('vo2maxGetal');
+    const uren = document.getElementById('urenGetal');
+    const naam = document.getElementById('rapportNaam');
+    
+    if(score) { score.textContent = data.prestatiescore; }
+    if(vo2) { vo2.textContent = data.vo2maxSessies; }
+    if(uren) { uren.textContent = data.urenPerWeek + 'u'; }
+    if(naam) { naam.textContent = 'Trainingsrapport — ' + data.naam; }
+
+    // Balkjes
+    const balken = {
+      duurvermogen: data.duurvermogen,
+      zoneverdeling: data.zonescore,
+      herstelbalans: data.herstelbalans,
+      intensiteitsverdeling: data.intensiteitsverdeling
+    };
+    
+    vulAuditBalken(balken);
+    vulTrainingsblokken(data.urenPerWeek);
+  } else {
+    vulTrainingsblokken(7.4);
+  }
+}
+
+function vulAuditBalken(balken) {
+  const mapping = {
+    'goed': { kleur: 'groen', breedte: '78%', label: 'Goed' },
+    'matig': { kleur: 'oranje', breedte: '45%', label: 'Matig' },
+    'slecht': { kleur: 'rood', breedte: '20%', label: 'Slecht' }
+  };
+  
+  const rijen = document.querySelectorAll('.audit-rij');
+  const keys = ['duurvermogen', 'zoneverdeling', 'herstelbalans', 'intensiteitsverdeling'];
+  
+  rijen.forEach((rij, i) => {
+    const key = keys[i];
+    const waarde = balken[key] || 'matig';
+    const config = mapping[waarde];
+    
+    const span = rij.querySelector('.audit-lbl span');
+    const balk = rij.querySelector('.audit-balk');
+    
+    if(span) span.textContent = config.label;
+    if(balk) {
+      balk.className = 'audit-balk ' + config.kleur;
+      balk.style.width = config.breedte;
+    }
+  });
 }
 
 function vulTrainingsblokken(urenPerWeek) {
@@ -647,6 +698,96 @@ function vulTrainingsblokken(urenPerWeek) {
       <div class="trainingsblok-detail">${b.detail}</div>
     </div>
   `).join('');
+}
+
+function verbindStrava() {
+  window.location.href = '/api/strava-auth';
+}
+
+// Check bij laden of er data in de URL staat
+window.addEventListener('DOMContentLoaded', function() {
+  const params = new URLSearchParams(window.location.search);
+  const error = params.get('error');
+  const dataParam = params.get('data');
+
+  if (error) {
+    gaNaar('s8');
+    return;
+  }
+
+  if (dataParam) {
+    try {
+      const data = JSON.parse(decodeURIComponent(dataParam));
+      toonRapportMetData(data);
+    } catch(e) {
+      gaNaar('s8');
+    }
+    return;
+  }
+});
+
+function toonRapportMetData(data) {
+  // Vul rapport in met echte data
+  startAnalyseMetData(data);
+}
+
+function startAnalyseMetData(data) {
+  gaNaar('s3');
+  const stappen = [
+    'Zoneverdeling analyseren...',
+    'Herstelbelasting controleren...',
+    'VO2max prikkels detecteren...',
+    'Prestatieplateaus zoeken...',
+    'Trainingsbalans berekenen...'
+  ];
+  const tekst = document.getElementById('analyseTekst');
+  const prog = document.getElementById('progVul');
+  
+  for(let j=0;j<5;j++){
+    const el = document.getElementById('si'+j);
+    if(el) el.className = 'scan-item';
+  }
+  
+  const si0 = document.getElementById('si0');
+  if(si0) si0.className = 'scan-item actief';
+  prog.style.width = '0%';
+  tekst.textContent = stappen[0];
+
+  let i = 0;
+  const iv = setInterval(() => {
+    const siEl = document.getElementById('si'+i);
+    if(siEl) siEl.className = 'scan-item klaar';
+    i++;
+    prog.style.width = (i/stappen.length*100) + '%';
+    if(i >= stappen.length) {
+      clearInterval(iv);
+      tekst.textContent = 'Analyse compleet';
+      setTimeout(() => vulUnlockPagina(data), 800);
+      return;
+    }
+    tekst.style.opacity = '0';
+    setTimeout(() => {
+      tekst.textContent = stappen[i];
+      tekst.style.opacity = '1';
+      const next = document.getElementById('si'+i);
+      if(next) next.className = 'scan-item actief';
+    }, 200);
+  }, 900);
+}
+
+function vulUnlockPagina(data) {
+  // Vul unlock pagina preview in met echte data
+  const previewItems = document.querySelectorAll('.metric-waarde');
+  // Pas alert tekst aan
+  const alertTxt = document.querySelector('.unlock-alert-txt');
+  if(alertTxt) {
+    const lekken = (data.vo2maxSessies === 0 ? 1 : 0) + (data.intensiteitsverdeling === 'slecht' ? 1 : 0) + (data.herstelbalans === 'slecht' ? 1 : 0);
+    alertTxt.innerHTML = '<strong>' + (lekken || 1) + ' prestatielek' + (lekken !== 1 ? 'ken' : '') + ' gevonden.</strong> Je trainingsstructuur veroorzaakt vermoeidheid zonder maximale progressie.';
+  }
+  gaNaar('s4');
+  window._stravaData = data;
+  const betaalBtn = document.querySelector('.betaal-btn');
+  if(betaalBtn) betaalBtn.onclick = function() { toonRapport(window._stravaData); };
 }
 </script>
 </body>
