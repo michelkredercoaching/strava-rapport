@@ -28,15 +28,11 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 .logo{font-size:10px;letter-spacing:4px;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;}
 .stap-indicator{font-size:10px;letter-spacing:3px;color:var(--oranje);text-transform:uppercase;font-weight:600;}
 
-/* ===== DEMO NAV ===== */
-.demo-nav{position:fixed;bottom:0;left:0;right:0;z-index:999;display:flex;gap:0;border-top:1px solid rgba(255,255,255,0.1);background:rgba(13,13,13,0.97);backdrop-filter:blur(10px);}
-.nb{flex:1;padding:11px 4px;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;background:transparent;border:none;color:rgba(255,255,255,0.3);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;}
-.nb:hover,.nb.actief{color:var(--oranje);}
-.nb.actief{border-top:1px solid var(--oranje);margin-top:-1px;}
+
 
 /* ===== S1: LANDING ===== */
 #s1{background:var(--zwart);}
-.hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 28px 100px;text-align:center;}
+.hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 28px 48px;text-align:center;}
 .hero-eyebrow{font-size:9px;letter-spacing:5px;text-transform:uppercase;color:var(--oranje);margin-bottom:24px;font-weight:600;}
 .hero-titel{font-family:'DM Serif Display',serif;font-size:clamp(48px,12vw,80px);line-height:1.0;margin-bottom:24px;letter-spacing:-1px;}
 .hero-titel em{font-style:italic;color:var(--oranje);}
@@ -57,7 +53,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 
 /* ===== S2: STRAVA ===== */
 #s2{background:var(--zwart);}
-.strava-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px 100px;text-align:center;}
+.strava-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px 60px;text-align:center;}
 .strava-icon{width:64px;height:64px;margin:0 auto 28px;background:var(--oranje);border-radius:50%;display:flex;align-items:center;justify-content:center;}
 .strava-titel{font-family:'DM Serif Display',serif;font-size:32px;margin-bottom:12px;line-height:1.2;}
 .strava-sub{font-size:14px;color:rgba(255,255,255,0.5);line-height:1.6;max-width:320px;margin-bottom:36px;}
@@ -71,7 +67,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 
 /* ===== S3: ANALYSE ===== */
 #s3{background:var(--zwart);}
-.analyse-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px 100px;text-align:center;}
+.analyse-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px 60px;text-align:center;}
 .analyse-avatar{width:56px;height:56px;border-radius:50%;border:1px solid rgba(255,255,255,0.1);overflow:hidden;margin:0 auto 24px;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;}
 .analyse-status{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--oranje);margin-bottom:16px;font-weight:600;}
 .analyse-tekst{font-family:'DM Serif Display',serif;font-size:24px;line-height:1.3;margin-bottom:32px;min-height:60px;transition:opacity .3s;}
@@ -87,7 +83,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 
 /* ===== S4: UNLOCK ===== */
 #s4{background:var(--zwart);}
-.unlock-wrap{flex:1;display:flex;flex-direction:column;padding:24px 24px 100px;}
+.unlock-wrap{flex:1;display:flex;flex-direction:column;padding:24px 24px 40px;}
 .unlock-alert{background:rgba(252,76,2,0.08);border:1px solid rgba(252,76,2,0.2);border-radius:4px;padding:14px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;}
 .unlock-alert-icon{font-size:16px;flex-shrink:0;margin-top:1px;}
 .unlock-alert-txt{font-size:12px;color:rgba(255,255,255,0.6);line-height:1.5;}
@@ -125,7 +121,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 
 /* ===== S5: RAPPORT ===== */
 #s5{background:var(--zwart);}
-.rapport-wrap{flex:1;padding:20px 20px 100px;}
+.rapport-wrap{flex:1;padding:20px 20px 40px;}
 .rapport-header-blok{margin-bottom:20px;}
 .rapport-naam{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--mid);margin-bottom:6px;font-weight:600;}
 .rapport-titel{font-family:'DM Serif Display',serif;font-size:26px;margin-bottom:6px;}
@@ -170,7 +166,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 
 /* ===== S6: EMAIL ===== */
 #s6{background:#e8e8e6;}
-.email-wrap{flex:1;padding:20px 12px 100px;max-width:600px;margin:0 auto;width:100%;}
+.email-wrap{flex:1;padding:20px 12px 40px;max-width:600px;margin:0 auto;width:100%;}
 .email-client-bar{background:#fff;border-radius:8px 8px 0 0;padding:12px 16px;border-bottom:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:center;}
 .email-client-bar span{font-size:11px;color:#999;}
 .email-kaart{background:#fff;padding:0 0 32px;border-radius:0 0 8px 8px;}
@@ -194,7 +190,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 
 /* ===== S7: BEDANKT ===== */
 #s7{background:var(--zwart);}
-.bedankt-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px 100px;text-align:center;}
+.bedankt-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px 60px;text-align:center;}
 .check-cirkel{width:64px;height:64px;border-radius:50%;border:1px solid rgba(46,125,79,0.4);display:flex;align-items:center;justify-content:center;margin:0 auto 28px;background:rgba(46,125,79,0.08);}
 .bedankt-titel{font-family:'DM Serif Display',serif;font-size:32px;margin-bottom:12px;}
 .bedankt-sub{font-size:14px;color:rgba(255,255,255,0.5);line-height:1.7;max-width:300px;margin-bottom:32px;}
@@ -207,7 +203,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 
 /* ===== S8: FOUT ===== */
 #s8{background:var(--zwart);}
-.fout-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px 100px;text-align:center;}
+.fout-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px 60px;text-align:center;}
 .fout-cirkel{width:64px;height:64px;border-radius:50%;border:1px solid rgba(192,57,43,0.4);display:flex;align-items:center;justify-content:center;margin:0 auto 28px;background:rgba(192,57,43,0.08);}
 .fout-titel{font-family:'DM Serif Display',serif;font-size:28px;margin-bottom:12px;}
 .fout-sub{font-size:14px;color:rgba(255,255,255,0.5);line-height:1.7;max-width:300px;margin-bottom:28px;}
@@ -538,17 +534,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
   </div>
 </div>
 
-<!-- ===== DEMO NAV ===== -->
-<div class="demo-nav">
-  <button class="nb actief" id="nb1" onclick="gaNaar('s1')">Landing</button>
-  <button class="nb" id="nb2" onclick="gaNaar('s2')">Strava</button>
-  <button class="nb" id="nb3" onclick="startAnalyse()">Analyse</button>
-  <button class="nb" id="nb4" onclick="gaNaar('s4')">Unlock</button>
-  <button class="nb" id="nb5" onclick="toonRapport()">Rapport</button>
-  <button class="nb" id="nb6" onclick="gaNaar('s6')">Email</button>
-  <button class="nb" id="nb7" onclick="gaNaar('s7')">Bedankt</button>
-  <button class="nb" id="nb8" onclick="gaNaar('s8')">Fout</button>
-</div>
+
 
 <script>
 const schermen = ['s1','s2','s3','s4','s5','s6','s7','s8'];
