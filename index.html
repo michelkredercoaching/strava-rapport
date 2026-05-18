@@ -538,19 +538,14 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 
 <script>
 const schermen = ['s1','s2','s3','s4','s5','s6','s7','s8'];
-const knoppen  = ['nb1','nb2','nb3','nb4','nb5','nb6','nb7','nb8'];
 
 function gaNaar(id) {
   schermen.forEach(s => {
-    document.getElementById(s).classList.remove('actief');
-  });
-  knoppen.forEach((k,i) => {
-    document.getElementById(k).classList.remove('actief');
-    if('s'+(i+1) === id) document.getElementById(k).classList.add('actief');
+    const el = document.getElementById(s);
+    if(el) el.classList.remove('actief');
   });
   const el = document.getElementById(id);
-  el.classList.add('actief');
-  el.scrollTop = 0;
+  if(el) { el.classList.add('actief'); el.scrollTop = 0; }
 }
 
 function startAnalyse() {
