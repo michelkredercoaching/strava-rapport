@@ -162,7 +162,11 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 .upsell-blok{background:rgba(252,76,2,0.06);border:1px solid rgba(252,76,2,0.15);border-radius:6px;padding:18px;margin-bottom:16px;}
 .upsell-titel{font-size:14px;font-weight:700;margin-bottom:6px;}
 .upsell-sub{font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:14px;line-height:1.5;}
-.upsell-btn{display:block;width:100%;padding:14px;background:var(--oranje);color:#fff;font-size:13px;font-weight:700;border:none;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:center;}
+.upsell-btn{display:block;width:100%;padding:14px;background:var(--oranje);color:#fff;font-size:13px;font-weight:700;border:none;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:center;text-decoration:none;}
+.trainingsblok-kaart{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:4px;padding:14px;margin-bottom:10px;}
+.trainingsblok-titel{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--oranje);font-weight:700;margin-bottom:6px;}
+.trainingsblok-omschrijving{font-size:13px;color:rgba(255,255,255,0.7);font-weight:600;margin-bottom:4px;}
+.trainingsblok-detail{font-size:11px;color:rgba(255,255,255,0.35);line-height:1.5;}
 
 /* ===== S6: EMAIL ===== */
 #s6{background:#e8e8e6;}
@@ -265,7 +269,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
     </button>
     <div class="strava-uitleg">
       <div class="strava-stap"><div class="strava-stap-nr">1</div><div class="strava-stap-txt">Log in op Strava en geef toegang</div></div>
-      <div class="strava-stap"><div class="strava-stap-nr">2</div><div class="strava-stap-txt">AI analyseert je trainingsdata (60 sec)</div></div>
+      <div class="strava-stap"><div class="strava-stap-nr">2</div><div class="strava-stap-txt">Wij analyseren je trainingsdata (60 sec)</div></div>
       <div class="strava-stap"><div class="strava-stap-nr">3</div><div class="strava-stap-txt">Betaal €19 en ontvang je volledige rapport</div></div>
     </div>
     <p class="strava-privacy">🔒 Alleen-lezen · Geen opslag · AVG-conform</p>
@@ -349,7 +353,6 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
         <span class="betaal-pill ideal">iDEAL</span>
         <span class="betaal-pill">Creditcard</span>
         <span class="betaal-pill">Bancontact</span>
-        <span class="betaal-pill">PayPal</span>
       </div>
       <div class="betaal-trust">🔒 Veilig betalen via iDEAL &amp; Mollie · Direct beschikbaar na betaling</div>
     </div>
@@ -383,13 +386,13 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
       </div>
     </div>
 
-    <div class="sectie-titel" style="margin-bottom:12px">Trainingsaudit</div>
+    <div class="sectie-titel" style="margin-bottom:12px">Trainingsdata</div>
     <div class="audit-rij">
       <div class="audit-lbl">Duurvermogen <span>Goed</span></div>
       <div class="audit-track"><div class="audit-balk groen" style="width:74%"></div></div>
     </div>
     <div class="audit-rij">
-      <div class="audit-lbl">Zoneverdeling <span>Kritiek</span></div>
+      <div class="audit-lbl">Zoneverdeling <span>Slecht</span></div>
       <div class="audit-track"><div class="audit-balk rood" style="width:22%"></div></div>
     </div>
     <div class="audit-rij">
@@ -397,7 +400,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
       <div class="audit-track"><div class="audit-balk oranje" style="width:41%"></div></div>
     </div>
     <div class="audit-rij">
-      <div class="audit-lbl">Intensiteitsverdeling <span>Kritiek</span></div>
+      <div class="audit-lbl">Intensiteitsverdeling <span>Slecht</span></div>
       <div class="audit-track"><div class="audit-balk rood" style="width:18%"></div></div>
     </div>
 
@@ -431,16 +434,19 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
     </div>
 
     <div class="sectie-titel">Jouw actieplan</div>
-    <div class="aanbeveling-lijst">
-      <div class="aanbeveling"><div class="aanbeveling-nr">1</div>Voeg 1x per week een korte intervaltraining toe: 5 × 4 min op Z5 met 3 min herstel. Dit activeert je VO2max adaptatie direct.</div>
-      <div class="aanbeveling"><div class="aanbeveling-nr">2</div>Verlaag je Z3 volume met 30%. Vervang middelhoge intensiteit door echte Z2 (praten mogelijk) of echte Z5 — nooit ertussenin.</div>
-      <div class="aanbeveling"><div class="aanbeveling-nr">3</div>Voeg 1 volledige rustdag toe per week. Je herstelratio is 1:4, ideaal is 1:2. Zonder herstel geen adaptatie.</div>
+    <div class="aanbeveling-lijst" id="actieplanLijst">
+      <!-- wordt dynamisch gevuld op basis van uren/week -->
+    </div>
+
+    <div class="sectie-titel" style="margin-top:4px">Intervalblokken voor jouw niveau</div>
+    <div id="trainingsblokken" style="margin-bottom:20px;">
+      <!-- wordt dynamisch gevuld op basis van uren/week -->
     </div>
 
     <div class="upsell-blok">
       <div class="upsell-titel">Klaar voor echte progressie?</div>
       <div class="upsell-sub">Dit rapport laat zien waar het mis gaat. Een persoonlijk trainingsschema laat zien hoe je het oplost — week voor week.</div>
-      <button class="upsell-btn" onclick="gaNaar('s1')">Bekijk persoonlijke trainingsschema's →</button>
+      <a class="upsell-btn" href="https://michelkredercoaching.nl" target="_blank">Bekijk persoonlijke trainingsschema's →</a>
     </div>
   </div>
 </div>
@@ -470,7 +476,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
         </div>
         <div class="email-cta-blok">
           <div class="email-cta-txt">Je volledige rapport met actieplan staat klaar in je persoonlijke dashboard.</div>
-          <a class="email-cta-btn" href="#">Bekijk volledig rapport →</a>
+          <a class="email-cta-btn" href="https://rapport.michelkredercoaching.nl" target="_blank">Bekijk volledig rapport →</a>
         </div>
         <div class="email-footer">
           Michel Kreder Coaching · michelkredercoaching.nl<br>
@@ -601,6 +607,65 @@ function startAnalyse() {
 
 function toonRapport() {
   gaNaar('s5');
+  vulTrainingsblokken(7.4); // dit wordt straks de echte waarde van Strava
+}
+
+function vulTrainingsblokken(urenPerWeek) {
+  const container = document.getElementById('trainingsblokken');
+  const actieplan = document.getElementById('actieplanLijst');
+  if (!container || !actieplan) return;
+
+  let blokken, aanbevelingen;
+
+  if (urenPerWeek >= 10) {
+    aanbevelingen = [
+      'Voeg 1x per week een intervaltraining toe: 10 × 40-20 (40 sec hard / 20 sec herstel). Dit geeft je VO2max de groeiprikkel die je mist.',
+      'Verlaag je Z3 volume met 30%. Vervang middelhoge intensiteit door echte Z2 (praten mogelijk) of echte Z5 — nooit ertussenin.',
+      'Voeg 1 volledige rustdag toe per week. Je herstelratio is 1:4, ideaal is 1:2. Zonder herstel geen adaptatie.'
+    ];
+    blokken = [
+      {
+        titel: 'Optie A — Hoog volume',
+        omschrijving: '10 × 40-20',
+        detail: '10 herhalingen van 40 sec hard / 20 sec herstel · 1-2x per week · ideaal voor explosiviteit en VO2max prikkel'
+      },
+      {
+        titel: 'Optie B — Hoog volume',
+        omschrijving: '4 × 80-40',
+        detail: '4 blokken van 80 sec hard / 40 sec herstel · zwaarder maar minder herhalingen · goed als je al basisconditie hebt'
+      }
+    ];
+  } else {
+    aanbevelingen = [
+      'Voeg 1x per week een intervaltraining toe: 10 × 20-10 (20 sec hard / 10 sec herstel). Kort maar effectief — past in elke training van 45+ min.',
+      'Verlaag je Z3 volume met 30%. Vervang middelhoge intensiteit door echte Z2 (praten mogelijk) of echte Z5 — nooit ertussenin.',
+      'Voeg 1 volledige rustdag toe per week. Je herstelratio is 1:4, ideaal is 1:2. Zonder herstel geen adaptatie.'
+    ];
+    blokken = [
+      {
+        titel: 'Optie A — Compact',
+        omschrijving: '10 × 20-10',
+        detail: '10 herhalingen van 20 sec hard / 10 sec herstel · kort maar effectief · past in elke training van 45+ min'
+      },
+      {
+        titel: 'Optie B — Compact',
+        omschrijving: '12 × 30-15',
+        detail: '12 herhalingen van 30 sec hard / 15 sec herstel · iets langer en daardoor meer VO2max adaptatie'
+      }
+    ];
+  }
+
+  actieplan.innerHTML = aanbevelingen.map((tekst, i) => `
+    <div class="aanbeveling"><div class="aanbeveling-nr">${i+1}</div>${tekst}</div>
+  `).join('');
+
+  container.innerHTML = blokken.map(b => `
+    <div class="trainingsblok-kaart">
+      <div class="trainingsblok-titel">${b.titel}</div>
+      <div class="trainingsblok-omschrijving">${b.omschrijving}</div>
+      <div class="trainingsblok-detail">${b.detail}</div>
+    </div>
+  `).join('');
 }
 </script>
 </body>
