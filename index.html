@@ -342,7 +342,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
         <div class="prijs-groot">€19</div>
         <div class="prijs-label">eenmalig · geen verborgen kosten</div>
       </div>
-      <button class="betaal-btn" onclick="gaNaar('s5')">
+      <button class="betaal-btn" id="betaalKnop" onclick="startBetaling()">
         <span class="ideal-pill">iDEAL</span> Betaal nu en ontvang rapport
       </button>
       <div class="betaal-methoden">
@@ -700,6 +700,30 @@ function vulTrainingsblokken(urenPerWeek) {
   `).join('');
 }
 
+async function startBetaling() {
+  const knop = document.getElementById('betaalKnop');
+  if(knop) { knop.textContent = 'Betaling aanmaken...'; knop.disabled = true; }
+
+  try {
+    const res = await fetch('/api/betaling', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stravaData: window._stravaData || {} })
+    });
+    const data = await res.json();
+
+    if (data.checkoutUrl) {
+      window.location.href = data.checkoutUrl;
+    } else {
+      alert('Er ging iets mis met de betaling. Probeer opnieuw.');
+      if(knop) { knop.textContent = 'Betaal nu en ontvang rapport'; knop.disabled = false; }
+    }
+  } catch(err) {
+    alert('Er ging iets mis. Probeer opnieuw.');
+    if(knop) { knop.textContent = 'Betaal nu en ontvang rapport'; knop.disabled = false; }
+  }
+}
+
 function verbindStrava() {
   window.location.href = '/api/strava-auth';
 }
@@ -712,6 +736,25 @@ window.addEventListener('DOMContentLoaded', function() {
 
   if (error) {
     gaNaar('s8');
+    return;
+  }
+
+  const betaald = params.get('betaald');
+
+  if (betaald === 'true' && dataParam) {
+    try {
+      const data = JSON.parse(decodeURIComponent(dataParam));
+      window._stravaData = data;
+      toonRapport(data);
+      gaNaar('s5');
+    } catch(e) {
+      gaNaar('s8');
+    }
+    return;
+  }
+
+  if (betaald === 'pending') {
+    gaNaar('s7');
     return;
   }
 
