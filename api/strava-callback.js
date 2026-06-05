@@ -171,7 +171,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
   let vo2maxSessies = 0;
 
   if (heeftVermogensmeter && ftp) {
-    // FTP zones
+    // FTP zones op basis van gemiddeld vermogen per rit
     fietsritten90.forEach(rit => {
       if (!rit.average_watts || !rit.device_watts) return;
       const pct = (rit.average_watts / ftp) * 100;
@@ -179,12 +179,12 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
       else if (pct < 76) zones[1]++;
       else if (pct < 86) zones[2]++;
       else if (pct < 96) zones[3]++;
-      else if (pct < 106) zones[4]++;
+      else if (pct < 106) { zones[4]++; vo2maxSessies++; }
       else { zones[5]++; vo2maxSessies++; }
-      if (pct >= 96) vo2maxSessies++;
     });
   } else if (omslagpunt) {
     // Hartslag zones op omslagpunt
+    zones = [0, 0, 0, 0, 0];
     fietsritten90.forEach(rit => {
       if (!rit.average_heartrate) return;
       const pct = (rit.average_heartrate / omslagpunt) * 100;
@@ -194,10 +194,20 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
       else if (pct < 100) zones[3]++;
       else { zones[4]++; vo2maxSessies++; }
     });
-    zones = zones.slice(0, 5);
+    // VO2max ook detecteren via max_heartrate per rit
+    fietsritten90.forEach(rit => {
+      if (rit.max_heartrate && rit.max_heartrate > omslagpunt) {
+        // Tel alleen als gemiddelde HF dit niet al detecteerde
+        const gemPct = rit.average_heartrate ? (rit.average_heartrate / omslagpunt) * 100 : 0;
+        if (gemPct < 100) vo2maxSessies++; // Max was boven omslagpunt maar gem niet
+      }
+    });
+    // Verwijder duplicaten — max vo2maxSessies = aantal ritten
+    vo2maxSessies = Math.min(vo2maxSessies, fietsritten90.length);
   } else {
-    // Geen data: schatting op basis van gemiddelde intensiteit
-    zones = [10, 55, 25, 7, 3];
+    // Geen hartslag of vermogen — schatting op basis van intensiteit
+    zones = [5, 50, 30, 10, 5];
+    vo2maxSessies = 0;
   }
 
   // Zones omzetten naar percentages
