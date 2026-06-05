@@ -21,6 +21,9 @@ export default async function handler(req, res) {
     herstelbalans = 'matig',
     intensiteitsverdeling = 'slecht',
     zones = [],
+    duurZonePct = null,
+    grijsZonePct = null,
+    kwaliteitZonePct = null,
     langsteRit = 0,
     gemAfstandPerWeek = 0,
     heeftVermogensmeter = false,
@@ -56,15 +59,15 @@ JOUW FTP ZONES:
 - FTP:       ${Math.round(ftp * 0.96)}-${Math.round(ftp * 1.05)}W  (96-105% FTP)
 - VO2max:    >${Math.round(ftp * 1.05)}W  (>105% FTP) ← hier moet 20% van kwaliteitstrainingen zitten`;
 
-    const duurPct = zones[1] || 0;
-    const tempoPct = zones[2] || 0;
-    const vo2Pct = (zones[4] || 0) + (zones[5] || 0);
+    const duurPct = (zones[0] || 0) + (zones[1] || 0); // Z1+Z2 samen
+    const grijsPct = (zones[2] || 0) + (zones[3] || 0); // Z3+Z4 samen
+    const kwaliteitPct = (zones[4] || 0) + (zones[5] || 0); // Z5+Z6 samen
 
-    zoneAnalyseTekst = `ZONE ANALYSE:
-- Duur (Z2): ${duurPct}% van trainingen ${duurPct >= 60 ? '✓ goed' : duurPct >= 40 ? '⚠ te weinig' : '✗ veel te weinig — dit is de basis'}
-- Tempo (grijs): ${tempoPct}% ${tempoPct > 30 ? '✗ te veel grijs gebied — dit maakt je moe zonder progressie' : '✓ onder controle'}
-- VO2max kwaliteit: ${vo2Pct}% / ${vo2maxSessies} sessies ${vo2maxSessies >= 3 ? '✓ goed' : '✗ te weinig groeiprikkel'}
-- 80/20 check: ${duurPct >= 70 && vo2Pct >= 15 ? '✓ goed' : '✗ niet in balans'}`;
+    zoneAnalyseTekst = `ZONE ANALYSE (80/20 check):
+- Lage intensiteit (Z1+Z2): ${duurPct}% ${duurPct >= 78 ? '✓ goed — op schema voor 80%' : duurPct >= 65 ? '⚠ te weinig — moet richting 80%' : '✗ veel te weinig — hier bouw je de motor'}
+- Grijs gebied (Z3+Z4): ${grijsPct}% ${grijsPct > 20 ? '✗ te veel — dit is de voornaamste oorzaak van vermoeidheid zonder progressie' : grijsPct > 10 ? '⚠ aan de hoge kant' : '✓ onder controle'}
+- Kwaliteit (Z5+Z6): ${kwaliteitPct}% ${kwaliteitPct >= 15 && kwaliteitPct <= 22 ? '✓ goed — precies in de 15-20% zone' : kwaliteitPct > 22 ? '⚠ te veel intensiteit — herstel in gevaar' : kwaliteitPct >= 8 ? '⚠ te weinig — meer VO2max prikkels nodig' : '✗ vrijwel geen kwaliteitstraining'}
+- 80/20 check: ${duurPct >= 78 && kwaliteitPct >= 15 && kwaliteitPct <= 22 ? '✓ perfect in balans' : duurPct < 65 ? '✗ te weinig duurtraining' : grijsPct > 20 ? '✗ te veel grijs gebied' : kwaliteitPct < 15 ? '✗ te weinig kwaliteit' : '⚠ bijna goed'}`;
 
   } else if (omslagpunt && maxHf) {
     // HARTSLAG ZONES
@@ -81,16 +84,17 @@ JOUW HARTSLAG ZONES:
 
 BELANGRIJK: Adviseer deze sporter een vermogensmeter aan te schaffen voor nauwkeurigere analyse. Hartslag is beïnvloedbaar door vermoeidheid, temperatuur en cafeïne — vermogen is objectief.`;
 
-    const d1Pct = zones[1] || 0;
-    const d2Pct = zones[2] || 0;
-    const weerstandPct = zones[4] || 0;
+    const d1Pct = (zones[0] || 0) + (zones[1] || 0); // Herstel + D1 = lage intensiteit
+    const grijsPct = zones[2] || 0; // D2
+    const kwaliteitPct = (zones[3] || 0) + (zones[4] || 0); // D3 + Weerstand
     const gemHrVsOmslagpunt = gemHr ? Math.round((gemHr / omslagpunt) * 100) : null;
 
-    zoneAnalyseTekst = `ZONE ANALYSE (hartslag):
+    zoneAnalyseTekst = `ZONE ANALYSE (hartslag, 80/20 check):
 - Gem. HF: ${gemHr || '?'} bpm ${gemHrVsOmslagpunt ? `(${gemHrVsOmslagpunt}% van omslagpunt)` : ''}
-- D1 Duur: ${d1Pct}% ${d1Pct >= 60 ? '✓ goed' : '⚠ te weinig basistraining'}
-- D2 Sweetspot: ${d2Pct}% ${d2Pct > 35 ? '⚠ veel tijd in grijs gebied' : '✓ ok'}
-- Weerstand/VO2max: ${weerstandPct}% / ${vo2maxSessies} sessies ${vo2maxSessies >= 3 ? '✓ goed' : '✗ te weinig groeiprikkel'}`;
+- Lage intensiteit (Herstel+D1): ${d1Pct}% ${d1Pct >= 78 ? '✓ goed' : d1Pct >= 65 ? '⚠ te weinig duurtraining' : '✗ veel te weinig basistraining'}
+- Grijs gebied (D2): ${grijsPct}% ${grijsPct > 20 ? '✗ te veel grijs — moe zonder progressie' : grijsPct > 10 ? '⚠ aan de hoge kant' : '✓ ok'}
+- Kwaliteit (D3+Weerstand): ${kwaliteitPct}% ${kwaliteitPct >= 15 && kwaliteitPct <= 22 ? '✓ goed — precies 15-20%' : kwaliteitPct > 22 ? '⚠ te veel intensiteit' : kwaliteitPct >= 8 ? '⚠ te weinig' : '✗ vrijwel geen kwaliteitstraining'}
+- 80/20 check: ${d1Pct >= 78 && kwaliteitPct >= 15 && kwaliteitPct <= 22 ? '✓ perfect in balans' : '✗ niet in balans'}`;
 
   } else {
     // GEEN DATA
@@ -165,6 +169,9 @@ SPORTER DATA:
 - Duurvermogen: ${duurvermogen}
 - Herstelbalans: ${herstelbalans}
 - Intensiteitsverdeling: ${intensiteitsverdeling}
+- Lage intensiteit (Z1+Z2 of Herstel+D1): ${duurZonePct !== null ? duurZonePct + '%' : 'onbekend'} (doel: 80%)
+- Grijs gebied (Z3+Z4 of D2): ${grijsZonePct !== null ? grijsZonePct + '%' : 'onbekend'} (doel: zo laag mogelijk)
+- Kwaliteit (Z5+Z6 of D3+Weerstand): ${kwaliteitZonePct !== null ? kwaliteitZonePct + '%' : 'onbekend'} (doel: ~20%)
 
 SCHEMA AANBEVELING: ${schemaAanbeveling.niveau} ${schemaAanbeveling.weken} weken €${schemaAanbeveling.prijs} — ${schemaAanbeveling.reden}
 
