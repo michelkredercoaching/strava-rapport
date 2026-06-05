@@ -682,7 +682,6 @@ function bevestigZones() {
   const ftpVal = parseInt(document.getElementById('ftpInput').value);
   const maxHfVal = parseInt(document.getElementById('maxHfInput').value);
 
-  // Validatie
   if (ftpVal && (ftpVal < 80 || ftpVal > 500)) {
     alert('FTP moet tussen 80 en 500 Watt liggen.');
     return;
@@ -692,18 +691,28 @@ function bevestigZones() {
     return;
   }
 
-  // Update data met handmatige waarden
-  if (ftpVal && window._stravaData) {
-    window._stravaData.ftp = ftpVal;
-    window._stravaData.ftpHandmatig = true;
-  }
-  if (maxHfVal && window._stravaData) {
-    window._stravaData.maxHf = maxHfVal;
-    window._stravaData.omslagpunt = Math.round(maxHfVal * 0.90);
-    window._stravaData.maxHfHandmatig = true;
+  const data = window._stravaData;
+
+  // Update FTP en herbereken zones
+  if (ftpVal && data) {
+    data.ftp = ftpVal;
+    data.ftpHandmatig = true;
+    data.heeftVermogensmeter = true;
+
+    // Herbereken zones op basis van handmatige FTP
+    // We hebben geen ruwe wattages meer — gebruik prestatiescore aanpassing
+    // Zones worden door Claude herberekend op basis van FTP in analyse.js
+    // Maar we updaten ook de beoordelingen
+    data.ftpVoorZones = ftpVal;
   }
 
-  voerAIAnalyseUit(window._stravaData);
+  if (maxHfVal && data) {
+    data.maxHf = maxHfVal;
+    data.omslagpunt = Math.round(maxHfVal * 0.90);
+    data.maxHfHandmatig = true;
+  }
+
+  voerAIAnalyseUit(data);
 }
 
 function slaZonesOver() {
