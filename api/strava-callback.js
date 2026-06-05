@@ -63,6 +63,13 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
     a.type === 'Ride' || a.type === 'VirtualRide'
   );
 
+  console.log('Eerste rit sample:', JSON.stringify({
+    device_watts: fietsritten90[0]?.device_watts,
+    average_watts: fietsritten90[0]?.average_watts,
+    max_heartrate: fietsritten90[0]?.max_heartrate,
+    average_heartrate: fietsritten90[0]?.average_heartrate,
+  }));
+
   if (fietsritten90.length === 0) {
     return {
       naam: athlete?.firstname || 'Sporter',
