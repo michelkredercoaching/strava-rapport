@@ -881,8 +881,29 @@ window.addEventListener('DOMContentLoaded', function() {
     try {
       const data = JSON.parse(decodeURIComponent(dataParam));
       window._stravaData = data;
-      const analyse = window._claudeAnalyse || null;
-      toonRapport(data, analyse);
+      // Claude analyse opnieuw draaien na betaling (redirect verliest geheugen)
+      gaNaar('s3b');
+      const aiProgVul = document.getElementById('aiProgVul');
+      const aiTekst = document.getElementById('aiTekst');
+      const aiSub = document.getElementById('aiSub');
+      if(aiTekst) aiTekst.textContent = 'Persoonlijk rapport genereren...';
+      if(aiSub) aiSub.textContent = 'Betaling bevestigd — rapport wordt geschreven';
+      if(aiProgVul) aiProgVul.style.width = '20%';
+
+      fetch('/api/analyse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stravaData: data })
+      })
+      .then(r => r.json())
+      .then(analyse => {
+        if(aiProgVul) aiProgVul.style.width = '100%';
+        window._claudeAnalyse = analyse;
+        setTimeout(() => toonRapport(data, analyse), 400);
+      })
+      .catch(() => {
+        toonRapport(data, null);
+      });
     } catch(e) { gaNaar('s8'); }
     return;
   }
