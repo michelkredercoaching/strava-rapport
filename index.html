@@ -163,6 +163,10 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 .upsell-titel{font-size:14px;font-weight:700;margin-bottom:6px;}
 .upsell-sub{font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:14px;line-height:1.5;}
 .upsell-btn{display:block;width:100%;padding:14px;background:var(--oranje);color:#fff;font-size:13px;font-weight:700;border:none;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:center;text-decoration:none;}
+.upsell-badge{display:inline-block;background:rgba(252,76,2,0.15);border:1px solid rgba(252,76,2,0.3);border-radius:3px;padding:4px 10px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--oranje);font-weight:700;margin-bottom:10px;}
+.upsell-prijs{display:flex;align-items:baseline;gap:8px;margin-bottom:14px;}
+.upsell-prijs-n{font-family:'DM Serif Display',serif;font-size:32px;color:var(--wit);}
+.upsell-prijs-lbl{font-size:11px;color:rgba(255,255,255,0.3);}
 .trainingsblok-kaart{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:4px;padding:14px;margin-bottom:10px;}
 .trainingsblok-titel{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--oranje);font-weight:700;margin-bottom:6px;}
 .trainingsblok-omschrijving{font-size:13px;color:rgba(255,255,255,0.7);font-weight:600;margin-bottom:4px;}
@@ -431,10 +435,12 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
       <!-- dynamisch gevuld door Claude -->
     </div>
 
-    <div class="upsell-blok">
-      <div class="upsell-titel">Klaar voor echte progressie?</div>
-      <div class="upsell-sub">Dit rapport laat zien waar het mis gaat. Een persoonlijk trainingsschema laat zien hoe je het oplost — week voor week.</div>
-      <a class="upsell-btn" href="https://michelkredercoaching.nl" target="_blank">Bekijk persoonlijke trainingsschema's →</a>
+    <div class="upsell-blok" id="upsellBlok">
+      <div class="upsell-badge" id="upsellBadge" style="display:none"></div>
+      <div class="upsell-titel" id="upsellTitel">Klaar voor echte progressie?</div>
+      <div class="upsell-sub" id="upsellSub">Dit rapport laat zien waar het mis gaat. Een persoonlijk trainingsschema laat zien hoe je het oplost — week voor week.</div>
+      <div class="upsell-prijs" id="upsellPrijs" style="display:none"></div>
+      <a class="upsell-btn" id="upsellBtn" href="https://michelkredercoaching.nl/trainingsschemas" target="_blank">Bekijk persoonlijke trainingsschema's →</a>
     </div>
   </div>
 </div>
@@ -718,6 +724,9 @@ function toonRapport(data, analyse) {
   
   // Trainingsblokken
   vulTrainingsblokken(analyse, data);
+  
+  // Upsell
+  vulUpsell(analyse, data);
 }
 
 function vulAuditBalken(data) {
@@ -834,6 +843,29 @@ function vulTrainingsblokken(analyse, data) {
       <div class="trainingsblok-detail">${b.detail}</div>
     </div>
   `).join('');
+}
+
+function vulUpsell(analyse, data) {
+  const badge = document.getElementById('upsellBadge');
+  const titel = document.getElementById('upsellTitel');
+  const sub = document.getElementById('upsellSub');
+  const prijsBlok = document.getElementById('upsellPrijs');
+  const btn = document.getElementById('upsellBtn');
+
+  if (analyse && analyse.upsell) {
+    const u = analyse.upsell;
+    if(badge) { badge.textContent = u.niveau + ' · ' + u.weken + ' weken'; badge.style.display = 'inline-block'; }
+    if(titel) titel.textContent = 'Jouw schema is klaar om te starten';
+    if(sub) sub.textContent = u.tekst;
+    if(prijsBlok) {
+      prijsBlok.style.display = 'flex';
+      prijsBlok.innerHTML = `<span class="upsell-prijs-n">€${u.prijs}</span><span class="upsell-prijs-lbl">eenmalig · direct starten</span>`;
+    }
+    if(btn) {
+      btn.textContent = u.ctaTekst || 'Start mijn trainingsschema →';
+      btn.href = u.url || 'https://michelkredercoaching.nl/trainingsschemas';
+    }
+  }
 }
 
 // ===== URL PARAMS HANDLER =====
