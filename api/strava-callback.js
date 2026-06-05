@@ -248,10 +248,11 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
     : null;
 
   // ===== BEOORDELINGEN =====
-  const duurZonePct = zonesPct[1] || 0; // Z2/D1
-  const grijsZonePct = zonesPct[2] || 0; // Z3/D2
+  const duurZonePct = (zonesPct[0] || 0) + (zonesPct[1] || 0); // Z1+Z2 samen = lage intensiteit
+  const grijsZonePct = (zonesPct[2] || 0) + (zonesPct[3] || 0); // Z3+Z4 = grijs gebied
+  const kwaliteitZonePct = (zonesPct[4] || 0) + (zonesPct[5] || 0); // Z5+Z6 = kwaliteit
   const duurvermogen = urenPerWeek >= 8 ? 'goed' : urenPerWeek >= 5 ? 'matig' : 'slecht';
-  const intensiteitsverdeling = grijsZonePct > 35 ? 'slecht' : duurZonePct > 50 ? 'goed' : 'matig';
+  const intensiteitsverdeling = grijsZonePct > 20 ? 'slecht' : duurZonePct >= 78 && kwaliteitZonePct >= 15 ? 'goed' : 'matig';
   const herstelbalans = maxGapDagen > 14 ? 'slecht' : maxGapDagen > 7 ? 'matig' : 'goed';
   const zonescore = vo2maxSessies >= 3 ? 'goed' : vo2maxSessies > 0 ? 'matig' : 'slecht';
 
@@ -261,8 +262,10 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
   if (urenPerWeek >= 10) score += 8;
   if (vo2maxSessies >= 3) score += 12;
   if (vo2maxSessies === 0) score -= 15;
-  if (duurZonePct > 50) score += 8;
-  if (grijsZonePct > 35) score -= 10;
+  if (duurZonePct >= 75) score += 10; // 80/20 regel goed gevolgd
+  if (duurZonePct >= 60) score += 5;
+  if (grijsZonePct > 30) score -= 12; // te veel grijs
+  if (kwaliteitZonePct >= 15) score += 5; // voldoende kwaliteit
   if (maxGapDagen > 14) score -= 8;
   if (fietsritten90.length >= 30) score += 5;
   score = Math.max(10, Math.min(95, Math.round(score)));
@@ -274,6 +277,9 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
     prestatiescore: score,
     vo2maxSessies,
     zones: zonesPct,
+    duurZonePct,
+    grijsZonePct,
+    kwaliteitZonePct,
     duurvermogen,
     herstelbalans,
     intensiteitsverdeling,
