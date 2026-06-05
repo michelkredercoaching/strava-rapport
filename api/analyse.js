@@ -28,13 +28,20 @@ export default async function handler(req, res) {
     gemAfstandPerWeek = 0,
     heeftVermogensmeter = false,
     ftp = null,
+    ftpHandmatig = false,
     bestE20min = null,
     bestE12min = null,
     maxHf = null,
+    maxHfHandmatig = false,
     omslagpunt = null,
     gemHr = null,
     maxGapDagen = 0,
   } = stravaData;
+
+  // Als handmatige FTP/HF ingevoerd: markeer dit voor Claude
+  const handmatigLabel = ftpHandmatig ? ' (handmatig ingevoerd — gebruik deze waarde als basis)' 
+    : maxHfHandmatig ? ' (handmatig ingevoerd)' 
+    : ' (automatisch geschat)';
 
   // ===== ZONE SYSTEEM BEPALEN =====
   let zoneSystemTekst = '';
@@ -162,8 +169,8 @@ SPORTER DATA:
 - Langste rit: ${langsteRit}km
 - Gem. afstand/week: ${gemAfstandPerWeek}km
 - Vermogensmeter: ${heeftVermogensmeter ? 'ja' : 'nee'}
-- FTP: ${ftp ? ftp + 'W' : 'onbekend'}
-- Max HF: ${maxHf ? maxHf + ' bpm' : 'onbekend'}
+- FTP: ${ftp ? ftp + 'W' + handmatigLabel : 'onbekend'}
+- Max HF: ${maxHf ? maxHf + ' bpm' + (maxHfHandmatig ? ' (handmatig)' : ' (geschat)') : 'onbekend'}
 - Omslagpunt: ${omslagpunt ? omslagpunt + ' bpm' : 'onbekend'}
 - Prestatiescore: ${prestatiescore}/100
 - Duurvermogen: ${duurvermogen}
@@ -174,6 +181,8 @@ SPORTER DATA:
 - Kwaliteit (Z5+Z6 of D3+Weerstand): ${kwaliteitZonePct !== null ? kwaliteitZonePct + '%' : 'onbekend'} (doel: ~20%)
 
 SCHEMA AANBEVELING: ${schemaAanbeveling.niveau} ${schemaAanbeveling.weken} weken €${schemaAanbeveling.prijs} — ${schemaAanbeveling.reden}
+
+${ftpHandmatig ? `BELANGRIJK: De sporter heeft FTP handmatig ingevoerd als ${ftp}W. De zone percentages in de data zijn mogelijk berekend met een andere FTP. Gebruik de handmatige FTP als basis voor jouw analyse en wattage berekeningen. De trainingspatronen (frequentie, volume, herstel) zijn wel accuraat.` : ''}
 
 Schrijf het rapport nu. Gebruik naam. Wees specifiek met cijfers. Klink als Michel.
 
