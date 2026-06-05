@@ -35,15 +35,33 @@ export default async function handler(req, res) {
     const activiteiten = await activiteitenRes.json();
 
     // Stap 3: Haal best efforts op voor FTP detectie
-    // We halen de laatste 200 activiteiten op voor best power/hr detectie
     const alleActiviteitenRes = await fetch(
       `https://www.strava.com/api/v3/athlete/activities?per_page=200&page=1`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
     const alleActiviteiten = await alleActiviteitenRes.json();
 
-    // Stap 4: Bereken statistieken
-    const stats = berekenStats(activiteiten, alleActiviteiten, athlete);
+    // Stap 4: Haal power/HR streams op voor nauwkeurige zone berekening (max 30 ritten)
+    const fietsritten90 = activiteiten.filter(a => a.type === 'Ride' || a.type === 'VirtualRide');
+    const rittenVoorStreams = fietsritten90.slice(0, 30);
+
+    const streamResults = await Promise.all(
+      rittenVoorStreams.map(rit =>
+        fetch(`https://www.strava.com/api/v3/activities/${rit.id}/streams?keys=watts,heartrate&key_by_type=true`, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        })
+        .then(r => r.json())
+        .then(stream => ({ id: rit.id, stream }))
+        .catch(() => ({ id: rit.id, stream: null }))
+      )
+    );
+
+    // Maak stream lookup map
+    const streamMap = {};
+    streamResults.forEach(r => { if (r.stream) streamMap[r.id] = r.stream; });
+
+    // Stap 5: Bereken statistieken
+    const stats = berekenStats(activiteiten, alleActiviteiten, athlete, streamMap);
 
     // Stap 5: Redirect naar rapport pagina
     const dataParam = encodeURIComponent(JSON.stringify(stats));
@@ -55,7 +73,7 @@ export default async function handler(req, res) {
   }
 }
 
-function berekenStats(activiteiten90, alleActiviteiten, athlete) {
+function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {}) {
   const fietsritten90 = activiteiten90.filter(a =>
     a.type === 'Ride' || a.type === 'VirtualRide'
   );
@@ -189,46 +207,89 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
     : null;
   const gemIntensiteit = gemHr && maxHf ? Math.round((gemHr / maxHf) * 100) : null;
 
-  // ===== ZONE ANALYSE =====
-  let zones = [0, 0, 0, 0, 0, 0]; // 6 zones
+  // ===== ZONE ANALYSE op basis van streams (tijd in zone) =====
+  let zones = [0, 0, 0, 0, 0, 0]; // seconden per zone
   let vo2maxSessies = 0;
+  let heeftStreamData = false;
 
   if (heeftVermogensmeter && ftp) {
-    // FTP zones op basis van gemiddeld vermogen per rit
+    // FTP zones op basis van power stream (seconden per zone)
     fietsritten90.forEach(rit => {
-      if (!rit.average_watts || !rit.device_watts) return;
-      const pct = (rit.average_watts / ftp) * 100;
-      if (pct < 55) zones[0]++;
-      else if (pct < 76) zones[1]++;
-      else if (pct < 86) zones[2]++;
-      else if (pct < 96) zones[3]++;
-      else if (pct < 106) { zones[4]++; vo2maxSessies++; }
-      else { zones[5]++; vo2maxSessies++; }
-    });
-  } else if (omslagpunt) {
-    // Hartslag zones op omslagpunt
-    zones = [0, 0, 0, 0, 0];
-    fietsritten90.forEach(rit => {
-      if (!rit.average_heartrate) return;
-      const pct = (rit.average_heartrate / omslagpunt) * 100;
-      if (pct < 75) zones[0]++;
-      else if (pct < 85) zones[1]++;
-      else if (pct < 95) zones[2]++;
-      else if (pct < 100) zones[3]++;
-      else { zones[4]++; vo2maxSessies++; }
-    });
-    // VO2max ook detecteren via max_heartrate per rit
-    fietsritten90.forEach(rit => {
-      if (rit.max_heartrate && rit.max_heartrate > omslagpunt) {
-        // Tel alleen als gemiddelde HF dit niet al detecteerde
-        const gemPct = rit.average_heartrate ? (rit.average_heartrate / omslagpunt) * 100 : 0;
-        if (gemPct < 100) vo2maxSessies++; // Max was boven omslagpunt maar gem niet
+      const stream = streamMap[rit.id];
+      if (stream?.watts?.data) {
+        heeftStreamData = true;
+        stream.watts.data.forEach(w => {
+          if (!w) return;
+          const pct = (w / ftp) * 100;
+          if (pct < 55) zones[0]++;
+          else if (pct < 76) zones[1]++;
+          else if (pct < 86) zones[2]++;
+          else if (pct < 96) zones[3]++;
+          else if (pct < 106) zones[4]++;
+          else zones[5]++;
+        });
+      } else if (rit.average_watts && rit.device_watts) {
+        // Fallback: gemiddeld vermogen als geen stream
+        const pct = (rit.average_watts / ftp) * 100;
+        const ritTijd = rit.moving_time || 3600;
+        if (pct < 55) zones[0] += ritTijd;
+        else if (pct < 76) zones[1] += ritTijd;
+        else if (pct < 86) zones[2] += ritTijd;
+        else if (pct < 96) zones[3] += ritTijd;
+        else if (pct < 106) zones[4] += ritTijd;
+        else zones[5] += ritTijd;
       }
     });
-    // Verwijder duplicaten — max vo2maxSessies = aantal ritten
-    vo2maxSessies = Math.min(vo2maxSessies, fietsritten90.length);
+
+    // VO2max sessies = ritten met tijd boven 105% FTP > 3 minuten
+    vo2maxSessies = fietsritten90.filter(rit => {
+      const stream = streamMap[rit.id];
+      if (stream?.watts?.data) {
+        const secsBovenFtp = stream.watts.data.filter(w => w && (w / ftp) > 1.05).length;
+        return secsBovenFtp > 180; // meer dan 3 min boven FTP
+      }
+      return rit.average_watts && (rit.average_watts / ftp) > 0.96;
+    }).length;
+
+  } else if (omslagpunt) {
+    // Hartslag zones op basis van HR stream (seconden per zone)
+    zones = [0, 0, 0, 0, 0];
+    fietsritten90.forEach(rit => {
+      const stream = streamMap[rit.id];
+      if (stream?.heartrate?.data) {
+        heeftStreamData = true;
+        stream.heartrate.data.forEach(hr => {
+          if (!hr) return;
+          const pct = (hr / omslagpunt) * 100;
+          if (pct < 75) zones[0]++;
+          else if (pct < 85) zones[1]++;
+          else if (pct < 95) zones[2]++;
+          else if (pct < 100) zones[3]++;
+          else zones[4]++;
+        });
+      } else if (rit.average_heartrate) {
+        // Fallback: gemiddelde HF
+        const pct = (rit.average_heartrate / omslagpunt) * 100;
+        const ritTijd = rit.moving_time || 3600;
+        if (pct < 75) zones[0] += ritTijd;
+        else if (pct < 85) zones[1] += ritTijd;
+        else if (pct < 95) zones[2] += ritTijd;
+        else if (pct < 100) zones[3] += ritTijd;
+        else zones[4] += ritTijd;
+      }
+    });
+
+    // VO2max = tijd boven omslagpunt > 3 minuten
+    vo2maxSessies = fietsritten90.filter(rit => {
+      const stream = streamMap[rit.id];
+      if (stream?.heartrate?.data) {
+        const secsBovenOmslagpunt = stream.heartrate.data.filter(hr => hr && hr > omslagpunt).length;
+        return secsBovenOmslagpunt > 180;
+      }
+      return rit.max_heartrate && rit.max_heartrate > omslagpunt;
+    }).length;
+
   } else {
-    // Geen hartslag of vermogen — schatting op basis van intensiteit
     zones = [5, 50, 30, 10, 5];
     vo2maxSessies = 0;
   }
@@ -305,5 +366,6 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
     gemAfstandPerWeek,
     langsteRit,
     rittenRuw,
+    heeftStreamData,
   };
 }
