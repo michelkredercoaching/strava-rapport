@@ -60,6 +60,12 @@ export default async function handler(req, res) {
     const streamMap = {};
     streamResults.forEach(r => { if (r.stream) streamMap[r.id] = r.stream; });
 
+    // Debug: log stream keys van eerste rit
+    if (streamResults.length > 0) {
+      console.log('Stream keys rit 0:', Object.keys(streamResults[0]?.stream || {}));
+      console.log('Stream sample:', JSON.stringify(streamResults[0]?.stream).substring(0, 200));
+    }
+
     // Stap 5: Bereken statistieken
     const stats = berekenStats(activiteiten, alleActiviteiten, athlete, streamMap);
 
