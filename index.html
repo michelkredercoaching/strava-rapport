@@ -203,6 +203,28 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
 .fade-up{animation:fadeUp .5s ease both;}
+
+/* ===== S3C: VERFIJN ZONES ===== */
+#s3c{background:var(--zwart);}
+.verfijn-wrap{flex:1;display:flex;flex-direction:column;align-items:center;padding:32px 24px 48px;}
+.verfijn-icon{width:48px;height:48px;border-radius:50%;border:1px solid rgba(252,76,2,0.3);background:rgba(252,76,2,0.06);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
+.verfijn-status{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--oranje);margin-bottom:10px;font-weight:600;}
+.verfijn-titel{font-family:'DM Serif Display',serif;font-size:26px;margin-bottom:10px;text-align:center;}
+.verfijn-sub{font-size:13px;color:rgba(255,255,255,0.45);line-height:1.6;text-align:center;max-width:320px;margin-bottom:28px;}
+.verfijn-sectie{width:100%;max-width:340px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:16px;margin-bottom:12px;}
+.verfijn-sectie-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.verfijn-sectie-titel{font-size:12px;font-weight:700;color:rgba(255,255,255,0.8);}
+.verfijn-sectie-badge{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--groen);background:rgba(46,125,79,0.12);border:1px solid rgba(46,125,79,0.25);border-radius:3px;padding:3px 8px;font-weight:600;}
+.verfijn-sectie-badge.onbekend{color:var(--mid);background:rgba(136,136,136,0.08);border-color:rgba(136,136,136,0.15);}
+.verfijn-input-wrap{display:flex;flex-direction:column;gap:6px;}
+.verfijn-label{font-size:11px;color:rgba(255,255,255,0.4);font-weight:600;letter-spacing:.5px;}
+.verfijn-input{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:4px;padding:12px 14px;font-size:20px;font-family:'DM Serif Display',serif;color:var(--wit);width:100%;outline:none;transition:border-color .2s;}
+.verfijn-input:focus{border-color:var(--oranje);}
+.verfijn-input::placeholder{color:rgba(255,255,255,0.2);font-size:16px;}
+.verfijn-hint{font-size:10px;color:rgba(255,255,255,0.25);line-height:1.5;}
+.verfijn-btn{width:100%;max-width:340px;padding:17px;background:var(--oranje);color:#fff;font-size:14px;font-weight:700;border:none;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:8px;margin-bottom:10px;transition:background .2s;}
+.verfijn-btn:hover{background:#e04300;}
+.verfijn-skip{background:transparent;border:none;color:rgba(255,255,255,0.3);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;padding:8px;text-decoration:underline;}
 </style>
 </head>
 <body>
@@ -301,6 +323,55 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
       <div class="ai-pulse-dot"></div>
     </div>
     <div class="ai-progress"><div class="ai-progress-vul" id="aiProgVul"></div></div>
+  </div>
+</div>
+
+<!-- S3C: FTP / OMSLAGPUNT VERIFICATIE -->
+<div id="s3c" class="scherm">
+  <header class="header">
+    <span class="logo">Michel Kreder Coaching</span>
+    <span class="stap-indicator">Stap 2 / 3</span>
+  </header>
+  <div class="verfijn-wrap">
+    <div class="verfijn-icon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(252,76,2,0.8)" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+    </div>
+    <div class="verfijn-status">Verfijn je analyse</div>
+    <h2 class="verfijn-titel">Ken je je trainingszones?</h2>
+    <p class="verfijn-sub">We hebben jouw data geanalyseerd. Vul je FTP of max hartslag in voor een nauwkeurigere analyse.</p>
+
+    <!-- FTP SECTIE -->
+    <div class="verfijn-sectie" id="ftpSectie">
+      <div class="verfijn-sectie-header">
+        <div class="verfijn-sectie-titel">Vermogensmeter</div>
+        <div class="verfijn-sectie-badge" id="ftpBadge">Gedetecteerd</div>
+      </div>
+      <div class="verfijn-input-rij">
+        <div class="verfijn-input-wrap">
+          <label class="verfijn-label">Jouw FTP (Watt)</label>
+          <input type="number" id="ftpInput" class="verfijn-input" placeholder="bijv. 255" min="80" max="500">
+          <div class="verfijn-hint" id="ftpHint">Tip: beste 20min × 95% of beste 12min × 88%</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HARTSLAG SECTIE -->
+    <div class="verfijn-sectie">
+      <div class="verfijn-sectie-header">
+        <div class="verfijn-sectie-titel">Hartslag</div>
+        <div class="verfijn-sectie-badge" id="hfBadge">Gedetecteerd</div>
+      </div>
+      <div class="verfijn-input-rij">
+        <div class="verfijn-input-wrap">
+          <label class="verfijn-label">Max hartslag (bpm)</label>
+          <input type="number" id="maxHfInput" class="verfijn-input" placeholder="bijv. 178" min="100" max="220">
+          <div class="verfijn-hint">Omslagpunt wordt berekend als max HF × 90%</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="verfijn-btn" onclick="bevestigZones()">Analyseer mijn training →</button>
+    <button class="verfijn-skip" onclick="slaZonesOver()">Ik weet het niet — gebruik schatting</button>
   </div>
 </div>
 
@@ -496,7 +567,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 </div>
 
 <script>
-const schermen = ['s1','s2','s3','s3b','s4','s5','s7','s8'];
+const schermen = ['s1','s2','s3','s3b','s3c','s4','s5','s7','s8'];
 
 function gaNaar(id) {
   schermen.forEach(s => {
@@ -561,8 +632,9 @@ function startAnalyseAnimatie(data) {
     prog.style.width = `${(i/stappen.length)*100}%`;
     if(i >= stappen.length) {
       clearInterval(iv);
-      tekst.textContent = 'Data opgehaald — AI rapport genereren...';
-      // Nu AI analyse starten
+      tekst.textContent = 'Data opgehaald — zones verfijnen...';
+      // Sla data op voor zones scherm
+      window._stravaData = data;
       setTimeout(() => startAIAnalyse(data), 800);
       return;
     }
@@ -578,6 +650,67 @@ function startAnalyseAnimatie(data) {
 
 // ===== AI ANALYSE: roept /api/analyse aan =====
 async function startAIAnalyse(data) {
+  // Eerst zones verificatie scherm tonen
+  toonZonesScherm(data);
+}
+
+function toonZonesScherm(data) {
+  gaNaar('s3c');
+  
+  const ftpInput = document.getElementById('ftpInput');
+  const maxHfInput = document.getElementById('maxHfInput');
+  const ftpBadge = document.getElementById('ftpBadge');
+  const hfBadge = document.getElementById('hfBadge');
+
+  // Vul gedetecteerde waarden in als placeholder
+  if (data.ftp) {
+    ftpInput.value = data.ftp;
+    if (ftpBadge) ftpBadge.textContent = 'Geschat: ' + data.ftp + 'W';
+  } else {
+    if (ftpBadge) { ftpBadge.textContent = 'Onbekend'; ftpBadge.className = 'verfijn-sectie-badge onbekend'; }
+  }
+
+  if (data.maxHf) {
+    maxHfInput.value = data.maxHf;
+    if (hfBadge) hfBadge.textContent = 'Geschat: ' + data.maxHf + ' bpm';
+  } else {
+    if (hfBadge) { hfBadge.textContent = 'Onbekend'; hfBadge.className = 'verfijn-sectie-badge onbekend'; }
+  }
+}
+
+function bevestigZones() {
+  const ftpVal = parseInt(document.getElementById('ftpInput').value);
+  const maxHfVal = parseInt(document.getElementById('maxHfInput').value);
+
+  // Validatie
+  if (ftpVal && (ftpVal < 80 || ftpVal > 500)) {
+    alert('FTP moet tussen 80 en 500 Watt liggen.');
+    return;
+  }
+  if (maxHfVal && (maxHfVal < 100 || maxHfVal > 220)) {
+    alert('Max hartslag moet tussen 100 en 220 bpm liggen.');
+    return;
+  }
+
+  // Update data met handmatige waarden
+  if (ftpVal && window._stravaData) {
+    window._stravaData.ftp = ftpVal;
+    window._stravaData.ftpHandmatig = true;
+  }
+  if (maxHfVal && window._stravaData) {
+    window._stravaData.maxHf = maxHfVal;
+    window._stravaData.omslagpunt = Math.round(maxHfVal * 0.90);
+    window._stravaData.maxHfHandmatig = true;
+  }
+
+  voerAIAnalyseUit(window._stravaData);
+}
+
+function slaZonesOver() {
+  voerAIAnalyseUit(window._stravaData);
+}
+
+async function voerAIAnalyseUit(data) {
   gaNaar('s3b');
   
   const aiTekst = document.getElementById('aiTekst');
