@@ -103,33 +103,32 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
   maxGapDagen = Math.round(maxGapDagen);
 
   // ===== VERMOGENSMETER DETECTIE =====
-  const rittenMetVermogen = fietsritten90.filter(a => a.average_watts && a.device_watts);
-  const heeftVermogensmeter = rittenMetVermogen.length >= 3;
+  // device_watts = true betekent echte vermogensmeter (niet Strava schatting)
+  const rittenMetEchtVermogen = fietsritten90.filter(a => a.average_watts && a.device_watts === true);
+  const heeftVermogensmeter = rittenMetEchtVermogen.length >= 2;
 
-  // ===== FTP DETECTIE (alleen vermogensmeter) =====
+  // ===== FTP DETECTIE =====
   let ftp = null;
   let bestE20min = null;
   let bestE12min = null;
 
   if (heeftVermogensmeter) {
-    // Beste gemiddeld vermogen uit alle ritten (schatting beste 20min = langste hoge inspanning)
-    // We gebruiken weighted average power of average watts van ritten > 15min
+    // Echte vermogensmeter: gebruik device_watts ritten
     const langeritten = alleRitten.filter(a =>
-      a.device_watts && a.average_watts && a.moving_time > 900
+      a.device_watts === true && a.average_watts && a.moving_time > 900
     );
 
     if (langeritten.length > 0) {
-      // Sorteer op gemiddeld vermogen, neem beste
       const gesorteerd = langeritten.sort((a, b) => b.average_watts - a.average_watts);
 
-      // Beste 20min schatting: hoogste gemiddeld vermogen van ritten 18-25 min
+      // Beste 20min: ritten tussen 18-25 min
       const ritten20min = gesorteerd.filter(a => a.moving_time >= 1080 && a.moving_time <= 1500);
       if (ritten20min.length > 0) {
         bestE20min = Math.round(ritten20min[0].average_watts);
         ftp = Math.round(bestE20min * 0.95);
       }
 
-      // Beste 12min schatting als fallback
+      // Beste 12min fallback
       if (!ftp) {
         const ritten12min = gesorteerd.filter(a => a.moving_time >= 660 && a.moving_time <= 840);
         if (ritten12min.length > 0) {
@@ -138,7 +137,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
         }
       }
 
-      // Absolute fallback: hoogste gemiddeld vermogen * 0.85
+      // Absolute fallback
       if (!ftp && gesorteerd.length > 0) {
         ftp = Math.round(gesorteerd[0].average_watts * 0.85);
       }
@@ -146,15 +145,24 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
   }
 
   // ===== MAX HARTSLAG DETECTIE =====
-  // Top 3 hoogste max HR → gemiddelde
+  // Top 3 hoogste max HR uit ALLE ritten → gemiddelde = betrouwbare max HF schatting
   const maxHrWaarden = alleRitten
-    .filter(a => a.max_heartrate && a.max_heartrate > 100)
+    .filter(a => a.max_heartrate && a.max_heartrate > 80)
     .map(a => a.max_heartrate)
     .sort((a, b) => b - a)
     .slice(0, 3);
 
-  const maxHf = maxHrWaarden.length > 0
-    ? Math.round(maxHrWaarden.reduce((s, v) => s + v, 0) / maxHrWaarden.length)
+  // Fallback: ook fietsritten90 gebruiken als alleRitten te weinig data heeft
+  const maxHrWaardenFallback = fietsritten90
+    .filter(a => a.max_heartrate && a.max_heartrate > 80)
+    .map(a => a.max_heartrate)
+    .sort((a, b) => b - a)
+    .slice(0, 3);
+
+  const gebruikteHrWaarden = maxHrWaarden.length > 0 ? maxHrWaarden : maxHrWaardenFallback;
+
+  const maxHf = gebruikteHrWaarden.length > 0
+    ? Math.round(gebruikteHrWaarden.reduce((s, v) => s + v, 0) / gebruikteHrWaarden.length)
     : null;
 
   const omslagpunt = maxHf ? Math.round(maxHf * 0.90) : null;
