@@ -117,13 +117,15 @@ Adviseer sterk: vermogensmeter voor nauwkeurige FTP-gebaseerde training.`;
     : 'Hoog trainingsvolume. Zorg voor minimaal 2 echte rustdagen per week en nooit 2 intensieve trainingen op rij.';
 
   // ===== SCHEMA AANBEVELING =====
+  // Directe WooCommerce checkout URLs per niveau
+  const baseUrl = 'https://michelkredercoaching.nl/checkout/?add-to-cart';
   let schemaAanbeveling;
   if (urenPerWeek < 4) {
-    schemaAanbeveling = { niveau: 'Beginner', weken: 8, prijs: 39, url: 'https://michelkredercoaching.nl/trainingsschemas/?niveau=beginner&weken=8', reden: 'eerst structuur en basisconditie opbouwen' };
+    schemaAanbeveling = { niveau: 'Beginner', weken: 8, prijs: 39, url: `https://michelkredercoaching.nl/checkout/?add-to-cart=6440&variation_id=11084`, reden: 'eerst structuur en basisconditie opbouwen' };
   } else if (urenPerWeek < 8) {
-    schemaAanbeveling = { niveau: 'Gevorderd', weken: 12, prijs: 59, url: 'https://michelkredercoaching.nl/trainingsschemas/?niveau=gevorderd&weken=12', reden: 'basisconditie aanwezig, juiste zones en periodisering toepassen' };
+    schemaAanbeveling = { niveau: 'Gevorderd', weken: 12, prijs: 59, url: `https://michelkredercoaching.nl/checkout/?add-to-cart=8387&variation_id=11091`, reden: 'basisconditie aanwezig, juiste zones en periodisering toepassen' };
   } else {
-    schemaAanbeveling = { niveau: 'Expert', weken: 16, prijs: 79, url: 'https://michelkredercoaching.nl/trainingsschemas/?niveau=expert&weken=16', reden: 'hoog volume vereist precieze periodisering en zone-controle' };
+    schemaAanbeveling = { niveau: 'Expert', weken: 16, prijs: 79, url: `https://michelkredercoaching.nl/checkout/?add-to-cart=8388&variation_id=11108`, reden: 'hoog volume vereist precieze periodisering en zone-controle' };
   }
 
   const prompt = `Je bent Michel Kreder — voormalig profwielrenner (9 jaar) en coach (8+ jaar). 17 jaar ervaring. Je analyseert Strava data en schrijft een persoonlijk, direct en eerlijk rapport. Geen motivatiequotes. Geen vage taal. Concrete cijfers. Klink als een coach die de data heeft gezien.
