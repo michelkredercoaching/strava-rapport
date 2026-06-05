@@ -270,6 +270,14 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
   if (fietsritten90.length >= 30) score += 5;
   score = Math.max(10, Math.min(95, Math.round(score)));
 
+  // ===== RUWE RIT DATA voor herberekening zones in browser =====
+  const rittenRuw = fietsritten90.map(rit => ({
+    w: rit.average_watts || null,
+    dw: rit.device_watts || false,
+    hr: rit.average_heartrate || null,
+    maxHr: rit.max_heartrate || null,
+  }));
+
   return {
     naam: athlete?.firstname || 'Sporter',
     aantalActiviteiten: fietsritten90.length,
@@ -296,5 +304,6 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
     maxGapDagen,
     gemAfstandPerWeek,
     langsteRit,
+    rittenRuw,
   };
 }
