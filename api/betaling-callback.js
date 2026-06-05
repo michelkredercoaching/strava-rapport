@@ -1,36 +1,33 @@
 export default async function handler(req, res) {
-  const { data, id } = req.query;
+  // Mollie stuurt payment ID als query param na redirect
+  const { id } = req.query;
 
-  // Controleer betaalstatus bij Mollie
-  if (id) {
-    try {
-      const mollieRes = await fetch(`https://api.mollie.com/v2/payments/${id}`, {
-        headers: {
-          'Authorization': `Bearer ${process.env.MOLLIE_API_KEY}`
-        }
-      });
-      const betaling = await mollieRes.json();
+  if (!id) {
+    return res.redirect('/?error=geen_betaling_id');
+  }
 
-      if (betaling.status === 'paid') {
-        // Betaling geslaagd - stuur naar rapport
-        const stravaData = betaling.metadata?.stravaData || data;
-        return res.redirect(`/?betaald=true&data=${encodeURIComponent(stravaData)}#rapport`);
-      } else if (betaling.status === 'failed' || betaling.status === 'canceled' || betaling.status === 'expired') {
-        return res.redirect('/?error=betaling_mislukt');
-      } else {
-        // Pending - stuur naar bedankt pagina
-        return res.redirect('/?betaald=pending');
+  try {
+    // Haal betaling op bij Mollie
+    const mollieRes = await fetch(`https://api.mollie.com/v2/payments/${id}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.MOLLIE_API_KEY}`
       }
-    } catch (err) {
-      console.error('Callback error:', err);
-      return res.redirect('/?error=server_error');
+    });
+    const betaling = await mollieRes.json();
+
+    if (betaling.status === 'paid') {
+      // Haal Strava data op uit metadata
+      const stravaData = betaling.metadata?.stravaData || '{}';
+      const dataParam = encodeURIComponent(stravaData);
+      return res.redirect(`/?betaald=true&data=${dataParam}`);
+    } else if (betaling.status === 'failed' || betaling.status === 'canceled' || betaling.status === 'expired') {
+      return res.redirect('/?error=betaling_mislukt');
+    } else {
+      // Pending
+      return res.redirect('/?betaald=pending');
     }
+  } catch (err) {
+    console.error('Callback error:', err);
+    return res.redirect('/?error=server_error');
   }
-
-  // Geen ID - fallback
-  if (data) {
-    return res.redirect(`/?betaald=true&data=${data}#rapport`);
-  }
-
-  return res.redirect('/?error=betaling_mislukt');
 }
