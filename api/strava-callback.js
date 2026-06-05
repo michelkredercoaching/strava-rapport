@@ -110,9 +110,8 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
   maxGapDagen = Math.round(maxGapDagen);
 
   // ===== VERMOGENSMETER DETECTIE =====
-  // device_watts = true betekent echte vermogensmeter (niet Strava schatting)
   const rittenMetEchtVermogen = fietsritten90.filter(a => a.average_watts && a.device_watts === true);
-  const heeftVermogensmeter = rittenMetEchtVermogen.length >= 2;
+  const heeftVermogensmeter = rittenMetEchtVermogen.length >= 1;
 
   // ===== FTP DETECTIE =====
   let ftp = null;
@@ -120,13 +119,12 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
   let bestE12min = null;
 
   if (heeftVermogensmeter) {
-    // Echte vermogensmeter: gebruik device_watts ritten
-    const langeritten = alleRitten.filter(a =>
-      a.device_watts === true && a.average_watts && a.moving_time > 900
+    const alleEchteRitten = alleRitten.filter(a =>
+      a.device_watts === true && a.average_watts && a.moving_time > 300
     );
 
-    if (langeritten.length > 0) {
-      const gesorteerd = langeritten.sort((a, b) => b.average_watts - a.average_watts);
+    if (alleEchteRitten.length > 0) {
+      const gesorteerd = alleEchteRitten.sort((a, b) => b.average_watts - a.average_watts);
 
       // Beste 20min: ritten tussen 18-25 min
       const ritten20min = gesorteerd.filter(a => a.moving_time >= 1080 && a.moving_time <= 1500);
@@ -135,18 +133,28 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete) {
         ftp = Math.round(bestE20min * 0.95);
       }
 
-      // Beste 12min fallback
+      // Beste 12min: ritten tussen 10-15 min
       if (!ftp) {
-        const ritten12min = gesorteerd.filter(a => a.moving_time >= 660 && a.moving_time <= 840);
+        const ritten12min = gesorteerd.filter(a => a.moving_time >= 600 && a.moving_time <= 900);
         if (ritten12min.length > 0) {
           bestE12min = Math.round(ritten12min[0].average_watts);
           ftp = Math.round(bestE12min * 0.88);
         }
       }
 
-      // Absolute fallback
+      // Fallback: langste rit met hoogste gemiddeld vermogen * 0.80
+      if (!ftp) {
+        const langsteRitMetVermogen = alleEchteRitten
+          .filter(a => a.moving_time > 1800)
+          .sort((a, b) => b.average_watts - a.average_watts)[0];
+        if (langsteRitMetVermogen) {
+          ftp = Math.round(langsteRitMetVermogen.average_watts * 0.80);
+        }
+      }
+
+      // Absolute fallback: hoogste gemiddeld vermogen van alle ritten * 0.75
       if (!ftp && gesorteerd.length > 0) {
-        ftp = Math.round(gesorteerd[0].average_watts * 0.85);
+        ftp = Math.round(gesorteerd[0].average_watts * 0.75);
       }
     }
   }
