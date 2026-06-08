@@ -39,7 +39,12 @@ export default async function handler(req, res) {
     const alleActiviteiten = await alleActiviteitenRes.json();
 
     const fietsritten90 = activiteiten.filter(a => a.type === 'Ride' || a.type === 'VirtualRide');
-    const rittenVoorStreams = fietsritten90.slice(0, 30);
+    // Haal stream data op voor ALLE ritten (tot een veilige limiet i.v.m. Strava
+    // rate limits: 100 requests / 15 min). 50 dekt vrijwel iedereen; bij meer
+    // ritten pakken we de 50 meest recente. Elke gemiste rit = mogelijk een
+    // gemiste piek-inspanning, dus we willen er zo veel mogelijk meenemen.
+    const MAX_STREAMS = 50;
+    const rittenVoorStreams = fietsritten90.slice(0, MAX_STREAMS);
 
     const streamResults = await Promise.all(
       rittenVoorStreams.map(rit =>
