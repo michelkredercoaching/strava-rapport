@@ -2,7 +2,13 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
   const { stravaData } = req.body;
+
+  // Strava data is te groot voor Mollie metadata (max 1024 bytes)
+  // Oplossing: stuur data als URL parameter in de redirectUrl mee
+  // Na betaling komt gebruiker terug op /?betaald=true&data=...
+  const dataParam = encodeURIComponent(JSON.stringify(stravaData));
 
   try {
     const mollieRes = await fetch('https://api.mollie.com/v2/payments', {
@@ -17,11 +23,11 @@ export default async function handler(req, res) {
           value: '19.00'
         },
         description: 'Strava Trainingsrapport — Michel Kreder Coaching',
-        // Mollie vervangt {id} automatisch met het payment ID
-        redirectUrl: `https://rapport.michelkredercoaching.nl/api/betaling-callback?id={id}`,
+        redirectUrl: `https://rapport.michelkredercoaching.nl/?betaald=true&data=${dataParam}`,
         webhookUrl: `https://rapport.michelkredercoaching.nl/api/betaling-webhook`,
         metadata: {
-          stravaData: JSON.stringify(stravaData)
+          naam: stravaData?.naam || 'Sporter',
+          score: stravaData?.prestatiescore || 0
         }
       })
     });
