@@ -25,25 +25,117 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 .logo{font-size:10px;letter-spacing:4px;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;}
 .stap-indicator{font-size:10px;letter-spacing:3px;color:var(--oranje);text-transform:uppercase;font-weight:600;}
 
-#s1{background:var(--zwart);}
-.hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 28px 48px;text-align:center;}
-.hero-eyebrow{font-size:9px;letter-spacing:5px;text-transform:uppercase;color:var(--oranje);margin-bottom:24px;font-weight:600;}
-.hero-titel{font-family:'DM Serif Display',serif;font-size:clamp(48px,12vw,80px);line-height:1.0;margin-bottom:24px;letter-spacing:-1px;}
-.hero-titel em{font-style:italic;color:var(--oranje);}
-.hero-sub{font-size:15px;color:rgba(255,255,255,0.6);line-height:1.7;max-width:380px;margin-bottom:40px;font-weight:400;}
-.hero-sub strong{color:var(--wit);font-weight:600;}
-.hero-stats{display:flex;gap:0;margin-bottom:20px;border:1px solid rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;}
-.hstat{flex:1;padding:16px 12px;text-align:center;}
-.hstat+.hstat{border-left:1px solid rgba(255,255,255,0.1);}
-.hstat-n{display:block;font-family:'DM Serif Display',serif;font-size:26px;color:var(--wit);margin-bottom:4px;}
-.hstat-l{display:block;font-size:8px;letter-spacing:2.5px;color:var(--mid);text-transform:uppercase;font-weight:600;}
-.hero-prijs-note{font-size:11px;color:rgba(255,255,255,0.3);letter-spacing:1px;margin-bottom:32px;}
-.hero-cta{display:block;width:100%;max-width:340px;padding:18px 24px;background:var(--oranje);color:#fff;font-size:14px;font-weight:700;letter-spacing:.5px;border:none;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;margin-bottom:16px;}
-.hero-cta:hover{background:#e04300;transform:translateY(-1px);}
-.trust-row{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;}
-.tr-item{font-size:11px;color:rgba(255,255,255,0.35);display:flex;align-items:center;gap:5px;}
-.tr-dot{width:3px;height:3px;border-radius:50%;background:rgba(255,255,255,0.15);}
+/* ========== S1: PREMIUM HOMEPAGE ========== */
+#s1{background:#0a0a0a;position:relative;overflow:hidden;}
+
+/* Grain overlay */
+#s1::before{
+  content:'';position:absolute;inset:0;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+  opacity:.03;pointer-events:none;z-index:0;
+}
+
+/* Radial glow achtergrond */
+#s1::after{
+  content:'';position:absolute;
+  width:600px;height:400px;
+  top:10%;left:50%;transform:translateX(-50%);
+  background:radial-gradient(ellipse,rgba(252,76,2,0.08) 0%,transparent 65%);
+  pointer-events:none;z-index:0;
+  animation:glowPulse 4s ease-in-out infinite;
+}
+@keyframes glowPulse{0%,100%{opacity:.6;transform:translateX(-50%) scale(1);}50%{opacity:1;transform:translateX(-50%) scale(1.08);}}
+
+/* Hero layout */
+.hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px 44px;text-align:center;position:relative;z-index:1;}
+
+/* Eyebrow met lijn */
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:10px;
+  font-size:9px;letter-spacing:5px;text-transform:uppercase;color:var(--oranje);
+  margin-bottom:28px;font-weight:700;
+  opacity:0;animation:fadeSlideUp .6s ease .1s both;
+}
+.hero-eyebrow::before,.hero-eyebrow::after{content:'';flex:1;height:1px;background:rgba(252,76,2,0.3);width:24px;}
+
+/* Hoofdtitel */
+.hero-titel{
+  font-family:'DM Serif Display',serif;
+  font-size:clamp(52px,14vw,82px);
+  line-height:.96;margin-bottom:20px;letter-spacing:-2px;
+  opacity:0;animation:fadeSlideUp .7s ease .25s both;
+}
+.hero-titel em{font-style:italic;color:var(--oranje);position:relative;}
+.hero-titel em::after{
+  content:'';position:absolute;bottom:-4px;left:0;right:0;height:3px;
+  background:var(--oranje);border-radius:2px;opacity:.5;
+}
+
+/* Sub tekst */
+.hero-sub{
+  font-size:14px;color:rgba(255,255,255,0.5);line-height:1.75;
+  max-width:310px;margin-bottom:32px;font-weight:400;
+  opacity:0;animation:fadeSlideUp .7s ease .4s both;
+}
+.hero-sub strong{color:rgba(255,255,255,0.85);font-weight:600;}
+
+/* Stats */
+.hero-stats{
+  display:flex;gap:0;margin-bottom:8px;
+  border:1px solid rgba(255,255,255,0.08);border-radius:8px;
+  overflow:hidden;width:100%;max-width:320px;
+  background:rgba(255,255,255,0.025);
+  backdrop-filter:blur(10px);
+  opacity:0;animation:fadeSlideUp .7s ease .52s both;
+}
+.hstat{flex:1;padding:16px 8px;text-align:center;position:relative;}
+.hstat+.hstat{border-left:1px solid rgba(255,255,255,0.07);}
+.hstat:first-child .hstat-n{color:var(--wit);}
+.hstat:nth-child(2) .hstat-n{color:var(--oranje);}
+.hstat:last-child .hstat-n{color:rgba(255,255,255,0.85);}
+.hstat-n{display:block;font-size:22px;font-weight:900;letter-spacing:-1px;margin-bottom:5px;line-height:1;}
+.hstat-l{display:block;font-size:8px;letter-spacing:2px;color:rgba(255,255,255,0.3);text-transform:uppercase;font-weight:600;}
+
+/* Prijs noot */
+.hero-prijs-note{
+  font-size:10px;color:rgba(255,255,255,0.2);letter-spacing:1.5px;margin-bottom:28px;
+  opacity:0;animation:fadeSlideUp .6s ease .6s both;
+}
+
+/* CTA Knop — premium shimmer */
+.hero-cta{
+  display:block;width:100%;max-width:320px;
+  padding:17px 24px;
+  background:var(--oranje);color:#fff;
+  font-size:13px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;
+  border:none;border-radius:6px;cursor:pointer;
+  font-family:'DM Sans',sans-serif;
+  position:relative;overflow:hidden;
+  margin-bottom:18px;
+  box-shadow:0 8px 32px rgba(252,76,2,0.3),0 2px 8px rgba(252,76,2,0.2);
+  transition:transform .2s ease,box-shadow .2s ease;
+  opacity:0;animation:fadeSlideUp .6s ease .7s both;
+}
+.hero-cta::before{
+  content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);
+  animation:shimmer 2.8s ease 1.5s infinite;
+}
+@keyframes shimmer{0%{left:-100%;}100%{left:200%;}}
+.hero-cta:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(252,76,2,0.4),0 4px 12px rgba(252,76,2,0.25);}
+.hero-cta:active{transform:translateY(0);}
+
+/* Trust row */
+.trust-row{
+  display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;
+  opacity:0;animation:fadeSlideUp .6s ease .82s both;
+}
+.tr-item{font-size:10px;color:rgba(255,255,255,0.28);display:flex;align-items:center;gap:5px;}
+.tr-dot{width:2px;height:2px;border-radius:50%;background:rgba(255,255,255,0.15);}
 .ideal-pill{background:#cd0067;color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:2px;letter-spacing:.5px;}
+
+/* Fade slide up animatie */
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
 
 #s2{background:var(--zwart);}
 .strava-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 28px 60px;text-align:center;}
@@ -265,18 +357,27 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 
 <!-- S1: LANDING -->
 <div id="s1" class="scherm actief">
-  <header class="header">
-    <span class="logo">Michel Kreder Coaching</span>
-    <span class="stap-indicator">Trainingsrapport</span>
+  <header class="header" style="background:transparent;border-bottom:1px solid rgba(255,255,255,0.05);position:relative;z-index:2;">
+    <span class="logo" style="font-size:9px;letter-spacing:5px;color:rgba(255,255,255,0.35);">Michel Kreder Coaching</span>
+    <span class="stap-indicator" style="font-size:8px;letter-spacing:3px;border:1px solid rgba(252,76,2,0.3);padding:4px 10px;border-radius:20px;color:var(--oranje);">Trainingsrapport</span>
   </header>
   <div class="hero">
     <div class="hero-eyebrow">Voor serieuze wielrenners</div>
     <h1 class="hero-titel">Stop met<br>trainen<br>voor <em>niks.</em></h1>
     <p class="hero-sub">Koppel je Strava. Ontdek binnen 60 seconden <strong>precies waar jij progressie laat liggen.</strong></p>
     <div class="hero-stats">
-      <div class="hstat"><span class="hstat-n">60</span><span class="hstat-l">sec analyse</span></div>
-      <div class="hstat"><span class="hstat-n">€19</span><span class="hstat-l">eenmalig</span></div>
-      <div class="hstat"><span class="hstat-n">100%</span><span class="hstat-l">persoonlijk</span></div>
+      <div class="hstat">
+        <span class="hstat-n">60</span>
+        <span class="hstat-l">sec analyse</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-n">€19</span>
+        <span class="hstat-l">eenmalig</span>
+      </div>
+      <div class="hstat">
+        <span class="hstat-n">100%</span>
+        <span class="hstat-l">persoonlijk</span>
+      </div>
     </div>
     <p class="hero-prijs-note">Eenmalig · geen abonnement · geen verborgen kosten</p>
     <button class="hero-cta" onclick="gaNaar('s2')">Ontdek waar je progressie laat liggen →</button>
