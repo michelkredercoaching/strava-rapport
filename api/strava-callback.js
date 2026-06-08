@@ -124,77 +124,97 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   const vermogenIsGeschat = !heeftEchteVermogensmeter && rittenMetSchatting.length >= 5;
 
   // ===== FTP DETECTIE =====
-  // Strategie: rolling window op basis van beste gemiddeld vermogen per duratie
-  // Werkt zowel met echte vermogensmeter als geschat vermogen
-  // Bij geschat vermogen: extra correctiefactor -10% (Strava overschat)
+  // Afgesproken aanpak: mix van 1/5/12/20-min efforts uit de STREAM data,
+  // waarbij de lange inspanningen zwaarder wegen.
+  // We zoeken het beste aaneengesloten blok per duur binnen al je ritten
+  // (de echte power-curve), niet het gemiddelde van hele ritten — dat is
+  // bij duurritten altijd te laag en gaf de verkeerde uitkomst.
   let ftp = null;
   let ftpBronnen = [];
 
-  // Gebruik echte ritten als die beschikbaar zijn, anders alle ritten met vermogen
-  const rittenVoorFtp = heeftEchteVermogensmeter
-    ? alleRitten.filter(a => a.device_watts === true && a.average_watts && a.moving_time > 60)
-    : alleRitten.filter(a => a.average_watts && a.average_watts > 50 && a.moving_time > 60);
+  // Hulpfunctie: beste rolling gemiddelde over een venster (in seconden)
+  // Strava streams zijn 1Hz (1 punt per seconde).
+  function besteRollingGemiddelde(data, vensterSec) {
+    if (!data || data.length < vensterSec) return null;
+    let som = 0;
+    for (let i = 0; i < vensterSec; i++) som += (data[i] || 0);
+    let beste = som;
+    for (let i = vensterSec; i < data.length; i++) {
+      som += (data[i] || 0) - (data[i - vensterSec] || 0);
+      if (som > beste) beste = som;
+    }
+    return beste / vensterSec;
+  }
 
-  if (rittenVoorFtp.length > 0) {
-    // Sorteer op gemiddeld vermogen (hoogste eerst)
-    const gesorteerd = [...rittenVoorFtp].sort((a, b) => b.average_watts - a.average_watts);
+  // De 4 vensters — lange efforts wegen zwaarder (gewicht loopt op met duur).
+  // De kortere vensters tillen de schatting op wanneer het lange blok submaximaal
+  // was; de zware weging op 12/20-min houdt het geaard. Samen = robuuste blend
+  // die stabiel blijft of iemand zijn 20-min nu wel of niet voluit reed.
+  const ftpWindows = [
+    { naam: '1min',  sec: 60,   factor: 0.72, gewicht: 1 },
+    { naam: '5min',  sec: 300,  factor: 0.88, gewicht: 2 },
+    { naam: '12min', sec: 720,  factor: 0.94, gewicht: 3 },
+    { naam: '20min', sec: 1200, factor: 0.95, gewicht: 4 },
+  ];
 
-    // Rolling window aanpak: beste effort per duratie × factor = FTP schatting
-    // Bij geschat vermogen: factor × 0.90 als extra correctie
-    const schatFactor = vermogenIsGeschat ? 0.90 : 1.0;
+  // Beste effort per venster over ALLE ritten met stream-vermogen
+  const piek = {}; // sec -> beste watt
+  let heeftPowerStream = false;
+  let aantalRittenMetStream = 0;
 
-    const windows = [
-      { naam: '1min',  minSec: 55,   maxSec: 75,   factor: 0.75, gewicht: 1 },
-      { naam: '5min',  minSec: 270,  maxSec: 360,  factor: 0.85, gewicht: 2 },
-      { naam: '12min', minSec: 660,  maxSec: 800,  factor: 0.88, gewicht: 3 },
-      { naam: '20min', minSec: 1080, maxSec: 1500, factor: 0.95, gewicht: 4 },
-      // Extra window: ritten van 20-60 minuten (meest voorkomend)
-      { naam: '30min', minSec: 1500, maxSec: 3600, factor: 0.92, gewicht: 3 },
-      // Extra window: ritten van 1-3 uur (duurritten — gemiddeld vermogen × hogere factor)
-      { naam: '60min', minSec: 3600, maxSec: 10800, factor: 0.98, gewicht: 2 },
-    ];
+  fietsritten90.forEach(rit => {
+    const wattsData = streamMap[rit.id]?.watts?.data;
+    if (!wattsData || wattsData.length < 60) return;
+    heeftPowerStream = true;
+    aantalRittenMetStream++;
+    ftpWindows.forEach(w => {
+      const beste = besteRollingGemiddelde(wattsData, w.sec);
+      if (beste && beste > 50 && (!piek[w.sec] || beste > piek[w.sec])) {
+        piek[w.sec] = beste;
+      }
+    });
+  });
 
-    let gewogenSom = 0;
-    let gewogenTotaal = 0;
+  // Geschat vermogen (device_watts:false) is wat spikerig maar onderschat eerder
+  // dan dat het overschat — geen down-correctie meer.
+  const schatFactor = 1.0;
 
-    windows.forEach(w => {
-      const ritten = gesorteerd.filter(a => a.moving_time >= w.minSec && a.moving_time <= w.maxSec);
-      if (ritten.length > 0) {
-        // Neem gemiddelde van top-3 (niet alleen de beste, om uitschieters te vermijden)
-        const top3 = ritten.slice(0, 3);
-        const gemWatt = Math.round(top3.reduce((s, r) => s + r.average_watts, 0) / top3.length);
-        const schatting = Math.round(gemWatt * w.factor * schatFactor);
-
-        // Minimum drempel: FTP moet realistisch zijn (>80W, <600W)
+  if (heeftPowerStream) {
+    let gewogenSom = 0, gewogenTotaal = 0;
+    ftpWindows.forEach(w => {
+      if (piek[w.sec]) {
+        const schatting = Math.round(piek[w.sec] * w.factor * schatFactor);
         if (schatting >= 80 && schatting <= 600) {
           gewogenSom += schatting * w.gewicht;
           gewogenTotaal += w.gewicht;
-          ftpBronnen.push({ naam: w.naam, watt: gemWatt, schatting, gewicht: w.gewicht });
-          console.log(`FTP ${w.naam}: gem top3 ${gemWatt}W × ${w.factor} × ${schatFactor} = ${schatting}W (gewicht ${w.gewicht})`);
+          ftpBronnen.push({ naam: w.naam, piek: Math.round(piek[w.sec]), schatting, gewicht: w.gewicht });
+          console.log(`FTP ${w.naam}: piek ${Math.round(piek[w.sec])}W × ${w.factor} × ${schatFactor} = ${schatting}W (gewicht ${w.gewicht})`);
         }
       }
     });
-
     if (gewogenTotaal > 0) {
       ftp = Math.round(gewogenSom / gewogenTotaal);
-      console.log(`FTP gewogen gemiddelde: ${ftp}W (${ftpBronnen.length} bronnen, geschat: ${vermogenIsGeschat})`);
+      console.log(`FTP (stream, gewogen 1/5/12/20): ${ftp}W uit ${ftpBronnen.length} vensters`);
     }
+  }
 
-    // Fallback: langste rit > 45min
-    if (!ftp) {
-      const langeRitten = rittenVoorFtp
-        .filter(a => a.moving_time > 2700)
+  // FALLBACK: geen stream data → beste harde 12-60min rit als drempel-proxy
+  if (!ftp) {
+    const rittenVoorFtp = alleRitten.filter(a =>
+      a.average_watts && a.average_watts > 50 && a.moving_time > 600
+    );
+    if (rittenVoorFtp.length > 0) {
+      const korteHarde = rittenVoorFtp
+        .filter(a => a.moving_time >= 720 && a.moving_time <= 3600)
         .sort((a, b) => b.average_watts - a.average_watts);
-      if (langeRitten.length > 0) {
-        ftp = Math.round(langeRitten[0].average_watts * 0.85 * schatFactor);
-        console.log(`FTP fallback lange rit: ${ftp}W`);
+      if (korteHarde.length > 0) {
+        ftp = Math.round(korteHarde[0].average_watts * 0.95 * schatFactor);
+        console.log(`FTP fallback (12-60min rit): ${ftp}W`);
+      } else {
+        const gesorteerd = [...rittenVoorFtp].sort((a, b) => b.average_watts - a.average_watts);
+        ftp = Math.round(gesorteerd[0].average_watts * 1.0 * schatFactor);
+        console.log(`FTP fallback (hoogste gem): ${ftp}W`);
       }
-    }
-
-    // Absolute fallback
-    if (!ftp && gesorteerd.length > 0) {
-      ftp = Math.round(gesorteerd[0].average_watts * 0.75 * schatFactor);
-      console.log(`FTP absolute fallback: ${ftp}W`);
     }
   }
 
@@ -378,6 +398,8 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     vermogenIsGeschat,
     ftp,
     ftpBronnen,
+    ftpUitStream: heeftPowerStream,
+    aantalRittenMetStream,
     maxHf,
     omslagpunt,
     gemHr,
