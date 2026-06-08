@@ -615,9 +615,9 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
     <div class="ftp-card" id="ftpDetectorCard">
       <div class="ftp-card-label">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--oranje)"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-        <span id="ftpCardLabel">FTP Detector™: Geschatte FTP</span>
+        <span id="ftpCardLabel">FTP Detector™: Jouw FTP</span>
       </div>
-      <div class="ftp-card-subtitel" id="ftpCardSubtitel">Berekend op basis van jouw vermogensdata</div>
+      <div class="ftp-card-subtitel" id="ftpCardSubtitel">Zones zijn berekend op basis van deze waarde</div>
 
       <!-- Ingevulde FTP (groot) -->
       <div class="ftp-getal-rij">
@@ -1033,8 +1033,10 @@ function toonRapport(data, analyse) {
       else { ftpBetrouw.textContent = 'laag'; ftpBetrouw.style.color = 'var(--rood)'; }
     }
 
-    // Als handmatig ingevuld: toon label + vergelijking met detectie
-    if(data.ftpHandmatig) {
+    // Als handmatig ingevuld OF als FTP afwijkt van detectie: toon vergelijking
+    // ftpHandmatig wordt niet altijd bewaard na redirect — fallback op verschil
+    const isHandmatig = data.ftpHandmatig || (data.ftpGedetecteerd && data.ftpGedetecteerd !== data.ftp);
+    if(isHandmatig) {
       const label = document.getElementById('ftpCardLabel');
       const subtitel = document.getElementById('ftpCardSubtitel');
       const vergelijkBlok = document.getElementById('ftpVergelijkBlok');
@@ -1045,19 +1047,26 @@ function toonRapport(data, analyse) {
       if(subtitel) subtitel.textContent = 'Zones zijn berekend op basis van jouw opgegeven waarde';
 
       // Toon detectie als die beschikbaar is en anders is dan ingevoerd
-      if(data.ftpGedetecteerd && data.ftpGedetecteerd !== data.ftp) {
-        if(vergelijkBlok) vergelijkBlok.style.display = 'block';
-        if(ftpGedetecteerd) ftpGedetecteerd.textContent = data.ftpGedetecteerd;
+      if(vergelijkBlok) vergelijkBlok.style.display = 'block';
 
+      if(data.ftpGedetecteerd && data.ftpGedetecteerd !== data.ftp) {
+        if(ftpGedetecteerd) ftpGedetecteerd.textContent = data.ftpGedetecteerd;
         const verschil = data.ftp - data.ftpGedetecteerd;
         if(vergelijkNote && verschil > 20) {
-          vergelijkNote.textContent = `⚠ Jouw opgegeven FTP ligt ${verschil}W hoger dan onze detectie. Controleer of dit klopt — te hoge FTP maakt zones onnauwkeurig.`;
+          vergelijkNote.textContent = `⚠ Jouw opgegeven FTP ligt ${verschil}W hoger dan onze detectie (${data.ftpGedetecteerd}W). Controleer of dit klopt — te hoge FTP maakt zones onnauwkeurig.`;
         } else if(vergelijkNote && verschil < -20) {
-          vergelijkNote.textContent = `Jouw opgegeven FTP ligt ${Math.abs(verschil)}W lager dan onze detectie. Mogelijk is je conditie beter dan de schatting.`;
+          vergelijkNote.textContent = `Jouw FTP ligt ${Math.abs(verschil)}W lager dan onze detectie (${data.ftpGedetecteerd}W). Mogelijk is je conditie beter dan de schatting.`;
         } else if(vergelijkNote) {
           vergelijkNote.textContent = 'Komt goed overeen met onze detectie. Zones zijn nauwkeurig.';
           vergelijkNote.style.color = 'var(--groen)';
         }
+      } else if(data.ftpGedetecteerd) {
+        if(ftpGedetecteerd) ftpGedetecteerd.textContent = data.ftpGedetecteerd;
+        if(vergelijkNote) { vergelijkNote.textContent = 'Komt overeen met onze detectie.'; vergelijkNote.style.color = 'var(--groen)'; }
+      } else {
+        // Geen detectie beschikbaar — toon melding over betrouwbaarheid
+        if(ftpGedetecteerd) ftpGedetecteerd.textContent = '?';
+        if(vergelijkNote) vergelijkNote.textContent = 'Onze detectie had onvoldoende data. Jouw ingevulde waarde wordt gebruikt.';
       }
     }
   } else {
