@@ -479,6 +479,17 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
         <div class="verfijn-sectie-titel">Vermogensmeter</div>
         <div class="verfijn-sectie-badge" id="ftpBadge">Gedetecteerd</div>
       </div>
+
+      <!-- Onze detectie tonen als referentie -->
+      <div id="ftpDetectieRij" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:5px;padding:10px 12px;margin-bottom:12px;">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.3);font-weight:600;margin-bottom:4px;">Wij detecteren</div>
+        <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:4px;">
+          <span id="ftpDetectieWaarde" style="font-size:22px;font-weight:800;color:rgba(255,255,255,0.5);">—</span>
+          <span style="font-size:11px;color:rgba(255,255,255,0.25);">WATT</span>
+        </div>
+        <div style="font-size:10px;color:rgba(255,255,255,0.3);line-height:1.5;">Schatting op basis van jouw ritten. Weet jij beter? Vul hieronder jouw eigen FTP in.</div>
+      </div>
+
       <div class="verfijn-input-wrap">
         <label class="verfijn-label">Jouw FTP (Watt)</label>
         <input type="number" id="ftpInput" class="verfijn-input" placeholder="bijv. 255" min="80" max="500">
@@ -870,6 +881,12 @@ function toonZonesScherm(data) {
   if (data.ftp) {
     ftpInput.value = data.ftp;
     if (ftpBadge) ftpBadge.textContent = 'Geschat: ' + data.ftp + 'W';
+
+    // Toon detectie referentie blokje
+    const detectieRij = document.getElementById('ftpDetectieRij');
+    const detectieWaarde = document.getElementById('ftpDetectieWaarde');
+    if (detectieRij) detectieRij.style.display = 'block';
+    if (detectieWaarde) detectieWaarde.textContent = data.ftp;
   } else {
     if (ftpBadge) { ftpBadge.textContent = 'Onbekend'; ftpBadge.className = 'verfijn-sectie-badge onbekend'; }
   }
