@@ -45,14 +45,17 @@ export default async function handler(req, res) {
     // pakken — dan mis je een piek-inspanning die toevallig in een oudere rit zit.
     // We hebben van elke rit al gratis het gemiddeld vermogen (uit de
     // activiteitenlijst). Een rustige rit van 120W kan geen 250W-blok bevatten;
-    // een rit van 200W gemiddeld wel. Dus: sorteer op gemiddeld vermogen en haal
-    // streams op voor de HARDSTE ritten. Daar zit je beste 20-min vrijwel altijd.
+    // een rit van 200W gemiddeld wel. MAAR: een interval-rit (hard met lange
+    // herstelpauzes) heeft een láág gemiddelde terwijl het keihard werk is.
+    // Daarom scoren we op gemiddeld vermogen + een deel van het piekvermogen,
+    // zodat punchy interval-ritten niet door de mand vallen.
     const MAX_STREAMS = 50;
+    const hardheid = a => (a.average_watts || 0) + (a.max_watts || 0) * 0.15;
     const rittenMetVermogen = fietsritten90
       .filter(a => a.average_watts && a.average_watts > 0)
-      .sort((a, b) => b.average_watts - a.average_watts);
+      .sort((a, b) => hardheid(b) - hardheid(a));
     const rittenZonderVermogen = fietsritten90.filter(a => !a.average_watts);
-    // Hardste vermogensritten eerst, daarna ritten zonder vermogen (voor HR-zones)
+    // Hardste ritten eerst, daarna ritten zonder vermogen (voor HR-zones)
     const rittenVoorStreams = [...rittenMetVermogen, ...rittenZonderVermogen].slice(0, MAX_STREAMS);
 
     const streamResults = await Promise.all(
