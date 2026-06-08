@@ -55,10 +55,6 @@ export default async function handler(req, res) {
     const streamMap = {};
     streamResults.forEach(r => { if (r.stream) streamMap[r.id] = r.stream; });
 
-    if (streamResults.length > 0) {
-      console.log('Stream keys rit 0:', Object.keys(streamResults[0]?.stream || {}));
-    }
-
     const stats = berekenStats(activiteiten, alleActiviteiten, athlete, streamMap);
 
     const dataParam = encodeURIComponent(JSON.stringify(stats));
@@ -85,7 +81,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       urenPerWeek: 0,
       prestatiescore: 10,
       vo2maxSessies: 0,
-      zones: [0, 0, 0, 0, 0],
+      zones: [0, 0, 0, 0, 0, 0],
       duurvermogen: 'slecht',
       herstelbalans: 'slecht',
       intensiteitsverdeling: 'slecht',
@@ -117,90 +113,108 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   }
   maxGapDagen = Math.round(maxGapDagen);
 
-  // ===== VERMOGENSMETER =====
-  const rittenMetEchtVermogen = fietsritten90.filter(a => a.average_watts && a.device_watts === true);
-  const heeftVermogensmeter = rittenMetEchtVermogen.length >= 1;
+  // ===== VERMOGENSMETER DETECTIE =====
+  // Primair: echte vermogensmeter (device_watts === true)
+  // Fallback: Strava geschat vermogen (average_watts aanwezig, ook zonder device_watts)
+  const rittenMetEchtVermogen = alleRitten.filter(a => a.average_watts && a.device_watts === true);
+  const rittenMetSchatting = alleRitten.filter(a => a.average_watts && a.average_watts > 50);
+  const heeftEchteVermogensmeter = rittenMetEchtVermogen.length >= 3;
+  // Gebruik geschat vermogen als fallback, maar markeer het
+  const heeftVermogensmeter = rittenMetEchtVermogen.length >= 1 || rittenMetSchatting.length >= 5;
+  const vermogenIsGeschat = !heeftEchteVermogensmeter && rittenMetSchatting.length >= 5;
 
-  // ===== FTP DETECTIE (gewogen gemiddelde van 1, 5, 12, 20 min efforts) =====
+  // ===== FTP DETECTIE =====
+  // Strategie: rolling window op basis van beste gemiddeld vermogen per duratie
+  // Werkt zowel met echte vermogensmeter als geschat vermogen
+  // Bij geschat vermogen: extra correctiefactor -10% (Strava overschat)
   let ftp = null;
-  let ftpBronnen = []; // voor logging/debugging
+  let ftpBronnen = [];
 
-  if (heeftVermogensmeter) {
-    const alleEchteRitten = alleRitten.filter(a =>
-      a.device_watts === true && a.average_watts && a.moving_time > 60
-    );
+  // Gebruik echte ritten als die beschikbaar zijn, anders alle ritten met vermogen
+  const rittenVoorFtp = heeftEchteVermogensmeter
+    ? alleRitten.filter(a => a.device_watts === true && a.average_watts && a.moving_time > 60)
+    : alleRitten.filter(a => a.average_watts && a.average_watts > 50 && a.moving_time > 60);
 
-    if (alleEchteRitten.length > 0) {
-      // Sorteer op gemiddeld vermogen (hoogste eerst)
-      const gesorteerd = [...alleEchteRitten].sort((a, b) => b.average_watts - a.average_watts);
+  if (rittenVoorFtp.length > 0) {
+    // Sorteer op gemiddeld vermogen (hoogste eerst)
+    const gesorteerd = [...rittenVoorFtp].sort((a, b) => b.average_watts - a.average_watts);
 
-      // Zoek beste effort per duratie window
-      // Formule: beste gemiddeld vermogen in window × factor = FTP schatting
-      const windows = [
-        { naam: '1min',  minSec: 55,   maxSec: 75,   factor: 0.75, gewicht: 1 },
-        { naam: '5min',  minSec: 270,  maxSec: 360,  factor: 0.85, gewicht: 2 },
-        { naam: '12min', minSec: 660,  maxSec: 800,  factor: 0.88, gewicht: 3 },
-        { naam: '20min', minSec: 1080, maxSec: 1500, factor: 0.95, gewicht: 4 },
-      ];
+    // Rolling window aanpak: beste effort per duratie × factor = FTP schatting
+    // Bij geschat vermogen: factor × 0.90 als extra correctie
+    const schatFactor = vermogenIsGeschat ? 0.90 : 1.0;
 
-      let gewogenSom = 0;
-      let gewogenTotaal = 0;
+    const windows = [
+      { naam: '1min',  minSec: 55,   maxSec: 75,   factor: 0.75, gewicht: 1 },
+      { naam: '5min',  minSec: 270,  maxSec: 360,  factor: 0.85, gewicht: 2 },
+      { naam: '12min', minSec: 660,  maxSec: 800,  factor: 0.88, gewicht: 3 },
+      { naam: '20min', minSec: 1080, maxSec: 1500, factor: 0.95, gewicht: 4 },
+      // Extra window: ritten van 20-60 minuten (meest voorkomend)
+      { naam: '30min', minSec: 1500, maxSec: 3600, factor: 0.92, gewicht: 3 },
+      // Extra window: ritten van 1-3 uur (duurritten — gemiddeld vermogen × hogere factor)
+      { naam: '60min', minSec: 3600, maxSec: 10800, factor: 0.98, gewicht: 2 },
+    ];
 
-      windows.forEach(w => {
-        const ritten = gesorteerd.filter(a => a.moving_time >= w.minSec && a.moving_time <= w.maxSec);
-        if (ritten.length > 0) {
-          const besteWatt = ritten[0].average_watts;
-          const schatting = Math.round(besteWatt * w.factor);
+    let gewogenSom = 0;
+    let gewogenTotaal = 0;
+
+    windows.forEach(w => {
+      const ritten = gesorteerd.filter(a => a.moving_time >= w.minSec && a.moving_time <= w.maxSec);
+      if (ritten.length > 0) {
+        // Neem gemiddelde van top-3 (niet alleen de beste, om uitschieters te vermijden)
+        const top3 = ritten.slice(0, 3);
+        const gemWatt = Math.round(top3.reduce((s, r) => s + r.average_watts, 0) / top3.length);
+        const schatting = Math.round(gemWatt * w.factor * schatFactor);
+
+        // Minimum drempel: FTP moet realistisch zijn (>80W, <600W)
+        if (schatting >= 80 && schatting <= 600) {
           gewogenSom += schatting * w.gewicht;
           gewogenTotaal += w.gewicht;
-          ftpBronnen.push({ naam: w.naam, watt: besteWatt, schatting, gewicht: w.gewicht });
-          console.log(`FTP ${w.naam}: beste ${besteWatt}W × ${w.factor} = ${schatting}W (gewicht ${w.gewicht})`);
-        }
-      });
-
-      if (gewogenTotaal > 0) {
-        ftp = Math.round(gewogenSom / gewogenTotaal);
-        console.log(`FTP gewogen gemiddelde: ${ftp}W (op basis van ${ftpBronnen.length} bronnen)`);
-      }
-
-      // Fallback 1: langste rit > 30min met hoogste vermogen × 0.80
-      if (!ftp) {
-        const langeRitten = alleEchteRitten
-          .filter(a => a.moving_time > 1800)
-          .sort((a, b) => b.average_watts - a.average_watts);
-        if (langeRitten.length > 0) {
-          ftp = Math.round(langeRitten[0].average_watts * 0.80);
-          console.log(`FTP fallback lange rit: ${ftp}W`);
+          ftpBronnen.push({ naam: w.naam, watt: gemWatt, schatting, gewicht: w.gewicht });
+          console.log(`FTP ${w.naam}: gem top3 ${gemWatt}W × ${w.factor} × ${schatFactor} = ${schatting}W (gewicht ${w.gewicht})`);
         }
       }
+    });
 
-      // Fallback 2: hoogste gemiddeld vermogen × 0.75
-      if (!ftp && gesorteerd.length > 0) {
-        ftp = Math.round(gesorteerd[0].average_watts * 0.75);
-        console.log(`FTP absolute fallback: ${ftp}W`);
+    if (gewogenTotaal > 0) {
+      ftp = Math.round(gewogenSom / gewogenTotaal);
+      console.log(`FTP gewogen gemiddelde: ${ftp}W (${ftpBronnen.length} bronnen, geschat: ${vermogenIsGeschat})`);
+    }
+
+    // Fallback: langste rit > 45min
+    if (!ftp) {
+      const langeRitten = rittenVoorFtp
+        .filter(a => a.moving_time > 2700)
+        .sort((a, b) => b.average_watts - a.average_watts);
+      if (langeRitten.length > 0) {
+        ftp = Math.round(langeRitten[0].average_watts * 0.85 * schatFactor);
+        console.log(`FTP fallback lange rit: ${ftp}W`);
       }
+    }
+
+    // Absolute fallback
+    if (!ftp && gesorteerd.length > 0) {
+      ftp = Math.round(gesorteerd[0].average_watts * 0.75 * schatFactor);
+      console.log(`FTP absolute fallback: ${ftp}W`);
     }
   }
 
   // ===== MAX HARTSLAG =====
   const maxHrWaarden = alleRitten
-    .filter(a => a.max_heartrate && a.max_heartrate > 80)
+    .filter(a => a.max_heartrate && a.max_heartrate > 100)
     .map(a => a.max_heartrate)
     .sort((a, b) => b - a)
     .slice(0, 3);
 
-  const maxHrWaardenFallback = fietsritten90
-    .filter(a => a.max_heartrate && a.max_heartrate > 80)
+  const maxHrFallback = fietsritten90
+    .filter(a => a.max_heartrate && a.max_heartrate > 100)
     .map(a => a.max_heartrate)
     .sort((a, b) => b - a)
     .slice(0, 3);
 
-  const gebruikteHrWaarden = maxHrWaarden.length > 0 ? maxHrWaarden : maxHrWaardenFallback;
-
+  const gebruikteHrWaarden = maxHrWaarden.length > 0 ? maxHrWaarden : maxHrFallback;
   const maxHf = gebruikteHrWaarden.length > 0
     ? Math.round(gebruikteHrWaarden.reduce((s, v) => s + v, 0) / gebruikteHrWaarden.length)
     : null;
-
   const omslagpunt = maxHf ? Math.round(maxHf * 0.90) : null;
 
   // ===== GEMIDDELDE INTENSITEIT =====
@@ -230,7 +244,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
           else if (pct < 106) zones[4]++;
           else zones[5]++;
         });
-      } else if (rit.average_watts && rit.device_watts) {
+      } else if (rit.average_watts && rit.average_watts > 50) {
         const pct = (rit.average_watts / ftp) * 100;
         const t = rit.moving_time || 3600;
         const grenzen = [55, 76, 86, 96, 106];
@@ -255,7 +269,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     }).length;
 
   } else if (omslagpunt) {
-    zones = [0, 0, 0, 0, 0];
+    zones = [0, 0, 0, 0, 0, 0];
     fietsritten90.forEach(rit => {
       const stream = streamMap[rit.id];
       if (stream?.heartrate?.data) {
@@ -293,7 +307,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     }).length;
 
   } else {
-    zones = [5, 50, 30, 10, 5];
+    zones = [5, 50, 30, 10, 5, 0];
     vo2maxSessies = 0;
   }
 
@@ -360,8 +374,10 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     intensiteitsverdeling,
     zonescore,
     heeftVermogensmeter,
+    heeftEchteVermogensmeter,
+    vermogenIsGeschat,
     ftp,
-    ftpBronnen,  // welke windows gebruikt zijn voor de schatting
+    ftpBronnen,
     maxHf,
     omslagpunt,
     gemHr,
