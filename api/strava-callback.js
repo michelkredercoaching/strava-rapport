@@ -121,44 +121,63 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   const rittenMetEchtVermogen = fietsritten90.filter(a => a.average_watts && a.device_watts === true);
   const heeftVermogensmeter = rittenMetEchtVermogen.length >= 1;
 
-  // ===== FTP DETECTIE =====
+  // ===== FTP DETECTIE (gewogen gemiddelde van 1, 5, 12, 20 min efforts) =====
   let ftp = null;
-  let bestE20min = null;
-  let bestE12min = null;
+  let ftpBronnen = []; // voor logging/debugging
 
   if (heeftVermogensmeter) {
     const alleEchteRitten = alleRitten.filter(a =>
-      a.device_watts === true && a.average_watts && a.moving_time > 300
+      a.device_watts === true && a.average_watts && a.moving_time > 60
     );
 
     if (alleEchteRitten.length > 0) {
-      const gesorteerd = alleEchteRitten.sort((a, b) => b.average_watts - a.average_watts);
+      // Sorteer op gemiddeld vermogen (hoogste eerst)
+      const gesorteerd = [...alleEchteRitten].sort((a, b) => b.average_watts - a.average_watts);
 
-      const ritten20min = gesorteerd.filter(a => a.moving_time >= 1080 && a.moving_time <= 1500);
-      if (ritten20min.length > 0) {
-        bestE20min = Math.round(ritten20min[0].average_watts);
-        ftp = Math.round(bestE20min * 0.95);
-      }
+      // Zoek beste effort per duratie window
+      // Formule: beste gemiddeld vermogen in window × factor = FTP schatting
+      const windows = [
+        { naam: '1min',  minSec: 55,   maxSec: 75,   factor: 0.75, gewicht: 1 },
+        { naam: '5min',  minSec: 270,  maxSec: 360,  factor: 0.85, gewicht: 2 },
+        { naam: '12min', minSec: 660,  maxSec: 800,  factor: 0.88, gewicht: 3 },
+        { naam: '20min', minSec: 1080, maxSec: 1500, factor: 0.95, gewicht: 4 },
+      ];
 
-      if (!ftp) {
-        const ritten12min = gesorteerd.filter(a => a.moving_time >= 600 && a.moving_time <= 900);
-        if (ritten12min.length > 0) {
-          bestE12min = Math.round(ritten12min[0].average_watts);
-          ftp = Math.round(bestE12min * 0.88);
+      let gewogenSom = 0;
+      let gewogenTotaal = 0;
+
+      windows.forEach(w => {
+        const ritten = gesorteerd.filter(a => a.moving_time >= w.minSec && a.moving_time <= w.maxSec);
+        if (ritten.length > 0) {
+          const besteWatt = ritten[0].average_watts;
+          const schatting = Math.round(besteWatt * w.factor);
+          gewogenSom += schatting * w.gewicht;
+          gewogenTotaal += w.gewicht;
+          ftpBronnen.push({ naam: w.naam, watt: besteWatt, schatting, gewicht: w.gewicht });
+          console.log(`FTP ${w.naam}: beste ${besteWatt}W × ${w.factor} = ${schatting}W (gewicht ${w.gewicht})`);
         }
+      });
+
+      if (gewogenTotaal > 0) {
+        ftp = Math.round(gewogenSom / gewogenTotaal);
+        console.log(`FTP gewogen gemiddelde: ${ftp}W (op basis van ${ftpBronnen.length} bronnen)`);
       }
 
+      // Fallback 1: langste rit > 30min met hoogste vermogen × 0.80
       if (!ftp) {
-        const langsteRitMetVermogen = alleEchteRitten
+        const langeRitten = alleEchteRitten
           .filter(a => a.moving_time > 1800)
-          .sort((a, b) => b.average_watts - a.average_watts)[0];
-        if (langsteRitMetVermogen) {
-          ftp = Math.round(langsteRitMetVermogen.average_watts * 0.80);
+          .sort((a, b) => b.average_watts - a.average_watts);
+        if (langeRitten.length > 0) {
+          ftp = Math.round(langeRitten[0].average_watts * 0.80);
+          console.log(`FTP fallback lange rit: ${ftp}W`);
         }
       }
 
+      // Fallback 2: hoogste gemiddeld vermogen × 0.75
       if (!ftp && gesorteerd.length > 0) {
         ftp = Math.round(gesorteerd[0].average_watts * 0.75);
+        console.log(`FTP absolute fallback: ${ftp}W`);
       }
     }
   }
@@ -191,7 +210,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     : null;
   const gemIntensiteit = gemHr && maxHf ? Math.round((gemHr / maxHf) * 100) : null;
 
-  // ===== ZONE ANALYSE op basis van streams (seconden per zone) =====
+  // ===== ZONE ANALYSE =====
   let zones = [0, 0, 0, 0, 0, 0];
   let vo2maxSessies = 0;
   let heeftStreamData = false;
@@ -212,7 +231,6 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
           else zones[5]++;
         });
       } else if (rit.average_watts && rit.device_watts) {
-        // Fallback gemiddeld vermogen: verdeel tijd over zones met 60/20/20 model
         const pct = (rit.average_watts / ftp) * 100;
         const t = rit.moving_time || 3600;
         const grenzen = [55, 76, 86, 96, 106];
@@ -226,14 +244,12 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       }
     });
 
-    // VO2max sessies: > 3 minuten boven 105% FTP (stream), of max_watts > 105% FTP
     vo2maxSessies = fietsritten90.filter(rit => {
       const stream = streamMap[rit.id];
       if (stream?.watts?.data) {
         const secsBovenFtp = stream.watts.data.filter(w => w && (w / ftp) > 1.05).length;
         return secsBovenFtp > 180;
       }
-      // Fallback: max_watts beschikbaar via Strava activiteit
       if (rit.max_watts) return (rit.max_watts / ftp) > 1.05 && rit.moving_time > 600;
       return rit.average_watts && (rit.average_watts / ftp) > 0.96;
     }).length;
@@ -254,7 +270,6 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
           else zones[4]++;
         });
       } else if (rit.average_heartrate) {
-        // Fallback: 60/20/20 verdeling op gemiddelde HF
         const pct = (rit.average_heartrate / omslagpunt) * 100;
         const t = rit.moving_time || 3600;
         const grenzen = [75, 85, 95, 100];
@@ -284,7 +299,6 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
 
   const totaalZone = zones.reduce((s, v) => s + v, 0) || 1;
   const zonesPct = zones.map(z => Math.round((z / totaalZone) * 100));
-  // Fix afrondingsfout
   const diff = 100 - zonesPct.reduce((s,v)=>s+v,0);
   if (diff !== 0) zonesPct[0] += diff;
 
@@ -321,15 +335,14 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   if (fietsritten90.length >= 30) score += 5;
   score = Math.max(10, Math.min(95, Math.round(score)));
 
-  // ===== RUWE RIT DATA voor herberekening zones in browser =====
-  // FIX: ook t (moving_time) en maxW meesturen voor gewogen zone berekening
+  // ===== RUWE RIT DATA =====
   const rittenRuw = fietsritten90.map(rit => ({
     w: rit.average_watts || null,
     dw: rit.device_watts || false,
     hr: rit.average_heartrate || null,
     maxHr: rit.max_heartrate || null,
-    maxW: rit.max_watts || null,   // max vermogen voor VO2max detectie
-    t: rit.moving_time || 3600,   // duur in seconden voor gewogen zone berekening
+    maxW: rit.max_watts || null,
+    t: rit.moving_time || 3600,
   }));
 
   return {
@@ -348,8 +361,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     zonescore,
     heeftVermogensmeter,
     ftp,
-    bestE20min,
-    bestE12min,
+    ftpBronnen,  // welke windows gebruikt zijn voor de schatting
     maxHf,
     omslagpunt,
     gemHr,
