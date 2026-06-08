@@ -39,12 +39,21 @@ export default async function handler(req, res) {
     const alleActiviteiten = await alleActiviteitenRes.json();
 
     const fietsritten90 = activiteiten.filter(a => a.type === 'Ride' || a.type === 'VirtualRide');
-    // Haal stream data op voor ALLE ritten (tot een veilige limiet i.v.m. Strava
-    // rate limits: 100 requests / 15 min). 50 dekt vrijwel iedereen; bij meer
-    // ritten pakken we de 50 meest recente. Elke gemiste rit = mogelijk een
-    // gemiste piek-inspanning, dus we willen er zo veel mogelijk meenemen.
+
+    // Stream data ophalen kost 1 API-call per rit, dus we cappen op MAX_STREAMS
+    // i.v.m. Strava rate limits (100 req / 15 min). MAAR: niet de nieuwste 50
+    // pakken — dan mis je een piek-inspanning die toevallig in een oudere rit zit.
+    // We hebben van elke rit al gratis het gemiddeld vermogen (uit de
+    // activiteitenlijst). Een rustige rit van 120W kan geen 250W-blok bevatten;
+    // een rit van 200W gemiddeld wel. Dus: sorteer op gemiddeld vermogen en haal
+    // streams op voor de HARDSTE ritten. Daar zit je beste 20-min vrijwel altijd.
     const MAX_STREAMS = 50;
-    const rittenVoorStreams = fietsritten90.slice(0, MAX_STREAMS);
+    const rittenMetVermogen = fietsritten90
+      .filter(a => a.average_watts && a.average_watts > 0)
+      .sort((a, b) => b.average_watts - a.average_watts);
+    const rittenZonderVermogen = fietsritten90.filter(a => !a.average_watts);
+    // Hardste vermogensritten eerst, daarna ritten zonder vermogen (voor HR-zones)
+    const rittenVoorStreams = [...rittenMetVermogen, ...rittenZonderVermogen].slice(0, MAX_STREAMS);
 
     const streamResults = await Promise.all(
       rittenVoorStreams.map(rit =>
