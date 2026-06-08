@@ -472,43 +472,54 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(252,76,2,0.8)" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
     </div>
     <div class="verfijn-status">Verfijn je analyse</div>
-    <h2 class="verfijn-titel">Ken je je trainingszones?</h2>
-    <p class="verfijn-sub">We hebben jouw data geanalyseerd. Vul je FTP of max hartslag in voor een nauwkeurigere analyse.</p>
+    <h2 class="verfijn-titel">Wij hebben jouw FTP gedetecteerd</h2>
+    <p class="verfijn-sub">Op basis van jouw Strava data hebben we jouw vermogensprofiel in kaart gebracht.</p>
+    <!-- FTP DETECTIE CARD -->
     <div class="verfijn-sectie" id="ftpSectie">
-      <div class="verfijn-sectie-header">
-        <div class="verfijn-sectie-titel">Vermogensmeter</div>
-        <div class="verfijn-sectie-badge" id="ftpBadge">Gedetecteerd</div>
+      <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--oranje);font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:6px;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="var(--oranje)"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        FTP Gedetecteerd
       </div>
 
-      <!-- Onze detectie tonen als referentie -->
-      <div id="ftpDetectieRij" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:5px;padding:10px 12px;margin-bottom:12px;">
-        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.3);font-weight:600;margin-bottom:4px;">Wij detecteren</div>
-        <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:4px;">
-          <span id="ftpDetectieWaarde" style="font-size:22px;font-weight:800;color:rgba(255,255,255,0.5);">—</span>
-          <span style="font-size:11px;color:rgba(255,255,255,0.25);">WATT</span>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;">
+        <span id="ftpDetectieWaarde" style="font-size:52px;font-weight:900;line-height:1;letter-spacing:-2px;color:var(--wit);">—</span>
+        <span style="font-size:16px;font-weight:600;color:rgba(255,255,255,0.35);letter-spacing:2px;">WATT</span>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:5px;margin-bottom:14px;">
+        <div style="font-size:11px;color:rgba(255,255,255,0.35);display:flex;align-items:center;gap:6px;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Berekend op basis van <span id="ftpRittenTekst" style="color:rgba(255,255,255,0.6);font-weight:600;margin:0 2px;">—</span> ritten
         </div>
-        <div style="font-size:10px;color:rgba(255,255,255,0.3);line-height:1.5;">Schatting op basis van jouw ritten. Weet jij beter? Vul hieronder jouw eigen FTP in.</div>
+        <div style="font-size:11px;display:flex;align-items:center;gap:6px;">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Betrouwbaarheid: <span id="ftpBetrouwS3c" style="font-weight:700;margin-left:3px;">—</span>
+        </div>
       </div>
 
-      <div class="verfijn-input-wrap">
-        <label class="verfijn-label">Jouw FTP (Watt)</label>
-        <input type="number" id="ftpInput" class="verfijn-input" placeholder="bijv. 255" min="80" max="500">
-        <div class="verfijn-hint" id="ftpHint">Tip: beste 20min × 95% of beste 12min × 88%</div>
+      <!-- Zones preview -->
+      <div id="ftpZonesPreview" style="border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.25);font-weight:600;margin-bottom:8px;">Jouw zones</div>
+        <div style="display:flex;flex-direction:column;gap:4px;" id="ftpZonesList"></div>
       </div>
+
+      <!-- Verborgen inputs voor backward compat -->
+      <input type="hidden" id="ftpInput">
+      <input type="hidden" id="maxHfInput">
     </div>
-    <div class="verfijn-sectie">
-      <div class="verfijn-sectie-header">
-        <div class="verfijn-sectie-titel">Hartslag</div>
-        <div class="verfijn-sectie-badge" id="hfBadge">Gedetecteerd</div>
+
+    <!-- HARTSLAG CARD -->
+    <div class="verfijn-sectie" id="hfSectie" style="display:none">
+      <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.4);font-weight:700;margin-bottom:12px;">Hartslag gedetecteerd</div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:8px;">
+        <span id="hfDetectieWaarde" style="font-size:52px;font-weight:900;line-height:1;letter-spacing:-2px;color:var(--wit);">—</span>
+        <span style="font-size:16px;font-weight:600;color:rgba(255,255,255,0.35);letter-spacing:2px;">BPM</span>
       </div>
-      <div class="verfijn-input-wrap">
-        <label class="verfijn-label">Max hartslag (bpm)</label>
-        <input type="number" id="maxHfInput" class="verfijn-input" placeholder="bijv. 178" min="100" max="220">
-        <div class="verfijn-hint">Omslagpunt wordt berekend als max HF × 90%</div>
-      </div>
+      <div style="font-size:11px;color:rgba(255,255,255,0.35);">Omslagpunt: <span id="hfOmslagpunt" style="color:rgba(255,255,255,0.6);font-weight:600;">—</span> bpm (max × 90%)</div>
+      <div class="verfijn-sectie-badge" id="hfBadge" style="display:none">Gedetecteerd</div>
+      <input type="hidden" id="ftpHint">
     </div>
-    <button class="verfijn-btn" onclick="bevestigZones()">Analyseer mijn training →</button>
-    <button class="verfijn-skip" onclick="slaZonesOver()">Ik weet het niet — gebruik schatting</button>
+    <button class="verfijn-btn" onclick="slaZonesOver()">Analyseer mijn training →</button>
   </div>
 </div>
 
@@ -874,27 +885,62 @@ function herberekeningZones(rittenRuw, ftp, omslagpunt) {
 
 function toonZonesScherm(data) {
   gaNaar('s3c');
-  const ftpInput = document.getElementById('ftpInput');
-  const maxHfInput = document.getElementById('maxHfInput');
-  const ftpBadge = document.getElementById('ftpBadge');
-  const hfBadge = document.getElementById('hfBadge');
-  if (data.ftp) {
-    ftpInput.value = data.ftp;
-    if (ftpBadge) ftpBadge.textContent = 'Geschat: ' + data.ftp + 'W';
 
-    // Toon detectie referentie blokje
-    const detectieRij = document.getElementById('ftpDetectieRij');
+  const ftp = data.ftp;
+  const maxHf = data.maxHf;
+  const omslagpunt = data.omslagpunt;
+  const aantalRitten = data.aantalActiviteiten || 0;
+
+  if (ftp) {
+    // FTP card tonen
     const detectieWaarde = document.getElementById('ftpDetectieWaarde');
-    if (detectieRij) detectieRij.style.display = 'block';
-    if (detectieWaarde) detectieWaarde.textContent = data.ftp;
-  } else {
-    if (ftpBadge) { ftpBadge.textContent = 'Onbekend'; ftpBadge.className = 'verfijn-sectie-badge onbekend'; }
-  }
-  if (data.maxHf) {
-    maxHfInput.value = data.maxHf;
-    if (hfBadge) hfBadge.textContent = 'Geschat: ' + data.maxHf + ' bpm';
-  } else {
-    if (hfBadge) { hfBadge.textContent = 'Onbekend'; hfBadge.className = 'verfijn-sectie-badge onbekend'; }
+    const ftpRittenTekst = document.getElementById('ftpRittenTekst');
+    const ftpBetrouwS3c = document.getElementById('ftpBetrouwS3c');
+    const ftpInput = document.getElementById('ftpInput');
+
+    if (detectieWaarde) detectieWaarde.textContent = ftp;
+    if (ftpInput) ftpInput.value = ftp;
+    if (ftpRittenTekst) ftpRittenTekst.textContent = aantalRitten;
+
+    if (ftpBetrouwS3c) {
+      if (aantalRitten >= 15) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
+      else if (aantalRitten >= 8) { ftpBetrouwS3c.textContent = 'gemiddeld'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
+      else { ftpBetrouwS3c.textContent = 'laag'; ftpBetrouwS3c.style.color = 'var(--rood)'; }
+    }
+
+    // Zones preview
+    const zonesList = document.getElementById('ftpZonesList');
+    if (zonesList && ftp) {
+      const zoneNamen = ['Herstel', 'Duur', 'Tempo', 'Sweetspot', 'FTP', 'VO2max'];
+      const zoneGrenzen = [
+        `<${Math.round(ftp*0.55)}W`,
+        `${Math.round(ftp*0.55)}–${Math.round(ftp*0.75)}W`,
+        `${Math.round(ftp*0.75)}–${Math.round(ftp*0.85)}W`,
+        `${Math.round(ftp*0.85)}–${Math.round(ftp*0.95)}W`,
+        `${Math.round(ftp*0.95)}–${Math.round(ftp*1.05)}W`,
+        `>${Math.round(ftp*1.05)}W`
+      ];
+      zonesList.innerHTML = zoneNamen.map((naam, i) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;">
+          <span style="font-size:11px;color:rgba(255,255,255,0.5);">Z${i+1} ${naam}</span>
+          <span style="font-size:11px;color:rgba(255,255,255,0.3);font-weight:600;">${zoneGrenzen[i]}</span>
+        </div>
+      `).join('');
+    }
+
+  } else if (maxHf) {
+    // Geen FTP — toon hartslag card
+    const hfSectie = document.getElementById('hfSectie');
+    const ftpSectie = document.getElementById('ftpSectie');
+    const hfDetectieWaarde = document.getElementById('hfDetectieWaarde');
+    const hfOmslagpunt = document.getElementById('hfOmslagpunt');
+    const maxHfInput = document.getElementById('maxHfInput');
+
+    if (ftpSectie) ftpSectie.style.display = 'none';
+    if (hfSectie) hfSectie.style.display = 'block';
+    if (hfDetectieWaarde) hfDetectieWaarde.textContent = maxHf;
+    if (hfOmslagpunt) hfOmslagpunt.textContent = omslagpunt || Math.round(maxHf * 0.9);
+    if (maxHfInput) maxHfInput.value = maxHf;
   }
 }
 
