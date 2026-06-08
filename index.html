@@ -16,10 +16,11 @@
   --groen:#2e7d4f;
   --rood:#c0392b;
 }
-html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);color:var(--wit);overflow:hidden;}
+html{height:100%;}
+body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);color:var(--wit);overflow-x:hidden;}
 
-.scherm{position:fixed;inset:0;display:flex;flex-direction:column;overflow-y:scroll;overflow-x:hidden;-webkit-overflow-scrolling:touch;opacity:0;pointer-events:none;transition:opacity .35s ease;}
-.scherm.actief{opacity:1;pointer-events:all;touch-action:pan-y;}
+.scherm{display:none;flex-direction:column;min-height:100vh;width:100%;}
+.scherm.actief{display:flex;}
 
 .header{display:flex;justify-content:space-between;align-items:center;padding:20px 28px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;background:var(--zwart);}
 .logo{font-size:10px;letter-spacing:4px;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;}
@@ -793,7 +794,10 @@ function gaNaar(id) {
     if(el) el.classList.remove('actief');
   });
   const el = document.getElementById(id);
-  if(el) { el.classList.add('actief'); el.scrollTop = 0; }
+  if(el) {
+    el.classList.add('actief');
+    window.scrollTo(0, 0);
+  }
 }
 
 function verbindStrava() {
