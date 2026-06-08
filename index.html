@@ -604,13 +604,26 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
     <div class="ftp-card" id="ftpDetectorCard">
       <div class="ftp-card-label">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--oranje)"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-        FTP Detector™: Geschatte FTP
+        <span id="ftpCardLabel">FTP Detector™: Geschatte FTP</span>
       </div>
-      <div class="ftp-card-subtitel">Berekend op basis van jouw vermogensdata</div>
+      <div class="ftp-card-subtitel" id="ftpCardSubtitel">Berekend op basis van jouw vermogensdata</div>
+
+      <!-- Ingevulde FTP (groot) -->
       <div class="ftp-getal-rij">
         <div class="ftp-getal" id="ftpGetal">—</div>
         <div class="ftp-eenheid">WATT</div>
       </div>
+
+      <!-- Detectie vergelijking (alleen zichtbaar als handmatig ingevuld) -->
+      <div id="ftpVergelijkBlok" style="display:none;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:12px 14px;margin-bottom:14px;">
+        <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.3);font-weight:700;margin-bottom:8px;">Onze detectie</div>
+        <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:6px;">
+          <span id="ftpGedetecteerd" style="font-size:28px;font-weight:900;color:rgba(255,255,255,0.5);">—</span>
+          <span style="font-size:12px;color:rgba(255,255,255,0.3);">WATT</span>
+        </div>
+        <div id="ftpVergelijkNote" style="font-size:11px;color:rgba(252,76,2,0.8);line-height:1.5;"></div>
+      </div>
+
       <div class="ftp-meta">
         <div class="ftp-meta-rij">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
@@ -875,6 +888,8 @@ function bevestigZones() {
   if (maxHfVal && (maxHfVal < 100 || maxHfVal > 220)) { alert('Max hartslag moet tussen 100 en 220 bpm liggen.'); return; }
   const data = window._stravaData;
   if (ftpVal && data) {
+    // Bewaar de originele detectie voordat we overschrijven
+    if(!data.ftpGedetecteerd && data.ftp) data.ftpGedetecteerd = data.ftp;
     data.ftp = ftpVal; data.ftpHandmatig = true; data.heeftVermogensmeter = true;
     if (data.rittenRuw && data.rittenRuw.length > 0) {
       const nz = herberekeningZones(data.rittenRuw, ftpVal, null);
@@ -988,13 +1003,45 @@ function toonRapport(data, analyse) {
   const ftpGetal = document.getElementById('ftpGetal');
   const ftpRittenAantal = document.getElementById('ftpRittenAantal');
   const ftpBetrouw = document.getElementById('ftpBetrouw');
+
   if(data.ftp) {
+    // Toon de actieve FTP (handmatig ingevuld of gedetecteerd)
     if(ftpGetal) ftpGetal.textContent = data.ftp;
     if(ftpRittenAantal) ftpRittenAantal.textContent = aantalRitten;
+
+    // Betrouwbaarheid
     if(ftpBetrouw) {
       if(aantalRitten >= 15) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; }
       else if(aantalRitten >= 8) { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; }
       else { ftpBetrouw.textContent = 'laag'; ftpBetrouw.style.color = 'var(--rood)'; }
+    }
+
+    // Als handmatig ingevuld: toon label + vergelijking met detectie
+    if(data.ftpHandmatig) {
+      const label = document.getElementById('ftpCardLabel');
+      const subtitel = document.getElementById('ftpCardSubtitel');
+      const vergelijkBlok = document.getElementById('ftpVergelijkBlok');
+      const ftpGedetecteerd = document.getElementById('ftpGedetecteerd');
+      const vergelijkNote = document.getElementById('ftpVergelijkNote');
+
+      if(label) label.textContent = 'Jouw FTP (handmatig ingevuld)';
+      if(subtitel) subtitel.textContent = 'Zones zijn berekend op basis van jouw opgegeven waarde';
+
+      // Toon detectie als die beschikbaar is en anders is dan ingevoerd
+      if(data.ftpGedetecteerd && data.ftpGedetecteerd !== data.ftp) {
+        if(vergelijkBlok) vergelijkBlok.style.display = 'block';
+        if(ftpGedetecteerd) ftpGedetecteerd.textContent = data.ftpGedetecteerd;
+
+        const verschil = data.ftp - data.ftpGedetecteerd;
+        if(vergelijkNote && verschil > 20) {
+          vergelijkNote.textContent = `⚠ Jouw opgegeven FTP ligt ${verschil}W hoger dan onze detectie. Controleer of dit klopt — te hoge FTP maakt zones onnauwkeurig.`;
+        } else if(vergelijkNote && verschil < -20) {
+          vergelijkNote.textContent = `Jouw opgegeven FTP ligt ${Math.abs(verschil)}W lager dan onze detectie. Mogelijk is je conditie beter dan de schatting.`;
+        } else if(vergelijkNote) {
+          vergelijkNote.textContent = 'Komt goed overeen met onze detectie. Zones zijn nauwkeurig.';
+          vergelijkNote.style.color = 'var(--groen)';
+        }
+      }
     }
   } else {
     const ftpCard = document.getElementById('ftpDetectorCard');
