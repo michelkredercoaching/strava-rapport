@@ -26,6 +26,25 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 .stap-indicator{font-size:10px;letter-spacing:3px;color:var(--oranje);text-transform:uppercase;font-weight:600;}
 
 /* ========== S1: PREMIUM HOMEPAGE ========== */
+
+/* Wat krijg je blok */
+.hero-wat-krijg-je{
+  display:flex;flex-direction:column;gap:8px;
+  width:100%;max-width:320px;margin-bottom:28px;
+  opacity:0;animation:fadeSlideUp .7s ease .45s both;
+}
+.hwk-item{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 14px;
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.07);
+  border-radius:6px;
+  text-align:left;
+}
+.hwk-icon{font-size:16px;flex-shrink:0;width:20px;text-align:center;}
+.hwk-tekst{display:flex;flex-direction:column;gap:1px;}
+.hwk-tekst strong{font-size:12px;font-weight:700;color:rgba(255,255,255,0.85);}
+.hwk-tekst span{font-size:11px;color:rgba(255,255,255,0.35);}
 #s1{background:#0a0a0a;position:relative;overflow:hidden;}
 
 /* Grain overlay */
@@ -359,12 +378,34 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
 <div id="s1" class="scherm actief">
   <header class="header" style="background:transparent;border-bottom:1px solid rgba(255,255,255,0.05);position:relative;z-index:2;">
     <span class="logo" style="font-size:9px;letter-spacing:5px;color:rgba(255,255,255,0.35);">Michel Kreder Coaching</span>
-    <span class="stap-indicator" style="font-size:8px;letter-spacing:3px;border:1px solid rgba(252,76,2,0.3);padding:4px 10px;border-radius:20px;color:var(--oranje);">Trainingsrapport</span>
+    <span class="stap-indicator" style="font-size:8px;letter-spacing:3px;border:1px solid rgba(252,76,2,0.3);padding:4px 10px;border-radius:20px;color:var(--oranje);">Power Profile™</span>
   </header>
   <div class="hero">
-    <div class="hero-eyebrow">Voor serieuze wielrenners</div>
-    <h1 class="hero-titel">Stop met<br>trainen<br>voor <em>niks.</em></h1>
-    <p class="hero-sub">Koppel je Strava. Ontdek binnen 60 seconden <strong>precies waar jij progressie laat liggen.</strong></p>
+
+    <!-- HOOK -->
+    <div class="hero-eyebrow">Voor wielrenners met een vermogensmeter</div>
+    <h1 class="hero-titel">Stop met<br>trainen<br>zonder <em>data.</em></h1>
+
+    <!-- MECHANISM -->
+    <p class="hero-sub">Wij detecteren jouw FTP <strong>zonder test.</strong> Analyseren je zones. En vertellen je precies welke trainingen je tijd verspillen.</p>
+
+    <!-- WAT JE KRIJGT -->
+    <div class="hero-wat-krijg-je">
+      <div class="hwk-item">
+        <div class="hwk-icon">⚡</div>
+        <div class="hwk-tekst"><strong>FTP zonder test</strong><span>Berekend uit jouw Strava ritten</span></div>
+      </div>
+      <div class="hwk-item">
+        <div class="hwk-icon">📊</div>
+        <div class="hwk-tekst"><strong>Zoneverdeling analyse</strong><span>Zie waar jij echt tijd doorbrengt</span></div>
+      </div>
+      <div class="hwk-item">
+        <div class="hwk-icon">🎯</div>
+        <div class="hwk-tekst"><strong>Persoonlijk actieplan</strong><span>3 concrete stappen om sneller te worden</span></div>
+      </div>
+    </div>
+
+    <!-- STATS -->
     <div class="hero-stats">
       <div class="hstat">
         <span class="hstat-n">60</span>
@@ -376,17 +417,18 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);c
       </div>
       <div class="hstat">
         <span class="hstat-n">100%</span>
-        <span class="hstat-l">persoonlijk</span>
+        <span class="hstat-l">jouw data</span>
       </div>
     </div>
+
     <p class="hero-prijs-note">Eenmalig · geen abonnement · geen verborgen kosten</p>
-    <button class="hero-cta" onclick="gaNaar('s2')">Ontdek waar je progressie laat liggen →</button>
+    <button class="hero-cta" onclick="gaNaar('s2')">Analyseer mijn training →</button>
     <div class="trust-row">
       <div class="tr-item"><span class="ideal-pill">iDEAL</span> Direct betalen</div>
       <span class="tr-dot"></span>
       <div class="tr-item">🔒 SSL versleuteld</div>
       <span class="tr-dot"></span>
-      <div class="tr-item">Via Mollie</div>
+      <div class="tr-item">Vermogensmeter vereist</div>
     </div>
   </div>
 </div>
