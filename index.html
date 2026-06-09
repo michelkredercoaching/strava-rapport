@@ -880,9 +880,15 @@ async function startBetaling() {
     });
     const data = await res.json();
     if (data.checkoutUrl) {
-      // Bewaar de versleutelde analyse + het betaling-id. Na terugkomst van
-      // Mollie geeft /api/rapport het rapport pas vrij na een bevestigde betaling.
-      try { localStorage.setItem('pp_blob', window._blob || ''); localStorage.setItem('pp_pid', data.pid || ''); } catch(e) {}
+      // Bewaar de versleutelde analyse, het betaling-id, de preview en het e-mail
+      // zodat we na terugkomst het rapport kunnen vrijgeven, of bij een
+      // geannuleerde betaling de paywall kunnen herstellen voor een nieuwe poging.
+      try {
+        localStorage.setItem('pp_blob', window._blob || '');
+        localStorage.setItem('pp_pid', data.pid || '');
+        localStorage.setItem('pp_pv', JSON.stringify(window._preview || {}));
+        localStorage.setItem('pp_email', email);
+      } catch(e) {}
       window.location.href = data.checkoutUrl;
     } else {
       alert('Er ging iets mis met de betaling. Probeer het opnieuw.');
@@ -1596,9 +1602,18 @@ window.addEventListener('DOMContentLoaded', function() {
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ blob: blob, pid: pid })
     })
-    .then(r => { if(!r.ok) throw new Error('niet vrijgegeven'); return r.json(); })
-    .then(res => {
-      const data = res.stravaData;
+    .then(function(r){
+      if(r.status === 402) {
+        return r.json().then(
+          function(b){ var e=new Error('niet_betaald'); e.nietBetaald=true; e.molStatus=(b&&b.status)||''; throw e; },
+          function(){ var e=new Error('niet_betaald'); e.nietBetaald=true; e.molStatus=''; throw e; }
+        );
+      }
+      if(!r.ok) throw new Error('niet vrijgegeven');
+      return r.json();
+    })
+    .then(function(res){
+      var data = res.stravaData;
       window._stravaData = data;
       if(aiProgVul) aiProgVul.style.width = '60%';
       // AI-analyse één keer, ná betaling, met de echte data uit de gate.
@@ -1607,15 +1622,36 @@ window.addEventListener('DOMContentLoaded', function() {
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify({ stravaData: data })
       })
-      .then(r => r.ok ? r.json() : null)
-      .then(analyse => {
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(analyse){
         if(aiProgVul) aiProgVul.style.width = '100%';
         window._claudeAnalyse = analyse;
-        try { localStorage.removeItem('pp_blob'); localStorage.removeItem('pp_pid'); } catch(e) {}
-        setTimeout(() => toonRapport(data, analyse), 400);
+        try { localStorage.removeItem('pp_blob'); localStorage.removeItem('pp_pid'); localStorage.removeItem('pp_pv'); localStorage.removeItem('pp_email'); } catch(e) {}
+        setTimeout(function(){ toonRapport(data, analyse); }, 400);
       });
     })
-    .catch(() => { gaNaar('s7'); });
+    .catch(function(err){
+      if (err && err.nietBetaald) {
+        var s = err.molStatus || '';
+        if (s === 'open' || s === 'pending') {
+          // Betaling nog in verwerking — niet opnieuw laten betalen; rapport komt
+          // per e-mail zodra Mollie bevestigt.
+          gaNaar('s7');
+          return;
+        }
+        // Geannuleerd / verlopen / mislukt → terug naar de paywall voor een nieuwe poging.
+        try {
+          window._blob = localStorage.getItem('pp_blob') || '';
+          window._preview = JSON.parse(localStorage.getItem('pp_pv') || '{}');
+        } catch(e) { window._preview = {}; }
+        try { localStorage.removeItem('pp_pid'); } catch(e) {}
+        vulUnlockPagina(window._preview, null);
+        try { var em = localStorage.getItem('pp_email'); var el = document.getElementById('klantEmail'); if(em && el) el.value = em; } catch(e) {}
+        setTimeout(function(){ alert('Je betaling is niet afgerond. Je kunt het hieronder opnieuw proberen.'); }, 250);
+      } else {
+        gaNaar('s7');
+      }
+    });
     return;
   }
 
