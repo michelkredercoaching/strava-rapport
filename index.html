@@ -290,6 +290,14 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .ftp-meta-betrouw{color:var(--groen);font-weight:700;}
 .ftp-cta-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:14px;background:var(--oranje);color:#fff;font-size:12px;font-weight:800;letter-spacing:.5px;border:none;border-radius:6px;cursor:pointer;font-family:'DM Sans',sans-serif;}
 
+/* FTP CORRECTIE (op het rapport) */
+.ftp-correctie-toggle{background:none;border:none;color:rgba(255,255,255,0.45);font-size:11px;text-decoration:underline;cursor:pointer;font-family:'DM Sans',sans-serif;padding:0;}
+.ftp-correctie-rij{display:flex;gap:8px;align-items:center;}
+.ftp-correctie-input{flex:1;min-width:0;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:10px 12px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;}
+.ftp-correctie-input:focus{border-color:var(--oranje);}
+.ftp-correctie-btn{background:var(--oranje);color:#fff;border:none;border-radius:6px;padding:10px 16px;font-size:12px;font-weight:800;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.ftp-correctie-hint{font-size:10px;color:rgba(255,255,255,0.3);margin-top:6px;line-height:1.5;}
+
 /* ANALYSE CARD */
 .analyse-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;margin:0 16px 14px;padding:18px 16px;}
 .analyse-card-label{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--oranje);font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
@@ -665,7 +673,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     <div class="pp-header">
       <div class="pp-header-top">
         <div class="pp-meta">
-          <div class="pp-eyebrow" id="ppEyebrow">Analyse · Laatste 8 weken</div>
+          <div class="pp-eyebrow" id="ppEyebrow">Analyse · Laatste 90 dagen</div>
           <div class="pp-title">Power Profile™</div>
           <div class="pp-subtitle" id="ppSubtitel">—</div>
         </div>
@@ -726,6 +734,19 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
           Betrouwbaarheid: <span class="ftp-meta-betrouw" id="ftpBetrouw">hoog</span>
         </div>
       </div>
+
+      <!-- Handmatige FTP-correctie (teruggezet) -->
+      <div style="margin-bottom:14px;">
+        <button type="button" class="ftp-correctie-toggle" onclick="toonFtpCorrectie()">Klopt dit niet? Pas je FTP aan</button>
+        <div id="ftpCorrectieVeld" style="display:none;margin-top:10px;">
+          <div class="ftp-correctie-rij">
+            <input id="ftpCorrectieInput" class="ftp-correctie-input" type="number" inputmode="numeric" placeholder="bv. 245">
+            <button type="button" class="ftp-correctie-btn" onclick="pasFtpAanOpRapport()">Herbereken</button>
+          </div>
+          <div class="ftp-correctie-hint">Weet je je echte FTP? Vul 'm in — we herberekenen je zones, VO2max en intervallen meteen.</div>
+        </div>
+      </div>
+
       <button class="ftp-cta-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--wit)"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         GEEN FTP-TEST NODIG
@@ -1046,6 +1067,50 @@ function bevestigZones() {
 
 function slaZonesOver() { voerAIAnalyseUit(window._stravaData); }
 
+// ===== Handmatige FTP-correctie OP HET RAPPORT (teruggezet 9 juni) =====
+// De geblurde teaser en de hele paywall blijven ongemoeid. Een betalende
+// sporter kan hier een verkeerd gedetecteerde FTP bijstellen; zones, VO2max
+// en intervallen herberekenen direct via herberekeningZones().
+function toonFtpCorrectie() {
+  const veld = document.getElementById('ftpCorrectieVeld');
+  if (!veld) return;
+  const open = veld.style.display !== 'none';
+  veld.style.display = open ? 'none' : 'block';
+  const input = document.getElementById('ftpCorrectieInput');
+  if (input && !open && window._stravaData && window._stravaData.ftp) {
+    input.value = window._stravaData.ftp;
+    input.focus();
+  }
+}
+
+function pasFtpAanOpRapport() {
+  const input = document.getElementById('ftpCorrectieInput');
+  const data = window._stravaData;
+  if (!input || !data) return;
+  const nieuweFtp = parseInt(input.value, 10);
+  if (!nieuweFtp || nieuweFtp < 80 || nieuweFtp > 500) {
+    alert('Vul een FTP tussen 80 en 500 Watt in.');
+    return;
+  }
+  // Bewaar de oorspronkelijke detectie zodat we 'm naast jouw waarde tonen
+  if (!data.ftpGedetecteerd && data.ftp) data.ftpGedetecteerd = data.ftp;
+  data.ftp = nieuweFtp;
+  data.ftpHandmatig = true;
+  data.heeftVermogensmeter = true;
+  // Zones, VO2max en intervallen herberekenen met de echte FTP
+  if (data.rittenRuw && data.rittenRuw.length > 0) {
+    const nz = herberekeningZones(data.rittenRuw, nieuweFtp, null);
+    data.zones = nz.zonesPct;
+    data.duurZonePct = nz.duurZonePct;
+    data.grijsZonePct = nz.grijsZonePct;
+    data.kwaliteitZonePct = nz.kwaliteitZonePct;
+    data.vo2maxSessies = nz.vo2maxSessies;
+  }
+  window._stravaData = data;
+  // Rapport opnieuw opbouwen met de nieuwe FTP
+  toonRapport(data, window._claudeAnalyse || null);
+}
+
 async function voerAIAnalyseUit(data) {
   gaNaar('s3b');
   const aiTekst = document.getElementById('aiTekst');
@@ -1131,7 +1196,7 @@ function toonRapport(data, analyse) {
   const ppEyebrow = document.getElementById('ppEyebrow');
   const ppSubtitel = document.getElementById('ppSubtitel');
   const ppScoreNum = document.getElementById('ppScoreNum');
-  if(ppEyebrow) ppEyebrow.textContent = `Analyse · Laatste 8 weken · ${aantalRitten} ritten`;
+  if(ppEyebrow) ppEyebrow.textContent = `Analyse · Laatste 90 dagen · ${aantalRitten} ritten`;
   if(ppSubtitel) ppSubtitel.textContent = datumStr;
   if(ppScoreNum) ppScoreNum.textContent = data.prestatiescore || '—';
 
@@ -1173,8 +1238,10 @@ function toonRapport(data, analyse) {
         const verschil = data.ftp - data.ftpGedetecteerd;
         if(vergelijkNote && verschil > 20) {
           vergelijkNote.textContent = `⚠ Jouw opgegeven FTP ligt ${verschil}W hoger dan onze detectie (${data.ftpGedetecteerd}W). Controleer of dit klopt — te hoge FTP maakt zones onnauwkeurig.`;
+          vergelijkNote.style.color = 'rgba(252,76,2,0.8)';
         } else if(vergelijkNote && verschil < -20) {
           vergelijkNote.textContent = `Jouw FTP ligt ${Math.abs(verschil)}W lager dan onze detectie (${data.ftpGedetecteerd}W). Mogelijk is je conditie beter dan de schatting.`;
+          vergelijkNote.style.color = 'rgba(252,76,2,0.8)';
         } else if(vergelijkNote) {
           vergelijkNote.textContent = 'Komt goed overeen met onze detectie. Zones zijn nauwkeurig.';
           vergelijkNote.style.color = 'var(--groen)';
