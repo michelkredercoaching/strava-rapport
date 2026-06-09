@@ -441,6 +441,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <span class="tr-dot"></span>
       <div class="tr-item">Vermogensmeter vereist</div>
     </div>
+    <p style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:14px;text-align:center;letter-spacing:.5px;"><a href="#" onclick="toonPrivacy();return false;" style="color:rgba(255,255,255,0.35);text-decoration:underline;">Privacyverklaring</a></p>
   </div>
 </div>
 
@@ -465,7 +466,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <div class="strava-stap"><div class="strava-stap-nr">2</div><div class="strava-stap-txt">Wij analyseren je trainingsdata (60 sec)</div></div>
       <div class="strava-stap"><div class="strava-stap-nr">3</div><div class="strava-stap-txt">Betaal €19 en ontvang je volledige rapport</div></div>
     </div>
-    <p class="strava-privacy">🔒 Alleen-lezen · Geen opslag · AVG-conform</p>
+    <p class="strava-privacy">🔒 Alleen-lezen toegang · Versleuteld verwerkt · <a href="#" onclick="toonPrivacy();return false;" style="color:rgba(255,255,255,0.4);text-decoration:underline;">Privacy</a></p>
   </div>
 </div>
 
@@ -1562,6 +1563,9 @@ function vulUpsell(analyse, data) {
 }
 
 // ===== URL PARAMS =====
+function toonPrivacy(){ var o=document.getElementById('privacyOverlay'); if(o) o.style.display='block'; }
+function sluitPrivacy(){ var o=document.getElementById('privacyOverlay'); if(o) o.style.display='none'; }
+
 window.addEventListener('DOMContentLoaded', function() {
   const params = new URLSearchParams(window.location.search);
   const error = params.get('error');
@@ -1628,5 +1632,30 @@ window.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
+
+<!-- Privacy-verklaring (pop-up) -->
+<div id="privacyOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:9999;overflow-y:auto;padding:20px;">
+  <div style="max-width:640px;margin:36px auto;background:#161616;border:1px solid #2b2b2b;border-radius:14px;padding:28px;color:#dcdcdc;font-size:14px;line-height:1.65;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+      <h2 style="font-size:20px;color:#fafafa;margin:0;">Privacy &amp; je gegevens</h2>
+      <button onclick="sluitPrivacy()" style="background:none;border:none;color:#9a9a9a;font-size:26px;cursor:pointer;line-height:1;padding:0 4px;">×</button>
+    </div>
+    <p style="color:#6a6a6a;font-size:12px;margin:0 0 18px;">Michel Kreder Coaching · laatst bijgewerkt juni 2026</p>
+
+    <p style="margin:0 0 14px;"><strong style="color:#fafafa;">Wat we verwerken.</strong> Met jouw toestemming lezen we via Strava (alleen-lezen) je trainingsdata van de laatste 90 dagen. Daarnaast vragen we je naam en e-mailadres bij de betaling.</p>
+
+    <p style="margin:0 0 14px;"><strong style="color:#fafafa;">Waarvoor.</strong> Uitsluitend om je persoonlijke Power Profile™-rapport te maken en als PDF naar je te mailen.</p>
+
+    <p style="margin:0 0 14px;"><strong style="color:#fafafa;">Wat we bewaren.</strong> Je ruwe Strava-data slaan we niet permanent op. Bij je betaling worden je naam, e-mailadres en de kerngetallen van je analyse (zoals FTP, zones en score) vastgelegd bij onze betaalprovider en in onze administratie, zodat we je aankoop kunnen verwerken en je kunnen helpen bij vragen.</p>
+
+    <p style="margin:0 0 14px;"><strong style="color:#fafafa;">Diensten die we gebruiken.</strong> Strava (databron), Mollie (betaling), Resend (e-mailbezorging) en Anthropic (AI-analyse). Een deel van deze diensten verwerkt gegevens mede buiten de EU.</p>
+
+    <p style="margin:0 0 14px;"><strong style="color:#fafafa;">Jouw rechten.</strong> Je kunt je gegevens opvragen, laten corrigeren of laten verwijderen. Je kunt de Strava-koppeling op elk moment intrekken via je Strava-instellingen (Instellingen → Mijn apps).</p>
+
+    <p style="margin:0 0 18px;"><strong style="color:#fafafa;">Contact.</strong> Vragen over je gegevens? Mail <a href="mailto:michel.kredercoaching@gmail.com" style="color:#fc4c02;">michel.kredercoaching@gmail.com</a>.</p>
+
+    <button onclick="sluitPrivacy()" style="background:#fc4c02;color:#fff;border:none;border-radius:8px;padding:11px 22px;font-size:14px;font-weight:600;cursor:pointer;">Sluiten</button>
+  </div>
+</div>
 </body>
 </html>
