@@ -82,6 +82,20 @@ export default async function handler(req, res) {
 
     const stats = berekenStats(activiteiten, alleActiviteiten, athlete, streamMap);
 
+    // ===== KOPPELING AUTOMATISCH INTREKKEN =====
+    // We hebben alle data nu binnen; de Strava-toegang is verder niet meer nodig
+    // (rapport + PDF draaien op de versleutelde analyse). Door hier in te trekken
+    // komt de athlete-slot meteen weer vrij — zonder dat de klant iets hoeft te
+    // doen. Faalt dit (bv. netwerk), dan negeren we het stil; de flow loopt door.
+    try {
+      await fetch('https://www.strava.com/oauth/deauthorize?access_token=' + encodeURIComponent(accessToken), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+    } catch (e) {
+      console.error('Strava deauthorize mislukt (genegeerd):', e);
+    }
+
     // ===== GATE: versleutel de analyse, zet 'm in browseropslag, geef alleen
     // een onschuldige preview mee in de URL. Geen FTP/zones in de browser. =====
     const blob = seal(stats);
