@@ -875,10 +875,13 @@ async function startBetaling() {
     const res = await fetch('/api/betaling', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stravaData: window._stravaData || {}, email })
+      body: JSON.stringify({ blob: window._blob || '', email })
     });
     const data = await res.json();
     if (data.checkoutUrl) {
+      // Bewaar de versleutelde analyse + het betaling-id. Na terugkomst van
+      // Mollie geeft /api/rapport het rapport pas vrij na een bevestigde betaling.
+      try { localStorage.setItem('pp_blob', window._blob || ''); localStorage.setItem('pp_pid', data.pid || ''); } catch(e) {}
       window.location.href = data.checkoutUrl;
     } else {
       alert('Er ging iets mis met de betaling. Probeer opnieuw.');
@@ -912,7 +915,6 @@ function startAnalyseAnimatie(data) {
     if(i >= stappen.length) {
       clearInterval(iv);
       tekst.textContent = 'Data opgehaald — zones verfijnen...';
-      window._stravaData = data;
       setTimeout(() => startAIAnalyse(data), 800);
       return;
     }
@@ -997,61 +999,41 @@ function herberekeningZones(rittenRuw, ftp, omslagpunt) {
 function toonZonesScherm(data) {
   gaNaar('s3c');
 
-  const ftp = data.ftp;
-  const maxHf = data.maxHf;
-  const omslagpunt = data.omslagpunt;
   const aantalRitten = data.aantalActiviteiten || 0;
+  // De echte FTP + zones zitten versleuteld en komen pas vrij na betaling.
+  // Hier tonen we alleen een geblurde placeholder + de betrouwbaarheid op
+  // basis van het aantal ritten. Geen gevoelige data in de browser.
+  const placeholder = 250;
+  const detectieWaarde = document.getElementById('ftpDetectieWaarde');
+  const ftpRittenTekst = document.getElementById('ftpRittenTekst');
+  const ftpBetrouwS3c = document.getElementById('ftpBetrouwS3c');
+  if (detectieWaarde) detectieWaarde.textContent = placeholder;
+  if (ftpRittenTekst) ftpRittenTekst.textContent = aantalRitten;
+  if (ftpBetrouwS3c) {
+    if (aantalRitten >= 15) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
+    else if (aantalRitten >= 8) { ftpBetrouwS3c.textContent = 'gemiddeld'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
+    else { ftpBetrouwS3c.textContent = 'laag'; ftpBetrouwS3c.style.color = 'var(--rood)'; }
+  }
 
-  if (ftp) {
-    // FTP card tonen
-    const detectieWaarde = document.getElementById('ftpDetectieWaarde');
-    const ftpRittenTekst = document.getElementById('ftpRittenTekst');
-    const ftpBetrouwS3c = document.getElementById('ftpBetrouwS3c');
-    const ftpInput = document.getElementById('ftpInput');
-
-    if (detectieWaarde) detectieWaarde.textContent = ftp;
-    if (ftpInput) ftpInput.value = ftp;
-    if (ftpRittenTekst) ftpRittenTekst.textContent = aantalRitten;
-
-    if (ftpBetrouwS3c) {
-      if (aantalRitten >= 15) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
-      else if (aantalRitten >= 8) { ftpBetrouwS3c.textContent = 'gemiddeld'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
-      else { ftpBetrouwS3c.textContent = 'laag'; ftpBetrouwS3c.style.color = 'var(--rood)'; }
-    }
-
-    // Zones preview
-    const zonesList = document.getElementById('ftpZonesList');
-    if (zonesList && ftp) {
-      const zoneNamen = ['Herstel', 'Duur', 'Tempo', 'Sweetspot', 'FTP', 'VO2max'];
-      const zoneGrenzen = [
-        `<${Math.round(ftp*0.55)}W`,
-        `${Math.round(ftp*0.55)}–${Math.round(ftp*0.75)}W`,
-        `${Math.round(ftp*0.75)}–${Math.round(ftp*0.85)}W`,
-        `${Math.round(ftp*0.85)}–${Math.round(ftp*0.95)}W`,
-        `${Math.round(ftp*0.95)}–${Math.round(ftp*1.05)}W`,
-        `>${Math.round(ftp*1.05)}W`
-      ];
-      zonesList.innerHTML = zoneNamen.map((naam, i) => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;">
-          <span style="font-size:11px;color:rgba(255,255,255,0.5);">Z${i+1} ${naam}</span>
-          <span style="font-size:11px;color:rgba(255,255,255,0.3);font-weight:600;">${zoneGrenzen[i]}</span>
-        </div>
-      `).join('');
-    }
-
-  } else if (maxHf) {
-    // Geen FTP — toon hartslag card
-    const hfSectie = document.getElementById('hfSectie');
-    const ftpSectie = document.getElementById('ftpSectie');
-    const hfDetectieWaarde = document.getElementById('hfDetectieWaarde');
-    const hfOmslagpunt = document.getElementById('hfOmslagpunt');
-    const maxHfInput = document.getElementById('maxHfInput');
-
-    if (ftpSectie) ftpSectie.style.display = 'none';
-    if (hfSectie) hfSectie.style.display = 'block';
-    if (hfDetectieWaarde) hfDetectieWaarde.textContent = maxHf;
-    if (hfOmslagpunt) hfOmslagpunt.textContent = omslagpunt || Math.round(maxHf * 0.9);
-    if (maxHfInput) maxHfInput.value = maxHf;
+  // Geblurde zone-preview op basis van de placeholder (puur cosmetisch).
+  const zonesList = document.getElementById('ftpZonesList');
+  if (zonesList) {
+    const ftp = placeholder;
+    const zoneNamen = ['Herstel', 'Duur', 'Tempo', 'Sweetspot', 'FTP', 'VO2max'];
+    const zoneGrenzen = [
+      `<${Math.round(ftp*0.55)}W`,
+      `${Math.round(ftp*0.55)}–${Math.round(ftp*0.75)}W`,
+      `${Math.round(ftp*0.75)}–${Math.round(ftp*0.85)}W`,
+      `${Math.round(ftp*0.85)}–${Math.round(ftp*0.95)}W`,
+      `${Math.round(ftp*0.95)}–${Math.round(ftp*1.05)}W`,
+      `>${Math.round(ftp*1.05)}W`
+    ];
+    zonesList.innerHTML = zoneNamen.map((naam, i) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;">
+        <span style="font-size:11px;color:rgba(255,255,255,0.5);">Z${i+1} ${naam}</span>
+        <span style="font-size:11px;color:rgba(255,255,255,0.3);font-weight:600;">${zoneGrenzen[i]}</span>
+      </div>
+    `).join('');
   }
 }
 
@@ -1082,7 +1064,7 @@ function bevestigZones() {
   voerAIAnalyseUit(data);
 }
 
-function slaZonesOver() { voerAIAnalyseUit(window._stravaData); }
+function slaZonesOver() { voerAIAnalyseUit(window._preview || {}); }
 
 // ===== Handmatige FTP-correctie OP HET RAPPORT (teruggezet 9 juni) =====
 // De geblurde teaser en de hele paywall blijven ongemoeid. Een betalende
@@ -1151,25 +1133,30 @@ async function voerAIAnalyseUit(data) {
     }, 200);
     aiProg.style.width = `${10+(msgIdx+1)*18}%`;
   }, 2000);
-  try {
-    const res = await fetch('/api/analyse', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({stravaData: data})
-    });
+  // Geen AI-call meer vóór betaling — dat scheelt kosten en de analyse hoort
+  // achter de betaalmuur. Korte animatie, dan de paywall met deterministische
+  // preview-inzichten. De echte AI-analyse volgt pas ná betaling (op s5).
+  setTimeout(() => {
     clearInterval(msgInterval);
-    if (!res.ok) throw new Error('Analyse mislukt');
-    const analyse = await res.json();
     aiProg.style.width = '100%';
-    window._claudeAnalyse = analyse;
-    window._stravaData = data;
-    setTimeout(() => vulUnlockPagina(data, analyse), 500);
-  } catch(err) {
-    clearInterval(msgInterval);
-    window._stravaData = data;
-    window._claudeAnalyse = null;
-    vulUnlockPagina(data, null);
-  }
+    setTimeout(() => vulUnlockPagina(data, null), 400);
+  }, 5200);
+}
+
+// Deterministische paywall-inzichten (geen AI) op basis van de preview.
+function deterministischeInzichten(p) {
+  p = p || {};
+  const lekken = [];
+  if ((p.vo2maxSessies||0) === 0) lekken.push('Je deed 0 echte VO2max-sessies in 90 dagen — je motor krijgt geen groeiprikkel.');
+  if (p.herstelScore != null && p.herstelScore < 6) lekken.push('Je herstelbalans staat op ' + p.herstelScore + '/10 — je traint met te weinig herstel.');
+  if (p.urenPerWeek != null && p.urenPerWeek < 5) lekken.push('Je trainingsvolume is laag — met gerichtere uren ligt er progressie op de plank.');
+  if (p.gemIntensiteit && p.gemIntensiteit > 80) lekken.push('Je gemiddelde intensiteit is hoog — veel tijd in de vermoeiende middenzone.');
+  if (lekken.length === 0) lekken.push('Je traint consistent, maar de verdeling kan scherper — daar zit je grootste winst.');
+  return {
+    lekkenGevonden: Math.min(lekken.length, 3),
+    alertTekst: 'Je trainingsstructuur laat progressie liggen.',
+    diagnose: lekken.slice(0, 3)
+  };
 }
 
 function vulUnlockPagina(data, analyse) {
@@ -1195,6 +1182,7 @@ function vulUnlockPagina(data, analyse) {
       pvHerstel.textContent = data.herstelRatio || '—';
     }
   }
+  if (!analyse) analyse = deterministischeInzichten(data);
   const alertTxt = document.getElementById('unlockAlertTxt');
   if(alertTxt && analyse && analyse.lekkenGevonden) {
     const n = analyse.lekkenGevonden;
@@ -1577,44 +1565,64 @@ function vulUpsell(analyse, data) {
 window.addEventListener('DOMContentLoaded', function() {
   const params = new URLSearchParams(window.location.search);
   const error = params.get('error');
-  const dataParam = params.get('data');
   const betaald = params.get('betaald');
+  const ready = params.get('ready');
+  const pv = params.get('pv');
 
   if(error) { gaNaar('s8'); return; }
 
-  if(betaald === 'true' && dataParam) {
-    try {
-      const data = JSON.parse(decodeURIComponent(dataParam));
+  // ===== NA BETALING: rapport ophalen via de server-gate =====
+  if(betaald === 'true') {
+    let blob = '', pid = '';
+    try { blob = localStorage.getItem('pp_blob') || ''; pid = localStorage.getItem('pp_pid') || ''; } catch(e) {}
+    if(!blob || !pid) {
+      // Geen sessie meer in deze browser — het rapport is wél per e-mail verstuurd.
+      gaNaar('s7');
+      return;
+    }
+    gaNaar('s3b');
+    const aiProgVul = document.getElementById('aiProgVul');
+    const aiTekst = document.getElementById('aiTekst');
+    const aiSub = document.getElementById('aiSub');
+    if(aiTekst) aiTekst.textContent = 'Persoonlijk rapport genereren...';
+    if(aiSub) aiSub.textContent = 'Betaling bevestigd — rapport wordt opgehaald';
+    if(aiProgVul) aiProgVul.style.width = '20%';
+    fetch('/api/rapport', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ blob: blob, pid: pid })
+    })
+    .then(r => { if(!r.ok) throw new Error('niet vrijgegeven'); return r.json(); })
+    .then(res => {
+      const data = res.stravaData;
       window._stravaData = data;
-      gaNaar('s3b');
-      const aiProgVul = document.getElementById('aiProgVul');
-      const aiTekst = document.getElementById('aiTekst');
-      const aiSub = document.getElementById('aiSub');
-      if(aiTekst) aiTekst.textContent = 'Persoonlijk rapport genereren...';
-      if(aiSub) aiSub.textContent = 'Betaling bevestigd — rapport wordt geschreven';
-      if(aiProgVul) aiProgVul.style.width = '20%';
-      fetch('/api/analyse', {
+      if(aiProgVul) aiProgVul.style.width = '60%';
+      // AI-analyse één keer, ná betaling, met de echte data uit de gate.
+      return fetch('/api/analyse', {
         method: 'POST',
         headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({stravaData: data})
+        body: JSON.stringify({ stravaData: data })
       })
-      .then(r=>r.json())
+      .then(r => r.ok ? r.json() : null)
       .then(analyse => {
         if(aiProgVul) aiProgVul.style.width = '100%';
         window._claudeAnalyse = analyse;
+        try { localStorage.removeItem('pp_blob'); localStorage.removeItem('pp_pid'); } catch(e) {}
         setTimeout(() => toonRapport(data, analyse), 400);
-      })
-      .catch(() => toonRapport(data, null));
-    } catch(e) { gaNaar('s8'); }
+      });
+    })
+    .catch(() => { gaNaar('s7'); });
     return;
   }
 
   if(betaald === 'pending') { gaNaar('s7'); return; }
 
-  if(dataParam) {
+  // ===== NA STRAVA-KOPPELING: funnel met alleen de onschuldige preview =====
+  if(ready === '1' && pv) {
     try {
-      const data = JSON.parse(decodeURIComponent(dataParam));
-      startAnalyseAnimatie(data);
+      window._preview = JSON.parse(decodeURIComponent(pv));
+      try { window._blob = localStorage.getItem('pp_blob') || ''; } catch(e) { window._blob = ''; }
+      startAnalyseAnimatie(window._preview);
     } catch(e) { gaNaar('s8'); }
     return;
   }
