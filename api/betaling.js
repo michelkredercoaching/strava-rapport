@@ -2,7 +2,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-  const { stravaData } = req.body;
+  const { stravaData, email } = req.body;
   const slim = {
     naam: stravaData?.naam || 'Sporter',
     aantalActiviteiten: stravaData?.aantalActiviteiten || 0,
@@ -23,6 +23,7 @@ export default async function handler(req, res) {
     zonescore: stravaData?.zonescore || 'matig',
     gemIntensiteit: stravaData?.gemIntensiteit || null,
     herstelRatio: stravaData?.herstelRatio || null,
+    herstelScore: stravaData?.herstelScore ?? null,
     gemAfstandPerWeek: stravaData?.gemAfstandPerWeek || 0,
     langsteRit: stravaData?.langsteRit || 0,
   };
@@ -45,15 +46,19 @@ export default async function handler(req, res) {
         description: 'Strava Trainingsrapport — Michel Kreder Coaching',
         redirectUrl,
         webhookUrl: `https://rapport.michelkredercoaching.nl/api/betaling-webhook`,
-        // Compacte kerndata mee in de metadata, zodat de webhook (die alleen het
-        // payment-id krijgt en de redirect-data NIET ziet) jouw interne verkoopmail
-        // kan opbouwen. Mollie-metadata mag max ~1kB — dit past ruim.
+        // Compacte kerndata + e-mail mee in de metadata, zodat de webhook (die
+        // alleen het payment-id krijgt en de redirect-data NIET ziet) de PDF kan
+        // bouwen en de klant + interne mail kan versturen. Max ~1kB — past ruim.
         metadata: {
           naam: slim.naam,
+          email: (email || '').toString().slice(0, 120),
           ftp: slim.ftp,
           uren: slim.urenPerWeek,
           score: slim.prestatiescore,
           vo2max: slim.vo2maxSessies,
+          herstel: slim.herstelScore,
+          intensiteit: slim.gemIntensiteit,
+          ritten: slim.aantalActiviteiten,
           zones: Array.isArray(slim.zones) ? slim.zones.join('-') : ''
         }
       })
