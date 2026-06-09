@@ -648,6 +648,12 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
         <div class="prijs-groot">€19</div>
         <div class="prijs-label">eenmalig · geen verborgen kosten</div>
       </div>
+      <div style="margin-bottom:14px;">
+        <label for="klantEmail" style="display:block;font-size:11px;color:rgba(255,255,255,0.55);font-weight:600;letter-spacing:.3px;margin-bottom:7px;">Waar sturen we je rapport (PDF) naartoe?</label>
+        <input id="klantEmail" type="email" inputmode="email" autocomplete="email" placeholder="jouw@email.nl"
+          style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
+        <div id="emailFout" style="display:none;font-size:11px;color:#ff6b5e;margin-top:6px;line-height:1.4;"></div>
+      </div>
       <button class="betaal-btn" id="betaalKnop" onclick="startBetaling()">
         <span class="ideal-pill">iDEAL</span> Betaal nu en ontvang rapport
       </button>
@@ -852,24 +858,35 @@ function verbindStrava() {
 }
 
 async function startBetaling() {
+  const emailEl = document.getElementById('klantEmail');
+  const foutEl = document.getElementById('emailFout');
+  const email = emailEl ? emailEl.value.trim() : '';
+  const geldig = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  if (!geldig) {
+    if (foutEl) { foutEl.textContent = 'Vul een geldig e-mailadres in — daar sturen we je rapport (PDF) naartoe.'; foutEl.style.display = 'block'; }
+    if (emailEl) { emailEl.style.borderColor = '#ff6b5e'; emailEl.focus(); }
+    return;
+  }
+  if (foutEl) foutEl.style.display = 'none';
+  if (emailEl) emailEl.style.borderColor = 'rgba(255,255,255,0.15)';
   const knop = document.getElementById('betaalKnop');
-  if(knop) { knop.textContent = 'Betaling aanmaken...'; knop.disabled = true; }
+  if (knop) { knop.textContent = 'Betaling aanmaken...'; knop.disabled = true; }
   try {
     const res = await fetch('/api/betaling', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stravaData: window._stravaData || {} })
+      body: JSON.stringify({ stravaData: window._stravaData || {}, email })
     });
     const data = await res.json();
     if (data.checkoutUrl) {
       window.location.href = data.checkoutUrl;
     } else {
       alert('Er ging iets mis met de betaling. Probeer opnieuw.');
-      if(knop) { knop.textContent = 'Betaal nu en ontvang rapport'; knop.disabled = false; }
+      if (knop) { knop.textContent = 'Betaal nu en ontvang rapport'; knop.disabled = false; }
     }
-  } catch(err) {
+  } catch (err) {
     alert('Er ging iets mis. Probeer opnieuw.');
-    if(knop) { knop.textContent = 'Betaal nu en ontvang rapport'; knop.disabled = false; }
+    if (knop) { knop.textContent = 'Betaal nu en ontvang rapport'; knop.disabled = false; }
   }
 }
 
