@@ -298,11 +298,17 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     vo2maxSessies = fietsritten90.filter(rit => {
       const stream = streamMap[rit.id];
       if (stream?.watts?.data) {
-        const secsBovenFtp = stream.watts.data.filter(w => w && (w / ftp) > 1.05).length;
-        return secsBovenFtp > 180;
+        const data = stream.watts.data;
+        const totaal = data.length || 1;
+        const secsBovenFtp = data.filter(w => w && (w / ftp) > 1.05).length;
+        // Echte VO2max-sessie = geconcentreerd kwaliteitswerk, geen losse pieken:
+        // minstens 5 min boven 105% FTP ÉN minstens 12% van de rit boven 105%.
+        // Dit filtert duurritten met af en toe een klim/sprint eruit.
+        return secsBovenFtp >= 300 && (secsBovenFtp / totaal) >= 0.12;
       }
-      if (rit.max_watts) return (rit.max_watts / ftp) > 1.05 && rit.moving_time > 600;
-      return rit.average_watts && (rit.average_watts / ftp) > 0.96;
+      // Geen stream: alleen tellen als de rit duidelijk hard én lang genoeg was
+      if (rit.max_watts) return (rit.max_watts / ftp) > 1.15 && rit.moving_time > 1200;
+      return false;
     }).length;
 
   } else if (omslagpunt) {
@@ -337,10 +343,12 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     vo2maxSessies = fietsritten90.filter(rit => {
       const stream = streamMap[rit.id];
       if (stream?.heartrate?.data) {
-        const secsBovenOmslagpunt = stream.heartrate.data.filter(hr => hr && hr > omslagpunt).length;
-        return secsBovenOmslagpunt > 180;
+        const data = stream.heartrate.data;
+        const totaal = data.length || 1;
+        const secsBoven = data.filter(hr => hr && hr > omslagpunt).length;
+        return secsBoven >= 300 && (secsBoven / totaal) >= 0.12;
       }
-      return rit.max_heartrate && rit.max_heartrate > omslagpunt && rit.moving_time > 600;
+      return rit.max_heartrate && rit.max_heartrate > omslagpunt && rit.moving_time > 1200;
     }).length;
 
   } else {
