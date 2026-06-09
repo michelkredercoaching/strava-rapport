@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     });
     const betaling = await mr.json();
     if (betaling.status !== 'paid') {
-      return res.status(402).json({ error: 'Betaling niet bevestigd' });
+      return res.status(402).json({ error: 'Betaling niet bevestigd', status: betaling.status });
     }
 
     // 2) Ontsleutel de analyse.
