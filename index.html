@@ -1372,23 +1372,62 @@ function vulActieplan(analyse, data) {
 function vulIntervalBlokken(analyse, data) {
   const container = document.getElementById('intervalBlokken');
   if(!container) return;
-  let blokken = [];
-  if(analyse && analyse.trainingsblokken && analyse.trainingsblokken.length > 0) {
-    blokken = analyse.trainingsblokken;
+
+  const ftp  = data.ftp || 0;
+  const uren = data.urenPerWeek || 0;
+
+  // KNOP 1: vanaf hoeveel uur/week zie je iemand als 'meer trainend'
+  const meerVolume = uren >= 8;
+
+  // Watt-bereik op basis van FTP. Geen FTP? Dan tonen we % FTP.
+  const w = (lo, hi) => ftp
+    ? `${Math.round(ftp*lo)}–${Math.round(ftp*hi)}W`
+    : `${Math.round(lo*100)}–${Math.round(hi*100)}% FTP`;
+
+  const blokken = [];
+
+  // ===== BLOK 1: Duur-gerelateerde drempelintervallen — 1x per week =====
+  // 70-75% FTP. Volume bepaalt de lengte van de reps.
+  if (meerVolume) {
+    blokken.push({
+      titel: 'Duurkracht — Drempelblok · 1x per week',
+      omschrijving: `5x8 min op ${w(0.70,0.75)} · 4 min rust tussen sets`,
+      detail: 'Bouwt je aerobe motor en drempel zonder je leeg te trekken. Comfortabel zwaar — je kunt nog korte zinnen praten. Eén keer per week is genoeg: dit is je volume mét richting.'
+    });
   } else {
-    const uren = data.urenPerWeek || 0;
-    if(uren >= 10) {
-      blokken = [
-        {titel:'Duurtraining Z2 — Basisrit', omschrijving:'60–90 minuten, 143–181W, hartslag onder 142 bpm', detail:'Dit is je brood en boter. Rustig genoeg om mitochondriën te bouwen, niet zo zwaar dat je herstel nodig hebt. Hier bouw je je motor. 3x per week minimum.'},
-        {titel:'VO2max Intervallen', omschrijving:'4x4 minuten 268W, 3 minuten actief herstel, 15 min in/uit', detail:'Dit is je 20% toolkit. Maximale prikkel voor je aarstofopname. Voert zwaar, maar zwaarder zijn dan dit is 1x per week, nooit twee dagen achter elkaar als andere intensieve training.'}
-      ];
-    } else {
-      blokken = [
-        {titel:'Duurtraining Z2 — Basisrit', omschrijving:'45–60 minuten, hartslag onder 142 bpm', detail:'Rustig en consistent. Bouw je aeroob fundament zonder je te vermoeien. Minimaal 2x per week.'},
-        {titel:'VO2max Intervallen', omschrijving:'3x3 minuten boven FTP, 3 minuten herstel', detail:'Kort maar krachtig. Geeft je VO2max de prikkel die het nodig heeft. 1x per week is genoeg.'}
-      ];
-    }
+    blokken.push({
+      titel: 'Duurkracht — Drempelblok · 1x per week',
+      omschrijving: `5x5 min op ${w(0.70,0.75)} · 3 min rust tussen sets`,
+      detail: 'De efficiënte manier om je aerobe basis te bouwen als je weinig tijd hebt. Comfortabel zwaar, niet vol. Eén keer per week — vaker is voor de meesten niet haalbaar én niet nodig.'
+    });
   }
+
+  // ===== BLOK 2 + 3: VO2max — twee opties passend bij je volume =====
+  // Telkens 2-3 blokken van 8-12 min werk, 5 min rust tussen de blokken.
+  if (meerVolume) {
+    blokken.push({
+      titel: 'VO2max — Optie A · lange micro-intervallen',
+      omschrijving: `40-20 op ${w(1.30,1.40)} · 2–3 blokken van 8–12 min, 5 min rust`,
+      detail: '40 sec vol, 20 sec rustig dóórdraaien. Je hartslag blijft hoog over het hele blok — maximale prikkel voor je zuurstofopname. 1x per week, nooit twee intensieve dagen achter elkaar.'
+    });
+    blokken.push({
+      titel: 'VO2max — Optie B · langere reps',
+      omschrijving: `80-40 op ${w(1.10,1.20)} · 2–3 blokken van 8–12 min, 5 min rust`,
+      detail: 'Langere inspanningen op een lager percentage. Goed alternatief als de 40-20 te zwaar voelt, of puur voor variatie. Kies één van beide opties per week.'
+    });
+  } else {
+    blokken.push({
+      titel: 'VO2max — Optie A · korte micro-intervallen',
+      omschrijving: `20-10 op ${w(1.10,1.30)} · 2–3 blokken van 8–12 min, 5 min rust`,
+      detail: '20 sec aan, 10 sec uit. Toegankelijk maar effectief — je houdt het vol terwijl de prikkel hoog blijft. Ideaal als je minder fietst. 1x per week.'
+    });
+    blokken.push({
+      titel: 'VO2max — Optie B · pittiger',
+      omschrijving: `30-30 op ${w(1.20,1.50)} · 2–3 blokken van 8–12 min, 5 min rust`,
+      detail: '30 sec stevig, 30 sec rustig. Iets meer bite dan de 20-10. Kies één van beide opties per week voor afwisseling.'
+    });
+  }
+
   container.innerHTML = blokken.map(b=>`
     <div class="interval-card">
       <div class="interval-type">${b.titel}</div>
@@ -1404,6 +1443,24 @@ function vulUpsell(analyse, data) {
   const sub = document.getElementById('upsellSubNew');
   const prijsBlok = document.getElementById('upsellPrijsNew');
   const btn = document.getElementById('upsellBtnNew');
+
+  // Hang de belangrijkste sporter-data aan de checkout-URL, zodat je bij
+  // aankoop direct de FTP, zones en volume binnenkrijgt om het schema op te bouwen.
+  function metDataParams(url) {
+    if (!url) return url;
+    const p = new URLSearchParams();
+    if (data.naam)            p.set('atleet', data.naam);
+    if (data.ftp)             p.set('ftp', data.ftp);
+    if (data.urenPerWeek)     p.set('uren', data.urenPerWeek);
+    if (data.prestatiescore)  p.set('score', data.prestatiescore);
+    if (data.maxHf)           p.set('maxhf', data.maxHf);
+    if (Array.isArray(data.zones) && data.zones.length) p.set('zones', data.zones.join('-'));
+    if (data.vo2maxSessies != null) p.set('vo2max', data.vo2maxSessies);
+    // WooCommerce-URL heeft al ?add-to-cart=... dus we voegen toe met &
+    const sep = url.includes('?') ? '&' : '?';
+    return url + sep + p.toString();
+  }
+
   if(analyse && analyse.upsell) {
     const u = analyse.upsell;
     if(badge) { badge.textContent = u.niveau+' · '+u.weken+' weken'; badge.style.display='inline-block'; }
@@ -1413,7 +1470,10 @@ function vulUpsell(analyse, data) {
       prijsBlok.style.display = 'flex';
       prijsBlok.innerHTML = `<span class="upsell-prijs-n">€${u.prijs}</span><span class="upsell-prijs-lbl">eenmalig · direct starten</span>`;
     }
-    if(btn) { btn.textContent = u.ctaTekst||'Start mijn trainingsschema →'; btn.href = u.url||'https://michelkredercoaching.nl/trainingsschemas'; }
+    if(btn) { btn.textContent = u.ctaTekst||'Start mijn trainingsschema →'; btn.href = metDataParams(u.url||'https://michelkredercoaching.nl/trainingsschemas'); }
+  } else if(btn) {
+    // Ook zonder AI-analyse de data meesturen
+    btn.href = metDataParams(btn.href);
   }
 }
 
