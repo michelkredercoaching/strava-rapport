@@ -1,3 +1,11 @@
+import crypto from 'node:crypto';
+
+// ===== Versleuteling (server-side gate) =====
+// De volledige analyse (incl. FTP en zones) gaat versleuteld naar de browser,
+// zodat niemand 'm kan lezen vóór een bevestigde betaling. Sleutel = GATE_SECRET.
+function _key(){ return crypto.createHash('sha256').update(String(process.env.GATE_SECRET||'')).digest(); }
+function seal(obj){ const iv=crypto.randomBytes(12); const ci=crypto.createCipheriv('aes-256-gcm',_key(),iv); const e=Buffer.concat([ci.update(JSON.stringify(obj),'utf8'),ci.final()]); const t=ci.getAuthTag(); return Buffer.concat([iv,t,e]).toString('base64url'); }
+
 export default async function handler(req, res) {
   const { code, error } = req.query;
 
@@ -74,8 +82,28 @@ export default async function handler(req, res) {
 
     const stats = berekenStats(activiteiten, alleActiviteiten, athlete, streamMap);
 
-    const dataParam = encodeURIComponent(JSON.stringify(stats));
-    res.redirect(`/?data=${dataParam}`);
+    // ===== GATE: versleutel de analyse, zet 'm in browseropslag, geef alleen
+    // een onschuldige preview mee in de URL. Geen FTP/zones in de browser. =====
+    const blob = seal(stats);
+    const preview = {
+      naam: stats.naam,
+      aantalActiviteiten: stats.aantalActiviteiten,
+      urenPerWeek: stats.urenPerWeek,
+      vo2maxSessies: stats.vo2maxSessies,
+      gemIntensiteit: stats.gemIntensiteit,
+      herstelScore: stats.herstelScore,
+      herstelLabel: stats.herstelLabel,
+      heeftVermogensmeter: stats.heeftVermogensmeter
+    };
+    const pvParam = encodeURIComponent(JSON.stringify(preview));
+    const html = `<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Even geduld…</title></head>` +
+      `<body style="background:#0d0d0d;color:#fafafa;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0">` +
+      `<p style="opacity:.5;font-size:14px">Analyse laden…</p>` +
+      `<script>try{localStorage.setItem('pp_blob',${JSON.stringify(blob)});}catch(e){}` +
+      `location.replace(${JSON.stringify('/?ready=1&pv=' + pvParam)});</script>` +
+      `</body></html>`;
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(200).send(html);
 
   } catch (err) {
     console.error('Strava callback error:', err);
