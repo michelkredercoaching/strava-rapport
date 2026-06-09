@@ -110,6 +110,8 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       maxGapDagen: 90,
       gemAfstandPerWeek: 0,
       langsteRit: 0,
+      herstelScore: null,
+      herstelLabel: null,
     };
   }
 
@@ -295,20 +297,18 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       }
     });
 
+    // VO2max-sessie = een ECHT aaneengesloten hard blok, geen losse pieken.
+    // Eis: beste 3-min vermogen >= 108% FTP (een echte interval-inspanning),
+    // én minstens ~4 min cumulatief boven 105% FTP. De losse max_watts-fallback
+    // is geschrapt: bij geschat vermogen spuugt elke afdaling/sprint een piek
+    // uit, waardoor bijna elke duurrit onterecht als VO2max-sessie telde.
     vo2maxSessies = fietsritten90.filter(rit => {
-      const stream = streamMap[rit.id];
-      if (stream?.watts?.data) {
-        const data = stream.watts.data;
-        const totaal = data.length || 1;
-        const secsBovenFtp = data.filter(w => w && (w / ftp) > 1.05).length;
-        // Echte VO2max-sessie = geconcentreerd kwaliteitswerk, geen losse pieken:
-        // minstens 5 min boven 105% FTP ÉN minstens 12% van de rit boven 105%.
-        // Dit filtert duurritten met af en toe een klim/sprint eruit.
-        return secsBovenFtp >= 300 && (secsBovenFtp / totaal) >= 0.12;
-      }
-      // Geen stream: alleen tellen als de rit duidelijk hard én lang genoeg was
-      if (rit.max_watts) return (rit.max_watts / ftp) > 1.15 && rit.moving_time > 1200;
-      return false;
+      const wattsData = streamMap[rit.id]?.watts?.data;
+      if (!wattsData || wattsData.length < 180) return false;
+      const beste3min = besteRollingGemiddelde(wattsData, 180);
+      if (!beste3min || (beste3min / ftp) < 1.08) return false;
+      const secsBoven = wattsData.filter(w => w && (w / ftp) > 1.05).length;
+      return secsBoven >= 240;
     }).length;
 
   } else if (omslagpunt) {
@@ -340,15 +340,14 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       }
     });
 
+    // Zelfde principe op hartslag: een aaneengesloten 3-min blok boven omslagpunt.
     vo2maxSessies = fietsritten90.filter(rit => {
-      const stream = streamMap[rit.id];
-      if (stream?.heartrate?.data) {
-        const data = stream.heartrate.data;
-        const totaal = data.length || 1;
-        const secsBoven = data.filter(hr => hr && hr > omslagpunt).length;
-        return secsBoven >= 300 && (secsBoven / totaal) >= 0.12;
-      }
-      return rit.max_heartrate && rit.max_heartrate > omslagpunt && rit.moving_time > 1200;
+      const hrData = streamMap[rit.id]?.heartrate?.data;
+      if (!hrData || hrData.length < 180) return false;
+      const beste3minHr = besteRollingGemiddelde(hrData, 180);
+      if (!beste3minHr || beste3minHr < omslagpunt) return false;
+      const secsBoven = hrData.filter(hr => hr && hr > omslagpunt).length;
+      return secsBoven >= 240;
     }).length;
 
   } else {
@@ -361,14 +360,49 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   const diff = 100 - zonesPct.reduce((s,v)=>s+v,0);
   if (diff !== 0) zonesPct[0] += diff;
 
-  // ===== HERSTELRATIO =====
-  const zwaarRitten = fietsritten90.filter(a => {
-    if (heeftVermogensmeter && ftp && a.average_watts) return (a.average_watts / ftp) > 0.86;
-    if (omslagpunt && a.average_heartrate) return a.average_heartrate > omslagpunt * 0.95;
+  // ===== ZWARE RITTEN (realistisch) + HERSTELBALANS-SCORE 1-10 =====
+  // Een rit telt als "zwaar/kwaliteit" als het gemiddelde echt richting tempo
+  // of hoger zit (>= 76% FTP), OF als er een gestructureerd hard 3-min blok in
+  // zit (stream). NIET pas boven 86% FTP-gemiddelde — dat haalt vrijwel niemand
+  // over een hele rit (warming-up, uitrollen, afdalingen drukken het gemiddelde),
+  // waardoor de teller altijd 0 was en de herstelmeter leeg bleef.
+  const zwaarRitten = fietsritten90.filter(rit => {
+    if (heeftVermogensmeter && ftp && rit.average_watts) {
+      if ((rit.average_watts / ftp) >= 0.76) return true;
+      const wd = streamMap[rit.id]?.watts?.data;
+      if (wd) {
+        const b3 = besteRollingGemiddelde(wd, 180);
+        if (b3 && (b3 / ftp) >= 1.00) return true; // hard 3-min blok = kwaliteitssessie
+      }
+      return false;
+    }
+    if (omslagpunt && rit.average_heartrate) return rit.average_heartrate >= omslagpunt * 0.90;
     return false;
   }).length;
+  const rustigeRitten = Math.max(0, fietsritten90.length - zwaarRitten);
+  const hardAandeel = fietsritten90.length > 0 ? (zwaarRitten / fietsritten90.length) * 100 : 0;
+
+  // Herstelbalans 1-10: hoe goed je intensief/rustig-verdeling én regelmaat je
+  // herstel ondersteunen. Te veel harde dagen = je graaft een gat (lager).
+  // Grote gaten tussen ritten = geen regelmaat (lager). Indicatie op basis van
+  // belastingverdeling — geen pseudo-medische claim.
+  let herstelScore = 10;
+  if (hardAandeel > 45) herstelScore -= 5;
+  else if (hardAandeel > 35) herstelScore -= 3;
+  else if (hardAandeel > 28) herstelScore -= 1;
+  if (maxGapDagen > 21) herstelScore -= 3;
+  else if (maxGapDagen > 14) herstelScore -= 2;
+  else if (maxGapDagen > 10) herstelScore -= 1;
+  herstelScore = Math.max(1, Math.min(10, herstelScore));
+
+  const herstelLabel = herstelScore >= 8 ? 'sterk hersteld'
+    : herstelScore >= 6 ? 'in balans'
+    : herstelScore >= 4 ? 'let op'
+    : 'overbelastingsrisico';
+
+  // Oude ratio-string blijft beschikbaar voor backwards-compat (niet meer getoond)
   const herstelRatioGetal = zwaarRitten > 0
-    ? '1:' + Math.round((fietsritten90.length - zwaarRitten) / zwaarRitten)
+    ? '1:' + Math.round(rustigeRitten / zwaarRitten)
     : null;
 
   // ===== BEOORDELINGEN =====
@@ -430,6 +464,9 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     gemHr,
     gemIntensiteit,
     herstelRatio: herstelRatioGetal,
+    herstelScore,
+    herstelLabel,
+    zwaarRitten,
     maxGapDagen,
     gemAfstandPerWeek,
     langsteRit,
