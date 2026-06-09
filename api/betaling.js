@@ -2,9 +2,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
-
   const { stravaData } = req.body;
-
   const slim = {
     naam: stravaData?.naam || 'Sporter',
     aantalActiviteiten: stravaData?.aantalActiviteiten || 0,
@@ -28,16 +26,13 @@ export default async function handler(req, res) {
     gemAfstandPerWeek: stravaData?.gemAfstandPerWeek || 0,
     langsteRit: stravaData?.langsteRit || 0,
   };
-
   const dataParam = encodeURIComponent(JSON.stringify(slim));
   // Mollie vervangt {id} NIET altijd — gebruik daarom de webhookUrl om payment ID
   // te weten, en stuur data gewoon direct mee in redirectUrl zonder payment ID check.
   // Na redirect checkt betaling-callback via query param 'sid' het payment ID.
   // Mollie stuurt het payment ID mee als 'id' query param in de redirectUrl als je
   // {id} gebruikt — dit werkt WEL in de redirectUrl maar je moet 'id' lezen, niet 'sid'.
-
   const redirectUrl = `https://rapport.michelkredercoaching.nl/api/betaling-callback?d=${dataParam}`;
-
   try {
     const mollieRes = await fetch('https://api.mollie.com/v2/payments', {
       method: 'POST',
@@ -50,13 +45,21 @@ export default async function handler(req, res) {
         description: 'Strava Trainingsrapport — Michel Kreder Coaching',
         redirectUrl,
         webhookUrl: `https://rapport.michelkredercoaching.nl/api/betaling-webhook`,
-        metadata: { naam: slim.naam }
+        // Compacte kerndata mee in de metadata, zodat de webhook (die alleen het
+        // payment-id krijgt en de redirect-data NIET ziet) jouw interne verkoopmail
+        // kan opbouwen. Mollie-metadata mag max ~1kB — dit past ruim.
+        metadata: {
+          naam: slim.naam,
+          ftp: slim.ftp,
+          uren: slim.urenPerWeek,
+          score: slim.prestatiescore,
+          vo2max: slim.vo2maxSessies,
+          zones: Array.isArray(slim.zones) ? slim.zones.join('-') : ''
+        }
       })
     });
-
     const betaling = await mollieRes.json();
     console.log('Mollie response:', JSON.stringify(betaling).substring(0, 200));
-
     if (betaling._links?.checkout?.href) {
       return res.status(200).json({ checkoutUrl: betaling._links.checkout.href });
     }
