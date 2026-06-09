@@ -184,6 +184,8 @@ SCHEMA AANBEVELING: ${schemaAanbeveling.niveau} ${schemaAanbeveling.weken} weken
 
 ${ftpHandmatig ? `BELANGRIJK: De sporter heeft FTP handmatig ingevoerd als ${ftp}W. De zone percentages in de data zijn mogelijk berekend met een andere FTP. Gebruik de handmatige FTP als basis voor jouw analyse en wattage berekeningen. De trainingspatronen (frequentie, volume, herstel) zijn wel accuraat.` : ''}
 
+BELANGRIJK — INTERVALBLOKKEN: De concrete intervalblokken (exacte wattages, interval-structuur zoals 5x5 min, 40-20, 20-10 enz.) worden APART en automatisch uit de FTP berekend en onder dit rapport getoond. Verzin die NIET zelf. Houd het actieplan op gedrag, structuur, frequentie en zoneverdeling — bijvoorbeeld "breng je lage intensiteit (Z1+Z2) naar 80%", "schrap het grijze gebied (Tempo)", "doe 1x per week een VO2max-blok", "houd je duurritten onder ${ftp ? Math.round(ftp * 0.75) + 'W' : '75% FTP'}". Verwijs voor de exacte intervallen naar de blokken onder het rapport in plaats van eigen wattages te noemen.
+
 Schrijf het rapport nu. Gebruik naam. Wees specifiek met cijfers. Klink als Michel.
 
 Geef ALLEEN dit JSON terug, geen uitleg, geen markdown:
@@ -199,21 +201,9 @@ Geef ALLEEN dit JSON terug, geen uitleg, geen markdown:
   "kritiekeBevinding": "<HTML string, meest kritieke bevinding met strong tags>",
   "persoonlijkeAnalyse": "<3-4 zinnen in Michel's stem. Naam gebruiken. Wat goed gaat. Wat fout gaat. Koppel aan 80/20 en structuur. Eindig met wat er verandert als hij het aanpakt.>",
   "actieplan": [
-    "<stap 1: concreet, specifiek, met cijfers en zone-namen>",
+    "<stap 1: concreet gedrag/structuur, met zone-namen en cijfers — GEEN verzonnen interval-wattages>",
     "<stap 2>",
     "<stap 3>"
-  ],
-  "trainingsblokken": [
-    {
-      "titel": "<zone naam — bijv. 'Duurtraining Z2' of 'D1 Basisrit' of 'VO2max Interval'>",
-      "omschrijving": "<concreet format>",
-      "detail": "<waarom + hoe uitvoeren, koppel aan filosofie>"
-    },
-    {
-      "titel": "<tweede blok>",
-      "omschrijving": "<format>",
-      "detail": "<uitleg>"
-    }
   ],
   "upsell": {
     "niveau": "${schemaAanbeveling.niveau}",
