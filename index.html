@@ -884,11 +884,11 @@ async function startBetaling() {
       try { localStorage.setItem('pp_blob', window._blob || ''); localStorage.setItem('pp_pid', data.pid || ''); } catch(e) {}
       window.location.href = data.checkoutUrl;
     } else {
-      alert('Er ging iets mis met de betaling. Probeer opnieuw.');
+      alert('DEBUG betaling — blob-lengte: ' + (window._blob||'').length + ' | antwoord: ' + JSON.stringify(data));
       if (knop) { knop.textContent = 'Betaal nu en ontvang rapport'; knop.disabled = false; }
     }
   } catch (err) {
-    alert('Er ging iets mis. Probeer opnieuw.');
+    alert('DEBUG betaling-catch: ' + (err && err.message ? err.message : err));
     if (knop) { knop.textContent = 'Betaal nu en ontvang rapport'; knop.disabled = false; }
   }
 }
