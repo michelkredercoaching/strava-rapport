@@ -27,28 +27,28 @@ async function bouwRapportPdf(meta) {
   const ZONE_NAAM6=['Herstel','Duur','Tempo','Sweetspot','FTP','VO2max'];
   const ZONE_NAAM5=['Herstel','Duur','Tempo','Drempel','VO2max'];
   const doc = await PDFDocument.create();
-  const page = doc.addPage([595.28,841.89]);
-  const { width, height } = page.getSize();
+  const PW=595.28, PH=841.89, M=40, R=PW-M;
   const reg = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
 
-  const M=40, R=width-M; let y=height-M;
-  page.drawRectangle({ x:0, y:0, width, height, color:BG });
+  let page, y;
+  const nieuwePagina = () => { page = doc.addPage([PW,PH]); page.drawRectangle({x:0,y:0,width:PW,height:PH,color:BG}); y = PH - M; };
+  nieuwePagina();
+  const ensure = (nodig) => { if (y - nodig < 46) nieuwePagina(); };
+
+  const txt=(s,x,yy,{font=reg,size=10,color=WIT,align='left'}={})=>{ s=String(s); let xx=x; if(align==='right')xx=x-font.widthOfTextAtSize(s,size); if(align==='center')xx=x-font.widthOfTextAtSize(s,size)/2; page.drawText(s,{x:xx,y:yy,size,font,color}); };
+  const card=(x,yy,w,h,{fill=CARD,border=BORDER}={})=>page.drawRectangle({x,y:yy,width:w,height:h,color:fill,borderColor:border,borderWidth:1});
+  const wrapTxt=(s,font,size,maxW)=>{ const words=s.split(' '),lines=[]; let line=''; for(const w of words){ const t=line?line+' '+w:w; if(font.widthOfTextAtSize(t,size)>maxW){lines.push(line);line=w;}else line=t;} if(line)lines.push(line); return lines; };
 
   const naam=meta.naam||'Sporter';
   const ftp=parseInt(meta.ftp)||null;
   const score=meta.score!=null&&meta.score!==''?meta.score:null;
   const uren=meta.uren!=null&&meta.uren!==''?Number(meta.uren):null;
   const vo2=meta.vo2max!=null&&meta.vo2max!==''?Number(meta.vo2max):null;
-  const herstel=meta.herstel!=null&&meta.herstel!==''?meta.herstel:null;
-  const intens=meta.intensiteit!=null&&meta.intensiteit!==''?meta.intensiteit:null;
   const ritten=meta.ritten!=null&&meta.ritten!==''?Number(meta.ritten):null;
   const zones=(meta.zones||'').split('-').map(n=>parseInt(n)||0).filter((_,i)=>i<6);
 
-  const txt=(s,x,yy,{font=reg,size=10,color=WIT,align='left'}={})=>{ s=String(s); let xx=x; if(align==='right')xx=x-font.widthOfTextAtSize(s,size); if(align==='center')xx=x-font.widthOfTextAtSize(s,size)/2; page.drawText(s,{x:xx,y:yy,size,font,color}); };
-  const card=(x,yy,w,h,{fill=CARD,border=BORDER}={})=>page.drawRectangle({x,y:yy,width:w,height:h,color:fill,borderColor:border,borderWidth:1});
-
-  // ---------- HEADER ----------
+  // HEADER
   if (LOGO_B64 && LOGO_B64.length>20) { try { const logo=await doc.embedPng(Buffer.from(LOGO_B64,"base64")); const lw=120,lh=lw*(73/324); page.drawImage(logo,{x:M,y:y-lh+2,width:lw,height:lh}); } catch(e){ txt('MICHEL KREDER COACHING',M,y-10,{font:bold,size:12}); } }
   else txt('MICHEL KREDER COACHING',M,y-10,{font:bold,size:12});
   const datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
@@ -56,81 +56,58 @@ async function bouwRapportPdf(meta) {
   txt(`Analyse \u00b7 laatste 90 dagen${ritten?` \u00b7 ${ritten} ritten`:''}`,R,y-14,{font:reg,size:8,color:DIM,align:'right'});
   txt(datum,R,y-26,{font:reg,size:8,color:DIM,align:'right'});
   y-=46;
-
-  // ---------- TITEL + SCORE ----------
+  // TITEL + SCORE
   txt('Power Profile\u2122',M,y-26,{font:bold,size:30});
   txt('Persoonlijk vermogensprofiel voor '+naam,M,y-42,{font:reg,size:10,color:MUT});
-  // score badge rechts
   if (score!=null){ txt(String(score),R,y-30,{font:bold,size:46,color:ORANJE,align:'right'}); txt('TRAINING SCORE',R,y-44,{font:bold,size:7,color:DIM,align:'right'}); }
   y-=58;
-  // tagline
   txt('INZICHT.',M,y,{font:bold,size:10,color:WIT});
   txt(' TRAIN GERICHT.',M+bold.widthOfTextAtSize('INZICHT.',10),y,{font:bold,size:10,color:ORANJE});
   txt(' WORD STERKER.',M+bold.widthOfTextAtSize('INZICHT. TRAIN GERICHT.',10),y,{font:bold,size:10,color:WIT});
   y-=16; page.drawLine({start:{x:M,y},end:{x:R,y},thickness:1,color:BORDER}); y-=18;
 
-  // ---------- ZONE CARD ----------
+  // ZONE CARD
   const namen=zones.length===5?ZONE_NAAM5:ZONE_NAAM6;
-  const zoneRows=namen.length;
-  const zoneCardH=34+zoneRows*21+12;
+  const zoneCardH=34+namen.length*21+12;
+  ensure(zoneCardH);
   card(M,y-zoneCardH,R-M,zoneCardH);
   txt('ZONEDISTRIBUTIE \u00b7 WAAR TRAINDE JIJ?',M+16,y-20,{font:bold,size:9,color:WIT});
-  // badge-logica (1:1 met de webversie)
   const z=(i)=>zones[i]||0;
   const laagTot=z(0)+z(1), grijsTot=z(2)+z(3), kwalTot=z(4)+z(5), polen=laagTot+kwalTot;
   const kwalAandeel=polen>0?(kwalTot/polen)*100:0;
-  const badgeVoor=(nm)=>{
-    if(nm==='FTP'||nm==='VO2max'||nm==='Drempel'){ if(kwalAandeel>=13&&kwalAandeel<=30)return 'goed'; return kwalAandeel<13?'laag':'hoog'; }
-    if(nm==='Herstel'||nm==='Duur'){ if(laagTot>=75)return 'goed'; if(laagTot>=58)return 'ok'; return 'laag'; }
-    if(nm==='Tempo'||nm==='Sweetspot')return grijsTot>12?'hoog':'ok';
-    return 'ok';
-  };
+  const badgeVoor=(nm)=>{ if(nm==='FTP'||nm==='VO2max'||nm==='Drempel'){ if(kwalAandeel>=13&&kwalAandeel<=30)return 'goed'; return kwalAandeel<13?'laag':'hoog'; } if(nm==='Herstel'||nm==='Duur'){ if(laagTot>=75)return 'goed'; if(laagTot>=58)return 'ok'; return 'laag'; } if(nm==='Tempo'||nm==='Sweetspot')return grijsTot>12?'hoog':'ok'; return 'ok'; };
   const badgeTekst=(b)=>b==='goed'?'GOED':b==='laag'?'LAAG':b==='hoog'?'TE HOOG':'OK';
   const badgeKleur=(b)=>b==='goed'?GROEN:(b==='laag'||b==='hoog')?ORANJE:DIM;
   const grenzen=(i)=>{ if(!ftp)return ''; if(i===0)return `< ${Math.round(ftp*0.55)}W`; if(i===namen.length-1)return `> ${Math.round(ftp*1.05)}W`; const p=[[0,0.55],[0.55,0.75],[0.75,0.85],[0.85,0.95],[0.95,1.05]]; const [lo,hi]=p[i]; return `${Math.round(ftp*lo)}\u2013${Math.round(ftp*hi)}W`; };
-  const maxPct=Math.max(...zones,1);
-  const barX=M+150, barW=R-barX-110, rowTop=y-38;
-  namen.forEach((nm,i)=>{
-    const cy=rowTop-i*21;
-    txt(nm,M+16,cy,{font:bold,size:9.5,color:WIT});
-    txt(grenzen(i),M+86,cy,{font:reg,size:7.5,color:DIM});
-    page.drawRectangle({x:barX,y:cy-2,width:barW,height:7,color:TRACK});
-    const fw=Math.max(barW*(z(i)/Math.max(maxPct,1)),z(i)>0?3:0);
-    if(fw>0)page.drawRectangle({x:barX,y:cy-2,width:fw,height:7,color:c(ZONE_KLEUR[i]||'#6b7280')});
-    txt(`${z(i)}%`,barX+barW+26,cy,{font:bold,size:9,color:MUT,align:'right'});
-    const b=badgeVoor(nm); const bt=badgeTekst(b);
-    const bx=R-58; page.drawRectangle({x:bx,y:cy-3,width:54,height:13,color:CARD,borderColor:badgeKleur(b),borderWidth:0.8});
-    txt(bt,bx+27,cy,{font:bold,size:7,color:badgeKleur(b),align:'center'});
-  });
+  const maxPct=Math.max(...zones,1), barX=M+150, barW=R-barX-110;
+  namen.forEach((nm,i)=>{ const cy=y-38-i*21; txt(nm,M+16,cy,{font:bold,size:9.5,color:WIT}); txt(grenzen(i),M+86,cy,{font:reg,size:7.5,color:DIM}); page.drawRectangle({x:barX,y:cy-2,width:barW,height:7,color:TRACK}); const fw=Math.max(barW*(z(i)/Math.max(maxPct,1)),z(i)>0?3:0); if(fw>0)page.drawRectangle({x:barX,y:cy-2,width:fw,height:7,color:c(ZONE_KLEUR[i]||'#6b7280')}); txt(`${z(i)}%`,barX+barW+26,cy,{font:bold,size:9,color:MUT,align:'right'}); const b=badgeVoor(nm); const bx=R-58; page.drawRectangle({x:bx,y:cy-3,width:54,height:13,color:CARD,borderColor:badgeKleur(b),borderWidth:0.8}); txt(badgeTekst(b),bx+27,cy,{font:bold,size:7,color:badgeKleur(b),align:'center'}); });
   y-=zoneCardH+14;
 
-  // ---------- FTP CARD ----------
-  const ftpH=92;
+  // FTP CARD
+  const ftpH=92; ensure(ftpH);
   card(M,y-ftpH,R-M,ftpH,{fill:CARD2,border:BORDERO});
   txt('FTP DETECTOR\u2122',M+16,y-20,{font:bold,size:9,color:ORANJE});
   txt(ftp?String(ftp):'\u2014',M+16,y-58,{font:bold,size:40,color:WIT});
   if(ftp)txt('WATT',M+16+bold.widthOfTextAtSize(String(ftp),40)+8,y-58,{font:bold,size:13,color:DIM});
-  // betrouwbaarheid
   let betr='hoog',betrK=GROEN; if(ritten!=null){ if(ritten>=15){betr='hoog';betrK=GROEN;} else if(ritten>=8){betr='gemiddeld';betrK=ORANJE;} else {betr='laag';betrK=ROOD;} }
   txt(`Berekend uit ${ritten!=null?ritten:'\u2014'} ritten`,M+16,y-76,{font:reg,size:8.5,color:MUT});
   txt('Betrouwbaarheid: ',R-16-bold.widthOfTextAtSize(betr,8.5),y-20,{font:reg,size:8.5,color:MUT,align:'right'});
   txt(betr,R-16,y-20,{font:bold,size:8.5,color:betrK,align:'right'});
-  // pill
   const pillW=128; page.drawRectangle({x:R-16-pillW,y:y-72,width:pillW,height:20,color:ORANJE});
   txt('GEEN FTP-TEST NODIG',R-16-pillW/2,y-66,{font:bold,size:8,color:WIT,align:'center'});
   y-=ftpH+14;
 
-  // ---------- KRITIEKE BEVINDING (alleen bij 0 VO2max) ----------
+  // KRITIEKE BEVINDING
   if (vo2!=null && Number(vo2)===0) {
     const lines=wrapTxt('In 90 dagen deed je 0 VO2max-sessies. Dit is meestal de hoofdoorzaak van een prestatieplateau \u2014 je motor krijgt geen groeiprikkel.',reg,9.5,R-M-32);
-    const kh=24+lines.length*13+10;
+    const kh=24+lines.length*13+10; ensure(kh);
     card(M,y-kh,R-M,kh,{fill:c('#1c1010'),border:c('#5a2424')});
     txt('KRITIEKE BEVINDING',M+16,y-18,{font:bold,size:8,color:ROOD});
     lines.forEach((ln,idx)=>txt(ln,M+16,y-32-idx*13,{font:reg,size:9.5,color:c('#d8b0b0')}));
     y-=kh+14;
   }
 
-  // ---------- ACTIEPLAN ----------
+  // ACTIEPLAN
   const w110=ftp?Math.round(ftp*1.1):null;
   const acties=[
     'Train minimaal 3x per week \u2014 consistent, elke week, geen uitzonderingen.',
@@ -139,28 +116,49 @@ async function bouwRapportPdf(meta) {
   ];
   const actLines=acties.map(a=>wrapTxt(a,reg,9.5,R-M-58));
   const actH=24+actLines.reduce((s,l)=>s+Math.max(l.length*12,12)+8,0)+6;
+  ensure(actH);
   card(M,y-actH,R-M,actH);
   txt('JOUW ACTIEPLAN',M+16,y-18,{font:bold,size:9,color:WIT});
   let ay=y-36;
-  actLines.forEach((lines,i)=>{
-    page.drawCircle({x:M+24,y:ay-3,size:9,color:ORANJE});
-    txt(String(i+1),M+24,ay-6,{font:bold,size:8,color:WIT,align:'center'});
-    lines.forEach((ln,idx)=>txt(ln,M+44,ay-idx*12,{font:reg,size:9.5,color:MUT}));
-    ay-=Math.max(lines.length*12,12)+8;
-  });
+  actLines.forEach((lines,i)=>{ page.drawCircle({x:M+24,y:ay-3,size:9,color:ORANJE}); txt(String(i+1),M+24,ay-6,{font:bold,size:8,color:WIT,align:'center'}); lines.forEach((ln,idx)=>txt(ln,M+44,ay-idx*12,{font:reg,size:9.5,color:MUT})); ay-=Math.max(lines.length*12,12)+8; });
   y-=actH+14;
 
-  // ---------- CTA ----------
-  const ctaH=58;
+  // ===== INTERVALBLOKKEN (zelfde logica als de webversie) =====
+  const meerVolume = (uren||0) >= 8;
+  const wB=(lo,hi)=> ftp ? `${Math.round(ftp*lo)}\u2013${Math.round(ftp*hi)}W` : `${Math.round(lo*100)}\u2013${Math.round(hi*100)}% FTP`;
+  const blokken=[];
+  if (meerVolume){
+    blokken.push({type:'DUURKRACHT \u2014 DREMPELBLOK \u00b7 1X PER WEEK', oms:`5x8 min op ${wB(0.70,0.75)} \u00b7 4 min rust tussen sets`, det:'Bouwt je aerobe motor en drempel zonder je leeg te trekken. Comfortabel zwaar \u2014 je kunt nog korte zinnen praten. \u00c9\u00e9n keer per week is genoeg.'});
+    blokken.push({type:'VO2MAX \u2014 OPTIE A \u00b7 LANGE MICRO-INTERVALLEN', oms:`40-20 op ${wB(1.30,1.40)} \u00b7 2\u20133 blokken van 8\u201312 min, 5 min rust`, det:'40 sec vol, 20 sec rustig d\u00f3\u00f3rdraaien. Je hartslag blijft hoog over het hele blok \u2014 maximale prikkel voor je zuurstofopname. 1x per week.'});
+    blokken.push({type:'VO2MAX \u2014 OPTIE B \u00b7 LANGERE REPS', oms:`80-40 op ${wB(1.10,1.20)} \u00b7 2\u20133 blokken van 8\u201312 min, 5 min rust`, det:'Langere inspanningen op een lager percentage. Goed alternatief als de 40-20 te zwaar voelt, of voor variatie. Kies \u00e9\u00e9n optie per week.'});
+  } else {
+    blokken.push({type:'DUURKRACHT \u2014 DREMPELBLOK \u00b7 1X PER WEEK', oms:`5x5 min op ${wB(0.70,0.75)} \u00b7 3 min rust tussen sets`, det:'De effici\u00ebnte manier om je aerobe basis te bouwen als je weinig tijd hebt. Comfortabel zwaar, niet vol. \u00c9\u00e9n keer per week \u2014 vaker is niet nodig.'});
+    blokken.push({type:'VO2MAX \u2014 OPTIE A \u00b7 KORTE MICRO-INTERVALLEN', oms:`20-10 op ${wB(1.10,1.30)} \u00b7 2\u20133 blokken van 8\u201312 min, 5 min rust`, det:'20 sec aan, 10 sec uit. Toegankelijk maar effectief \u2014 je houdt het vol terwijl de prikkel hoog blijft. Ideaal als je minder fietst. 1x per week.'});
+    blokken.push({type:'VO2MAX \u2014 OPTIE B \u00b7 PITTIGER', oms:`30-30 op ${wB(1.20,1.50)} \u00b7 2\u20133 blokken van 8\u201312 min, 5 min rust`, det:'30 sec stevig, 30 sec rustig. Iets meer bite dan de 20-10. Kies \u00e9\u00e9n van beide opties per week voor afwisseling.'});
+  }
+  ensure(30);
+  txt('INTERVALBLOKKEN VOOR JOUW NIVEAU',M,y,{font:bold,size:9,color:WIT}); y-=14;
+  blokken.forEach(b=>{
+    const detLines=wrapTxt(b.det,reg,8.5,R-M-32);
+    const h=14+11+6+13+6+detLines.length*11+12;
+    ensure(h+6);
+    card(M,y-h,R-M,h);
+    txt(b.type,M+16,y-18,{font:bold,size:8,color:ORANJE});
+    txt(b.oms,M+16,y-34,{font:bold,size:11,color:WIT});
+    detLines.forEach((ln,idx)=>txt(ln,M+16,y-50-idx*11,{font:reg,size:8.5,color:MUT}));
+    y-=h+8;
+  });
+  y-=6;
+
+  // CTA
+  const ctaH=58; ensure(ctaH+24);
   card(M,y-ctaH,R-M,ctaH,{fill:CARD2,border:BORDERO});
   txt('KLAAR VOOR ECHTE PROGRESSIE?',M+16,y-18,{font:bold,size:9,color:ORANJE});
   txt('Een persoonlijk trainingsschema vertaalt dit rapport naar week-voor-week training \u2014 vanaf \u20ac59.',M+16,y-34,{font:reg,size:9,color:MUT});
   txt('michelkredercoaching.nl/trainingsschemas',M+16,y-49,{font:bold,size:9,color:WIT});
 
-  // footer
+  // footer op de laatste pagina
   txt('Power Profile\u2122 \u00b7 Michel Kreder Coaching \u00b7 momentopname op basis van je Strava-data.',M,26,{font:reg,size:7,color:DIM});
-
-  function wrapTxt(s,font,size,maxW){ const words=s.split(' '),lines=[]; let line=''; for(const w of words){ const t=line?line+' '+w:w; if(font.widthOfTextAtSize(t,size)>maxW){lines.push(line);line=w;}else line=t;} if(line)lines.push(line); return lines; }
 
   return await doc.save();
 }
