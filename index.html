@@ -618,7 +618,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <div class="metric-kaart"><div class="metric-label">Trainingsuren/week</div><div class="metric-waarde" id="pvUren">—</div><div class="metric-sub">Laatste 90 dagen</div></div>
       <div class="metric-kaart alert"><div class="metric-label">VO2max sessies</div><div class="metric-waarde rood" id="pvVo2">—</div><div class="metric-sub" id="pvVo2Sub">Van activiteiten</div></div>
       <div class="metric-kaart"><div class="metric-label">Gem. intensiteit</div><div class="metric-waarde" id="pvIntensiteit">—</div><div class="metric-sub">Van max. hartslag</div></div>
-      <div class="metric-kaart alert"><div class="metric-label">Herstelratio</div><div class="metric-waarde rood" id="pvHerstel">—</div><div class="metric-sub">Ideaal is 1:2</div></div>
+      <div class="metric-kaart" id="herstelKaart"><div class="metric-label">Herstelbalans</div><div class="metric-waarde" id="pvHerstel">—</div><div class="metric-sub" id="pvHerstelSub">10 = optimaal hersteld</div></div>
     </div>
     <div class="diagnose-blok" id="diagnoseBlok">
       <div class="diagnose-zin" id="diag1">Analyse wordt geladen...</div>
@@ -1165,7 +1165,19 @@ function vulUnlockPagina(data, analyse) {
   if(pvVo2) pvVo2.textContent = data.vo2maxSessies||0;
   if(pvVo2Sub) pvVo2Sub.textContent = 'Van '+(data.aantalActiviteiten||0)+' trainingen';
   if(pvIntensiteit) pvIntensiteit.textContent = data.gemIntensiteit ? data.gemIntensiteit+'%' : '—';
-  if(pvHerstel) pvHerstel.textContent = data.herstelRatio||'—';
+  if(pvHerstel) {
+    if(data.herstelScore != null) {
+      pvHerstel.textContent = data.herstelScore + '/10';
+      const sub = document.getElementById('pvHerstelSub');
+      if(sub) sub.textContent = data.herstelLabel || '10 = optimaal hersteld';
+      const laag = data.herstelScore < 6;
+      pvHerstel.style.color = laag ? 'var(--oranje)' : '#4caf80';
+      const kaart = document.getElementById('herstelKaart');
+      if(kaart) kaart.classList.toggle('alert', laag);
+    } else {
+      pvHerstel.textContent = data.herstelRatio || '—';
+    }
+  }
   const alertTxt = document.getElementById('unlockAlertTxt');
   if(alertTxt && analyse && analyse.lekkenGevonden) {
     const n = analyse.lekkenGevonden;
