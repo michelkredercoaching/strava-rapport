@@ -10,7 +10,7 @@
 :root{
   --zwart:#0d0d0d;
   --wit:#fafafa;
-  --oranje:#fc4c02;
+  --oranje:#ff6b1a;
   --grijs:#f0f0ee;
   --mid:#888;
   --groen:#2e7d4f;
@@ -32,7 +32,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .na-deal{display:none;}
 .deal-badge{
   display:inline-flex;align-items:center;gap:8px;
-  background:rgba(252,76,2,0.1);border:1px solid rgba(252,76,2,0.35);
+  background:rgba(255,107,26,0.1);border:1px solid rgba(255,107,26,0.35);
   border-radius:20px;padding:6px 14px;margin-bottom:22px;
   font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--oranje);
   opacity:0;animation:fadeSlideUp .6s ease .18s both;
@@ -74,7 +74,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
   content:'';position:absolute;
   width:600px;height:400px;
   top:10%;left:50%;transform:translateX(-50%);
-  background:radial-gradient(ellipse,rgba(252,76,2,0.08) 0%,transparent 65%);
+  background:radial-gradient(ellipse,rgba(255,107,26,0.08) 0%,transparent 65%);
   pointer-events:none;z-index:0;
   animation:glowPulse 4s ease-in-out infinite;
 }
@@ -90,7 +90,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
   margin-bottom:28px;font-weight:700;
   opacity:0;animation:fadeSlideUp .6s ease .1s both;
 }
-.hero-eyebrow::before,.hero-eyebrow::after{content:'';flex:1;height:1px;background:rgba(252,76,2,0.3);width:24px;}
+.hero-eyebrow::before,.hero-eyebrow::after{content:'';flex:1;height:1px;background:rgba(255,107,26,0.3);width:24px;}
 
 /* Hoofdtitel */
 .hero-titel{
@@ -146,7 +146,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
   font-family:'DM Sans',sans-serif;
   position:relative;overflow:hidden;
   margin-bottom:18px;
-  box-shadow:0 8px 32px rgba(252,76,2,0.3),0 2px 8px rgba(252,76,2,0.2);
+  box-shadow:0 8px 32px rgba(255,107,26,0.3),0 2px 8px rgba(255,107,26,0.2);
   transition:transform .2s ease,box-shadow .2s ease;
   opacity:0;animation:fadeSlideUp .6s ease .7s both;
 }
@@ -156,7 +156,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
   animation:shimmer 2.8s ease 1.5s infinite;
 }
 @keyframes shimmer{0%{left:-100%;}100%{left:200%;}}
-.hero-cta:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(252,76,2,0.4),0 4px 12px rgba(252,76,2,0.25);}
+.hero-cta:hover{transform:translateY(-2px);box-shadow:0 12px 40px rgba(255,107,26,0.4),0 4px 12px rgba(255,107,26,0.25);}
 .hero-cta:active{transform:translateY(0);}
 
 /* Trust row */
@@ -177,7 +177,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .strava-titel{font-family:'DM Serif Display',serif;font-size:32px;margin-bottom:12px;line-height:1.2;}
 .strava-sub{font-size:14px;color:rgba(255,255,255,0.5);line-height:1.6;max-width:320px;margin-bottom:36px;}
 .strava-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:320px;padding:16px 24px;background:var(--oranje);color:#fff;font-size:14px;font-weight:700;border:none;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;margin-bottom:20px;}
-.strava-btn:hover{background:#e04300;}
+.strava-btn:hover{background:#e85a0d;}
 .strava-uitleg{display:flex;flex-direction:column;gap:10px;width:100%;max-width:320px;margin-bottom:24px;}
 .strava-stap{display:flex;align-items:center;gap:12px;text-align:left;padding:12px;border:1px solid rgba(255,255,255,0.07);border-radius:4px;}
 .strava-stap-nr{width:24px;height:24px;border-radius:50%;border:1px solid var(--oranje);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--oranje);flex-shrink:0;}
@@ -193,7 +193,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .progress-vul{height:100%;background:var(--oranje);border-radius:1px;transition:width .4s ease;width:0%;}
 .scan-lijst{display:flex;flex-direction:column;gap:8px;width:100%;max-width:300px;margin:0 auto;}
 .scan-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:3px;font-size:12px;text-align:left;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.3);transition:all .3s;}
-.scan-item.actief{background:rgba(252,76,2,0.08);border-color:rgba(252,76,2,0.2);color:rgba(255,255,255,0.7);}
+.scan-item.actief{background:rgba(255,107,26,0.08);border-color:rgba(255,107,26,0.2);color:rgba(255,255,255,0.7);}
 .scan-item.klaar{background:rgba(46,125,79,0.08);border-color:rgba(46,125,79,0.2);color:rgba(255,255,255,0.5);}
 .scan-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.15);flex-shrink:0;transition:all .3s;}
 .scan-item.actief .scan-dot{background:var(--oranje);box-shadow:0 0 6px var(--oranje);}
@@ -214,7 +214,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 
 #s4{background:var(--zwart);}
 .unlock-wrap{flex:1;display:flex;flex-direction:column;padding:24px 24px 40px;}
-.unlock-alert{background:rgba(252,76,2,0.08);border:1px solid rgba(252,76,2,0.2);border-radius:4px;padding:14px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;}
+.unlock-alert{background:rgba(255,107,26,0.08);border:1px solid rgba(255,107,26,0.2);border-radius:4px;padding:14px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:10px;}
 .unlock-alert-icon{font-size:16px;flex-shrink:0;margin-top:1px;}
 .unlock-alert-txt{font-size:12px;color:rgba(255,255,255,0.6);line-height:1.5;}
 .unlock-alert-txt strong{color:var(--oranje);font-weight:700;}
@@ -222,7 +222,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .preview-sub{font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:20px;}
 .metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
 .metric-kaart{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:4px;padding:14px;}
-.metric-kaart.alert{border-color:rgba(252,76,2,0.3);background:rgba(252,76,2,0.05);}
+.metric-kaart.alert{border-color:rgba(255,107,26,0.3);background:rgba(255,107,26,0.05);}
 .metric-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--mid);margin-bottom:6px;font-weight:600;}
 .metric-waarde{font-family:'DM Serif Display',serif;font-size:28px;color:var(--wit);margin-bottom:4px;}
 .metric-waarde.rood{color:var(--oranje);}
@@ -244,7 +244,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .prijs-label{font-size:11px;color:rgba(255,255,255,0.3);}
 .prijs-anker{font-family:'DM Serif Display',serif;font-size:24px;color:rgba(255,255,255,0.3);text-decoration:line-through;}
 .betaal-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:17px;background:var(--oranje);color:#fff;font-size:14px;font-weight:700;border:none;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;margin-bottom:12px;}
-.betaal-btn:hover{background:#e04300;}
+.betaal-btn:hover{background:#e85a0d;}
 .betaal-methoden{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
 .betaal-pill{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:3px;padding:4px 10px;font-size:10px;color:rgba(255,255,255,0.4);font-weight:600;}
 .betaal-pill.ideal{background:rgba(205,0,103,0.15);border-color:rgba(205,0,103,0.3);color:#ff4db2;}
@@ -286,13 +286,13 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .zone-rij-pct{font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);width:30px;text-align:right;flex-shrink:0;}
 .zone-badge{font-size:9px;font-weight:800;letter-spacing:.5px;padding:3px 8px;border-radius:3px;width:56px;text-align:center;flex-shrink:0;}
 .zone-badge.ok{background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.5);}
-.zone-badge.laag{background:rgba(252,76,2,0.12);border:1px solid rgba(252,76,2,0.3);color:var(--oranje);}
-.zone-badge.hoog{background:rgba(252,76,2,0.12);border:1px solid rgba(252,76,2,0.3);color:var(--oranje);}
+.zone-badge.laag{background:rgba(255,107,26,0.12);border:1px solid rgba(255,107,26,0.3);color:var(--oranje);}
+.zone-badge.hoog{background:rgba(255,107,26,0.12);border:1px solid rgba(255,107,26,0.3);color:var(--oranje);}
 .zone-badge.goed{background:rgba(46,125,79,0.15);border:1px solid rgba(46,125,79,0.35);color:#4caf80;}
 
 /* FTP DETECTOR CARD */
-.ftp-card{background:linear-gradient(135deg,rgba(20,10,5,1) 0%,rgba(15,8,3,1) 100%);border:1px solid rgba(252,76,2,0.25);border-radius:10px;margin:0 16px 14px;padding:20px 16px;position:relative;overflow:hidden;}
-.ftp-card::before{content:'';position:absolute;bottom:-30px;right:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(252,76,2,0.12) 0%,transparent 70%);pointer-events:none;}
+.ftp-card{background:linear-gradient(135deg,rgba(20,10,5,1) 0%,rgba(15,8,3,1) 100%);border:1px solid rgba(255,107,26,0.25);border-radius:10px;margin:0 16px 14px;padding:20px 16px;position:relative;overflow:hidden;}
+.ftp-card::before{content:'';position:absolute;bottom:-30px;right:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(255,107,26,0.12) 0%,transparent 70%);pointer-events:none;}
 .ftp-card-label{font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--oranje);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
 .ftp-card-subtitel{font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:16px;}
 .ftp-getal-rij{display:flex;align-items:baseline;gap:8px;margin-bottom:16px;}
@@ -339,8 +339,8 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .interval-detail{font-size:11px;color:rgba(255,255,255,0.35);line-height:1.5;}
 
 /* UPSELL CARD */
-.upsell-card{background:rgba(252,76,2,0.05);border:1px solid rgba(252,76,2,0.15);border-radius:10px;margin:0 16px 16px;padding:20px 16px;}
-.upsell-badge{display:inline-block;background:rgba(252,76,2,0.12);border:1px solid rgba(252,76,2,0.25);border-radius:3px;padding:3px 10px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--oranje);font-weight:700;margin-bottom:10px;}
+.upsell-card{background:rgba(255,107,26,0.05);border:1px solid rgba(255,107,26,0.15);border-radius:10px;margin:0 16px 16px;padding:20px 16px;}
+.upsell-badge{display:inline-block;background:rgba(255,107,26,0.12);border:1px solid rgba(255,107,26,0.25);border-radius:3px;padding:3px 10px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--oranje);font-weight:700;margin-bottom:10px;}
 .upsell-titel{font-size:15px;font-weight:800;margin-bottom:6px;}
 .upsell-sub{font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:14px;line-height:1.6;}
 .upsell-prijs{display:flex;align-items:baseline;gap:8px;margin-bottom:16px;}
@@ -351,7 +351,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 /* ===== S3C ===== */
 #s3c{background:var(--zwart);}
 .verfijn-wrap{flex:1;display:flex;flex-direction:column;align-items:center;padding:32px 24px 48px;}
-.verfijn-icon{width:48px;height:48px;border-radius:50%;border:1px solid rgba(252,76,2,0.3);background:rgba(252,76,2,0.06);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
+.verfijn-icon{width:48px;height:48px;border-radius:50%;border:1px solid rgba(255,107,26,0.3);background:rgba(255,107,26,0.06);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;}
 .verfijn-status{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--oranje);margin-bottom:10px;font-weight:600;}
 .verfijn-titel{font-family:'DM Serif Display',serif;font-size:26px;margin-bottom:10px;text-align:center;}
 .verfijn-sub{font-size:13px;color:rgba(255,255,255,0.45);line-height:1.6;text-align:center;max-width:320px;margin-bottom:28px;}
@@ -367,7 +367,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .verfijn-input::placeholder{color:rgba(255,255,255,0.2);font-size:16px;}
 .verfijn-hint{font-size:10px;color:rgba(255,255,255,0.25);line-height:1.5;}
 .verfijn-btn{width:100%;max-width:340px;padding:17px;background:var(--oranje);color:#fff;font-size:14px;font-weight:700;border:none;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:8px;margin-bottom:10px;transition:background .2s;}
-.verfijn-btn:hover{background:#e04300;}
+.verfijn-btn:hover{background:#e85a0d;}
 .verfijn-skip{background:transparent;border:none;color:rgba(255,255,255,0.3);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;padding:8px;text-decoration:underline;}
 
 #s7{background:var(--zwart);}
@@ -403,7 +403,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 <div id="s1" class="scherm actief">
   <header class="header" style="background:transparent;border-bottom:1px solid rgba(255,255,255,0.05);position:relative;z-index:2;">
     <span class="logo" style="font-size:9px;letter-spacing:5px;color:rgba(255,255,255,0.35);">Michel Kreder Coaching</span>
-    <span class="stap-indicator" style="font-size:8px;letter-spacing:3px;border:1px solid rgba(252,76,2,0.3);padding:4px 10px;border-radius:20px;color:var(--oranje);">Power Profile™</span>
+    <span class="stap-indicator" style="font-size:8px;letter-spacing:3px;border:1px solid rgba(255,107,26,0.3);padding:4px 10px;border-radius:20px;color:var(--oranje);">Power Profile™</span>
   </header>
   <div class="hero">
 
@@ -519,7 +519,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
   </header>
   <div class="ai-wrap">
     <div class="analyse-avatar">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(252,76,2,0.7)" stroke-width="1.5"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="18" cy="6" r="3" fill="rgba(252,76,2,0.3)"/></svg>
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,107,26,0.7)" stroke-width="1.5"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 6v6l4 2"/><circle cx="18" cy="6" r="3" fill="rgba(255,107,26,0.3)"/></svg>
     </div>
     <div class="ai-status">Analyse</div>
     <div class="ai-tekst" id="aiTekst">Rapport wordt geschreven...</div>
@@ -749,7 +749,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
           <span id="ftpGedetecteerd" style="font-size:28px;font-weight:900;color:rgba(255,255,255,0.5);">—</span>
           <span style="font-size:12px;color:rgba(255,255,255,0.3);">WATT</span>
         </div>
-        <div id="ftpVergelijkNote" style="font-size:11px;color:rgba(252,76,2,0.8);line-height:1.5;"></div>
+        <div id="ftpVergelijkNote" style="font-size:11px;color:rgba(255,107,26,0.8);line-height:1.5;"></div>
       </div>
 
       <div class="ftp-meta">
@@ -1301,10 +1301,10 @@ function toonRapport(data, analyse) {
         const verschil = data.ftp - data.ftpGedetecteerd;
         if(vergelijkNote && verschil > 20) {
           vergelijkNote.textContent = `⚠ Jouw opgegeven FTP ligt ${verschil}W hoger dan onze detectie (${data.ftpGedetecteerd}W). Controleer of dit klopt — te hoge FTP maakt zones onnauwkeurig.`;
-          vergelijkNote.style.color = 'rgba(252,76,2,0.8)';
+          vergelijkNote.style.color = 'rgba(255,107,26,0.8)';
         } else if(vergelijkNote && verschil < -20) {
           vergelijkNote.textContent = `Jouw FTP ligt ${Math.abs(verschil)}W lager dan onze detectie (${data.ftpGedetecteerd}W). Mogelijk is je conditie beter dan de schatting.`;
-          vergelijkNote.style.color = 'rgba(252,76,2,0.8)';
+          vergelijkNote.style.color = 'rgba(255,107,26,0.8)';
         } else if(vergelijkNote) {
           vergelijkNote.textContent = 'Komt goed overeen met onze detectie. Zones zijn nauwkeurig.';
           vergelijkNote.style.color = 'var(--groen)';
@@ -1369,7 +1369,7 @@ function vulZoneTabel(data) {
       watt: ftp ? `<${Math.round(ftp*0.55)}W` : '<Z1', pct: 0 },
     { naam:'Duur',    kleur:'#eab308', balk:'rgba(234,179,8,0.8)',
       watt: ftp ? `${Math.round(ftp*0.55)}–${Math.round(ftp*0.75)}W` : 'Z2', pct: 0 },
-    { naam:'Tempo',   kleur:'var(--oranje)', balk:'rgba(252,76,2,0.9)',
+    { naam:'Tempo',   kleur:'var(--oranje)', balk:'rgba(255,107,26,0.9)',
       watt: ftp ? `${Math.round(ftp*0.75)}–${Math.round(ftp*0.85)}W` : 'Z3', pct: 0 },
     { naam:'Sweetspot',kleur:'#3b82f6', balk:'rgba(59,130,246,0.8)',
       watt: ftp ? `${Math.round(ftp*0.85)}–${Math.round(ftp*0.95)}W` : 'Z4', pct: 0 },
@@ -1434,7 +1434,7 @@ function vulZoneTabel(data) {
     // Duur - clock
     `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
     // Tempo - fire
-    `<svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(252,76,2,0.9)" stroke="none"><path d="M12 23c-4.42 0-8-3.58-8-8 0-3.5 2.25-7.12 6.71-10.81.28-.23.67-.23.95 0C15.75 7.88 18 11.5 18 15c0 4.42-3.58 8-8 8z"/></svg>`,
+    `<svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(255,107,26,0.9)" stroke="none"><path d="M12 23c-4.42 0-8-3.58-8-8 0-3.5 2.25-7.12 6.71-10.81.28-.23.67-.23.95 0C15.75 7.88 18 11.5 18 15c0 4.42-3.58 8-8 8z"/></svg>`,
     // Sweetspot - droplet
     `<svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(59,130,246,0.8)" stroke="none"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`,
     // FTP - bolt
@@ -1727,9 +1727,9 @@ window.addEventListener('DOMContentLoaded', function() {
 
     <p style="margin:0 0 14px;"><strong style="color:#fafafa;">Jouw rechten.</strong> Je kunt je gegevens opvragen, laten corrigeren of laten verwijderen. Je kunt de Strava-koppeling op elk moment intrekken via je Strava-instellingen (Instellingen → Mijn apps).</p>
 
-    <p style="margin:0 0 18px;"><strong style="color:#fafafa;">Contact.</strong> Vragen over je gegevens? Mail <a href="mailto:michel.kredercoaching@gmail.com" style="color:#fc4c02;">michel.kredercoaching@gmail.com</a>.</p>
+    <p style="margin:0 0 18px;"><strong style="color:#fafafa;">Contact.</strong> Vragen over je gegevens? Mail <a href="mailto:michel.kredercoaching@gmail.com" style="color:#ff6b1a;">michel.kredercoaching@gmail.com</a>.</p>
 
-    <button onclick="sluitPrivacy()" style="background:#fc4c02;color:#fff;border:none;border-radius:8px;padding:11px 22px;font-size:14px;font-weight:600;cursor:pointer;">Sluiten</button>
+    <button onclick="sluitPrivacy()" style="background:#ff6b1a;color:#fff;border:none;border-radius:8px;padding:11px 22px;font-size:14px;font-weight:600;cursor:pointer;">Sluiten</button>
   </div>
 </div>
 </body>
