@@ -475,10 +475,10 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     </div>
     <h2 class="strava-titel">Koppel je<br>Strava account</h2>
     <p class="strava-sub">We lezen je laatste 90 dagen trainingsdata uit. Veilig, eenmalig, alleen-lezen toegang.</p>
-    <button class="strava-btn" onclick="verbindStrava()">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
-      Verbinden met Strava
-    </button>
+    <!-- Officiële "Connect with Strava" knop (Strava brand guidelines: niet aanpassen, hoogte 48px) -->
+    <a href="#" onclick="verbindStrava();return false;" style="display:block;margin:0 auto 20px;line-height:0;" aria-label="Connect with Strava">
+      <img src="/assets/btn_strava_connectwith_orange.svg" alt="Connect with Strava" style="height:48px;width:auto;display:block;margin:0 auto;">
+    </a>
     <div class="strava-uitleg">
       <div class="strava-stap"><div class="strava-stap-nr">1</div><div class="strava-stap-txt">Log in op Strava en geef toegang</div></div>
       <div class="strava-stap"><div class="strava-stap-nr">2</div><div class="strava-stap-txt">Wij analyseren je trainingsdata (60 sec)</div></div>
@@ -814,6 +814,11 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <div class="upsell-sub" id="upsellSubNew">Dit rapport laat zien waar het mis gaat. Een persoonlijk trainingsschema laat zien hoe je het oplost — week voor week.</div>
       <div class="upsell-prijs" id="upsellPrijsNew" style="display:none"></div>
       <a class="upsell-btn" id="upsellBtnNew" href="https://michelkredercoaching.nl/trainingsschemas" target="_blank">Bekijk persoonlijke trainingsschema's →</a>
+    </div>
+
+    <!-- Powered by Strava (verplicht bij tonen van Strava-data, brand guidelines) -->
+    <div style="display:flex;justify-content:center;padding:4px 0 8px;">
+      <img src="/assets/api_logo_pwrdBy_strava_horiz_orange.svg" alt="Powered by Strava" style="height:22px;width:auto;">
     </div>
 
   </div>
