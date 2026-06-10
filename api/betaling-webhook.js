@@ -229,6 +229,7 @@ async function stuurMail(payload) {
     body: JSON.stringify(payload)
   });
   if (!r.ok) console.error('Resend fout:', r.status, await r.text());
+  else console.log('Resend OK ->', payload.to, '|', payload.subject);
   return r.ok;
 }
 
@@ -240,6 +241,7 @@ export default async function handler(req, res) {
 
     const mr = await fetch(`https://api.mollie.com/v2/payments/${id}`, { headers:{ Authorization:`Bearer ${process.env.MOLLIE_API_KEY}` } });
     const betaling = await mr.json();
+    console.log('Webhook:', id, '| status:', betaling.status, '| email:', (betaling.metadata && betaling.metadata.email) || 'GEEN');
     if (betaling.status !== 'paid') return res.status(200).send('niet betaald');
 
     const m = betaling.metadata || {};
