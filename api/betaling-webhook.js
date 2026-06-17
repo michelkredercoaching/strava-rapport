@@ -3,7 +3,15 @@
 // Bij status 'paid':
 //   1. bouwt een gebrande PDF (Power Profile-stijl) uit de betaal-metadata
 //   2. mailt die PDF naar de KLANT (vanaf je geverifieerde domein)
-//   3. stuurt jou een interne verkoopmelding (naam + FTP)
+//   3. stuurt JOU een interne verkoopmelding MÉT de PDF als bijlage,
+//      zodat je 'm altijd zelf kunt (door)sturen
+//
+// Bezorging + retry:
+//   - Kwam de klantmail niet aan? Dan geeft deze functie 503 terug zodat Mollie
+//     het later opnieuw aanbiedt. Er wordt ALLEEN geretryd als de klant niets
+//     ontving, dus de klant krijgt nooit een dubbele mail.
+//   - Mislukt de PDF-bouw? Dan stuurt 'ie de klant GEEN lege "PDF zit erbij"-mail,
+//     waarschuwt 'ie jou intern, en laat 'ie Mollie het opnieuw proberen.
 //
 // Vereist in Vercel: MOLLIE_API_KEY, RESEND_API_KEY
 // Vereist in package.json: "pdf-lib"
@@ -18,6 +26,19 @@ const REPLY_TO     = 'michel.kredercoaching@gmail.com';
 // terug op de tekst-wordmark. Nieuw logo toevoegen? Plak hier een GEVALIDEERDE
 // base64 (zie isGeldigePng hieronder — die beschermt je sowieso).
 const LOGO_B64 = '';
+
+// ===== HELPERS: veilige tekst =====
+// Escape gebruikersinvoer (zoals de Strava-naam) voordat 'ie in mail-HTML belandt.
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+// Strip tekens die het PDF-lettertype (Helvetica/WinAnsi) niet kan tekenen.
+// Zonder dit laat een naam met een emoji of exotisch teken pdf-lib crashen.
+function veiligPdfTekst(s) {
+  return String(s == null ? '' : s).replace(/[^\x20-\x7E\xA0-\xFF]/g, '').trim() || 'Sporter';
+}
 
 // Controleert of een PNG structureel klopt VOORDAT pdf-lib 'm aanraakt.
 // pdf-lib hangt oneindig op corrupte PNG's i.p.v. een fout te gooien — dit vangt dat af.
@@ -62,7 +83,7 @@ async function bouwRapportPdf(meta) {
   const card=(x,yy,w,h,{fill=CARD,border=BORDER}={})=>page.drawRectangle({x,y:yy,width:w,height:h,color:fill,borderColor:border,borderWidth:1});
   const wrapTxt=(s,font,size,maxW)=>{ const words=s.split(' '),lines=[]; let line=''; for(const w of words){ const t=line?line+' '+w:w; if(font.widthOfTextAtSize(t,size)>maxW){lines.push(line);line=w;}else line=t;} if(line)lines.push(line); return lines; };
 
-  const naam=meta.naam||'Sporter';
+  const naam=veiligPdfTekst(meta.naam||'Sporter');
   const ftp=parseInt(meta.ftp)||null;
   const score=meta.score!=null&&meta.score!==''?meta.score:null;
   const uren=meta.uren!=null&&meta.uren!==''?Number(meta.uren):null;
@@ -202,9 +223,10 @@ async function bouwRapportPdf(meta) {
 function kapitaal(s){ s=String(s||'').trim(); return s ? s.charAt(0).toUpperCase()+s.slice(1) : 'Sporter'; }
 
 function klantHtml(naam) {
+  const veiligeNaam = escHtml(naam);
   return `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
-    <p style="font-size:16px;margin:0 0 14px;">Hi ${naam},</p>
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
 
     <p style="font-size:15px;margin:0 0 14px;">Je rapport zit als PDF bij deze mail. Maar voordat je 'm opent \u2014 \u00e9\u00e9n instructie.</p>
 
@@ -237,78 +259,132 @@ function klantHtml(naam) {
   </div>`;
 }
 
-function interneHtml(m, bedrag, id) {
+// pdfErbij: true  -> groene bevestiging dat de PDF als bijlage meekomt
+//           false -> rode waarschuwing dat de PDF NIET gebouwd kon worden
+function interneHtml(m, bedrag, id, pdfErbij) {
   const r=(label,val)=>`<tr><td style="padding:4px 16px 4px 0;color:#666;">${label}</td><td style="padding:4px 0;font-weight:700;">${val}</td></tr>`;
+  const statusBalk = pdfErbij
+    ? `<p style="margin:16px 0 0;padding:10px 14px;border-radius:6px;background:#eef7f0;color:#2e7d4f;font-size:14px;font-weight:600;">\ud83d\udcce PDF zit als bijlage bij deze mail \u2014 klaar om te forwarden naar de klant.</p>`
+    : `<p style="margin:16px 0 0;padding:10px 14px;border-radius:6px;background:#fdecea;color:#c0392b;font-size:14px;font-weight:600;">\u26a0 PDF kon NIET worden gegenereerd. De klant heeft (nog) niets ontvangen \u2014 check handmatig.</p>`;
   return `
   <div style="font-family:Arial,sans-serif;color:#111;line-height:1.6;">
     <h2 style="margin:0 0 4px;">\ud83d\udeb4 Nieuwe verkoop</h2>
-    <p style="margin:0 0 16px;color:#666;">Power Profile\u2122 \u00b7 ${bedrag} betaald</p>
+    <p style="margin:0 0 16px;color:#666;">Power Profile\u2122 \u00b7 ${escHtml(bedrag)} betaald</p>
     <table style="border-collapse:collapse;font-size:15px;">
-      ${r('Naam', m.naam||'Sporter')}
-      ${r('E-mail', m.email||'\u2014')}
-      ${r('FTP', (m.ftp||'?')+' W')}
-      ${r('Uren/week', m.uren!=null?m.uren:'?')}
-      ${r('Trainingsscore', m.score!=null?m.score:'?')}
-      ${r('VO2max-sessies', m.vo2max!=null?m.vo2max:'?')}
-      ${r('Herstelbalans', m.herstel!=null?m.herstel+'/10':'\u2014')}
-      ${r('Zones', m.zones||'\u2014')}
+      ${r('Naam', escHtml(m.naam||'Sporter'))}
+      ${r('E-mail', escHtml(m.email||'\u2014'))}
+      ${r('FTP', escHtml((m.ftp||'?'))+' W')}
+      ${r('Uren/week', m.uren!=null?escHtml(m.uren):'?')}
+      ${r('Trainingsscore', m.score!=null?escHtml(m.score):'?')}
+      ${r('VO2max-sessies', m.vo2max!=null?escHtml(m.vo2max):'?')}
+      ${r('Herstelbalans', m.herstel!=null?escHtml(m.herstel)+'/10':'\u2014')}
+      ${r('Zones', escHtml(m.zones||'\u2014'))}
     </table>
-    <p style="margin:16px 0 0;color:#999;font-size:12px;">Mollie betaling-id: ${id}</p>
+    ${statusBalk}
+    <p style="margin:16px 0 0;color:#999;font-size:12px;">Mollie betaling-id: ${escHtml(id)}</p>
   </div>`;
 }
 
 async function stuurMail(payload) {
-  const r = await fetch('https://api.resend.com/emails', {
-    method:'POST',
-    headers:{ Authorization:`Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type':'application/json' },
-    body: JSON.stringify(payload),
-    signal: AbortSignal.timeout(20000) // nooit langer dan 20s wachten op Resend
-  });
-  if (!r.ok) console.error('Resend fout:', r.status, await r.text());
-  else console.log('Resend OK ->', payload.to, '|', payload.subject);
-  return r.ok;
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method:'POST',
+      headers:{ Authorization:`Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type':'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(20000) // nooit langer dan 20s wachten op Resend
+    });
+    if (!r.ok) { console.error('Resend fout:', r.status, await r.text()); return false; }
+    console.log('Resend OK ->', payload.to, '|', payload.subject);
+    return true;
+  } catch (e) {
+    console.error('Resend exception:', e);
+    return false;
+  }
 }
 
 export default async function handler(req, res) {
-  try {
-    if (req.method !== 'POST') return res.status(200).send('ok');
-    const id = (req.body && req.body.id) || (req.query && req.query.id);
-    if (!id) return res.status(200).send('geen id');
+  // Niet-POST of geen id: geen echte fout, Mollie hoeft niet te retryen.
+  if (req.method !== 'POST') return res.status(200).send('ok');
+  const id = (req.body && req.body.id) || (req.query && req.query.id);
+  if (!id) return res.status(200).send('geen id');
 
-    const mr = await fetch(`https://api.mollie.com/v2/payments/${id}`, {
+  // 1) Verifieer de betaling bij Mollie (we vertrouwen de webhook-body niet).
+  let betaling;
+  try {
+    const mr = await fetch(`https://api.mollie.com/v2/payments/${encodeURIComponent(id)}`, {
       headers:{ Authorization:`Bearer ${process.env.MOLLIE_API_KEY}` },
       signal: AbortSignal.timeout(15000) // nooit langer dan 15s wachten op Mollie
     });
-    const betaling = await mr.json();
-    console.log('Webhook:', id, '| status:', betaling.status, '| email:', (betaling.metadata && betaling.metadata.email) || 'GEEN');
-    if (betaling.status !== 'paid') return res.status(200).send('niet betaald');
-
-    const m = betaling.metadata || {};
-    const naam = kapitaal(m.naam);
-    const bedrag = betaling.amount ? `\u20ac${betaling.amount.value}` : '\u20ac19,00';
-
-    let pdfB64 = null;
-    try { const bytes = await bouwRapportPdf(m); pdfB64 = Buffer.from(bytes).toString('base64'); console.log('PDF gebouwd:', bytes.length, 'bytes'); }
-    catch (e) { console.error('PDF genereren faalde:', e); }
-
-    if (m.email) {
-      try {
-        await stuurMail({
-          from: AFZENDER, to: m.email, reply_to: REPLY_TO,
-          subject: 'Je rapport zit erbij \u2014 maar kijk e\u00e9rst naar dit ene getal \ud83d\udeb4',
-          html: klantHtml(naam),
-          attachments: pdfB64 ? [{ filename: 'Power-Profile-trainingsrapport.pdf', content: pdfB64 }] : undefined
-        });
-      } catch (e) { console.error('Klantmail faalde:', e); }
-    }
-
-    try {
-      await stuurMail({ from: AFZENDER, to: INTERNE_MAIL, subject: `\ud83d\udeb4 Nieuwe verkoop \u2014 ${naam} \u00b7 FTP ${m.ftp||'?'}W`, html: interneHtml(m, bedrag, id) });
-    } catch (e) { console.error('Interne mail faalde:', e); }
-
-    return res.status(200).send('ok');
+    betaling = await mr.json();
   } catch (err) {
-    console.error('Webhook error:', err);
-    return res.status(200).send('ok');
+    // Mollie tijdelijk onbereikbaar → 503, dan probeert Mollie het later opnieuw.
+    console.error('Mollie ophalen faalde:', err);
+    return res.status(503).send('mollie onbereikbaar');
   }
+
+  console.log('Webhook:', id, '| status:', betaling.status, '| email:', (betaling.metadata && betaling.metadata.email) || 'GEEN');
+
+  // Alleen bij 'paid' iets doen. Andere statussen: niets te versturen, geen retry.
+  if (betaling.status !== 'paid') return res.status(200).send('niet betaald');
+
+  const m = betaling.metadata || {};
+  const naam = kapitaal(m.naam);
+  const bedrag = betaling.amount && betaling.amount.value ? `\u20ac${betaling.amount.value}` : '\u2014';
+  const veiligeBestandsnaam = String(naam).replace(/[^a-z0-9]/gi,'_').slice(0,40) || 'sporter';
+
+  // 2) PDF bouwen — de kern van het rapport.
+  let pdfB64 = null;
+  try {
+    const bytes = await bouwRapportPdf(m);
+    pdfB64 = Buffer.from(bytes).toString('base64');
+    console.log('PDF gebouwd:', bytes.length, 'bytes');
+  } catch (e) {
+    console.error('PDF genereren faalde:', e);
+  }
+
+  // ── Geval A: PDF kon NIET gebouwd worden ─────────────────────────────────
+  // Stuur de klant GEEN lege "je PDF zit erbij"-mail. Waarschuw Michel en laat
+  // Mollie het opnieuw aanbieden (bouwfouten zijn vaak tijdelijk).
+  if (!pdfB64) {
+    await stuurMail({
+      from: AFZENDER, to: INTERNE_MAIL,
+      subject: `\u26a0 PDF MISLUKT \u2014 ${naam} \u00b7 betaald maar geen rapport`,
+      html: interneHtml(m, bedrag, id, false)
+    });
+    return res.status(503).send('pdf mislukt - retry');
+  }
+
+  // ── Geval B: PDF OK ──────────────────────────────────────────────────────
+  // 3a) Klantmail met de PDF.
+  let klantMailGelukt = false;
+  if (m.email) {
+    klantMailGelukt = await stuurMail({
+      from: AFZENDER, to: m.email, reply_to: REPLY_TO,
+      subject: 'Je rapport zit erbij \u2014 maar kijk e\u00e9rst naar dit ene getal \ud83d\udeb4',
+      html: klantHtml(naam),
+      attachments: [{ filename: 'Power-Profile-trainingsrapport.pdf', content: pdfB64 }]
+    });
+  }
+
+  // 3b) Interne mail MÉT de PDF als bijlage — jouw kopie om altijd te kunnen
+  //     (door)sturen. Aparte verzending, met één herkansing bij een hapering.
+  const internePayload = {
+    from: AFZENDER, to: INTERNE_MAIL,
+    subject: `\ud83d\udeb4 Nieuwe verkoop \u2014 ${naam} \u00b7 FTP ${m.ftp||'?'}W`,
+    html: interneHtml(m, bedrag, id, true),
+    attachments: [{ filename: `Power-Profile-${veiligeBestandsnaam}.pdf`, content: pdfB64 }]
+  };
+  let interneGelukt = await stuurMail(internePayload);
+  if (!interneGelukt) interneGelukt = await stuurMail(internePayload); // één herkansing
+
+  // 4) Retry-beleid: alleen opnieuw laten proberen als er een klant-adres wás
+  //    én die mail níét aankwam. Zo krijgt de klant nooit een dubbele mail
+  //    (bij een retry was de eerste poging immers mislukt = 0 verzonden).
+  //    Geen klant-adres? Dan helpt retryen niet; jij hebt de PDF intern om
+  //    handmatig te sturen.
+  if (m.email && !klantMailGelukt) {
+    return res.status(503).send('klantmail mislukt - retry');
+  }
+
+  return res.status(200).send('ok');
 }
