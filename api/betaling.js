@@ -46,9 +46,9 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         amount: { currency: 'EUR', value: p.bedrag },
         description: 'Strava Trainingsrapport — Michel Kreder Coaching',
-        // iDEAL + Bancontact: Mollie toont een keuzescherm met deze twee methodes.
-        // (Bancontact verschijnt pas zodra Mollie de aanvraag heeft goedgekeurd.)
-        method: ['ideal', 'bancontact'],
+        // Geen 'method' meegegeven: Mollie toont automatisch alle betaalmethodes
+        // die in het dashboard actief staan. Het dashboard is dus de enige bron
+        // van waarheid — methode toevoegen/weghalen hoeft nooit meer in de code.
         locale: 'nl_NL',
         redirectUrl: 'https://rapport.michelkredercoaching.nl/api/betaling-callback',
         webhookUrl: 'https://rapport.michelkredercoaching.nl/api/betaling-webhook',
