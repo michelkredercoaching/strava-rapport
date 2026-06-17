@@ -1,10 +1,6 @@
 // /api/betaling.js
-import crypto from 'node:crypto';
 import { huidigePrijs } from '../lib/prijs.js';
-
-// ===== Versleuteling (server-side gate) =====
-function _key(){ return crypto.createHash('sha256').update(String(process.env.GATE_SECRET||'')).digest(); }
-function unseal(blob){ const b=Buffer.from(String(blob),'base64url'); const iv=b.subarray(0,12),t=b.subarray(12,28),e=b.subarray(28); const d=crypto.createDecipheriv('aes-256-gcm',_key(),iv); d.setAuthTag(t); return JSON.parse(Buffer.concat([d.update(e),d.final()]).toString('utf8')); }
+import { unseal } from '../lib/gate.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -57,6 +53,9 @@ export default async function handler(req, res) {
         metadata: {
           naam: slim.naam,
           email: (email || '').toString().slice(0, 120),
+          // BINDING (punt 6): nonce uit de versleutelde blob. /api/rapport eist
+          // dat deze overeenkomt voordat het rapport wordt vrijgegeven.
+          nonce: stravaData?.nonce || '',
           ftp: slim.ftp,
           uren: slim.urenPerWeek,
           score: slim.prestatiescore,
