@@ -6,6 +6,26 @@ import crypto from 'node:crypto';
 function _key(){ return crypto.createHash('sha256').update(String(process.env.GATE_SECRET||'')).digest(); }
 function seal(obj){ const iv=crypto.randomBytes(12); const ci=crypto.createCipheriv('aes-256-gcm',_key(),iv); const e=Buffer.concat([ci.update(JSON.stringify(obj),'utf8'),ci.final()]); const t=ci.getAuthTag(); return Buffer.concat([iv,t,e]).toString('base64url'); }
 
+// ===== CONCURRENCY-LIMIET =====
+// Voert 'fn' uit over 'items' met maximaal 'limiet' tegelijk. Strava's rate
+// limit (100 req / 15 min) geldt PER APPLICATIE, niet per gebruiker — 50 calls
+// in één klap (oude Promise.all) kon bij meerdere gelijktijdige sporters de
+// limiet opblazen. Met een kleine pool blijft de burst beheersbaar.
+async function mapMetLimiet(items, limiet, fn) {
+  const resultaten = new Array(items.length);
+  let volgende = 0;
+  async function werker() {
+    while (true) {
+      const i = volgende++;
+      if (i >= items.length) return;
+      resultaten[i] = await fn(items[i], i);
+    }
+  }
+  const aantal = Math.min(Math.max(1, limiet), items.length || 1);
+  await Promise.all(Array.from({ length: aantal }, werker));
+  return resultaten;
+}
+
 export default async function handler(req, res) {
   const { code, error } = req.query;
 
@@ -40,56 +60,60 @@ export default async function handler(req, res) {
     );
     const activiteiten = await activiteitenRes.json();
 
+    // ===== RATE-LIMIT / FOUT-GUARD =====
+    // Bij een rate limit (429) of fout geeft Strava een OBJECT i.p.v. een array.
+    // Zonder deze check zou .filter() crashen en de bezoeker op het algemene
+    // foutscherm belanden zónder uitleg. Nu sturen we 'm naar een herkenbare
+    // 'het is even druk'-melding.
+    if (!Array.isArray(activiteiten)) {
+      console.error('Strava activiteiten geen array (mogelijk rate limit):', activiteitenRes.status, activiteiten);
+      return res.redirect('/?error=strava_druk');
+    }
+
     const alleActiviteitenRes = await fetch(
       `https://www.strava.com/api/v3/athlete/activities?per_page=200&page=1`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
-    const alleActiviteiten = await alleActiviteitenRes.json();
+    const alleActiviteitenRaw = await alleActiviteitenRes.json();
+    // De 'alle activiteiten'-lijst is secundair (alleen voor FTP-fallback en max
+    // HR). Mislukt 'ie, val dan terug op de 90-dagen-lijst i.p.v. te crashen.
+    const alleActiviteiten = Array.isArray(alleActiviteitenRaw) ? alleActiviteitenRaw : activiteiten;
 
     const fietsritten90 = activiteiten.filter(a => a.type === 'Ride' || a.type === 'VirtualRide');
 
-    // Stream data ophalen kost 1 API-call per rit, dus we cappen op MAX_STREAMS
-    // i.v.m. Strava rate limits (100 req / 15 min). MAAR: niet de nieuwste 50
-    // pakken — dan mis je een piek-inspanning die toevallig in een oudere rit zit.
-    // We hebben van elke rit al gratis het gemiddeld vermogen (uit de
-    // activiteitenlijst). Een rustige rit van 120W kan geen 250W-blok bevatten;
-    // een rit van 200W gemiddeld wel. MAAR: een interval-rit (hard met lange
-    // herstelpauzes) heeft een láág gemiddelde terwijl het keihard werk is.
-    // Daarom scoren we op gemiddeld vermogen + een deel van het piekvermogen,
+    // Stream data ophalen kost 1 API-call per rit. We cappen op MAX_STREAMS en
+    // halen ze in kleine batches op (zie mapMetLimiet) i.v.m. de rate limit.
+    // Niet de nieuwste 50 pakken — dan mis je een piek-inspanning in een oudere
+    // rit. We scoren op gemiddeld vermogen + een deel van het piekvermogen,
     // zodat punchy interval-ritten niet door de mand vallen.
     const MAX_STREAMS = 50;
+    const STREAM_CONCURRENCY = 6; // max gelijktijdige stream-calls
     const hardheid = a => (a.average_watts || 0) + (a.max_watts || 0) * 0.15;
     const rittenMetVermogen = fietsritten90
       .filter(a => a.average_watts && a.average_watts > 0)
       .sort((a, b) => hardheid(b) - hardheid(a));
     const rittenZonderVermogen = fietsritten90.filter(a => !a.average_watts);
-    // Hardste ritten eerst, daarna ritten zonder vermogen (voor HR-zones)
     const rittenVoorStreams = [...rittenMetVermogen, ...rittenZonderVermogen].slice(0, MAX_STREAMS);
 
-    const streamResults = await Promise.all(
-      rittenVoorStreams.map(rit =>
-        fetch(`https://www.strava.com/api/v3/activities/${rit.id}/streams?keys=watts,heartrate&key_by_type=true`, {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        })
-        .then(r => r.json())
-        .then(stream => ({ id: rit.id, stream }))
-        .catch(() => ({ id: rit.id, stream: null }))
-      )
+    const streamResults = await mapMetLimiet(rittenVoorStreams, STREAM_CONCURRENCY, (rit) =>
+      fetch(`https://www.strava.com/api/v3/activities/${rit.id}/streams?keys=watts,heartrate&key_by_type=true`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      })
+      .then(r => r.json())
+      .then(stream => ({ id: rit.id, stream }))
+      .catch(() => ({ id: rit.id, stream: null }))
     );
 
     const streamMap = {};
-    streamResults.forEach(r => { if (r.stream) streamMap[r.id] = r.stream; });
+    streamResults.forEach(r => { if (r && r.stream && !r.stream.errors) streamMap[r.id] = r.stream; });
 
     const stats = berekenStats(activiteiten, alleActiviteiten, athlete, streamMap);
 
     // ===== LOSKOPPELEN (deauthorize) =====
     // Eenmalig rapport: data is binnen en wordt zo verzegeld in de blob, de live
-    // koppeling hebben we niet meer nodig. Meteen loskoppelen =>
-    //   1) je slot is direct vrij (nooit meer tegen de 10 aan), en
-    //   2) compliance-plus voor je review (data-minimalisatie, read-only).
-    // Token is vers uit de OAuth-exchange, dus nog 'live' — vereist om te mogen
-    // deauthorizen. Een mislukte loskoppeling mag het rapport NOOIT blokkeren,
-    // dus alles in een eigen try/catch dat alleen logt.
+    // koppeling hebben we niet meer nodig. Meteen loskoppelen => slot vrij +
+    // compliance-plus (data-minimalisatie, read-only). Een mislukte loskoppeling
+    // mag het rapport NOOIT blokkeren, dus in een eigen try/catch dat alleen logt.
     try {
       const deauthRes = await fetch('https://www.strava.com/oauth/deauthorize', {
         method: 'POST',
@@ -179,26 +203,16 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   maxGapDagen = Math.round(maxGapDagen);
 
   // ===== VERMOGENSMETER DETECTIE =====
-  // Primair: echte vermogensmeter (device_watts === true)
-  // Fallback: Strava geschat vermogen (average_watts aanwezig, ook zonder device_watts)
   const rittenMetEchtVermogen = alleRitten.filter(a => a.average_watts && a.device_watts === true);
   const rittenMetSchatting = alleRitten.filter(a => a.average_watts && a.average_watts > 50);
   const heeftEchteVermogensmeter = rittenMetEchtVermogen.length >= 3;
-  // Gebruik geschat vermogen als fallback, maar markeer het
   const heeftVermogensmeter = rittenMetEchtVermogen.length >= 1 || rittenMetSchatting.length >= 5;
   const vermogenIsGeschat = !heeftEchteVermogensmeter && rittenMetSchatting.length >= 5;
 
   // ===== FTP DETECTIE =====
-  // Afgesproken aanpak: mix van 1/5/12/20-min efforts uit de STREAM data,
-  // waarbij de lange inspanningen zwaarder wegen.
-  // We zoeken het beste aaneengesloten blok per duur binnen al je ritten
-  // (de echte power-curve), niet het gemiddelde van hele ritten — dat is
-  // bij duurritten altijd te laag en gaf de verkeerde uitkomst.
   let ftp = null;
   let ftpBronnen = [];
 
-  // Hulpfunctie: beste rolling gemiddelde over een venster (in seconden)
-  // Strava streams zijn 1Hz (1 punt per seconde).
   function besteRollingGemiddelde(data, vensterSec) {
     if (!data || data.length < vensterSec) return null;
     let som = 0;
@@ -211,10 +225,6 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     return beste / vensterSec;
   }
 
-  // De 4 vensters — lange efforts wegen zwaarder (gewicht loopt op met duur).
-  // De kortere vensters tillen de schatting op wanneer het lange blok submaximaal
-  // was; de zware weging op 12/20-min houdt het geaard. Samen = robuuste blend
-  // die stabiel blijft of iemand zijn 20-min nu wel of niet voluit reed.
   const ftpWindows = [
     { naam: '1min',  sec: 60,   factor: 0.72, gewicht: 1 },
     { naam: '5min',  sec: 300,  factor: 0.88, gewicht: 2 },
@@ -222,8 +232,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     { naam: '20min', sec: 1200, factor: 0.95, gewicht: 4 },
   ];
 
-  // Beste effort per venster over ALLE ritten met stream-vermogen
-  const piek = {}; // sec -> beste watt
+  const piek = {};
   let heeftPowerStream = false;
   let aantalRittenMetStream = 0;
 
@@ -240,8 +249,6 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     });
   });
 
-  // Geschat vermogen (device_watts:false) is wat spikerig maar onderschat eerder
-  // dan dat het overschat — geen down-correctie meer.
   const schatFactor = 1.0;
 
   if (heeftPowerStream) {
@@ -263,7 +270,6 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     }
   }
 
-  // FALLBACK: geen stream data → beste harde 12-60min rit als drempel-proxy
   if (!ftp) {
     const rittenVoorFtp = alleRitten.filter(a =>
       a.average_watts && a.average_watts > 50 && a.moving_time > 600
@@ -343,11 +349,6 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       }
     });
 
-    // VO2max-sessie = een ECHT aaneengesloten hard blok, geen losse pieken.
-    // Eis: beste 3-min vermogen >= 108% FTP (een echte interval-inspanning),
-    // én minstens ~4 min cumulatief boven 105% FTP. De losse max_watts-fallback
-    // is geschrapt: bij geschat vermogen spuugt elke afdaling/sprint een piek
-    // uit, waardoor bijna elke duurrit onterecht als VO2max-sessie telde.
     vo2maxSessies = fietsritten90.filter(rit => {
       const wattsData = streamMap[rit.id]?.watts?.data;
       if (!wattsData || wattsData.length < 180) return false;
@@ -386,7 +387,6 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       }
     });
 
-    // Zelfde principe op hartslag: een aaneengesloten 3-min blok boven omslagpunt.
     vo2maxSessies = fietsritten90.filter(rit => {
       const hrData = streamMap[rit.id]?.heartrate?.data;
       if (!hrData || hrData.length < 180) return false;
@@ -406,19 +406,14 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   const diff = 100 - zonesPct.reduce((s,v)=>s+v,0);
   if (diff !== 0) zonesPct[0] += diff;
 
-  // ===== ZWARE RITTEN (realistisch) + HERSTELBALANS-SCORE 1-10 =====
-  // Een rit telt als "zwaar/kwaliteit" als het gemiddelde echt richting tempo
-  // of hoger zit (>= 76% FTP), OF als er een gestructureerd hard 3-min blok in
-  // zit (stream). NIET pas boven 86% FTP-gemiddelde — dat haalt vrijwel niemand
-  // over een hele rit (warming-up, uitrollen, afdalingen drukken het gemiddelde),
-  // waardoor de teller altijd 0 was en de herstelmeter leeg bleef.
+  // ===== ZWARE RITTEN + HERSTELBALANS-SCORE 1-10 =====
   const zwaarRitten = fietsritten90.filter(rit => {
     if (heeftVermogensmeter && ftp && rit.average_watts) {
       if ((rit.average_watts / ftp) >= 0.76) return true;
       const wd = streamMap[rit.id]?.watts?.data;
       if (wd) {
         const b3 = besteRollingGemiddelde(wd, 180);
-        if (b3 && (b3 / ftp) >= 1.00) return true; // hard 3-min blok = kwaliteitssessie
+        if (b3 && (b3 / ftp) >= 1.00) return true;
       }
       return false;
     }
@@ -428,10 +423,6 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   const rustigeRitten = Math.max(0, fietsritten90.length - zwaarRitten);
   const hardAandeel = fietsritten90.length > 0 ? (zwaarRitten / fietsritten90.length) * 100 : 0;
 
-  // Herstelbalans 1-10: hoe goed je intensief/rustig-verdeling én regelmaat je
-  // herstel ondersteunen. Te veel harde dagen = je graaft een gat (lager).
-  // Grote gaten tussen ritten = geen regelmaat (lager). Indicatie op basis van
-  // belastingverdeling — geen pseudo-medische claim.
   let herstelScore = 10;
   if (hardAandeel > 45) herstelScore -= 5;
   else if (hardAandeel > 35) herstelScore -= 3;
@@ -446,7 +437,6 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     : herstelScore >= 4 ? 'let op'
     : 'overbelastingsrisico';
 
-  // Oude ratio-string blijft beschikbaar voor backwards-compat (niet meer getoond)
   const herstelRatioGetal = zwaarRitten > 0
     ? '1:' + Math.round(rustigeRitten / zwaarRitten)
     : null;
