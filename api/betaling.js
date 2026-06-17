@@ -6,6 +6,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
   const { blob, email } = req.body || {};
 
   // De volledige analyse zit versleuteld in 'blob' (door strava-callback gemaakt).
@@ -45,8 +46,9 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         amount: { currency: 'EUR', value: p.bedrag },
         description: 'Strava Trainingsrapport — Michel Kreder Coaching',
-        // iDEAL vooraf vastzetten: de klant slaat het methodekeuzescherm over.
-        method: 'ideal',
+        // iDEAL + Bancontact: Mollie toont een keuzescherm met deze twee methodes.
+        // (Bancontact verschijnt pas zodra Mollie de aanvraag heeft goedgekeurd.)
+        method: ['ideal', 'bancontact'],
         locale: 'nl_NL',
         redirectUrl: 'https://rapport.michelkredercoaching.nl/api/betaling-callback',
         webhookUrl: 'https://rapport.michelkredercoaching.nl/api/betaling-webhook',
