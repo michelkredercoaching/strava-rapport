@@ -1,12 +1,17 @@
+// /api/betaling.js
 import crypto from 'node:crypto';
+import { huidigePrijs } from '../lib/prijs.js';
+
 // ===== Versleuteling (server-side gate) =====
 function _key(){ return crypto.createHash('sha256').update(String(process.env.GATE_SECRET||'')).digest(); }
 function unseal(blob){ const b=Buffer.from(String(blob),'base64url'); const iv=b.subarray(0,12),t=b.subarray(12,28),e=b.subarray(28); const d=crypto.createDecipheriv('aes-256-gcm',_key(),iv); d.setAuthTag(t); return JSON.parse(Buffer.concat([d.update(e),d.final()]).toString('utf8')); }
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
   const { blob, email } = req.body || {};
+
   // De volledige analyse zit versleuteld in 'blob' (door strava-callback gemaakt).
   // We ontsleutelen 'm hier server-side om de Mollie-metadata + PDF te kunnen bouwen.
   let stravaData;
@@ -16,6 +21,7 @@ export default async function handler(req, res) {
     console.error('Blob ontsleutelen mislukt:', e);
     return res.status(400).json({ error: 'Ongeldige sessie. Koppel Strava opnieuw.' });
   }
+
   const slim = {
     naam: stravaData?.naam || 'Sporter',
     aantalActiviteiten: stravaData?.aantalActiviteiten || 0,
@@ -27,6 +33,12 @@ export default async function handler(req, res) {
     gemIntensiteit: stravaData?.gemIntensiteit || null,
     herstelScore: stravaData?.herstelScore ?? null,
   };
+
+  // ===== PRIJS — server-side, datum-afhankelijk (één bron van waarheid) =====
+  // Het bedrag dat Mollie afschrijft komt HIER vandaan, niet uit de browser.
+  // Zo kan de getoonde prijs nooit afwijken van wat er afgeschreven wordt.
+  const p = huidigePrijs();
+
   try {
     const mollieRes = await fetch('https://api.mollie.com/v2/payments', {
       method: 'POST',
@@ -35,16 +47,11 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        amount: { currency: 'EUR', value: '19.00' },
+        amount: { currency: 'EUR', value: p.bedrag },
         description: 'Strava Trainingsrapport — Michel Kreder Coaching',
-        // iDEAL vooraf vastzetten: de klant slaat het methodekeuzescherm over
-        // en gaat direct naar de iDEAL-bankkeuze. Scheelt een stap waar mensen
-        // afhaakten (zie geannuleerde betalingen "vanaf het methodekeuzescherm").
+        // iDEAL vooraf vastzetten: de klant slaat het methodekeuzescherm over.
         method: 'ideal',
         locale: 'nl_NL',
-        // Statische redirect: na betaling komt de klant op /?betaald=true.
-        // De blob + payment-id staan in de browseropslag; /api/rapport
-        // ontsleutelt pas na een bij Mollie bevestigde betaling.
         redirectUrl: 'https://rapport.michelkredercoaching.nl/api/betaling-callback',
         webhookUrl: 'https://rapport.michelkredercoaching.nl/api/betaling-webhook',
         metadata: {
@@ -61,11 +68,20 @@ export default async function handler(req, res) {
         }
       })
     });
+
     const betaling = await mollieRes.json();
     console.log('Mollie response:', JSON.stringify(betaling).substring(0, 200));
+
     if (betaling._links?.checkout?.href && betaling.id) {
-      return res.status(200).json({ checkoutUrl: betaling._links.checkout.href, pid: betaling.id });
+      // prijs + isDeal teruggeven zodat de frontend hetzelfde kan tonen.
+      return res.status(200).json({
+        checkoutUrl: betaling._links.checkout.href,
+        pid: betaling.id,
+        prijs: p.prijs,
+        isDeal: p.isDeal
+      });
     }
+
     console.error('Mollie error:', JSON.stringify(betaling));
     return res.status(500).json({ error: 'Betaling aanmaken mislukt' });
   } catch (err) {
