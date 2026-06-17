@@ -1,10 +1,5 @@
-import crypto from 'node:crypto';
-
-// ===== Versleuteling (server-side gate) =====
-// De volledige analyse (incl. FTP en zones) gaat versleuteld naar de browser,
-// zodat niemand 'm kan lezen vóór een bevestigde betaling. Sleutel = GATE_SECRET.
-function _key(){ return crypto.createHash('sha256').update(String(process.env.GATE_SECRET||'')).digest(); }
-function seal(obj){ const iv=crypto.randomBytes(12); const ci=crypto.createCipheriv('aes-256-gcm',_key(),iv); const e=Buffer.concat([ci.update(JSON.stringify(obj),'utf8'),ci.final()]); const t=ci.getAuthTag(); return Buffer.concat([iv,t,e]).toString('base64url'); }
+// Gedeelde versleuteling + nonce (zie /lib/gate.js).
+import { seal, nieuweNonce } from '../lib/gate.js';
 
 // ===== CONCURRENCY-LIMIET =====
 // Voert 'fn' uit over 'items' met maximaal 'limiet' tegelijk. Strava's rate
@@ -126,6 +121,10 @@ export default async function handler(req, res) {
 
     // ===== GATE: versleutel de analyse, zet 'm in browseropslag, geef alleen
     // een onschuldige preview mee in de URL. Geen FTP/zones in de browser. =====
+    // BINDING (punt 6): unieke nonce in de blob. /api/betaling zet 'm in de
+    // Mollie-metadata, /api/rapport controleert 'm — zo hoort elke betaling bij
+    // precies één analyse.
+    stats.nonce = nieuweNonce();
     const blob = seal(stats);
     const preview = {
       naam: stats.naam,
