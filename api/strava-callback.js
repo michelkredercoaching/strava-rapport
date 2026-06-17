@@ -82,6 +82,24 @@ export default async function handler(req, res) {
 
     const stats = berekenStats(activiteiten, alleActiviteiten, athlete, streamMap);
 
+    // ===== LOSKOPPELEN (deauthorize) =====
+    // Eenmalig rapport: data is binnen en wordt zo verzegeld in de blob, de live
+    // koppeling hebben we niet meer nodig. Meteen loskoppelen =>
+    //   1) je slot is direct vrij (nooit meer tegen de 10 aan), en
+    //   2) compliance-plus voor je review (data-minimalisatie, read-only).
+    // Token is vers uit de OAuth-exchange, dus nog 'live' — vereist om te mogen
+    // deauthorizen. Een mislukte loskoppeling mag het rapport NOOIT blokkeren,
+    // dus alles in een eigen try/catch dat alleen logt.
+    try {
+      const deauthRes = await fetch('https://www.strava.com/oauth/deauthorize', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      console.log('Strava deauthorize:', deauthRes.status, '· athleet', athlete?.id);
+    } catch (deauthErr) {
+      console.error('Deauthorize mislukt (rapport gaat door):', deauthErr);
+    }
+
     // ===== GATE: versleutel de analyse, zet 'm in browseropslag, geef alleen
     // een onschuldige preview mee in de URL. Geen FTP/zones in de browser. =====
     const blob = seal(stats);
