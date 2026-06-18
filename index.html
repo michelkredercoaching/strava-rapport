@@ -608,14 +608,6 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       </div>
     </div>
 
-    <!-- Verborgen inputs -->
-    <input type="hidden" id="ftpInput">
-    <input type="hidden" id="maxHfInput">
-    <input type="hidden" id="hfBadge">
-    <input type="hidden" id="ftpHint">
-    <div style="display:none" id="hfSectie"></div>
-    <div style="display:none" id="hfDetectieWaarde"></div>
-    <div style="display:none" id="hfOmslagpunt"></div>
     <button class="verfijn-btn" onclick="slaZonesOver()"><span class="deal-only">Ontgrendel mijn rapport — <s style="opacity:.55;font-weight:400;">€29</s> €19 →</span><span class="na-deal">Ontgrendel mijn rapport — €29 →</span></button>
   </div>
 </div>
@@ -839,7 +831,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <div class="bedankt-stap"><div class="bedankt-stap-icon">⚙️</div><div class="bedankt-stap-txt"><strong>Rapport wordt gegenereerd</strong>Jouw Strava-data wordt geanalyseerd</div></div>
       <div class="bedankt-stap"><div class="bedankt-stap-icon">📧</div><div class="bedankt-stap-txt"><strong>Email onderweg</strong>Rapport en PDF komen binnen 2 min aan</div></div>
     </div>
-    <p class="bedankt-note">Geen email ontvangen? Check je spam of stuur een bericht via michelkredercoaching.nl</p>
+    <p class="bedankt-note" style="color:rgba(255,255,255,0.45);line-height:1.6;max-width:320px;margin:0 auto;">Zie je 'm niet binnen 2 minuten? <strong style="color:rgba(255,255,255,0.7);">Check je spam of ongewenste mail</strong> en markeer 'm als 'geen spam' — dan komt-ie voortaan gewoon binnen. Lukt het niet? Mail <a href="mailto:info@michelkredercoaching.nl" style="color:rgba(255,255,255,0.6);">info@michelkredercoaching.nl</a>.</p>
   </div>
 </div>
 
@@ -1081,33 +1073,6 @@ function toonZonesScherm(data) {
   }
 }
 
-function bevestigZones() {
-  const ftpVal = parseInt(document.getElementById('ftpInput').value);
-  const maxHfVal = parseInt(document.getElementById('maxHfInput').value);
-  if (ftpVal && (ftpVal < 80 || ftpVal > 500)) { alert('FTP moet tussen 80 en 500 Watt liggen.'); return; }
-  if (maxHfVal && (maxHfVal < 100 || maxHfVal > 220)) { alert('Max hartslag moet tussen 100 en 220 bpm liggen.'); return; }
-  const data = window._stravaData;
-  if (ftpVal && data) {
-    // Bewaar de originele detectie voordat we overschrijven
-    if(!data.ftpGedetecteerd && data.ftp) data.ftpGedetecteerd = data.ftp;
-    data.ftp = ftpVal; data.ftpHandmatig = true; data.heeftVermogensmeter = true;
-    if (data.rittenRuw && data.rittenRuw.length > 0) {
-      const nz = herberekeningZones(data.rittenRuw, ftpVal, null);
-      data.zones = nz.zonesPct; data.duurZonePct = nz.duurZonePct;
-      data.grijsZonePct = nz.grijsZonePct; data.kwaliteitZonePct = nz.kwaliteitZonePct; data.vo2maxSessies = nz.vo2maxSessies;
-    }
-  }
-  if (maxHfVal && data) {
-    data.maxHf = maxHfVal; data.omslagpunt = Math.round(maxHfVal * 0.90); data.maxHfHandmatig = true;
-    if (!data.heeftVermogensmeter && data.rittenRuw && data.rittenRuw.length > 0) {
-      const nz = herberekeningZones(data.rittenRuw, null, data.omslagpunt);
-      data.zones = nz.zonesPct; data.duurZonePct = nz.duurZonePct;
-      data.grijsZonePct = nz.grijsZonePct; data.kwaliteitZonePct = nz.kwaliteitZonePct; data.vo2maxSessies = nz.vo2maxSessies;
-    }
-  }
-  voerAIAnalyseUit(data);
-}
-
 function slaZonesOver() { voerAIAnalyseUit(window._preview || {}); }
 
 // ===== Handmatige FTP-correctie OP HET RAPPORT (teruggezet 9 juni) =====
@@ -1251,7 +1216,6 @@ function toonRapport(data, analyse) {
   const nu = new Date();
   const datumStr = nu.toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
   const aantalRitten = data.aantalActiviteiten || 0;
-  const weken = Math.round(aantalRitten / (data.urenPerWeek > 0 ? 1 : 1));
 
   // Header
   const ppEyebrow = document.getElementById('ppEyebrow');
@@ -1474,20 +1438,15 @@ function vulActieplan(analyse, data) {
   if(analyse && analyse.actieplan && analyse.actieplan.length > 0) {
     aanbevelingen = analyse.actieplan;
   } else {
-    const uren = data.urenPerWeek || 0;
-    if(uren >= 10) {
-      aanbevelingen = [
-        'Verhoog frequentie naar minimaal 3x per week — elke week, geen uitzonderingen',
-        'Voeg 1x per week een VO2max sessie toe: 4x4min boven 268W met 3min herstel',
-        'Plan je trainingen vast in je agenda: bijv. dinsdag D1, donderdag VO2max, zondag lange D1'
-      ];
-    } else {
-      aanbevelingen = [
-        'Verhoog frequentie naar minimaal 3x per week — elke week, geen uitzonderingen',
-        'Voeg 1x per week een VO2max sessie toe: 4x4min boven 268W met 3min herstel',
-        'Plan je trainingen vast in je agenda: bijv. dinsdag D1, donderdag VO2max, zondag lange D1'
-      ];
-    }
+    const ftp = data.ftp || 0;
+    const w110 = ftp ? Math.round(ftp * 1.1) : null;
+    aanbevelingen = [
+      'Verhoog frequentie naar minimaal 3x per week — elke week, geen uitzonderingen',
+      ftp
+        ? `Voeg 1x per week een VO2max-sessie toe: 4x4 min boven ${w110}W met 3 min herstel`
+        : 'Voeg 1x per week een VO2max-sessie toe: 4x4 min hard met 3 min herstel',
+      'Plan je trainingen vast in je agenda: bijv. dinsdag duur, donderdag VO2max, zondag lange rustige rit'
+    ];
   }
   container.innerHTML = aanbevelingen.map((tekst,i)=>`
     <div class="actieplan-item">
@@ -1725,7 +1684,7 @@ window.addEventListener('DOMContentLoaded', function() {
 
     <p style="margin:0 0 14px;"><strong style="color:#fafafa;">Jouw rechten.</strong> Je kunt je gegevens opvragen, laten corrigeren of laten verwijderen. Je kunt de Strava-koppeling op elk moment intrekken via je Strava-instellingen (Instellingen → Mijn apps).</p>
 
-    <p style="margin:0 0 18px;"><strong style="color:#fafafa;">Contact.</strong> Vragen over je gegevens? Mail <a href="mailto:michel.kredercoaching@gmail.com" style="color:#ff6b1a;">michel.kredercoaching@gmail.com</a>.</p>
+    <p style="margin:0 0 18px;"><strong style="color:#fafafa;">Contact.</strong> Vragen over je gegevens? Mail <a href="mailto:info@michelkredercoaching.nl" style="color:#ff6b1a;">info@michelkredercoaching.nl</a>.</p>
 
     <button onclick="sluitPrivacy()" style="background:#ff6b1a;color:#fff;border:none;border-radius:8px;padding:11px 22px;font-size:14px;font-weight:600;cursor:pointer;">Sluiten</button>
   </div>
