@@ -21,7 +21,7 @@
 // Pas deze drie regels eventueel aan:
 const INTERNE_MAIL = 'michel.kredercoaching@gmail.com';
 const AFZENDER     = 'Michel Kreder Coaching <rapport@michelkredercoaching.nl>';
-const REPLY_TO     = 'michel.kredercoaching@gmail.com';
+const REPLY_TO     = 'info@michelkredercoaching.nl';
 
 const LOGO_B64 = '';
 
