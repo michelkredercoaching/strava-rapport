@@ -1037,16 +1037,22 @@ function toonZonesScherm(data) {
 
   const aantalRitten = data.aantalActiviteiten || 0;
   // De echte FTP + zones zitten versleuteld en komen pas vrij na betaling.
-  // Hier tonen we alleen een geblurde placeholder + de betrouwbaarheid op
-  // basis van het aantal ritten. Geen gevoelige data in de browser.
+  // Hier tonen we alleen een geblurde placeholder + de betrouwbaarheid. Geen
+  // gevoelige data in de browser.
   const placeholder = 250;
   const detectieWaarde = document.getElementById('ftpDetectieWaarde');
   const ftpRittenTekst = document.getElementById('ftpRittenTekst');
   const ftpBetrouwS3c = document.getElementById('ftpBetrouwS3c');
   if (detectieWaarde) detectieWaarde.textContent = placeholder;
   if (ftpRittenTekst) ftpRittenTekst.textContent = aantalRitten;
+  // Betrouwbaarheid op de DATABRON (ftpBetrouwbaarheid uit de preview), niet
+  // alleen op het aantal ritten. Een schatting zonder power-streams is 'laag',
+  // ook al zijn er veel ritten.
   if (ftpBetrouwS3c) {
-    if (aantalRitten >= 15) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
+    const bron = data.ftpBetrouwbaarheid;
+    if (bron === 'laag') { ftpBetrouwS3c.textContent = 'schatting'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
+    else if (bron === 'hoog' && aantalRitten >= 8) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
+    else if (aantalRitten >= 15) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
     else if (aantalRitten >= 8) { ftpBetrouwS3c.textContent = 'gemiddeld'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
     else { ftpBetrouwS3c.textContent = 'laag'; ftpBetrouwS3c.style.color = 'var(--rood)'; }
   }
@@ -1235,11 +1241,36 @@ function toonRapport(data, analyse) {
     if(ftpGetal) ftpGetal.textContent = data.ftp;
     if(ftpRittenAantal) ftpRittenAantal.textContent = aantalRitten;
 
-    // Betrouwbaarheid
+    // Betrouwbaarheid hangt vooral af van de BRON van de FTP, niet van het aantal
+    // ritten. Een schatting uit rit-gemiddelden (geen power-streams) is per
+    // definitie onzeker — ook al zijn er 67 ritten. data.ftpBetrouwbaarheid komt
+    // uit berekenStats: 'hoog' = uit power-streams, 'laag' = fallback-schatting.
     if(ftpBetrouw) {
-      if(aantalRitten >= 15) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; }
-      else if(aantalRitten >= 8) { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; }
-      else { ftpBetrouw.textContent = 'laag'; ftpBetrouw.style.color = 'var(--rood)'; }
+      const bron = data.ftpBetrouwbaarheid;
+      if (data.ftpHandmatig) {
+        ftpBetrouw.textContent = 'jouw eigen waarde';
+        ftpBetrouw.style.color = 'var(--groen)';
+      } else if (bron === 'laag') {
+        ftpBetrouw.textContent = 'schatting — controleer hieronder';
+        ftpBetrouw.style.color = 'var(--oranje)';
+      } else if (bron === 'hoog') {
+        if (aantalRitten >= 8) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; }
+        else { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; }
+      } else {
+        // Oudere data zonder bron-veld: val terug op het aantal ritten.
+        if (aantalRitten >= 15) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; }
+        else if (aantalRitten >= 8) { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; }
+        else { ftpBetrouw.textContent = 'laag'; ftpBetrouw.style.color = 'var(--rood)'; }
+      }
+    }
+
+    // Lage betrouwbaarheid? Klap de FTP-correctie open en vul de detectie in,
+    // zodat de sporter wordt aangespoord z'n echte FTP te controleren.
+    if (data.ftpBetrouwbaarheid === 'laag' && !data.ftpHandmatig) {
+      const veld = document.getElementById('ftpCorrectieVeld');
+      const inputC = document.getElementById('ftpCorrectieInput');
+      if (veld) veld.style.display = 'block';
+      if (inputC && data.ftp) inputC.value = data.ftp;
     }
 
     // Als handmatig ingevuld OF als FTP afwijkt van detectie: toon vergelijking
