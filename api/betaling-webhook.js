@@ -178,7 +178,22 @@ async function bouwRapportPdf(meta) {
   txt('FTP DETECTOR\u2122',M+16,y-20,{font:bold,size:9,color:ORANJE});
   txt(ftp?String(ftp):'\u2014',M+16,y-58,{font:bold,size:40,color:WIT});
   if(ftp)txt('WATT',M+16+bold.widthOfTextAtSize(String(ftp),40)+8,y-58,{font:bold,size:13,color:DIM});
-  let betr='hoog',betrK=GROEN; if(ritten!=null){ if(ritten>=15){betr='hoog';betrK=GROEN;} else if(ritten>=8){betr='gemiddeld';betrK=ORANJE;} else {betr='laag';betrK=ROOD;} }
+  // ===== BETROUWBAARHEID =====
+  // Op de DATABRON (ftpBetrouwbaarheid uit de metadata), niet op het aantal
+  // ritten. 'hoog' = uit power-streams, 'laag' = schatting zonder vermogensdata.
+  // Oudere betalingen zonder dit veld vallen terug op het ritaantal.
+  let betr='hoog', betrK=GROEN;
+  const bron = meta.ftpBetrouwbaarheid;
+  if (bron === 'laag') {
+    betr='schatting'; betrK=ORANJE;
+  } else if (bron === 'hoog') {
+    if (ritten!=null && ritten<8) { betr='gemiddeld'; betrK=ORANJE; }
+    else { betr='hoog'; betrK=GROEN; }
+  } else if (ritten!=null) {
+    if (ritten>=15){betr='hoog';betrK=GROEN;}
+    else if (ritten>=8){betr='gemiddeld';betrK=ORANJE;}
+    else {betr='laag';betrK=ROOD;}
+  }
   txt(`Berekend uit ${ritten!=null?ritten:'\u2014'} ritten`,M+16,y-76,{font:reg,size:8.5,color:MUT});
   txt('Betrouwbaarheid: ',R-16-bold.widthOfTextAtSize(betr,8.5),y-20,{font:reg,size:8.5,color:MUT,align:'right'});
   txt(betr,R-16,y-20,{font:bold,size:8.5,color:betrK,align:'right'});
@@ -289,6 +304,7 @@ function interneHtml(m, bedrag, id, pdfErbij) {
       ${r('Naam', escHtml(m.naam||'Sporter'))}
       ${r('E-mail', escHtml(m.email||'\u2014'))}
       ${r('FTP', escHtml((m.ftp||'?'))+' W')}
+      ${r('FTP-betrouwbaarheid', escHtml(m.ftpBetrouwbaarheid||'\u2014'))}
       ${r('Uren/week', m.uren!=null?escHtml(m.uren):'?')}
       ${r('Trainingsscore', m.score!=null?escHtml(m.score):'?')}
       ${r('VO2max-sessies', m.vo2max!=null?escHtml(m.vo2max):'?')}
