@@ -1,3 +1,4 @@
+// /api/strava-callback.js
 // Gedeelde versleuteling + nonce (zie /lib/gate.js).
 import { seal, nieuweNonce } from '../lib/gate.js';
 
@@ -19,6 +20,53 @@ async function mapMetLimiet(items, limiet, fn) {
   const aantal = Math.min(Math.max(1, limiet), items.length || 1);
   await Promise.all(Array.from({ length: aantal }, werker));
   return resultaten;
+}
+
+// ===== LOSKOPPELEN (deauthorize) =====
+// Strava's deauthorize trekt ALLE tokens van deze atleet voor onze app in. Loopt
+// dezelfde atleet kort daarna nóg eens door de funnel, dan is het token al
+// app-breed dood en antwoordt Strava met 401 — dat is "al losgekoppeld", geen
+// echte fout. We loggen 401 daarom op log-niveau (telt niet als error in Vercel)
+// en sturen het token mee als access_token-parameter (Strava's gedocumenteerde
+// vorm, betrouwbaarder dan de Bearer-header). Mag het rapport NOOIT blokkeren.
+async function deauthorize(accessToken, athleteId) {
+  try {
+    const r = await fetch(
+      `https://www.strava.com/oauth/deauthorize?access_token=${accessToken}`,
+      { method: 'POST' }
+    );
+    if (r.ok) console.log('Strava losgekoppeld · athleet', athleteId);
+    else if (r.status === 401) console.log('Strava al losgekoppeld (401) · athleet', athleteId);
+    else console.warn('Strava deauthorize onverwacht:', r.status, '· athleet', athleteId);
+  } catch (e) {
+    console.error('Deauthorize mislukt (rapport gaat door):', e);
+  }
+}
+
+// ===== DEDUPE / DUBBELE-RUN GUARD =====
+// Dezelfde sporter vuurt de callback soms 2-3x kort achter elkaar af (refresh,
+// dubbele redirect). Elke run doet ~50 stream-calls; 2 runs zitten al boven
+// Strava's 100/15min-limiet → de latere run krijgt 429 op alle streams en zou
+// terugvallen op een foutieve FTP. Daarom cachen we de gegenereerde HTML kort
+// per atleet in het geheugen: een snelle herhaling krijgt dezelfde (correcte)
+// analyse terug zónder Strava opnieuw te bevragen.
+// Best-effort: geldt binnen een warme instance, niet over cold starts. Voor een
+// harde garantie zou je een KV-store (Vercel KV / Upstash) gebruiken.
+const _blobCache = globalThis.__ppBlobCache || (globalThis.__ppBlobCache = new Map());
+const CACHE_TTL_MS = 90 * 1000;
+function cacheGet(id) {
+  const hit = _blobCache.get(id);
+  if (!hit) return null;
+  if (Date.now() - hit.t > CACHE_TTL_MS) { _blobCache.delete(id); return null; }
+  return hit;
+}
+function cacheSet(id, html) {
+  _blobCache.set(id, { html, t: Date.now() });
+  // Lichte opruiming zodat de Map niet eindeloos groeit.
+  if (_blobCache.size > 200) {
+    const nu = Date.now();
+    for (const [k, v] of _blobCache) if (nu - v.t > CACHE_TTL_MS) _blobCache.delete(k);
+  }
 }
 
 export default async function handler(req, res) {
@@ -47,6 +95,17 @@ export default async function handler(req, res) {
 
     const accessToken = tokenData.access_token;
     const athlete = tokenData.athlete;
+
+    // Snelle herhaling? Serveer de eerder gemaakte analyse en sla de zware
+    // Strava-flow over (voorkomt rate-limit + dubbele deauth). Het nieuwe token
+    // koppelen we nog wel netjes los.
+    const gecached = athlete?.id ? cacheGet(athlete.id) : null;
+    if (gecached) {
+      console.log('Dubbele run — cache hit · athleet', athlete.id);
+      await deauthorize(accessToken, athlete?.id);
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(200).send(gecached.html);
+    }
 
     const negentigDagenGeleden = Math.floor(Date.now() / 1000) - (90 * 24 * 60 * 60);
     const activiteitenRes = await fetch(
@@ -90,34 +149,42 @@ export default async function handler(req, res) {
     const rittenZonderVermogen = fietsritten90.filter(a => !a.average_watts);
     const rittenVoorStreams = [...rittenMetVermogen, ...rittenZonderVermogen].slice(0, MAX_STREAMS);
 
+    // We onthouden of we een 429 zagen: dan is een lege streamMap géén "deze rit
+    // heeft geen power" maar "we werden geknepen" — en dat behandelen we anders.
+    let rateLimitGeraakt = false;
     const streamResults = await mapMetLimiet(rittenVoorStreams, STREAM_CONCURRENCY, (rit) =>
       fetch(`https://www.strava.com/api/v3/activities/${rit.id}/streams?keys=watts,heartrate&key_by_type=true`, {
         headers: { Authorization: `Bearer ${accessToken}` }
       })
-      .then(r => r.json())
-      .then(stream => ({ id: rit.id, stream }))
+      .then(async r => {
+        if (r.status === 429) { rateLimitGeraakt = true; return { id: rit.id, stream: null }; }
+        const stream = await r.json();
+        return { id: rit.id, stream };
+      })
       .catch(() => ({ id: rit.id, stream: null }))
     );
 
     const streamMap = {};
     streamResults.forEach(r => { if (r && r.stream && !r.stream.errors) streamMap[r.id] = r.stream; });
 
+    // ===== VEILIGHEIDSNET TEGEN FOUTIEVE FTP =====
+    // Heeft de sporter power-ritten, maar kregen we door rate-limiting GEEN enkele
+    // stream binnen, dan zou de FTP-detector terugvallen op rit-gemiddelden en
+    // factor ~2 te laag uitkomen (bv. 147W i.p.v. ~300W). Dat rapport mogen we
+    // NIET verkopen. Liever een nette "even te druk, probeer zo opnieuw".
+    const rittenMetPower = fietsritten90.filter(a => a.average_watts && a.average_watts > 0);
+    const streamsGelukt = Object.keys(streamMap).length;
+    if (rittenMetPower.length >= 3 && streamsGelukt === 0 && rateLimitGeraakt) {
+      console.error(`Geen stream-data door rate limit (athleet ${athlete?.id}) — rapport afgebroken i.p.v. foutieve FTP`);
+      return res.redirect('/?error=strava_druk');
+    }
+
     const stats = berekenStats(activiteiten, alleActiviteiten, athlete, streamMap);
 
-    // ===== LOSKOPPELEN (deauthorize) =====
     // Eenmalig rapport: data is binnen en wordt zo verzegeld in de blob, de live
     // koppeling hebben we niet meer nodig. Meteen loskoppelen => slot vrij +
-    // compliance-plus (data-minimalisatie, read-only). Een mislukte loskoppeling
-    // mag het rapport NOOIT blokkeren, dus in een eigen try/catch dat alleen logt.
-    try {
-      const deauthRes = await fetch('https://www.strava.com/oauth/deauthorize', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${accessToken}` }
-      });
-      console.log('Strava deauthorize:', deauthRes.status, '· athleet', athlete?.id);
-    } catch (deauthErr) {
-      console.error('Deauthorize mislukt (rapport gaat door):', deauthErr);
-    }
+    // compliance-plus (data-minimalisatie, read-only).
+    await deauthorize(accessToken, athlete?.id);
 
     // ===== GATE: versleutel de analyse, zet 'm in browseropslag, geef alleen
     // een onschuldige preview mee in de URL. Geen FTP/zones in de browser. =====
@@ -134,7 +201,8 @@ export default async function handler(req, res) {
       gemIntensiteit: stats.gemIntensiteit,
       herstelScore: stats.herstelScore,
       herstelLabel: stats.herstelLabel,
-      heeftVermogensmeter: stats.heeftVermogensmeter
+      heeftVermogensmeter: stats.heeftVermogensmeter,
+      ftpBetrouwbaarheid: stats.ftpBetrouwbaarheid   // ← zodat de teaser (s3c) de juiste betrouwbaarheid toont
     };
     const pvParam = encodeURIComponent(JSON.stringify(preview));
     const html = `<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Even geduld…</title></head>` +
@@ -143,6 +211,10 @@ export default async function handler(req, res) {
       `<script>try{localStorage.setItem('pp_blob',${JSON.stringify(blob)});}catch(e){}` +
       `location.replace(${JSON.stringify('/?ready=1&pv=' + pvParam)});</script>` +
       `</body></html>`;
+
+    // In de dedupe-cache zodat een snelle herhaling dezelfde analyse terugkrijgt.
+    if (athlete?.id) cacheSet(athlete.id, html);
+
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.status(200).send(html);
 
@@ -174,6 +246,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       zonescore: 'slecht',
       heeftVermogensmeter: false,
       ftp: null,
+      ftpBetrouwbaarheid: null,
       maxHf: null,
       omslagpunt: null,
       maxGapDagen: 90,
@@ -269,24 +342,42 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     }
   }
 
+  // ===== FALLBACK (geen stream-data) =====
+  // Zonder per-seconde data is een echte drempel niet te bepalen. Beste
+  // benadering: normalized power (weighted_average_watts) van een stevige rit
+  // van 20-90 min — dat ligt dicht bij FTP. Pas als die ontbreekt vallen we terug
+  // op het rit-gemiddelde, dat fors ONDERschat (een hele rit telt afdalen en
+  // uitbollen mee). Hoe dan ook: dit is een schatting → betrouwbaarheid 'laag'.
   if (!ftp) {
     const rittenVoorFtp = alleRitten.filter(a =>
       a.average_watts && a.average_watts > 50 && a.moving_time > 600
     );
     if (rittenVoorFtp.length > 0) {
-      const korteHarde = rittenVoorFtp
-        .filter(a => a.moving_time >= 720 && a.moving_time <= 3600)
-        .sort((a, b) => b.average_watts - a.average_watts);
-      if (korteHarde.length > 0) {
-        ftp = Math.round(korteHarde[0].average_watts * 0.95 * schatFactor);
-        console.log(`FTP fallback (12-60min rit): ${ftp}W`);
+      const metNp = rittenVoorFtp
+        .filter(a => a.weighted_average_watts > 50 && a.moving_time >= 1200 && a.moving_time <= 5400)
+        .sort((a, b) => b.weighted_average_watts - a.weighted_average_watts);
+      if (metNp.length > 0) {
+        ftp = Math.round(metNp[0].weighted_average_watts * 0.95 * schatFactor);
+        console.log(`FTP fallback (NP 20-90min rit): ${ftp}W`);
       } else {
-        const gesorteerd = [...rittenVoorFtp].sort((a, b) => b.average_watts - a.average_watts);
-        ftp = Math.round(gesorteerd[0].average_watts * 1.0 * schatFactor);
-        console.log(`FTP fallback (hoogste gem): ${ftp}W`);
+        const korteHarde = rittenVoorFtp
+          .filter(a => a.moving_time >= 720 && a.moving_time <= 3600)
+          .sort((a, b) => b.average_watts - a.average_watts);
+        if (korteHarde.length > 0) {
+          ftp = Math.round(korteHarde[0].average_watts * 0.95 * schatFactor);
+          console.log(`FTP fallback (12-60min rit, gem watt): ${ftp}W`);
+        } else {
+          const gesorteerd = [...rittenVoorFtp].sort((a, b) => b.average_watts - a.average_watts);
+          ftp = Math.round(gesorteerd[0].average_watts * 1.0 * schatFactor);
+          console.log(`FTP fallback (hoogste gem): ${ftp}W`);
+        }
       }
     }
   }
+
+  // Betrouwbaarheid hangt af van de BRON, niet van het aantal ritten: alleen een
+  // uit stream-data berekende FTP is 'hoog'; een fallback-schatting is 'laag'.
+  const ftpBetrouwbaarheid = !ftp ? null : (heeftPowerStream ? 'hoog' : 'laag');
 
   // ===== MAX HARTSLAG =====
   const maxHrWaarden = alleRitten
@@ -491,6 +582,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     heeftEchteVermogensmeter,
     vermogenIsGeschat,
     ftp,
+    ftpBetrouwbaarheid,
     ftpBronnen,
     ftpUitStream: heeftPowerStream,
     aantalRittenMetStream,
