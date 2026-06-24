@@ -152,12 +152,19 @@ export default async function handler(req, res) {
     // We onthouden of we een 429 zagen: dan is een lege streamMap géén "deze rit
     // heeft geen power" maar "we werden geknepen" — en dat behandelen we anders.
     let rateLimitGeraakt = false;
+    // FIX: 401/403 op een stream betekent dat het token TIJDENS de run is
+    // ingetrokken — meestal doordat dezelfde sporter dubbel-tapt en een
+    // parallelle callback al de app-brede deauthorize heeft uitgevoerd. Dat
+    // mogen we NIET als "geen power" interpreteren (→ foutieve lage FTP), maar
+    // als "even opnieuw proberen", net als bij een rate limit.
+    let tokenGeraakt = false;
     const streamResults = await mapMetLimiet(rittenVoorStreams, STREAM_CONCURRENCY, (rit) =>
       fetch(`https://www.strava.com/api/v3/activities/${rit.id}/streams?keys=watts,heartrate&key_by_type=true`, {
         headers: { Authorization: `Bearer ${accessToken}` }
       })
       .then(async r => {
         if (r.status === 429) { rateLimitGeraakt = true; return { id: rit.id, stream: null }; }
+        if (r.status === 401 || r.status === 403) { tokenGeraakt = true; return { id: rit.id, stream: null }; } // FIX
         const stream = await r.json();
         return { id: rit.id, stream };
       })
@@ -168,14 +175,16 @@ export default async function handler(req, res) {
     streamResults.forEach(r => { if (r && r.stream && !r.stream.errors) streamMap[r.id] = r.stream; });
 
     // ===== VEILIGHEIDSNET TEGEN FOUTIEVE FTP =====
-    // Heeft de sporter power-ritten, maar kregen we door rate-limiting GEEN enkele
-    // stream binnen, dan zou de FTP-detector terugvallen op rit-gemiddelden en
-    // factor ~2 te laag uitkomen (bv. 147W i.p.v. ~300W). Dat rapport mogen we
-    // NIET verkopen. Liever een nette "even te druk, probeer zo opnieuw".
+    // Heeft de sporter power-ritten, maar kregen we GEEN enkele stream binnen
+    // door rate-limiting (429) OF een ingetrokken token (401/403), dan zou de
+    // FTP-detector terugvallen op rit-gemiddelden/NP en fors te laag uitkomen
+    // (bv. 244W i.p.v. ~290W). Dat rapport mogen we NIET verkopen. Liever een
+    // nette "even te druk, probeer zo opnieuw".
     const rittenMetPower = fietsritten90.filter(a => a.average_watts && a.average_watts > 0);
     const streamsGelukt = Object.keys(streamMap).length;
-    if (rittenMetPower.length >= 3 && streamsGelukt === 0 && rateLimitGeraakt) {
-      console.error(`Geen stream-data door rate limit (athleet ${athlete?.id}) — rapport afgebroken i.p.v. foutieve FTP`);
+    if (rittenMetPower.length >= 3 && streamsGelukt === 0 && (rateLimitGeraakt || tokenGeraakt)) { // FIX
+      const oorzaak = rateLimitGeraakt ? 'rate limit (429)' : 'token ingetrokken (401/403, parallelle run)';
+      console.error(`Geen stream-data — ${oorzaak} — athleet ${athlete?.id} — rapport afgebroken i.p.v. foutieve FTP`);
       return res.redirect('/?error=strava_druk');
     }
 
