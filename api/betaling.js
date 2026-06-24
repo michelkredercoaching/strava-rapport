@@ -27,6 +27,7 @@ export default async function handler(req, res) {
     vo2maxSessies: stravaData?.vo2maxSessies || 0,
     zones: stravaData?.zones || [],
     ftp: stravaData?.ftp || null,
+    ftpBetrouwbaarheid: stravaData?.ftpBetrouwbaarheid || null,
     gemIntensiteit: stravaData?.gemIntensiteit || null,
     herstelScore: stravaData?.herstelScore ?? null,
   };
@@ -59,6 +60,7 @@ export default async function handler(req, res) {
           // dat deze overeenkomt voordat het rapport wordt vrijgegeven.
           nonce: stravaData?.nonce || '',
           ftp: slim.ftp,
+          ftpBetrouwbaarheid: slim.ftpBetrouwbaarheid,
           uren: slim.urenPerWeek,
           score: slim.prestatiescore,
           vo2max: slim.vo2maxSessies,
