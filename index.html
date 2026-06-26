@@ -26,11 +26,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .logo{font-size:10px;letter-spacing:4px;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;}
 .stap-indicator{font-size:10px;letter-spacing:3px;color:var(--oranje);text-transform:uppercase;font-weight:600;}
 
-/* ===== WACHTLIJST-DEAL VERWIJDERD — prijs is altijd €29 eenmalig ===== */
-/* .deal-only = oude deal-teksten (€19), nu permanent verborgen */
-/* .na-deal   = de €29-teksten, nu permanent zichtbaar */
-.deal-only{display:none !important;}
-.na-deal{display:inline;}
+/* ===== LANCEERACTIE: €19 i.p.v. €29 ===== */
 .deal-badge{
   display:inline-flex;align-items:center;gap:8px;
   background:rgba(255,107,26,0.1);border:1px solid rgba(255,107,26,0.35);
@@ -411,6 +407,9 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     <!-- HOOK -->
     <div class="hero-eyebrow">Voor wielrenners met een vermogensmeter</div>
 
+    <!-- LANCEERACTIE BADGE -->
+    <div class="deal-badge">🔥 Lanceeractie — €19 i.p.v. €29</div>
+
     <h1 class="hero-titel">Stop met<br>trainen<br>zonder <em>data.</em></h1>
 
     <!-- MECHANISM -->
@@ -439,8 +438,8 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
         <span class="hstat-l">sec analyse</span>
       </div>
       <div class="hstat">
-        <span class="hstat-n">€29</span>
-        <span class="hstat-l">eenmalig</span>
+        <span class="hstat-n"><s class="prijs-oud">€29</s>€19</span>
+        <span class="hstat-l">lanceeractie</span>
       </div>
       <div class="hstat">
         <span class="hstat-n">100%</span>
@@ -480,7 +479,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     <div class="strava-uitleg">
       <div class="strava-stap"><div class="strava-stap-nr">1</div><div class="strava-stap-txt">Log in op Strava en geef toegang</div></div>
       <div class="strava-stap"><div class="strava-stap-nr">2</div><div class="strava-stap-txt">Wij analyseren je trainingsdata (60 sec)</div></div>
-      <div class="strava-stap"><div class="strava-stap-nr">3</div><div class="strava-stap-txt">Betaal €29 en ontvang je volledige rapport</div></div>
+      <div class="strava-stap"><div class="strava-stap-nr">3</div><div class="strava-stap-txt">Betaal €19 i.p.v. €29 en ontvang je volledige rapport</div></div>
     </div>
     <p class="strava-privacy">🔒 Alleen-lezen toegang · Versleuteld verwerkt · <a href="/privacy" target="_blank" rel="noopener" style="color:rgba(255,255,255,0.4);text-decoration:underline;">Privacy</a></p>
   </div>
@@ -543,7 +542,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     </div>
     <div class="verfijn-status" style="color:#4caf80;">Analyse compleet</div>
     <h2 class="verfijn-titel">Wij hebben jouw<br>FTP gevonden.</h2>
-    <p class="verfijn-sub">Jouw vermogensprofiel staat klaar. Ontgrendel voor €29 en zie alles.</p>
+    <p class="verfijn-sub">Jouw vermogensprofiel staat klaar. Ontgrendel voor €19 i.p.v. €29 en zie alles.</p>
     <!-- FTP TEASER CARD -->
     <div style="width:100%;max-width:340px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px;margin-bottom:16px;position:relative;overflow:hidden;">
 
@@ -606,11 +605,11 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       </div>
     </div>
 
-    <button class="verfijn-btn" onclick="slaZonesOver()">Ontgrendel mijn rapport — €29 →</button>
+    <button class="verfijn-btn" onclick="slaZonesOver()">Ontgrendel mijn rapport — <s style="opacity:.55;font-weight:400;">€29</s> €19 →</button>
   </div>
 </div>
 
-<!-- S4: UNLOCK -->
+<!-- S4: UNLOCK / BETAALPAGINA -->
 <div id="s4" class="scherm">
   <header class="header">
     <span class="logo">Michel Kreder Coaching</span>
@@ -644,7 +643,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <div class="blur-balk" style="width:55%"></div>
     </div>
     <div class="unlock-box">
-      <div class="unlock-box-titel">Volledig rapport — €29</div>
+      <div class="unlock-box-titel">Volledig rapport — €19 <span style="font-weight:400;color:rgba(255,255,255,0.35);font-size:12px;">(i.p.v. €29)</span></div>
       <div class="unlock-box-sub">Eenmalig. Geen abonnement. Direct beschikbaar.</div>
       <div class="unlock-items">
         <div class="unlock-item">Volledige zoneverdeling analyse</div>
@@ -654,8 +653,9 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
         <div class="unlock-item">Rapport per email (PDF)</div>
       </div>
       <div class="prijs-rij">
-        <span class="prijs-groot">€29</span>
-        <span class="prijs-label">eenmalig · geen verborgen kosten</span>
+        <span class="prijs-anker">€29</span>
+        <span class="prijs-groot" style="color:var(--oranje);">€19</span>
+        <span class="prijs-label">eenmalig · je bespaart €10</span>
       </div>
       <div style="margin-bottom:14px;">
         <label for="klantEmail" style="display:block;font-size:11px;color:rgba(255,255,255,0.55);font-weight:600;letter-spacing:.3px;margin-bottom:7px;">Waar sturen we je rapport (PDF) naartoe?</label>
@@ -664,7 +664,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
         <div id="emailFout" style="display:none;font-size:11px;color:#ff6b5e;margin-top:6px;line-height:1.4;"></div>
       </div>
       <button class="betaal-btn" id="betaalKnop" onclick="startBetaling()">
-        <span class="ideal-pill">iDEAL</span> Betaal nu en ontvang rapport
+        <span class="ideal-pill">iDEAL</span> Betaal €19 en ontvang rapport
       </button>
       <div class="betaal-methoden">
         <span class="betaal-pill ideal">iDEAL</span>
@@ -822,7 +822,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     <h2 class="bedankt-titel">Betaling geslaagd.</h2>
     <p class="bedankt-sub">Je rapport wordt nu gegenereerd. Dit duurt maximaal 60 seconden.</p>
     <div class="bedankt-stappen">
-      <div class="bedankt-stap"><div class="bedankt-stap-icon">✅</div><div class="bedankt-stap-txt"><strong>Betaling bevestigd</strong>€29 via iDEAL · Mollie</div></div>
+      <div class="bedankt-stap"><div class="bedankt-stap-icon">✅</div><div class="bedankt-stap-txt"><strong>Betaling bevestigd</strong>€19 via iDEAL · Mollie</div></div>
       <div class="bedankt-stap"><div class="bedankt-stap-icon">⚙️</div><div class="bedankt-stap-txt"><strong>Rapport wordt gegenereerd</strong>Jouw Strava-data wordt geanalyseerd</div></div>
       <div class="bedankt-stap"><div class="bedankt-stap-icon">📧</div><div class="bedankt-stap-txt"><strong>Email onderweg</strong>Rapport en PDF komen binnen 2 min aan</div></div>
     </div>
@@ -903,11 +903,11 @@ async function startBetaling() {
       window.location.href = data.checkoutUrl;
     } else {
       alert('Er ging iets mis met de betaling. Probeer het opnieuw.');
-      if (knop) { knop.textContent = 'Betaal nu en ontvang rapport'; knop.disabled = false; }
+      if (knop) { knop.textContent = 'Betaal €19 en ontvang rapport'; knop.disabled = false; }
     }
   } catch (err) {
     alert('Er ging iets mis. Probeer het opnieuw.');
-    if (knop) { knop.textContent = 'Betaal nu en ontvang rapport'; knop.disabled = false; }
+    if (knop) { knop.textContent = 'Betaal €19 en ontvang rapport'; knop.disabled = false; }
   }
 }
 
