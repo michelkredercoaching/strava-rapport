@@ -26,10 +26,11 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .logo{font-size:10px;letter-spacing:4px;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;}
 .stap-indicator{font-size:10px;letter-spacing:3px;color:var(--oranje);text-transform:uppercase;font-weight:600;}
 
-/* ===== WACHTLIJST-DEAL STYLING ===== */
-/* .deal-only = zichtbaar tijdens de deal, verdwijnt automatisch op 1 juli */
-/* .na-deal   = verborgen tijdens de deal, verschijnt automatisch op 1 juli */
-.na-deal{display:none;}
+/* ===== WACHTLIJST-DEAL VERWIJDERD — prijs is altijd €29 eenmalig ===== */
+/* .deal-only = oude deal-teksten (€19), nu permanent verborgen */
+/* .na-deal   = de €29-teksten, nu permanent zichtbaar */
+.deal-only{display:none !important;}
+.na-deal{display:inline;}
 .deal-badge{
   display:inline-flex;align-items:center;gap:8px;
   background:rgba(255,107,26,0.1);border:1px solid rgba(255,107,26,0.35);
@@ -410,9 +411,6 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     <!-- HOOK -->
     <div class="hero-eyebrow">Voor wielrenners met een vermogensmeter</div>
 
-    <!-- WACHTLIJST-DEAL BADGE (verdwijnt automatisch op 1 juli) -->
-    <div class="deal-only deal-badge">🔥 Wachtlijst-deal — €19 i.p.v. €29 · t/m 30 juni</div>
-
     <h1 class="hero-titel">Stop met<br>trainen<br>zonder <em>data.</em></h1>
 
     <!-- MECHANISM -->
@@ -441,8 +439,8 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
         <span class="hstat-l">sec analyse</span>
       </div>
       <div class="hstat">
-        <span class="hstat-n"><span class="deal-only"><s class="prijs-oud">€29</s>€19</span><span class="na-deal">€29</span></span>
-        <span class="hstat-l"><span class="deal-only">wachtlijst-deal</span><span class="na-deal">eenmalig</span></span>
+        <span class="hstat-n">€29</span>
+        <span class="hstat-l">eenmalig</span>
       </div>
       <div class="hstat">
         <span class="hstat-n">100%</span>
@@ -450,7 +448,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       </div>
     </div>
 
-    <p class="hero-prijs-note"><span class="deal-only">Lanceerprijs t/m 30 juni · daarna €29 · geen abonnement</span><span class="na-deal">Eenmalig · geen abonnement · geen verborgen kosten</span></p>
+    <p class="hero-prijs-note">Eenmalig · geen abonnement · geen verborgen kosten</p>
     <button class="hero-cta" onclick="gaNaar('s2')">Analyseer mijn training →</button>
     <div class="trust-row">
       <div class="tr-item"><span class="ideal-pill">iDEAL</span> Direct betalen</div>
@@ -482,7 +480,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     <div class="strava-uitleg">
       <div class="strava-stap"><div class="strava-stap-nr">1</div><div class="strava-stap-txt">Log in op Strava en geef toegang</div></div>
       <div class="strava-stap"><div class="strava-stap-nr">2</div><div class="strava-stap-txt">Wij analyseren je trainingsdata (60 sec)</div></div>
-      <div class="strava-stap"><div class="strava-stap-nr">3</div><div class="strava-stap-txt"><span class="deal-only">Betaal €19 i.p.v. €29 en ontvang je volledige rapport</span><span class="na-deal">Betaal €29 en ontvang je volledige rapport</span></div></div>
+      <div class="strava-stap"><div class="strava-stap-nr">3</div><div class="strava-stap-txt">Betaal €29 en ontvang je volledige rapport</div></div>
     </div>
     <p class="strava-privacy">🔒 Alleen-lezen toegang · Versleuteld verwerkt · <a href="/privacy" target="_blank" rel="noopener" style="color:rgba(255,255,255,0.4);text-decoration:underline;">Privacy</a></p>
   </div>
@@ -545,7 +543,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     </div>
     <div class="verfijn-status" style="color:#4caf80;">Analyse compleet</div>
     <h2 class="verfijn-titel">Wij hebben jouw<br>FTP gevonden.</h2>
-    <p class="verfijn-sub">Jouw vermogensprofiel staat klaar. <span class="deal-only">Ontgrendel voor €19 i.p.v. €29 en zie alles.</span><span class="na-deal">Ontgrendel voor €29 en zie alles.</span></p>
+    <p class="verfijn-sub">Jouw vermogensprofiel staat klaar. Ontgrendel voor €29 en zie alles.</p>
     <!-- FTP TEASER CARD -->
     <div style="width:100%;max-width:340px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px;margin-bottom:16px;position:relative;overflow:hidden;">
 
@@ -608,7 +606,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       </div>
     </div>
 
-    <button class="verfijn-btn" onclick="slaZonesOver()"><span class="deal-only">Ontgrendel mijn rapport — <s style="opacity:.55;font-weight:400;">€29</s> €19 →</span><span class="na-deal">Ontgrendel mijn rapport — €29 →</span></button>
+    <button class="verfijn-btn" onclick="slaZonesOver()">Ontgrendel mijn rapport — €29 →</button>
   </div>
 </div>
 
@@ -646,8 +644,8 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <div class="blur-balk" style="width:55%"></div>
     </div>
     <div class="unlock-box">
-      <div class="unlock-box-titel"><span class="deal-only">Volledig rapport — wachtlijst-deal</span><span class="na-deal">Volledig rapport — €29</span></div>
-      <div class="unlock-box-sub">Eenmalig. Geen abonnement. Direct beschikbaar.<span class="deal-only"> Deal geldig t/m 30 juni.</span></div>
+      <div class="unlock-box-titel">Volledig rapport — €29</div>
+      <div class="unlock-box-sub">Eenmalig. Geen abonnement. Direct beschikbaar.</div>
       <div class="unlock-items">
         <div class="unlock-item">Volledige zoneverdeling analyse</div>
         <div class="unlock-item">Jouw limiterende factor benoemd</div>
@@ -656,11 +654,8 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
         <div class="unlock-item">Rapport per email (PDF)</div>
       </div>
       <div class="prijs-rij">
-        <span class="deal-only prijs-anker">€29</span>
-        <span class="deal-only prijs-groot" style="color:var(--oranje);">€19</span>
-        <span class="deal-only prijs-label">eenmalig · je bespaart €10</span>
-        <span class="na-deal prijs-groot">€29</span>
-        <span class="na-deal prijs-label">eenmalig · geen verborgen kosten</span>
+        <span class="prijs-groot">€29</span>
+        <span class="prijs-label">eenmalig · geen verborgen kosten</span>
       </div>
       <div style="margin-bottom:14px;">
         <label for="klantEmail" style="display:block;font-size:11px;color:rgba(255,255,255,0.55);font-weight:600;letter-spacing:.3px;margin-bottom:7px;">Waar sturen we je rapport (PDF) naartoe?</label>
@@ -827,7 +822,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     <h2 class="bedankt-titel">Betaling geslaagd.</h2>
     <p class="bedankt-sub">Je rapport wordt nu gegenereerd. Dit duurt maximaal 60 seconden.</p>
     <div class="bedankt-stappen">
-      <div class="bedankt-stap"><div class="bedankt-stap-icon">✅</div><div class="bedankt-stap-txt"><strong>Betaling bevestigd</strong><span class="deal-only">€19</span><span class="na-deal">€29</span> via iDEAL · Mollie</div></div>
+      <div class="bedankt-stap"><div class="bedankt-stap-icon">✅</div><div class="bedankt-stap-txt"><strong>Betaling bevestigd</strong>€29 via iDEAL · Mollie</div></div>
       <div class="bedankt-stap"><div class="bedankt-stap-icon">⚙️</div><div class="bedankt-stap-txt"><strong>Rapport wordt gegenereerd</strong>Jouw Strava-data wordt geanalyseerd</div></div>
       <div class="bedankt-stap"><div class="bedankt-stap-icon">📧</div><div class="bedankt-stap-txt"><strong>Email onderweg</strong>Rapport en PDF komen binnen 2 min aan</div></div>
     </div>
@@ -857,19 +852,6 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 
 <script>
 const schermen = ['s1','s2','s3','s3b','s3c','s4','s5','s7','s8'];
-
-// ===== WACHTLIJST-DEAL: loopt automatisch af op 1 juli 2026 =====
-// LET OP: dit regelt alleen wat de bezoeker ZIET. Het bedrag dat Mollie
-// daadwerkelijk afschrijft staat in de backend (/api/betaling).
-// Verhoog dat op 1 juli OOK naar €29 — anders blijf je €19 rekenen
-// terwijl de pagina €29 toont (of andersom).
-const DEAL_EINDE = new Date('2026-07-01T00:00:00');
-window.addEventListener('DOMContentLoaded', function() {
-  if (new Date() >= DEAL_EINDE) {
-    document.querySelectorAll('.deal-only').forEach(function(el){ el.style.display = 'none'; });
-    document.querySelectorAll('.na-deal').forEach(function(el){ el.style.display = el.dataset.display || 'inline'; });
-  }
-});
 
 function gaNaar(id) {
   schermen.forEach(s => {
