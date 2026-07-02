@@ -866,6 +866,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <div class="upsell-badge" id="upsellBadgeNew" style="display:none"></div>
       <div class="upsell-titel" id="upsellTitelNew">Klaar voor echte progressie?</div>
       <div class="upsell-sub" id="upsellSubNew">Dit rapport laat zien waar het mis gaat. Een persoonlijk trainingsschema laat zien hoe je het oplost — week voor week.</div>
+      <div id="upsellTegoed" style="display:none;margin:14px 0;padding:14px;background:rgba(255,107,26,0.08);border:1px solid rgba(255,107,26,0.25);border-radius:8px;"></div>
       <div class="upsell-prijs" id="upsellPrijsNew" style="display:none"></div>
       <a class="upsell-btn" id="upsellBtnNew" href="https://michelkredercoaching.nl/trainingsschemas" target="_blank">Bekijk persoonlijke trainingsschema's →</a>
     </div>
@@ -1776,12 +1777,17 @@ function vulUpsell(analyse, data) {
   const sub = document.getElementById('upsellSubNew');
   const prijsBlok = document.getElementById('upsellPrijsNew');
   const btn = document.getElementById('upsellBtnNew');
+  const tegoedBlok = document.getElementById('upsellTegoed');
 
-  // Hang de belangrijkste sporter-data aan de checkout-URL, zodat je bij
-  // aankoop direct de FTP, zones en volume binnenkrijgt om het schema op te bouwen.
-  function metDataParams(url) {
-    if (!url) return url;
+  const heeftTegoed = !!data.ppToken;
+  const deadline = data.ppDeadline || '';
+
+  // Hang het tegoed-token (voor de automatische korting) + de sporter-data aan
+  // de schema-URL. We bouwen altijd vanaf een vaste basis-URL zodat een tweede
+  // render (bv. na FTP-correctie) geen dubbele parameters oplevert.
+  function metParams() {
     const p = new URLSearchParams();
+    if (data.ppToken)         p.set('pp', data.ppToken);
     if (data.naam)            p.set('atleet', data.naam);
     if (data.ftp)             p.set('ftp', data.ftp);
     if (data.urenPerWeek)     p.set('uren', data.urenPerWeek);
@@ -1789,24 +1795,40 @@ function vulUpsell(analyse, data) {
     if (data.maxHf)           p.set('maxhf', data.maxHf);
     if (Array.isArray(data.zones) && data.zones.length) p.set('zones', data.zones.join('-'));
     if (data.vo2maxSessies != null) p.set('vo2max', data.vo2maxSessies);
-    // WooCommerce-URL heeft al ?add-to-cart=... dus we voegen toe met &
-    const sep = url.includes('?') ? '&' : '?';
-    return url + sep + p.toString();
+    return 'https://michelkredercoaching.nl/trainingsschemas/?' + p.toString();
+  }
+
+  // ===== Tegoed-blok (Hormozi: dit is je kans, met korting) =====
+  if (tegoedBlok) {
+    if (heeftTegoed) {
+      tegoedBlok.style.display = 'block';
+      tegoedBlok.innerHTML =
+        `<div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--oranje);text-transform:uppercase;margin-bottom:8px;">Je analyse-tegoed staat klaar</div>` +
+        `<div style="font-size:13px;color:rgba(255,255,255,0.7);line-height:1.6;margin-bottom:10px;">Je €29 is geen kosten — het is je aanbetaling. Kies een schema en je tegoed wordt automatisch verrekend:</div>` +
+        `<div style="display:flex;flex-direction:column;gap:5px;font-size:13px;margin-bottom:${deadline ? '10px' : '0'};">` +
+          `<div style="display:flex;justify-content:space-between;"><span style="color:rgba(255,255,255,0.8);">8 weken</span><span style="color:var(--oranje);font-weight:700;">€10 tegoed</span></div>` +
+          `<div style="display:flex;justify-content:space-between;"><span style="color:rgba(255,255,255,0.8);">12 weken</span><span style="color:var(--oranje);font-weight:700;">€20 tegoed</span></div>` +
+          `<div style="display:flex;justify-content:space-between;"><span style="color:rgba(255,255,255,0.8);">16 weken</span><span style="color:var(--oranje);font-weight:700;">€29 — analyse gratis</span></div>` +
+        `</div>` +
+        (deadline ? `<div style="font-size:11px;color:rgba(255,255,255,0.4);">Let op: je tegoed vervalt ${deadline}.</div>` : '');
+    } else {
+      tegoedBlok.style.display = 'none';
+    }
   }
 
   if(analyse && analyse.upsell) {
     const u = analyse.upsell;
     if(badge) { badge.textContent = u.niveau+' · '+u.weken+' weken'; badge.style.display='inline-block'; }
-    if(titel) titel.textContent = 'Jouw schema is klaar om te starten';
+    if(titel) titel.textContent = heeftTegoed ? 'Je hebt de diagnose. Nu de behandeling — met korting.' : 'Jouw schema is klaar om te starten';
     if(sub) sub.textContent = u.tekst;
     if(prijsBlok) {
       prijsBlok.style.display = 'flex';
       prijsBlok.innerHTML = `<span class="upsell-prijs-n">€${u.prijs}</span><span class="upsell-prijs-lbl">eenmalig · direct starten</span>`;
     }
-    if(btn) { btn.textContent = u.ctaTekst||'Start mijn trainingsschema →'; btn.href = metDataParams(u.url||'https://michelkredercoaching.nl/trainingsschemas'); }
-  } else if(btn) {
-    // Ook zonder AI-analyse de data meesturen
-    btn.href = metDataParams(btn.href);
+    if(btn) { btn.textContent = heeftTegoed ? 'Verzilver mijn tegoed →' : (u.ctaTekst||'Start mijn trainingsschema →'); btn.href = metParams(); }
+  } else {
+    if(titel) titel.textContent = heeftTegoed ? 'Dit is je kans: je tegoed staat klaar' : 'Klaar voor echte progressie?';
+    if(btn) { btn.textContent = heeftTegoed ? 'Verzilver mijn tegoed →' : "Bekijk persoonlijke trainingsschema's →"; btn.href = metParams(); }
   }
 }
 
