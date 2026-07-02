@@ -201,6 +201,70 @@ async function bouwRapportPdf(meta) {
   txt('GEEN FTP-TEST NODIG',R-16-pillW/2,y-66,{font:bold,size:8,color:WIT,align:'center'});
   y-=ftpH+14;
 
+  // ===== W/KG CARD — Watt per kilo + Tour-vergelijking =====
+  // Alleen tekenen als we FTP én gewicht hebben. Gewicht komt uit de metadata
+  // (Strava-profiel of handmatig ingevuld vóór de betaling). Zonder gewicht
+  // slaan we de kaart netjes over — de rest van het rapport blijft compleet.
+  const wGew = (() => { const w = parseFloat(meta.weight); return (w >= 35 && w <= 200) ? w : null; })();
+  if (ftp && wGew) {
+    const wkg = ftp / wGew;
+    const WKG_REF = 6.2;
+    const TREDES = [['Recreant',0,2.5],['Getrainde amateur',2.5,3.2],['Snelle amateur',3.2,4.0],['Wedstrijdrenner',4.0,4.8],['Continental / elite',4.8,5.5],['WorldTour',5.5,99]];
+    let actief = TREDES.findIndex(t => wkg >= t[1] && wkg < t[2]); if (actief === -1) actief = TREDES.length - 1;
+    const pctTour = Math.round((wkg / WKG_REF) * 100);
+    let volgLines;
+    if (actief < TREDES.length - 1) {
+      const v = TREDES[actief+1], wattNodig = Math.round(v[1]*wGew), erbij = Math.max(1, wattNodig - ftp);
+      volgLines = wrapTxt(`Volgende trede: ${v[0]} (${v[1].toFixed(1)} W/kg) = FTP ${wattNodig}W, dus ${erbij}W erbij. Met gericht trainen haalbaar.`, reg, 8.5, R-M-32);
+    } else {
+      volgLines = wrapTxt('Je zit in de hoogste categorie \u2014 WorldTour-niveau. Chapeau.', reg, 8.5, R-M-32);
+    }
+    const piek1 = parseInt(meta.piek1min)||null, piek5 = parseInt(meta.piek5min)||null, piek20 = parseInt(meta.piek20min)||null;
+    const curve = [['1 min',piek1],['5 min',piek5],['20 min',piek20]].filter(pp => pp[1] && pp[1] > 0);
+    const ladderRijH = 15;
+    const wkgH = 192 + volgLines.length*11 + (curve.length ? (13 + curve.length*13) : 0) + 14;
+    ensure(wkgH);
+    card(M, y-wkgH, R-M, wkgH, {fill:CARD2, border:BORDERO});
+    txt('WATT PER KILO', M+16, y-20, {font:bold, size:9, color:ORANJE});
+    txt(wkg.toFixed(1), M+16, y-52, {font:bold, size:34, color:WIT});
+    txt('W/kg', M+16+bold.widthOfTextAtSize(wkg.toFixed(1),34)+8, y-52, {font:bold, size:12, color:DIM});
+    // Tour-regel met oranje percentage
+    let tx = M+16;
+    txt('Jij trapt op ', tx, y-70, {font:reg, size:9, color:MUT}); tx += reg.widthOfTextAtSize('Jij trapt op ', 9);
+    txt(`${pctTour}%`, tx, y-70, {font:bold, size:9, color:ORANJE}); tx += bold.widthOfTextAtSize(`${pctTour}%`, 9);
+    txt(` van een Tour de France-klimmer (${WKG_REF} W/kg).`, tx, y-70, {font:reg, size:9, color:MUT});
+    // Ladder
+    TREDES.forEach((t, i) => {
+      const isA = i === actief;
+      const rijY = y-88 - i*ladderRijH;
+      if (isA) page.drawRectangle({x:M+12, y:rijY-4, width:R-M-24, height:13, color:c('#2a1508'), borderColor:ORANJE, borderWidth:0.8});
+      const range = t[2] >= 99 ? `${t[1].toFixed(1)}+` : `${t[1].toFixed(1)}\u2013${t[2].toFixed(1)}`;
+      const rTxt = `${range} W/kg`;
+      txt(t[0], M+18, rijY, {font:isA?bold:reg, size:9, color:isA?WIT:MUT});
+      txt(rTxt, R-18, rijY, {font:isA?bold:reg, size:8.5, color:isA?ORANJE:DIM, align:'right'});
+      if (isA) txt('JIJ', R-18-bold.widthOfTextAtSize(rTxt,8.5)-10, rijY, {font:bold, size:7, color:ORANJE, align:'right'});
+    });
+    // Volgende trede
+    const vy = y-88 - TREDES.length*ladderRijH - 2;
+    volgLines.forEach((ln, idx) => txt(ln, M+16, vy-idx*11, {font:reg, size:8.5, color:MUT}));
+    // Power curve (alleen als piek-data aanwezig)
+    if (curve.length) {
+      let cy = vy - volgLines.length*11 - 12;
+      txt('JOUW POWER CURVE (W/kg)', M+16, cy, {font:bold, size:7.5, color:DIM}); cy -= 13;
+      const maxWv = Math.max(...curve.map(pp => pp[1]/wGew));
+      const cbarX = M+70, cbarW = R-cbarX-70;
+      curve.forEach(pp => {
+        const wv = pp[1]/wGew, fw = Math.max(cbarW*(wv/maxWv), 3);
+        txt(pp[0], M+16, cy, {font:reg, size:8.5, color:MUT});
+        page.drawRectangle({x:cbarX, y:cy-2, width:cbarW, height:6, color:TRACK});
+        page.drawRectangle({x:cbarX, y:cy-2, width:fw, height:6, color:ORANJE});
+        txt(`${wv.toFixed(1)} W/kg`, R-16, cy, {font:bold, size:8.5, color:MUT, align:'right'});
+        cy -= 13;
+      });
+    }
+    y -= wkgH + 14;
+  }
+
   if (vo2!=null && Number(vo2)===0) {
     const lines=wrapTxt('In 90 dagen deed je 0 VO2max-sessies. Dit is meestal de hoofdoorzaak van een prestatieplateau \u2014 je motor krijgt geen groeiprikkel.',reg,9.5,R-M-32);
     const kh=24+lines.length*13+10; ensure(kh);
