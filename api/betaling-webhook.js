@@ -7,7 +7,7 @@
 //   4. maakt unieke 72u-coupons aan en zet de koper in Mailchimp (nurture)
 //
 // Vereist in Vercel: MOLLIE_API_KEY, RESEND_API_KEY
-// Voor de nurture:   WC_URL, WC_CONSUMER_KEY, WC_CONSUMER_SECRET,
+// Voor de nurture:   WC_URL, WC_CONSUMER_KEY, WC_CONSUMER_SECRET, WC_BYPASS_TOKEN,
 //                    WC_PRODUCT_8/12/16, MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID
 // Optioneel in Vercel: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
 // Vereist in package.json: "pdf-lib"
@@ -376,6 +376,7 @@ async function stuurMail(payload) {
 const WC_URL    = process.env.WC_URL;
 const WC_KEY    = process.env.WC_CONSUMER_KEY;
 const WC_SECRET = process.env.WC_CONSUMER_SECRET;
+const WC_BYPASS = process.env.WC_BYPASS_TOKEN || '';   // geheime header voor de Cloudflare-doorlaatregel
 const MC_KEY    = process.env.MAILCHIMP_API_KEY;      // ...-usXX
 const MC_LIST   = process.env.MAILCHIMP_LIST_ID;
 const MC_DC     = MC_KEY ? MC_KEY.split('-')[1] : null;
@@ -420,7 +421,10 @@ async function maakCoupons(m, id) {
           'Accept': 'application/json',
           // User-Agent meesturen: zonder deze header ziet Cloudflare/WAF de
           // aanvraag als bot en blokkeert 'ie met een "Just a moment"-challenge.
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          // Geheime header: Cloudflare-regel bij HemeraTech laat aanvragen met
+          // deze waarde door zonder bot-challenge.
+          'X-MKC-Bypass': WC_BYPASS
         },
         body: JSON.stringify({
           code,
