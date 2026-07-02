@@ -4,7 +4,7 @@
 //   1. bouwt een gebrande PDF (Power Profile-stijl) uit de betaal-metadata
 //   2. mailt die PDF naar de KLANT (vanaf je geverifieerde domein)
 //   3. stuurt JOU een interne verkoopmelding MÉT de PDF als bijlage
-//   4. maakt unieke 72u-coupons aan en zet de koper in Mailchimp (nurture)
+//   4. zet de koper in Mailchimp met een versleuteld tegoed-linkje (nurture)
 //
 // Vereist in Vercel: MOLLIE_API_KEY, RESEND_API_KEY
 // Voor de nurture:   MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID, PP_TOKEN_SECRET
@@ -310,7 +310,16 @@ async function bouwRapportPdf(meta) {
 
 function kapitaal(s){ s=String(s||'').trim(); return s ? s.charAt(0).toUpperCase()+s.slice(1) : 'Sporter'; }
 
-function klantHtml(naam, token, deadline) {
+// Aanbevolen schemaduur op basis van trainingsuren + het bijbehorende tegoed.
+const TEGOED_PER_WEKEN = { 8: 10, 12: 20, 16: 29 };
+function aanbevolenWeken(uren) {
+  const u = Number(uren) || 0;
+  if (u >= 8.5) return 16;
+  if (u >= 4.5) return 12;
+  return 8;
+}
+
+function klantHtml(naam, token, deadline, advWeken, advTegoed) {
   const veiligeNaam = escHtml(naam);
   const schemaUrl = token
     ? `https://michelkredercoaching.nl/trainingsschemas/?pp=${encodeURIComponent(token)}`
@@ -319,30 +328,26 @@ function klantHtml(naam, token, deadline) {
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
     <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
-    <p style="font-size:15px;margin:0 0 14px;">Je rapport zit als PDF bij deze mail — met je FTP, je zones en je actieplan. Maar één ding eerst.</p>
+    <p style="font-size:15px;margin:0 0 14px;">Je rapport zit als PDF bij deze mail, met je FTP, je zones en je actieplan. Maar één ding eerst.</p>
     <p style="font-size:15px;margin:0 0 18px;">Kijk naar je percentage in het <strong>grijze gebied</strong> (Tempo/Sweetspot). Dat ene getal verklaart bij de meeste renners waarom ze hard trainen zonder sneller te worden. Te zwaar om van te herstellen, te licht om van te groeien.</p>
 
     <div style="margin:22px 0;padding:22px;background:#0d0d0d;border-radius:12px;">
       <p style="font-size:12px;font-weight:800;color:#ff6b1a;letter-spacing:1.5px;margin:0 0 10px;text-transform:uppercase;">Je analyse-tegoed staat klaar</p>
-      <p style="font-size:18px;line-height:1.4;color:#ffffff;margin:0 0 8px;font-weight:800;">Je hebt nu de diagnose. Tijd voor de behandeling — met je tegoed erop.</p>
-      <p style="font-size:14px;color:#c8c8c8;margin:0 0 16px;">Je €29 is geen kosten. Het is je aanbetaling. Kies nú een schema en je tegoed wordt automatisch verrekend:</p>
-      <table cellpadding="0" cellspacing="0" style="margin:0 0 18px;font-size:14px;">
-        <tr><td style="padding:3px 14px 3px 0;color:#ffffff;">8 weken</td><td style="padding:3px 0;color:#ff6b1a;font-weight:800;">€10 tegoed</td></tr>
-        <tr><td style="padding:3px 14px 3px 0;color:#ffffff;">12 weken</td><td style="padding:3px 0;color:#ff6b1a;font-weight:800;">€20 tegoed</td></tr>
-        <tr><td style="padding:3px 14px 3px 0;color:#ffffff;">16 weken</td><td style="padding:3px 0;color:#ff6b1a;font-weight:800;">€29 tegoed — je analyse volledig gratis</td></tr>
-      </table>
+      <p style="font-size:18px;line-height:1.4;color:#ffffff;margin:0 0 8px;font-weight:800;">Je hebt nu de diagnose. Tijd voor de behandeling.</p>
+      <p style="font-size:14px;color:#c8c8c8;margin:0 0 14px;">Je €29 telt volledig mee als tegoed op je schema. Kies er één en het wordt automatisch verrekend.</p>
+      <p style="font-size:15px;color:#ffffff;margin:0 0 16px;">Ons advies bij jouw uren: het <strong style="color:#ff6b1a;">${advWeken}-wekenplan</strong>. Jouw tegoed: <strong style="color:#ff6b1a;">€${advTegoed}</strong>.</p>
       <a href="${schemaUrl}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Verzilver mijn tegoed →</a>
       ${deadlineTxt ? `<p style="font-size:12px;color:#8a8a8a;margin:14px 0 0;">Let op: je tegoed vervalt ${deadlineTxt}. Daarna geldt het volle tarief.</p>` : ''}
     </div>
 
     <p style="font-size:15px;margin:0 0 8px;">Open je rapport daarna in deze volgorde:</p>
     <table cellpadding="0" cellspacing="0" style="margin:0 0 18px;">
-      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">1.</td><td style="font-size:15px;padding:3px 0;"><strong>Je FTP</strong> — vanaf nu de referentie voor elke training</td></tr>
-      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">2.</td><td style="font-size:15px;padding:3px 0;"><strong>Je actieplan</strong> — 3 stappen. Begin deze week met stap 1.</td></tr>
-      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">3.</td><td style="font-size:15px;padding:3px 0;"><strong>De intervalblokken</strong> — kies er één en zet 'm in je agenda</td></tr>
+      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">1.</td><td style="font-size:15px;padding:3px 0;"><strong>Je FTP:</strong> vanaf nu de referentie voor elke training</td></tr>
+      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">2.</td><td style="font-size:15px;padding:3px 0;"><strong>Je actieplan:</strong> 3 stappen. Begin deze week met stap 1.</td></tr>
+      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">3.</td><td style="font-size:15px;padding:3px 0;"><strong>De intervalblokken:</strong> kies er één en zet 'm in je agenda</td></tr>
     </table>
-    <p style="font-size:15px;margin:0 0 18px;"><strong>Een rapport dat je leest verandert niets. Een rapport dat je uitvoert wel.</strong> De renners die over 6 weken verschil voelen, pakken vandaag hun schema — nu het tegoed er nog op zit.</p>
-    <p style="font-size:14px;margin:0 0 4px;">Vragen over je cijfers? Reageer gewoon op deze mail — ik lees alles zelf.</p>
+    <p style="font-size:15px;margin:0 0 18px;"><strong>Een rapport dat je leest verandert niets. Een rapport dat je uitvoert wel.</strong> De renners die over 6 weken verschil voelen, pakken vandaag hun schema, nu het tegoed er nog op zit.</p>
+    <p style="font-size:14px;margin:0 0 4px;">Vragen over je cijfers? Reageer gewoon op deze mail, ik lees alles zelf.</p>
     <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
   </div>`;
   return naarHtmlEntities(html);
@@ -489,9 +494,11 @@ export default async function handler(req, res) {
     const bedrag = betaling.amount && betaling.amount.value ? `€${betaling.amount.value}` : '—';
     const veiligeBestandsnaam = String(naam).replace(/[^a-z0-9]/gi,'_').slice(0,40) || 'sporter';
 
-    // Tegoed-token vast berekenen: gebruikt in de klantmail (korting-knop) én
-    // straks in Mailchimp (dezelfde token, één bron).
+    // Tegoed-token vast berekenen: gebruikt in de klantmail (korting-knop) én in Mailchimp.
     const { token: ppToken, deadlineNL: ppDeadline } = maakToken(m.email);
+    // Aanbevolen schema (op uren) + het tegoed dat daarbij hoort, voor de mail.
+    const advWeken = aanbevolenWeken(m.uren);
+    const advTegoed = TEGOED_PER_WEKEN[advWeken] || 10;
 
     // 4) PDF bouwen — de kern van het rapport.
     let pdfB64 = null;
@@ -517,8 +524,8 @@ export default async function handler(req, res) {
     if (m.email) {
       klantMailGelukt = await stuurMail({
         from: AFZENDER, to: m.email, reply_to: REPLY_TO,
-        subject: 'Je rapport staat klaar - en je analyse-tegoed ook',
-        html: klantHtml(naam, ppToken, ppDeadline),
+        subject: 'Je rapport staat klaar, en je analyse-tegoed ook',
+        html: klantHtml(naam, ppToken, ppDeadline, advWeken, advTegoed),
         attachments: [{ filename: 'Power-Profile-trainingsrapport.pdf', content: pdfB64 }]
       });
     }
