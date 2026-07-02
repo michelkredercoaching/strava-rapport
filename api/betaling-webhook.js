@@ -4,11 +4,10 @@
 //   1. bouwt een gebrande PDF (Power Profile-stijl) uit de betaal-metadata
 //   2. mailt die PDF naar de KLANT (vanaf je geverifieerde domein)
 //   3. stuurt JOU een interne verkoopmelding MÉT de PDF als bijlage
-//   4. maakt unieke 72u-coupons aan en zet de koper in Mailchimp (nurture)
+//   4. zet de koper in Mailchimp met een versleuteld tegoed-linkje (nurture)
 //
 // Vereist in Vercel: MOLLIE_API_KEY, RESEND_API_KEY
-// Voor de nurture:   WC_URL, WC_CONSUMER_KEY, WC_CONSUMER_SECRET, WC_BYPASS_TOKEN,
-//                    WC_PRODUCT_8/12/16, MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID
+// Voor de nurture:   MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID, PP_TOKEN_SECRET
 // Optioneel in Vercel: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
 // Vereist in package.json: "pdf-lib"
 import crypto from 'node:crypto';
@@ -372,21 +371,11 @@ async function stuurMail(payload) {
   } catch (e) { console.error('Resend exception:', e); return false; }
 }
 
-// ===== NURTURE: coupons (WooCommerce) + koper naar Mailchimp =====
-const WC_URL    = process.env.WC_URL;
-const WC_KEY    = process.env.WC_CONSUMER_KEY;
-const WC_SECRET = process.env.WC_CONSUMER_SECRET;
-const WC_BYPASS = process.env.WC_BYPASS_TOKEN || '';   // geheime header voor de Cloudflare-doorlaatregel
+// ===== NURTURE: koper naar Mailchimp + versleuteld tegoed-linkje =====
 const MC_KEY    = process.env.MAILCHIMP_API_KEY;      // ...-usXX
 const MC_LIST   = process.env.MAILCHIMP_LIST_ID;
 const MC_DC     = MC_KEY ? MC_KEY.split('-')[1] : null;
-
-// De staffel: product-ID + tegoed per duur.
-const SCHEMAS = [
-  { wk: '8',  productId: process.env.WC_PRODUCT_8,  tegoed: '10.00' },
-  { wk: '12', productId: process.env.WC_PRODUCT_12, tegoed: '20.00' },
-  { wk: '16', productId: process.env.WC_PRODUCT_16, tegoed: '29.00' },
-];
+const PP_SECRET = process.env.PP_TOKEN_SECRET || '';  // handtekening-sleutel (ook in het WordPress-snippet)
 
 // Pijnpunt uit de analyse (mirror van het rapport).
 function bepaalPijn(m) {
@@ -401,61 +390,26 @@ function bepaalPijn(m) {
   return { pijn: 'grijs', pct: grijs };
 }
 
-// Unieke coupons (1x te gebruiken, 4 dagen geldig) via de WooCommerce REST API.
-async function maakCoupons(m, id) {
-  const leeg = { codes: {}, deadlineNL: '' };
-  if (!WC_URL || !WC_KEY || !WC_SECRET || !m.email) { console.log('Coupons overslaan (WC-config/email mist)'); return leeg; }
-  const auth = 'Basic ' + Buffer.from(`${WC_KEY}:${WC_SECRET}`).toString('base64');
-  const expISO = new Date(Date.now() + 4*24*3600*1000).toISOString();
-  const suffix = crypto.createHash('md5').update(String(m.email).toLowerCase() + ':' + String(id)).digest('hex').slice(0, 6).toUpperCase();
-  const codes = {};
-  for (const s of SCHEMAS) {
-    if (!s.productId) continue;
-    const code = `PP${s.wk}-${suffix}`;
-    try {
-      const r = await fetch(`${WC_URL}/wp-json/wc/v3/coupons`, {
-        method: 'POST',
-        headers: {
-          Authorization: auth,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          // User-Agent meesturen: zonder deze header ziet Cloudflare/WAF de
-          // aanvraag als bot en blokkeert 'ie met een "Just a moment"-challenge.
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          // Geheime header: Cloudflare-regel bij HemeraTech laat aanvragen met
-          // deze waarde door zonder bot-challenge.
-          'X-MKC-Bypass': WC_BYPASS
-        },
-        body: JSON.stringify({
-          code,
-          discount_type: 'fixed_product',
-          amount: s.tegoed,
-          product_ids: [Number(s.productId)],
-          date_expires: expISO,
-          usage_limit: 1,
-          individual_use: true,
-          description: `Power Profile analyse-tegoed ${s.wk} weken`
-        }),
-        signal: AbortSignal.timeout(12000)
-      });
-      const txt = r.ok ? '' : await r.text();
-      if (r.ok || /exist/i.test(txt)) codes[s.wk] = code;   // bestaat al (retry) = ook goed
-      else console.error('WC coupon fout', code, r.status, txt.slice(0, 200));
-    } catch (e) { console.error('WC coupon exception', code, e); }
-  }
-  const deadlineNL = new Date(Date.now() + 72*3600*1000)
+// Versleuteld tegoed-linkje (72u geldig). WordPress verifieert de handtekening
+// en past dán zelf de juiste korting toe — Vercel hoeft WooCommerce niet te bellen.
+function maakToken(email) {
+  if (!PP_SECRET || !email) return { token: '', deadlineNL: '' };
+  const exp = Date.now() + 4*24*3600*1000;              // token 4 dagen geldig (buffer)
+  const payload = `${String(email).toLowerCase()}|${exp}`;
+  const sig = crypto.createHmac('sha256', PP_SECRET).update(payload).digest('hex').slice(0, 16);
+  const token = Buffer.from(`${payload}|${sig}`).toString('base64url');
+  const deadlineNL = new Date(Date.now() + 72*3600*1000)   // in de mail communiceren we 72 uur
     .toLocaleString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
-  return { codes, deadlineNL };
+  return { token, deadlineNL };
 }
 
-// Koper + pijnpunt + coupons naar Mailchimp (Keuzehulp-audience).
-async function naarMailchimp(m, couponInfo) {
+// Koper + pijnpunt + tegoed-token naar Mailchimp (Keuzehulp-audience).
+async function naarMailchimp(m, token, deadlineNL) {
   if (!MC_KEY || !MC_LIST || !MC_DC || !m.email) { console.log('Mailchimp overslaan (config/email mist)'); return; }
   const { pijn, pct } = bepaalPijn(m);
   const hash = crypto.createHash('md5').update(String(m.email).toLowerCase()).digest('hex');
   const base = `https://${MC_DC}.api.mailchimp.com/3.0/lists/${MC_LIST}`;
   const auth = 'Basic ' + Buffer.from('any:' + MC_KEY).toString('base64');
-  const c = couponInfo.codes || {};
   try {
     await fetch(`${base}/members/${hash}`, {
       method: 'PUT',
@@ -466,8 +420,8 @@ async function naarMailchimp(m, couponInfo) {
         merge_fields: {
           FNAME: m.naam || '', FTP: m.ftp || '', SCORE: m.score || '',
           PIJN: pijn, PIJNPCT: String(pct),
-          COUPON8: c['8'] || '', COUPON12: c['12'] || '', COUPON16: c['16'] || '',
-          DEADLINE: couponInfo.deadlineNL || ''
+          PPTOKEN: token || '',
+          DEADLINE: deadlineNL || ''
         }
       }),
       signal: AbortSignal.timeout(10000)
@@ -478,7 +432,7 @@ async function naarMailchimp(m, couponInfo) {
       body: JSON.stringify({ tags: [{ name: 'power-profile-koper', status: 'active' }, { name: 'pijn-' + pijn, status: 'active' }] }),
       signal: AbortSignal.timeout(10000)
     });
-    console.log('Mailchimp OK:', m.email, '| pijn:', pijn, '| coupons:', Object.keys(c).join(','));
+    console.log('Mailchimp OK:', m.email, '| pijn:', pijn, '| token:', token ? 'ja' : 'nee');
   } catch (e) { console.error('Mailchimp faalde (blokkeert niet):', e); }
 }
 
@@ -568,11 +522,11 @@ export default async function handler(req, res) {
       return res.status(503).send('klantmail mislukt - retry');
     }
 
-    // 6b) NURTURE — unieke 72u-coupons + koper naar Mailchimp. Faalt dit, dan
-    //     gaan de verkoop en PDF gewoon door; we loggen het alleen.
+    // 6b) NURTURE — koper + versleuteld tegoed-linkje naar Mailchimp. Faalt dit,
+    //     dan gaan de verkoop en PDF gewoon door; we loggen het alleen.
     try {
-      const couponInfo = await maakCoupons(m, id);
-      await naarMailchimp(m, couponInfo);
+      const { token, deadlineNL } = maakToken(m.email);
+      await naarMailchimp(m, token, deadlineNL);
     } catch (e) { console.error('Nurture-stap faalde (blokkeert niet):', e); }
 
     // 7) Succes → vastleggen zodat een latere retry niks dubbel doet.
