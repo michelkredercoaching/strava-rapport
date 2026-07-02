@@ -241,6 +241,15 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     a.type === 'Ride' || a.type === 'VirtualRide'
   );
 
+  // ===== W/KG: GEWICHT UIT STRAVA =====
+  // Strava geeft het profielgewicht (kg) mee in het athlete-object, mits de
+  // sporter het heeft ingevuld. Ontbreekt of onzinnig → null, dan vraagt de
+  // frontend het als fallback op het rapport. Gedeeld door beide return-paden.
+  const _gewichtKg = athlete?.weight;
+  const weight = (_gewichtKg && _gewichtKg >= 35 && _gewichtKg <= 200)
+    ? Math.round(_gewichtKg * 10) / 10
+    : null;
+
   if (fietsritten90.length === 0) {
     return {
       naam: athlete?.firstname || 'Sporter',
@@ -263,6 +272,10 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       langsteRit: 0,
       herstelScore: null,
       herstelLabel: null,
+      weight,                 // ===== W/KG =====
+      piek1min: null,
+      piek5min: null,
+      piek20min: null,
     };
   }
 
@@ -573,6 +586,14 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     t: rit.moving_time || 3600,
   }));
 
+  // ===== W/KG: PIEKVERMOGENS (power curve) =====
+  // De 1/5/20-min pieken zijn hierboven al berekend voor de FTP-detectie
+  // (piek[sec]). We geven ze nu mee in W, zodat de frontend ze deelt door het
+  // gewicht → W/kg-power-curve. Null als er geen stream-data was.
+  const piek1min  = piek[60]   ? Math.round(piek[60])   : null;
+  const piek5min  = piek[300]  ? Math.round(piek[300])  : null;
+  const piek20min = piek[1200] ? Math.round(piek[1200]) : null;
+
   return {
     naam: athlete?.firstname || 'Sporter',
     aantalActiviteiten: fietsritten90.length,
@@ -608,5 +629,9 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     langsteRit,
     rittenRuw,
     heeftStreamData,
+    weight,          // ===== W/KG ===== gewicht in kg (of null)
+    piek1min,        // ===== W/KG ===== piekvermogen 1 min in W (of null)
+    piek5min,        // ===== W/KG ===== piekvermogen 5 min in W (of null)
+    piek20min,       // ===== W/KG ===== piekvermogen 20 min in W (of null)
   };
 }
