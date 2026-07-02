@@ -310,21 +310,54 @@ async function bouwRapportPdf(meta) {
 
 function kapitaal(s){ s=String(s||'').trim(); return s ? s.charAt(0).toUpperCase()+s.slice(1) : 'Sporter'; }
 
-// Aanbevolen schemaduur op basis van trainingsuren + het bijbehorende tegoed.
+// Aanbevolen schema (duur + niveau) + prijzen, zodat de mail net als het rapport
+// "Gevorderd 12-wekenplan" met de juiste (doorgestreepte) prijs kan tonen.
 const TEGOED_PER_WEKEN = { 8: 10, 12: 20, 16: 29 };
+const PRIJS_MATRIX = {
+  8:  { beginner: 39, gevorderd: 49, expert: 59 },
+  12: { beginner: 59, gevorderd: 69, expert: 79 },
+  16: { beginner: 79, gevorderd: 89, expert: 99 }
+};
 function aanbevolenWeken(uren) {
   const u = Number(uren) || 0;
   if (u >= 8.5) return 16;
   if (u >= 4.5) return 12;
   return 8;
 }
+// Niveau schatten uit W/kg (FTP ÷ gewicht); zonder gewicht op de prestatiescore.
+function aanbevolenNiveau(m) {
+  const ftp = parseInt(m.ftp) || 0;
+  const w = parseFloat(m.weight) || 0;
+  if (w >= 35 && w <= 200 && ftp) {
+    const wkg = ftp / w;
+    if (wkg < 2.8) return 'Beginner';
+    if (wkg < 3.8) return 'Gevorderd';
+    return 'Expert';
+  }
+  const score = Number(m.score) || 0;
+  if (score < 45) return 'Beginner';
+  if (score < 70) return 'Gevorderd';
+  return 'Expert';
+}
+function bepaalAdvies(m) {
+  const weken = aanbevolenWeken(m.uren);
+  const niveau = aanbevolenNiveau(m);
+  const tegoed = TEGOED_PER_WEKEN[weken] || 10;
+  const origPrijs = (PRIJS_MATRIX[weken] && PRIJS_MATRIX[weken][niveau.toLowerCase()]) || null;
+  const finalPrijs = origPrijs != null ? Math.max(0, origPrijs - tegoed) : null;
+  return { weken, niveau, tegoed, origPrijs, finalPrijs };
+}
 
-function klantHtml(naam, token, deadline, advWeken, advTegoed) {
+function klantHtml(naam, token, deadline, advies) {
   const veiligeNaam = escHtml(naam);
   const schemaUrl = token
     ? `https://michelkredercoaching.nl/trainingsschemas/?pp=${encodeURIComponent(token)}`
     : 'https://michelkredercoaching.nl/trainingsschemas';
   const deadlineTxt = deadline ? escHtml(deadline) : '';
+  const a = advies || {};
+  const prijsRegel = (a.origPrijs != null && a.finalPrijs != null)
+    ? ` Van <span style="text-decoration:line-through;color:#8a8a8a;">€${a.origPrijs}</span> naar <strong style="color:#ff6b1a;">€${a.finalPrijs}</strong> met je €${a.tegoed} tegoed.`
+    : ` Jouw tegoed: <strong style="color:#ff6b1a;">€${a.tegoed}</strong>.`;
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
     <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
@@ -335,7 +368,7 @@ function klantHtml(naam, token, deadline, advWeken, advTegoed) {
       <p style="font-size:12px;font-weight:800;color:#ff6b1a;letter-spacing:1.5px;margin:0 0 10px;text-transform:uppercase;">Je analyse-tegoed staat klaar</p>
       <p style="font-size:18px;line-height:1.4;color:#ffffff;margin:0 0 8px;font-weight:800;">Je hebt nu de diagnose. Tijd voor de behandeling.</p>
       <p style="font-size:14px;color:#c8c8c8;margin:0 0 14px;">Je €29 telt volledig mee als tegoed op je schema. Kies er één en het wordt automatisch verrekend.</p>
-      <p style="font-size:15px;color:#ffffff;margin:0 0 16px;">Ons advies bij jouw uren: het <strong style="color:#ff6b1a;">${advWeken}-wekenplan</strong>. Jouw tegoed: <strong style="color:#ff6b1a;">€${advTegoed}</strong>.</p>
+      <p style="font-size:15px;color:#ffffff;margin:0 0 16px;">Ons advies: het <strong style="color:#ff6b1a;">${a.niveau} ${a.weken}-wekenplan</strong>.${prijsRegel}</p>
       <a href="${schemaUrl}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Verzilver mijn tegoed →</a>
       ${deadlineTxt ? `<p style="font-size:12px;color:#8a8a8a;margin:14px 0 0;">Let op: je tegoed vervalt ${deadlineTxt}. Daarna geldt het volle tarief.</p>` : ''}
     </div>
@@ -496,9 +529,8 @@ export default async function handler(req, res) {
 
     // Tegoed-token vast berekenen: gebruikt in de klantmail (korting-knop) én in Mailchimp.
     const { token: ppToken, deadlineNL: ppDeadline } = maakToken(m.email);
-    // Aanbevolen schema (op uren) + het tegoed dat daarbij hoort, voor de mail.
-    const advWeken = aanbevolenWeken(m.uren);
-    const advTegoed = TEGOED_PER_WEKEN[advWeken] || 10;
+    // Aanbevolen schema (duur + niveau + prijzen) voor de mail.
+    const advies = bepaalAdvies(m);
 
     // 4) PDF bouwen — de kern van het rapport.
     let pdfB64 = null;
@@ -525,7 +557,7 @@ export default async function handler(req, res) {
       klantMailGelukt = await stuurMail({
         from: AFZENDER, to: m.email, reply_to: REPLY_TO,
         subject: 'Je rapport staat klaar, en je analyse-tegoed ook',
-        html: klantHtml(naam, ppToken, ppDeadline, advWeken, advTegoed),
+        html: klantHtml(naam, ppToken, ppDeadline, advies),
         attachments: [{ filename: 'Power-Profile-trainingsrapport.pdf', content: pdfB64 }]
       });
     }
