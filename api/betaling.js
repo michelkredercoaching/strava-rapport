@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { blob, email } = req.body || {};
+  const { blob, email, gewicht } = req.body || {};
 
   // De volledige analyse zit versleuteld in 'blob' (door strava-callback gemaakt).
   // We ontsleutelen 'm hier server-side om de Mollie-metadata + PDF te kunnen bouwen.
@@ -31,6 +31,14 @@ export default async function handler(req, res) {
     gemIntensiteit: stravaData?.gemIntensiteit || null,
     herstelScore: stravaData?.herstelScore ?? null,
   };
+
+  // ===== GEWICHT voor W/kg =====
+  // Voorkeur: gewicht uit het Strava-profiel (zit in de blob). Ontbreekt dat,
+  // dan het handmatig ingevulde gewicht van de betaalpagina. Zo komt W/kg ook
+  // in de PDF terecht — niet alleen op de webpagina.
+  const stravaW = (stravaData?.weight >= 35 && stravaData?.weight <= 200) ? stravaData.weight : null;
+  const handmatigW = (Number(gewicht) >= 35 && Number(gewicht) <= 200) ? Math.round(Number(gewicht) * 10) / 10 : null;
+  const finalW = stravaW || handmatigW || '';
 
   // ===== PRIJS — server-side, datum-afhankelijk (één bron van waarheid) =====
   // Het bedrag dat Mollie afschrijft komt HIER vandaan, niet uit de browser.
@@ -67,7 +75,12 @@ export default async function handler(req, res) {
           herstel: slim.herstelScore,
           intensiteit: slim.gemIntensiteit,
           ritten: slim.aantalActiviteiten,
-          zones: Array.isArray(slim.zones) ? slim.zones.join('-') : ''
+          zones: Array.isArray(slim.zones) ? slim.zones.join('-') : '',
+          // ===== W/KG =====
+          weight: finalW,
+          piek1min: stravaData?.piek1min || '',
+          piek5min: stravaData?.piek5min || '',
+          piek20min: stravaData?.piek20min || ''
         }
       })
     });
