@@ -694,6 +694,14 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
           style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
         <div id="emailFout" style="display:none;font-size:11px;color:#ff6b5e;margin-top:6px;line-height:1.4;"></div>
       </div>
+      <!-- Gewicht (optioneel) — alleen getoond als Strava geen gewicht gaf. Zo
+           staat W/kg straks óók in de PDF, niet alleen op de webpagina. -->
+      <div id="gewichtVeldWrap" style="display:none;margin-bottom:14px;">
+        <label for="klantGewicht" style="display:block;font-size:11px;color:rgba(255,255,255,0.55);font-weight:600;letter-spacing:.3px;margin-bottom:7px;">Je gewicht (kg) — voor je watt-per-kilo</label>
+        <input id="klantGewicht" type="number" inputmode="decimal" step="0.1" min="35" max="200" placeholder="bv. 74"
+          style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
+        <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:6px;line-height:1.4;">Optioneel. Vul je in, dan berekenen we je W/kg en zetten we 'm ook in je PDF-rapport.</div>
+      </div>
       <button class="betaal-btn" id="betaalKnop" onclick="startBetaling()">
         <span class="ideal-pill">iDEAL</span> Betaal €29 en ontvang rapport
       </button>
@@ -942,13 +950,25 @@ async function startBetaling() {
   }
   if (foutEl) foutEl.style.display = 'none';
   if (emailEl) emailEl.style.borderColor = 'rgba(255,255,255,0.15)';
+  // Optioneel gewicht (alleen aanwezig als Strava geen gewicht gaf). Meesturen
+  // zodat W/kg ook in de PDF komt; lokaal bewaren zodat het rapport 'm overneemt.
+  let gewicht = null;
+  const gewichtEl = document.getElementById('klantGewicht');
+  if (gewichtEl && gewichtEl.value) {
+    const g = parseFloat(gewichtEl.value.replace(',', '.'));
+    if (g >= 35 && g <= 200) { gewicht = Math.round(g * 10) / 10; }
+  }
+  // Niets in het veld (of veld verborgen)? Val terug op een eerder bewaard
+  // gewicht uit de browser, zodat dat alsnog meegaat naar de server → PDF.
+  if (!gewicht) { try { const g = parseFloat(localStorage.getItem('pp_gewicht')); if (g >= 35 && g <= 200) gewicht = g; } catch(e) {} }
+  if (gewicht) { try { localStorage.setItem('pp_gewicht', gewicht); } catch(e) {} }
   const knop = document.getElementById('betaalKnop');
   if (knop) { knop.textContent = 'Betaling aanmaken...'; knop.disabled = true; }
   try {
     const res = await fetch('/api/betaling', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ blob: window._blob || '', email })
+      body: JSON.stringify({ blob: window._blob || '', email, gewicht })
     });
     const data = await res.json();
     if (data.checkoutUrl) {
@@ -1239,6 +1259,13 @@ function vulUnlockPagina(data, analyse) {
     } else {
       pvHerstel.textContent = data.herstelRatio || '—';
     }
+  }
+  // Gewichtsveld alleen tonen als Strava geen gewicht meegaf (data = preview).
+  const gwWrap = document.getElementById('gewichtVeldWrap');
+  if (gwWrap) {
+    let heeftGewicht = !!(data && data.weight);
+    if (!heeftGewicht) { try { const g = parseFloat(localStorage.getItem('pp_gewicht')); if (g >= 35 && g <= 200) heeftGewicht = true; } catch(e) {} }
+    gwWrap.style.display = heeftGewicht ? 'none' : 'block';
   }
   if (!analyse) analyse = deterministischeInzichten(data);
   const alertTxt = document.getElementById('unlockAlertTxt');
