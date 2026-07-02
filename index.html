@@ -1793,6 +1793,16 @@ function vulUpsell(analyse, data) {
   }
   const advTegoed = TEGOED_PER_WEKEN[advWeken] || 10;
   const adviesTekst = (advNiveau ? advNiveau + ', ' : '') + advWeken + ' weken';
+  // Echte schemaprijs (niveau × duur) = zelfde matrix als op de website.
+  const PRIJS_MATRIX = {
+    8:  { beginner: 39, gevorderd: 49, expert: 59 },
+    12: { beginner: 59, gevorderd: 69, expert: 79 },
+    16: { beginner: 79, gevorderd: 89, expert: 99 }
+  };
+  const nivKey = String(advNiveau || '').toLowerCase();
+  const origPrijs = (PRIJS_MATRIX[advWeken] && PRIJS_MATRIX[advWeken][nivKey]) ||
+                    (analyse && analyse.upsell && Number(analyse.upsell.prijs)) || null;
+  const finalPrijs = origPrijs != null ? Math.max(0, origPrijs - advTegoed) : null;
 
   // Hang het tegoed-token (voor de automatische korting) + de sporter-data aan
   // de schema-URL. We bouwen altijd vanaf een vaste basis-URL zodat een tweede
@@ -1834,7 +1844,15 @@ function vulUpsell(analyse, data) {
     if(sub) sub.textContent = u.tekst;
     if(prijsBlok) {
       prijsBlok.style.display = 'flex';
-      prijsBlok.innerHTML = `<span class="upsell-prijs-n">€${u.prijs}</span><span class="upsell-prijs-lbl">eenmalig · direct starten</span>`;
+      if (heeftTegoed && origPrijs != null && finalPrijs != null) {
+        prijsBlok.innerHTML =
+          `<span style="text-decoration:line-through;color:rgba(255,255,255,0.35);font-family:'DM Serif Display',serif;font-size:26px;margin-right:8px;">€${origPrijs}</span>` +
+          `<span style="color:var(--oranje);font-size:22px;margin-right:8px;">→</span>` +
+          `<span class="upsell-prijs-n">€${finalPrijs}</span>` +
+          `<span class="upsell-prijs-lbl">met je €${advTegoed} tegoed · direct starten</span>`;
+      } else {
+        prijsBlok.innerHTML = `<span class="upsell-prijs-n">€${origPrijs != null ? origPrijs : u.prijs}</span><span class="upsell-prijs-lbl">eenmalig · direct starten</span>`;
+      }
     }
     if(btn) { btn.textContent = heeftTegoed ? 'Verzilver mijn tegoed →' : (u.ctaTekst||'Start mijn trainingsschema →'); btn.href = metParams(); }
   } else {
