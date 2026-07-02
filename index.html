@@ -302,6 +302,43 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .ftp-correctie-btn{background:var(--oranje);color:#fff;border:none;border-radius:6px;padding:10px 16px;font-size:12px;font-weight:800;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;}
 .ftp-correctie-hint{font-size:10px;color:rgba(255,255,255,0.3);margin-top:6px;line-height:1.5;}
 
+/* ===== W/KG CARD (Watt per kilo + Tour-vergelijking) ===== */
+.wkg-card{background:linear-gradient(135deg,rgba(20,10,5,1) 0%,rgba(12,8,4,1) 100%);border:1px solid rgba(255,107,26,0.25);border-radius:10px;margin:0 16px 14px;padding:20px 16px;position:relative;overflow:hidden;}
+.wkg-card::before{content:'';position:absolute;top:-30px;right:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(255,107,26,0.12) 0%,transparent 70%);pointer-events:none;}
+.wkg-label{font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--oranje);margin-bottom:4px;display:flex;align-items:center;gap:6px;}
+.wkg-subtitel{font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:16px;}
+.wkg-getal-rij{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;}
+.wkg-getal{font-size:56px;font-weight:900;line-height:1;letter-spacing:-2px;color:var(--wit);}
+.wkg-eenheid{font-size:16px;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:1px;}
+.wkg-tour-regel{font-size:13px;font-weight:700;color:rgba(255,255,255,0.85);line-height:1.5;margin-bottom:18px;}
+.wkg-tour-regel span{color:var(--oranje);}
+/* Ladder */
+.wkg-ladder{display:flex;flex-direction:column;gap:7px;margin-bottom:14px;}
+.wkg-trede{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:6px;border:1px solid rgba(255,255,255,0.07);background:rgba(255,255,255,0.02);transition:all .3s;}
+.wkg-trede.actief{border-color:rgba(255,107,26,0.45);background:rgba(255,107,26,0.09);}
+.wkg-trede-naam{font-size:12px;font-weight:600;color:rgba(255,255,255,0.55);flex:1;}
+.wkg-trede.actief .wkg-trede-naam{color:var(--wit);font-weight:700;}
+.wkg-trede-range{font-size:11px;color:rgba(255,255,255,0.3);font-weight:600;white-space:nowrap;}
+.wkg-trede.actief .wkg-trede-range{color:var(--oranje);}
+.wkg-trede-jij{font-size:8px;font-weight:800;letter-spacing:1px;color:#fff;background:var(--oranje);border-radius:3px;padding:2px 6px;text-transform:uppercase;}
+.wkg-volgende{font-size:11px;color:rgba(255,255,255,0.45);line-height:1.6;background:rgba(255,255,255,0.03);border-left:2px solid var(--oranje);padding:10px 12px;border-radius:0 6px 6px 0;}
+.wkg-volgende strong{color:rgba(255,255,255,0.85);font-weight:700;}
+/* Gewicht-invoer (fallback) */
+.wkg-gewicht-hint{font-size:12px;color:rgba(255,255,255,0.55);line-height:1.6;margin-bottom:14px;}
+.wkg-gewicht-rij{display:flex;gap:8px;align-items:center;}
+.wkg-gewicht-input{flex:1;min-width:0;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:12px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;}
+.wkg-gewicht-input:focus{border-color:var(--oranje);}
+.wkg-gewicht-btn{background:var(--oranje);color:#fff;border:none;border-radius:6px;padding:12px 18px;font-size:13px;font-weight:800;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.wkg-gewicht-aanpassen{background:none;border:none;color:rgba(255,255,255,0.4);font-size:11px;text-decoration:underline;cursor:pointer;font-family:'DM Sans',sans-serif;padding:0;margin-top:12px;}
+/* Power-curve W/kg (phase 2, alleen als piek-data aanwezig) */
+.wkg-curve{border-top:1px solid rgba(255,255,255,0.07);margin-top:16px;padding-top:14px;}
+.wkg-curve-titel{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.35);font-weight:700;margin-bottom:10px;}
+.wkg-curve-rij{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.wkg-curve-dur{font-size:11px;color:rgba(255,255,255,0.5);font-weight:600;width:44px;flex-shrink:0;}
+.wkg-curve-balk-wrap{flex:1;height:7px;background:rgba(255,255,255,0.07);border-radius:4px;overflow:hidden;}
+.wkg-curve-balk{height:100%;background:rgba(255,107,26,0.9);border-radius:4px;transition:width 1s cubic-bezier(0.22,1,0.36,1);}
+.wkg-curve-val{font-size:11px;color:rgba(255,255,255,0.7);font-weight:700;width:58px;text-align:right;flex-shrink:0;}
+
 /* ANALYSE CARD */
 .analyse-card{background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:10px;margin:0 16px 14px;padding:18px 16px;}
 .analyse-card-label{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--oranje);font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
@@ -758,6 +795,36 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
         <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--wit)"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         GEEN FTP-TEST NODIG
       </button>
+    </div>
+
+    <!-- W/KG CARD — Watt per kilo + Tour-vergelijking -->
+    <div class="wkg-card" id="wkgCard" style="display:none">
+      <div class="wkg-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--oranje)" stroke-width="2"><path d="M6 20V10M12 20V4M18 20v-6"/></svg>
+        Watt per kilo
+      </div>
+      <div class="wkg-subtitel">Dé maat waarop wielrenners elkaar vergelijken — vooral bergop.</div>
+
+      <!-- Toestand A: gewicht bekend → volledige W/kg + ladder -->
+      <div id="wkgResultaat" style="display:none">
+        <div class="wkg-getal-rij">
+          <div class="wkg-getal" id="wkgGetal">—</div>
+          <div class="wkg-eenheid">W/kg</div>
+        </div>
+        <div class="wkg-tour-regel" id="wkgTourRegel"></div>
+        <div class="wkg-ladder" id="wkgLadder"></div>
+        <div class="wkg-volgende" id="wkgVolgende"></div>
+        <button type="button" class="wkg-gewicht-aanpassen" onclick="toonGewichtInvoer()" id="wkgAanpassenBtn">Gewicht aanpassen</button>
+      </div>
+
+      <!-- Toestand B: gewicht ontbreekt → invoerveld (fallback) -->
+      <div id="wkgGewichtInvoer" style="display:none">
+        <div class="wkg-gewicht-hint">Vul je gewicht in om je W/kg te zien én hoe je je verhoudt tot een Tour de France-renner.</div>
+        <div class="wkg-gewicht-rij">
+          <input id="wkgGewichtInput" class="wkg-gewicht-input" type="number" inputmode="decimal" placeholder="bv. 74" min="35" max="200">
+          <button type="button" class="wkg-gewicht-btn" onclick="pasGewichtToe()">Toon W/kg</button>
+        </div>
+      </div>
     </div>
 
     <!-- KRITIEKE BEVINDING (conditioneel) -->
@@ -1295,6 +1362,9 @@ function toonRapport(data, analyse) {
   // Zone tabel
   vulZoneTabel(data);
 
+  // W/kg + Tour-vergelijking
+  vulWkg(data);
+
   // Kritieke bevinding
   if(analyse && analyse.kritiekeBevinding) {
     const kc = document.getElementById('kritiekCard');
@@ -1324,6 +1394,148 @@ function toonRapport(data, analyse) {
 
   // Upsell
   vulUpsell(analyse, data);
+}
+
+// ===== W/KG LADDER + TOUR-VERGELIJKING =====
+// Tredes op basis van FTP in W/kg — algemene richtwaarden voor mannelijke
+// wielrenners (vrouwen liggen ~10-12% lager). Tour-klimmer-referentie ~6.2 W/kg
+// bij drempel; dat voedt de deelbare "% van een Tour-renner"-hook.
+const WKG_TOUR_REF = 6.2;
+const WKG_TREDES = [
+  { naam: 'Recreant',            min: 0,   max: 2.5 },
+  { naam: 'Getrainde amateur',   min: 2.5, max: 3.2 },
+  { naam: 'Snelle amateur',      min: 3.2, max: 4.0 },
+  { naam: 'Wedstrijdrenner',     min: 4.0, max: 4.8 },
+  { naam: 'Continental / elite', min: 4.8, max: 5.5 },
+  { naam: 'WorldTour',           min: 5.5, max: 99  },
+];
+
+// Gewicht: Strava (backend, data.weight) → eerder ingevuld (localStorage) → geen.
+function bepaalGewicht(data) {
+  if (data && data.weight && data.weight >= 35 && data.weight <= 200) {
+    return Math.round(data.weight * 10) / 10;
+  }
+  try {
+    const g = parseFloat(localStorage.getItem('pp_gewicht'));
+    if (g >= 35 && g <= 200) return g;
+  } catch(e) {}
+  return null;
+}
+
+function vulWkg(data) {
+  const card = document.getElementById('wkgCard');
+  if (!card) return;
+  // Zonder FTP geen W/kg mogelijk — kaart verbergen.
+  if (!data || !data.ftp) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  const gewicht = bepaalGewicht(data);
+  const resultaat = document.getElementById('wkgResultaat');
+  const invoer = document.getElementById('wkgGewichtInvoer');
+
+  // Geen gewicht bekend → toon het fallback-invoerveld.
+  if (!gewicht) {
+    if (resultaat) resultaat.style.display = 'none';
+    if (invoer) invoer.style.display = 'block';
+    return;
+  }
+  if (invoer) invoer.style.display = 'none';
+  if (resultaat) resultaat.style.display = 'block';
+
+  const wkg = data.ftp / gewicht;
+  const getalEl = document.getElementById('wkgGetal');
+  if (getalEl) getalEl.textContent = wkg.toFixed(1);
+
+  // Share-hook: percentage van een Tour-klimmer.
+  const pctTour = Math.round((wkg / WKG_TOUR_REF) * 100);
+  const tourEl = document.getElementById('wkgTourRegel');
+  if (tourEl) tourEl.innerHTML = `Jij trapt op <span>${pctTour}%</span> van een Tour de France-klimmer (${WKG_TOUR_REF} W/kg bij drempel).`;
+
+  // Ladder met jouw trede gemarkeerd.
+  let actiefIdx = WKG_TREDES.findIndex(t => wkg >= t.min && wkg < t.max);
+  if (actiefIdx === -1) actiefIdx = WKG_TREDES.length - 1;
+  const ladderEl = document.getElementById('wkgLadder');
+  if (ladderEl) {
+    ladderEl.innerHTML = WKG_TREDES.map((t, i) => {
+      const range = t.max >= 99 ? `${t.min.toFixed(1)}+` : `${t.min.toFixed(1)}–${t.max.toFixed(1)}`;
+      return `<div class="wkg-trede ${i===actiefIdx?'actief':''}">
+        <span class="wkg-trede-naam">${t.naam}</span>
+        <span class="wkg-trede-range">${range} W/kg</span>
+        ${i===actiefIdx?'<span class="wkg-trede-jij">Jij</span>':''}
+      </div>`;
+    }).join('');
+  }
+
+  // Brug naar de volgende trede — de logische opstap naar de schema-upsell.
+  const volgEl = document.getElementById('wkgVolgende');
+  if (volgEl) {
+    if (actiefIdx < WKG_TREDES.length - 1) {
+      const volgende = WKG_TREDES[actiefIdx + 1];
+      const wattNodig = Math.round(volgende.min * gewicht);
+      const wattErbij = Math.max(1, wattNodig - data.ftp);
+      volgEl.innerHTML = `Volgende trede: <strong>${volgende.naam}</strong> (${volgende.min.toFixed(1)} W/kg). Dat is een FTP van ${wattNodig}W — <strong>${wattErbij}W erbij</strong>. Met gericht trainen haalbaar.`;
+    } else {
+      volgEl.innerHTML = `Je zit in de hoogste categorie. Dit is WorldTour-niveau — chapeau.`;
+    }
+  }
+
+  // Power curve in W/kg — alleen zichtbaar zodra de backend piek-data levert.
+  vulWkgCurve(data, gewicht);
+}
+
+// Optioneel blok: 1/5/20-min piekvermogen omgerekend naar W/kg. Vereist dat de
+// backend piek1min/piek5min/piek20min meestuurt (uit de streams die toch al
+// worden opgehaald). Zonder die velden wordt dit blok simpelweg niet getoond.
+function vulWkgCurve(data, gewicht) {
+  const bestaand = document.getElementById('wkgCurveBlok');
+  if (bestaand) bestaand.remove();
+  const punten = [
+    { dur: '1 min',  w: data.piek1min },
+    { dur: '5 min',  w: data.piek5min },
+    { dur: '20 min', w: data.piek20min },
+  ].filter(p => p.w && p.w > 0);
+  if (punten.length === 0) return;
+  const resultaat = document.getElementById('wkgResultaat');
+  if (!resultaat) return;
+  const maxWkg = Math.max(...punten.map(p => p.w / gewicht));
+  const blok = document.createElement('div');
+  blok.id = 'wkgCurveBlok';
+  blok.className = 'wkg-curve';
+  blok.innerHTML = `<div class="wkg-curve-titel">Jouw power curve (W/kg)</div>` +
+    punten.map(p => {
+      const w = p.w / gewicht;
+      const pct = Math.max(6, (w / maxWkg) * 100);
+      return `<div class="wkg-curve-rij">
+        <span class="wkg-curve-dur">${p.dur}</span>
+        <div class="wkg-curve-balk-wrap"><div class="wkg-curve-balk" style="width:0%" data-target="${pct}"></div></div>
+        <span class="wkg-curve-val">${w.toFixed(1)} W/kg</span>
+      </div>`;
+    }).join('');
+  resultaat.appendChild(blok);
+  setTimeout(() => {
+    blok.querySelectorAll('.wkg-curve-balk').forEach(b => { b.style.width = b.dataset.target + '%'; });
+  }, 200);
+}
+
+function pasGewichtToe() {
+  const input = document.getElementById('wkgGewichtInput');
+  if (!input) return;
+  const g = parseFloat((input.value || '').replace(',', '.'));
+  if (!g || g < 35 || g > 200) { alert('Vul een gewicht tussen 35 en 200 kg in.'); return; }
+  try { localStorage.setItem('pp_gewicht', g); } catch(e) {}
+  if (window._stravaData) window._stravaData.weight = g;
+  vulWkg(window._stravaData || {});
+}
+
+function toonGewichtInvoer() {
+  const resultaat = document.getElementById('wkgResultaat');
+  const invoer = document.getElementById('wkgGewichtInvoer');
+  if (resultaat) resultaat.style.display = 'none';
+  if (invoer) invoer.style.display = 'block';
+  const input = document.getElementById('wkgGewichtInput');
+  const g = bepaalGewicht(window._stravaData || {});
+  if (input && g) input.value = g;
+  if (input) input.focus();
 }
 
 function vulZoneTabel(data) {
@@ -1681,7 +1893,7 @@ window.addEventListener('DOMContentLoaded', function() {
     </div>
     <p style="color:#6a6a6a;font-size:12px;margin:0 0 18px;">Michel Kreder Coaching · laatst bijgewerkt juni 2026</p>
 
-    <p style="margin:0 0 14px;"><strong style="color:#fafafa;">Wat we verwerken.</strong> Met jouw toestemming lezen we via Strava (alleen-lezen) je trainingsdata van de laatste 90 dagen. Daarnaast vragen we je naam en e-mailadres bij de betaling.</p>
+    <p style="margin:0 0 14px;"><strong style="color:#fafafa;">Wat we verwerken.</strong> Met jouw toestemming lezen we via Strava (alleen-lezen) je trainingsdata van de laatste 90 dagen en je profielgewicht (voor de W/kg-berekening). Staat er geen gewicht in je Strava-profiel, dan kun je het optioneel zelf invullen op je rapport. Daarnaast vragen we je naam en e-mailadres bij de betaling.</p>
 
     <p style="margin:0 0 14px;"><strong style="color:#fafafa;">Waarvoor.</strong> Uitsluitend om je persoonlijke Power Profile™-rapport te maken en als PDF naar je te mailen.</p>
 
