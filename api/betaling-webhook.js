@@ -4,7 +4,7 @@
 //   1. bouwt een gebrande PDF (Power Profile-stijl) uit de betaal-metadata
 //   2. mailt die PDF naar de KLANT (vanaf je geverifieerde domein)
 //   3. stuurt JOU een interne verkoopmelding MÉT de PDF als bijlage
-//   4. zet de koper in Mailchimp met een versleuteld tegoed-linkje (nurture)
+//   4. maakt unieke 72u-coupons aan en zet de koper in Mailchimp (nurture)
 //
 // Vereist in Vercel: MOLLIE_API_KEY, RESEND_API_KEY
 // Voor de nurture:   MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID, PP_TOKEN_SECRET
@@ -27,6 +27,11 @@ function escHtml(s) {
 }
 function veiligPdfTekst(s) {
   return String(s == null ? '' : s).replace(/[^\x20-\x7E\xA0-\xFF]/g, '').trim() || 'Sporter';
+}
+// Zet alle niet-ASCII tekens om naar numerieke HTML-entities, zodat mailclients
+// ze altijd goed tonen (voorkomt mojibake ongeacht de charset).
+function naarHtmlEntities(s) {
+  return String(s).replace(/[^\x00-\x7F]/g, function(ch){ return "&#" + ch.charCodeAt(0) + ";"; });
 }
 
 // ===== REDIS (Upstash REST) — ontdubbeling & lock =====
@@ -305,31 +310,42 @@ async function bouwRapportPdf(meta) {
 
 function kapitaal(s){ s=String(s||'').trim(); return s ? s.charAt(0).toUpperCase()+s.slice(1) : 'Sporter'; }
 
-function klantHtml(naam) {
+function klantHtml(naam, token, deadline) {
   const veiligeNaam = escHtml(naam);
-  return `
+  const schemaUrl = token
+    ? `https://michelkredercoaching.nl/trainingsschemas/?pp=${encodeURIComponent(token)}`
+    : 'https://michelkredercoaching.nl/trainingsschemas';
+  const deadlineTxt = deadline ? escHtml(deadline) : '';
+  const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
     <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
-    <p style="font-size:15px;margin:0 0 14px;">Je rapport zit als PDF bij deze mail. Maar voordat je 'm opent — één instructie.</p>
-    <p style="font-size:15px;margin:0 0 14px;">Kijk eerst naar één getal: <strong>je percentage in het grijze gebied</strong> (Tempo/Sweetspot).</p>
-    <p style="font-size:15px;margin:0 0 18px;">Dat ene getal verklaart bij de meeste renners waarom ze hard trainen zonder sneller te worden. Te zwaar om van te herstellen. Te licht om van te groeien.</p>
-    <p style="font-size:15px;margin:0 0 8px;">Daarna, in deze volgorde:</p>
-    <table cellpadding="0" cellspacing="0" style="margin:0 0 18px;">
-      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">1.</td><td style="font-size:15px;padding:3px 0;"><strong>Je FTP</strong> — dit is vanaf nu de referentie voor elke training die je doet</td></tr>
-      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">2.</td><td style="font-size:15px;padding:3px 0;"><strong>Je actieplan</strong> — 3 stappen. Begin deze week met stap 1.</td></tr>
-      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">3.</td><td style="font-size:15px;padding:3px 0;"><strong>De intervalblokken</strong> — kies er één en zet 'm nú in je agenda</td></tr>
-    </table>
-    <p style="font-size:15px;margin:0 0 14px;">Want hier gaat het mis bij 90% van de mensen die een analyse kopen: ze lezen 'm, denken “interessant”, en trainen maandag exact hetzelfde als vorige week.</p>
-    <p style="font-size:15px;margin:0 0 18px;"><strong>Een rapport dat je leest verandert niets. Een rapport dat je uitvoert wel.</strong> De renners die over 6 weken verschil voelen, zijn de renners die vandaag hun eerste training inplannen.</p>
-    <div style="margin:22px 0;padding:18px;background:#fff4ef;border:1px solid #f5d8c5;border-radius:8px;">
-      <p style="font-size:13px;font-weight:700;color:#ff6b1a;letter-spacing:.5px;margin:0 0 6px;">VAN INZICHT NAAR UITVOERING</p>
-      <p style="font-size:14px;margin:0 0 10px;color:#333;">Dit rapport vertelt je wát er mis gaat. Een persoonlijk trainingsschema regelt hóe je het oplost — elke week exact weten wat je rijdt, in welke zone, en wanneer je herstelt. Gebouwd op jouw FTP en jouw uren. Vanaf €59.</p>
-      <a href="https://michelkredercoaching.nl/trainingsschemas" style="display:inline-block;background:#ff6b1a;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:11px 20px;border-radius:6px;">Bekijk de trainingsschema's →</a>
+    <p style="font-size:15px;margin:0 0 14px;">Je rapport zit als PDF bij deze mail — met je FTP, je zones en je actieplan. Maar één ding eerst.</p>
+    <p style="font-size:15px;margin:0 0 18px;">Kijk naar je percentage in het <strong>grijze gebied</strong> (Tempo/Sweetspot). Dat ene getal verklaart bij de meeste renners waarom ze hard trainen zonder sneller te worden. Te zwaar om van te herstellen, te licht om van te groeien.</p>
+
+    <div style="margin:22px 0;padding:22px;background:#0d0d0d;border-radius:12px;">
+      <p style="font-size:12px;font-weight:800;color:#ff6b1a;letter-spacing:1.5px;margin:0 0 10px;text-transform:uppercase;">Je analyse-tegoed staat klaar</p>
+      <p style="font-size:18px;line-height:1.4;color:#ffffff;margin:0 0 8px;font-weight:800;">Je hebt nu de diagnose. Tijd voor de behandeling — met je tegoed erop.</p>
+      <p style="font-size:14px;color:#c8c8c8;margin:0 0 16px;">Je €29 is geen kosten. Het is je aanbetaling. Kies nú een schema en je tegoed wordt automatisch verrekend:</p>
+      <table cellpadding="0" cellspacing="0" style="margin:0 0 18px;font-size:14px;">
+        <tr><td style="padding:3px 14px 3px 0;color:#ffffff;">8 weken</td><td style="padding:3px 0;color:#ff6b1a;font-weight:800;">€10 tegoed</td></tr>
+        <tr><td style="padding:3px 14px 3px 0;color:#ffffff;">12 weken</td><td style="padding:3px 0;color:#ff6b1a;font-weight:800;">€20 tegoed</td></tr>
+        <tr><td style="padding:3px 14px 3px 0;color:#ffffff;">16 weken</td><td style="padding:3px 0;color:#ff6b1a;font-weight:800;">€29 tegoed — je analyse volledig gratis</td></tr>
+      </table>
+      <a href="${schemaUrl}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Verzilver mijn tegoed →</a>
+      ${deadlineTxt ? `<p style="font-size:12px;color:#8a8a8a;margin:14px 0 0;">Let op: je tegoed vervalt ${deadlineTxt}. Daarna geldt het volle tarief.</p>` : ''}
     </div>
+
+    <p style="font-size:15px;margin:0 0 8px;">Open je rapport daarna in deze volgorde:</p>
+    <table cellpadding="0" cellspacing="0" style="margin:0 0 18px;">
+      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">1.</td><td style="font-size:15px;padding:3px 0;"><strong>Je FTP</strong> — vanaf nu de referentie voor elke training</td></tr>
+      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">2.</td><td style="font-size:15px;padding:3px 0;"><strong>Je actieplan</strong> — 3 stappen. Begin deze week met stap 1.</td></tr>
+      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">3.</td><td style="font-size:15px;padding:3px 0;"><strong>De intervalblokken</strong> — kies er één en zet 'm in je agenda</td></tr>
+    </table>
+    <p style="font-size:15px;margin:0 0 18px;"><strong>Een rapport dat je leest verandert niets. Een rapport dat je uitvoert wel.</strong> De renners die over 6 weken verschil voelen, pakken vandaag hun schema — nu het tegoed er nog op zit.</p>
     <p style="font-size:14px;margin:0 0 4px;">Vragen over je cijfers? Reageer gewoon op deze mail — ik lees alles zelf.</p>
     <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
-    <p style="font-size:13px;margin:20px 0 0;color:#888;border-top:1px solid #eee;padding-top:14px;">P.S. Denk je dat je FTP niet klopt? Op je rapportpagina staat “Klopt dit niet? Pas je FTP aan” — vul je echte waarde in en je zones en intervallen herrekenen direct.</p>
   </div>`;
+  return naarHtmlEntities(html);
 }
 
 function interneHtml(m, bedrag, id, pdfErbij) {
@@ -337,7 +353,7 @@ function interneHtml(m, bedrag, id, pdfErbij) {
   const statusBalk = pdfErbij
     ? `<p style="margin:16px 0 0;padding:10px 14px;border-radius:6px;background:#eef7f0;color:#2e7d4f;font-size:14px;font-weight:600;">📎 PDF zit als bijlage bij deze mail — klaar om te forwarden naar de klant.</p>`
     : `<p style="margin:16px 0 0;padding:10px 14px;border-radius:6px;background:#fdecea;color:#c0392b;font-size:14px;font-weight:600;">⚠ PDF kon NIET worden gegenereerd. De klant heeft (nog) niets ontvangen — check handmatig.</p>`;
-  return `
+  return naarHtmlEntities(`
   <div style="font-family:Arial,sans-serif;color:#111;line-height:1.6;">
     <h2 style="margin:0 0 4px;">🚴 Nieuwe verkoop</h2>
     <p style="margin:0 0 16px;color:#666;">Power Profile™ · ${escHtml(bedrag)} betaald</p>
@@ -354,7 +370,7 @@ function interneHtml(m, bedrag, id, pdfErbij) {
     </table>
     ${statusBalk}
     <p style="margin:16px 0 0;color:#999;font-size:12px;">Mollie betaling-id: ${escHtml(id)}</p>
-  </div>`;
+  </div>`);
 }
 
 async function stuurMail(payload) {
@@ -457,13 +473,11 @@ export default async function handler(req, res) {
   console.log('Webhook:', id, '| status:', betaling.status, '| email:', (betaling.metadata && betaling.metadata.email) || 'GEEN');
   if (betaling.status !== 'paid') return res.status(200).send('niet betaald');
 
-  // 2) ONTDUBBELING — al eerder volledig verstuurd? Dan niets meer doen.
   if (await alVerstuurd(id)) {
     console.log('Webhook: al verstuurd, skip', id);
     return res.status(200).send('al verstuurd');
   }
 
-  // 3) LOCK — voorkom dat twee gelijktijdige webhooks dezelfde betaling verwerken.
   if (await pakLock(id) === 'bezig') {
     console.log('Webhook: andere invocatie is bezig, later opnieuw', id);
     return res.status(503).send('bezig - retry');
@@ -475,6 +489,10 @@ export default async function handler(req, res) {
     const bedrag = betaling.amount && betaling.amount.value ? `€${betaling.amount.value}` : '—';
     const veiligeBestandsnaam = String(naam).replace(/[^a-z0-9]/gi,'_').slice(0,40) || 'sporter';
 
+    // Tegoed-token vast berekenen: gebruikt in de klantmail (korting-knop) én
+    // straks in Mailchimp (dezelfde token, één bron).
+    const { token: ppToken, deadlineNL: ppDeadline } = maakToken(m.email);
+
     // 4) PDF bouwen — de kern van het rapport.
     let pdfB64 = null;
     try {
@@ -483,26 +501,24 @@ export default async function handler(req, res) {
       console.log('PDF gebouwd:', bytes.length, 'bytes');
     } catch (e) { console.error('PDF genereren faalde:', e); }
 
-    // Geval A: PDF mislukt → klant GEEN lege mail, Michel waarschuwen (max 1x/uur), retry.
     if (!pdfB64) {
       if (await magWaarschuwen(id)) {
         await stuurMail({
           from: AFZENDER, to: INTERNE_MAIL,
-          subject: `⚠ PDF MISLUKT — ${naam} · betaald maar geen rapport`,
+          subject: `PDF MISLUKT - ${naam} - betaald maar geen rapport`,
           html: interneHtml(m, bedrag, id, false)
         });
       }
       return res.status(503).send('pdf mislukt - retry');
     }
 
-    // Geval B: PDF OK.
     // 5a) Klantmail met de PDF.
     let klantMailGelukt = false;
     if (m.email) {
       klantMailGelukt = await stuurMail({
         from: AFZENDER, to: m.email, reply_to: REPLY_TO,
-        subject: 'Je rapport zit erbij — maar kijk eérst naar dit ene getal 🚴',
-        html: klantHtml(naam),
+        subject: 'Je rapport staat klaar - en je analyse-tegoed ook',
+        html: klantHtml(naam, ppToken, ppDeadline),
         attachments: [{ filename: 'Power-Profile-trainingsrapport.pdf', content: pdfB64 }]
       });
     }
@@ -510,23 +526,20 @@ export default async function handler(req, res) {
     // 5b) Interne mail MÉT de PDF als bijlage — jouw kopie, met één herkansing.
     const internePayload = {
       from: AFZENDER, to: INTERNE_MAIL,
-      subject: `🚴 Nieuwe verkoop — ${naam} · FTP ${m.ftp||'?'}W`,
+      subject: `Nieuwe verkoop - ${naam} - FTP ${m.ftp||'?'}W`,
       html: interneHtml(m, bedrag, id, true),
       attachments: [{ filename: `Power-Profile-${veiligeBestandsnaam}.pdf`, content: pdfB64 }]
     };
     let interneGelukt = await stuurMail(internePayload);
     if (!interneGelukt) interneGelukt = await stuurMail(internePayload);
 
-    // 6) Klant-adres aanwezig én mail mislukt → 503 zodat Mollie retryt.
     if (m.email && !klantMailGelukt) {
       return res.status(503).send('klantmail mislukt - retry');
     }
 
-    // 6b) NURTURE — koper + versleuteld tegoed-linkje naar Mailchimp. Faalt dit,
-    //     dan gaan de verkoop en PDF gewoon door; we loggen het alleen.
+    // 6b) NURTURE — koper + versleuteld tegoed-linkje naar Mailchimp.
     try {
-      const { token, deadlineNL } = maakToken(m.email);
-      await naarMailchimp(m, token, deadlineNL);
+      await naarMailchimp(m, ppToken, ppDeadline);
     } catch (e) { console.error('Nurture-stap faalde (blokkeert niet):', e); }
 
     // 7) Succes → vastleggen zodat een latere retry niks dubbel doet.
