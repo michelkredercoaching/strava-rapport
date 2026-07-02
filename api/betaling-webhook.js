@@ -3,7 +3,7 @@
 // Bij status 'paid':
 //   1. bouwt een gebrande PDF (Power Profile-stijl) uit de betaal-metadata
 //   2. mailt die PDF naar de KLANT (vanaf je geverifieerde domein)
-//   3. stuurt JOU een interne verkoopmelding MÃ‰T de PDF als bijlage
+//   3. stuurt JOU een interne verkoopmelding MÉT de PDF als bijlage
 //   4. maakt unieke 72u-coupons aan en zet de koper in Mailchimp (nurture)
 //
 // Vereist in Vercel: MOLLIE_API_KEY, RESEND_API_KEY
@@ -30,7 +30,7 @@ function veiligPdfTekst(s) {
   return String(s == null ? '' : s).replace(/[^\x20-\x7E\xA0-\xFF]/g, '').trim() || 'Sporter';
 }
 
-// ===== REDIS (Upstash REST) â€” ontdubbeling & lock =====
+// ===== REDIS (Upstash REST) — ontdubbeling & lock =====
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL;
 const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 const redisAan    = !!(REDIS_URL && REDIS_TOKEN);
@@ -133,11 +133,11 @@ async function bouwRapportPdf(meta) {
   }
   if (!logoGelukt) txt('MICHEL KREDER COACHING',M,y-10,{font:bold,size:12});
   const datum=new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'});
-  txt('POWER PROFILEâ„¢',R,y-2,{font:bold,size:8,color:DIM,align:'right'});
-  txt(`Analyse Â· laatste 90 dagen${ritten?` Â· ${ritten} ritten`:''}`,R,y-14,{font:reg,size:8,color:DIM,align:'right'});
+  txt('POWER PROFILE™',R,y-2,{font:bold,size:8,color:DIM,align:'right'});
+  txt(`Analyse · laatste 90 dagen${ritten?` · ${ritten} ritten`:''}`,R,y-14,{font:reg,size:8,color:DIM,align:'right'});
   txt(datum,R,y-26,{font:reg,size:8,color:DIM,align:'right'});
   y-=46;
-  txt('Power Profileâ„¢',M,y-26,{font:bold,size:30});
+  txt('Power Profile™',M,y-26,{font:bold,size:30});
   txt('Persoonlijk vermogensprofiel voor '+naam,M,y-42,{font:reg,size:10,color:MUT});
   if (score!=null){ txt(String(score),R,y-30,{font:bold,size:46,color:ORANJE,align:'right'}); txt('TRAINING SCORE',R,y-44,{font:bold,size:7,color:DIM,align:'right'}); }
   y-=58;
@@ -150,22 +150,22 @@ async function bouwRapportPdf(meta) {
   const zoneCardH=34+namen.length*21+12;
   ensure(zoneCardH);
   card(M,y-zoneCardH,R-M,zoneCardH);
-  txt('ZONEDISTRIBUTIE Â· WAAR TRAINDE JIJ?',M+16,y-20,{font:bold,size:9,color:WIT});
+  txt('ZONEDISTRIBUTIE · WAAR TRAINDE JIJ?',M+16,y-20,{font:bold,size:9,color:WIT});
   const z=(i)=>zones[i]||0;
   const laagTot=z(0)+z(1), grijsTot=z(2)+z(3), kwalTot=z(4)+z(5), polen=laagTot+kwalTot;
   const kwalAandeel=polen>0?(kwalTot/polen)*100:0;
   const badgeVoor=(nm)=>{ if(nm==='FTP'||nm==='VO2max'||nm==='Drempel'){ if(kwalAandeel>=13&&kwalAandeel<=30)return 'goed'; return kwalAandeel<13?'laag':'hoog'; } if(nm==='Herstel'||nm==='Duur'){ if(laagTot>=75)return 'goed'; if(laagTot>=58)return 'ok'; return 'laag'; } if(nm==='Tempo'||nm==='Sweetspot')return grijsTot>12?'hoog':'ok'; return 'ok'; };
   const badgeTekst=(b)=>b==='goed'?'GOED':b==='laag'?'LAAG':b==='hoog'?'TE HOOG':'OK';
   const badgeKleur=(b)=>b==='goed'?GROEN:(b==='laag'||b==='hoog')?ORANJE:DIM;
-  const grenzen=(i)=>{ if(!ftp)return ''; if(i===0)return `< ${Math.round(ftp*0.55)}W`; if(i===namen.length-1)return `> ${Math.round(ftp*1.05)}W`; const p=[[0,0.55],[0.55,0.75],[0.75,0.85],[0.85,0.95],[0.95,1.05]]; const [lo,hi]=p[i]; return `${Math.round(ftp*lo)}â€“${Math.round(ftp*hi)}W`; };
+  const grenzen=(i)=>{ if(!ftp)return ''; if(i===0)return `< ${Math.round(ftp*0.55)}W`; if(i===namen.length-1)return `> ${Math.round(ftp*1.05)}W`; const p=[[0,0.55],[0.55,0.75],[0.75,0.85],[0.85,0.95],[0.95,1.05]]; const [lo,hi]=p[i]; return `${Math.round(ftp*lo)}–${Math.round(ftp*hi)}W`; };
   const maxPct=Math.max(...zones,1), barX=M+150, barW=R-barX-110;
   namen.forEach((nm,i)=>{ const cy=y-38-i*21; txt(nm,M+16,cy,{font:bold,size:9.5,color:WIT}); txt(grenzen(i),M+86,cy,{font:reg,size:7.5,color:DIM}); page.drawRectangle({x:barX,y:cy-2,width:barW,height:7,color:TRACK}); const fw=Math.max(barW*(z(i)/Math.max(maxPct,1)),z(i)>0?3:0); if(fw>0)page.drawRectangle({x:barX,y:cy-2,width:fw,height:7,color:c(ZONE_KLEUR[i]||'#6b7280')}); txt(`${z(i)}%`,barX+barW+26,cy,{font:bold,size:9,color:MUT,align:'right'}); const b=badgeVoor(nm); const bx=R-58; page.drawRectangle({x:bx,y:cy-3,width:54,height:13,color:CARD,borderColor:badgeKleur(b),borderWidth:0.8}); txt(badgeTekst(b),bx+27,cy,{font:bold,size:7,color:badgeKleur(b),align:'center'}); });
   y-=zoneCardH+14;
 
   const ftpH=92; ensure(ftpH);
   card(M,y-ftpH,R-M,ftpH,{fill:CARD2,border:BORDERO});
-  txt('FTP DETECTORâ„¢',M+16,y-20,{font:bold,size:9,color:ORANJE});
-  txt(ftp?String(ftp):'â€”',M+16,y-58,{font:bold,size:40,color:WIT});
+  txt('FTP DETECTOR™',M+16,y-20,{font:bold,size:9,color:ORANJE});
+  txt(ftp?String(ftp):'—',M+16,y-58,{font:bold,size:40,color:WIT});
   if(ftp)txt('WATT',M+16+bold.widthOfTextAtSize(String(ftp),40)+8,y-58,{font:bold,size:13,color:DIM});
   let betr='hoog', betrK=GROEN;
   const bron = meta.ftpBetrouwbaarheid;
@@ -179,14 +179,14 @@ async function bouwRapportPdf(meta) {
     else if (ritten>=8){betr='gemiddeld';betrK=ORANJE;}
     else {betr='laag';betrK=ROOD;}
   }
-  txt(`Berekend uit ${ritten!=null?ritten:'â€”'} ritten`,M+16,y-76,{font:reg,size:8.5,color:MUT});
+  txt(`Berekend uit ${ritten!=null?ritten:'—'} ritten`,M+16,y-76,{font:reg,size:8.5,color:MUT});
   txt('Betrouwbaarheid: ',R-16-bold.widthOfTextAtSize(betr,8.5),y-20,{font:reg,size:8.5,color:MUT,align:'right'});
   txt(betr,R-16,y-20,{font:bold,size:8.5,color:betrK,align:'right'});
   const pillW=128; page.drawRectangle({x:R-16-pillW,y:y-72,width:pillW,height:20,color:ORANJE});
   txt('GEEN FTP-TEST NODIG',R-16-pillW/2,y-66,{font:bold,size:8,color:WIT,align:'center'});
   y-=ftpH+14;
 
-  // ===== W/KG CARD â€” Watt per kilo + Tour-vergelijking =====
+  // ===== W/KG CARD — Watt per kilo + Tour-vergelijking =====
   const wGew = (() => { const w = parseFloat(meta.weight); return (w >= 35 && w <= 200) ? w : null; })();
   if (ftp && wGew) {
     const wkg = ftp / wGew;
@@ -199,7 +199,7 @@ async function bouwRapportPdf(meta) {
       const v = TREDES[actief+1], wattNodig = Math.round(v[1]*wGew), erbij = Math.max(1, wattNodig - ftp);
       volgLines = wrapTxt(`Volgende trede: ${v[0]} (${v[1].toFixed(1)} W/kg) = FTP ${wattNodig}W, dus ${erbij}W erbij. Met gericht trainen haalbaar.`, reg, 8.5, R-M-32);
     } else {
-      volgLines = wrapTxt('Je zit in de hoogste categorie â€” WorldTour-niveau. Chapeau.', reg, 8.5, R-M-32);
+      volgLines = wrapTxt('Je zit in de hoogste categorie — WorldTour-niveau. Chapeau.', reg, 8.5, R-M-32);
     }
     const piek1 = parseInt(meta.piek1min)||null, piek5 = parseInt(meta.piek5min)||null, piek20 = parseInt(meta.piek20min)||null;
     const curve = [['1 min',piek1],['5 min',piek5],['20 min',piek20]].filter(pp => pp[1] && pp[1] > 0);
@@ -218,7 +218,7 @@ async function bouwRapportPdf(meta) {
       const isA = i === actief;
       const rijY = y-88 - i*ladderRijH;
       if (isA) page.drawRectangle({x:M+12, y:rijY-4, width:R-M-24, height:13, color:c('#2a1508'), borderColor:ORANJE, borderWidth:0.8});
-      const range = t[2] >= 99 ? `${t[1].toFixed(1)}+` : `${t[1].toFixed(1)}â€“${t[2].toFixed(1)}`;
+      const range = t[2] >= 99 ? `${t[1].toFixed(1)}+` : `${t[1].toFixed(1)}–${t[2].toFixed(1)}`;
       const rTxt = `${range} W/kg`;
       txt(t[0], M+18, rijY, {font:isA?bold:reg, size:9, color:isA?WIT:MUT});
       txt(rTxt, R-18, rijY, {font:isA?bold:reg, size:8.5, color:isA?ORANJE:DIM, align:'right'});
@@ -244,7 +244,7 @@ async function bouwRapportPdf(meta) {
   }
 
   if (vo2!=null && Number(vo2)===0) {
-    const lines=wrapTxt('In 90 dagen deed je 0 VO2max-sessies. Dit is meestal de hoofdoorzaak van een prestatieplateau â€” je motor krijgt geen groeiprikkel.',reg,9.5,R-M-32);
+    const lines=wrapTxt('In 90 dagen deed je 0 VO2max-sessies. Dit is meestal de hoofdoorzaak van een prestatieplateau — je motor krijgt geen groeiprikkel.',reg,9.5,R-M-32);
     const kh=24+lines.length*13+10; ensure(kh);
     card(M,y-kh,R-M,kh,{fill:c('#1c1010'),border:c('#5a2424')});
     txt('KRITIEKE BEVINDING',M+16,y-18,{font:bold,size:8,color:ROOD});
@@ -254,8 +254,8 @@ async function bouwRapportPdf(meta) {
 
   const w110=ftp?Math.round(ftp*1.1):null;
   const acties=[
-    'Train minimaal 3x per week â€” consistent, elke week, geen uitzonderingen.',
-    ftp?`Voeg 1x per week een VO2max-blok toe: 4Ã—4 min boven ${w110}W met 3 min herstel.`:'Voeg 1x per week een VO2max-blok toe: 4Ã—4 min hard met 3 min herstel.',
+    'Train minimaal 3x per week — consistent, elke week, geen uitzonderingen.',
+    ftp?`Voeg 1x per week een VO2max-blok toe: 4×4 min boven ${w110}W met 3 min herstel.`:'Voeg 1x per week een VO2max-blok toe: 4×4 min hard met 3 min herstel.',
     'Zet je trainingen vast in je agenda: bv. di duur, do VO2max, zo lange rustige rit.'
   ];
   const actLines=acties.map(a=>wrapTxt(a,reg,9.5,R-M-58));
@@ -268,16 +268,16 @@ async function bouwRapportPdf(meta) {
   y-=actH+14;
 
   const meerVolume = (uren||0) >= 8;
-  const wB=(lo,hi)=> ftp ? `${Math.round(ftp*lo)}â€“${Math.round(ftp*hi)}W` : `${Math.round(lo*100)}â€“${Math.round(hi*100)}% FTP`;
+  const wB=(lo,hi)=> ftp ? `${Math.round(ftp*lo)}–${Math.round(ftp*hi)}W` : `${Math.round(lo*100)}–${Math.round(hi*100)}% FTP`;
   const blokken=[];
   if (meerVolume){
-    blokken.push({type:'DUURKRACHT â€” DREMPELBLOK Â· 1X PER WEEK', oms:`5x8 min op ${wB(0.70,0.75)} Â· 4 min rust tussen sets`, det:'Bouwt je aerobe motor en drempel zonder je leeg te trekken. Comfortabel zwaar â€” je kunt nog korte zinnen praten. Ã‰Ã©n keer per week is genoeg.'});
-    blokken.push({type:'VO2MAX â€” OPTIE A Â· LANGE MICRO-INTERVALLEN', oms:`40-20 op ${wB(1.30,1.40)} Â· 2â€“3 blokken van 8â€“12 min, 5 min rust`, det:'40 sec vol, 20 sec rustig dÃ³Ã³rdraaien. Je hartslag blijft hoog over het hele blok â€” maximale prikkel voor je zuurstofopname. 1x per week.'});
-    blokken.push({type:'VO2MAX â€” OPTIE B Â· LANGERE REPS', oms:`80-40 op ${wB(1.10,1.20)} Â· 2â€“3 blokken van 8â€“12 min, 5 min rust`, det:'Langere inspanningen op een lager percentage. Goed alternatief als de 40-20 te zwaar voelt, of voor variatie. Kies Ã©Ã©n optie per week.'});
+    blokken.push({type:'DUURKRACHT — DREMPELBLOK · 1X PER WEEK', oms:`5x8 min op ${wB(0.70,0.75)} · 4 min rust tussen sets`, det:'Bouwt je aerobe motor en drempel zonder je leeg te trekken. Comfortabel zwaar — je kunt nog korte zinnen praten. Één keer per week is genoeg.'});
+    blokken.push({type:'VO2MAX — OPTIE A · LANGE MICRO-INTERVALLEN', oms:`40-20 op ${wB(1.30,1.40)} · 2–3 blokken van 8–12 min, 5 min rust`, det:'40 sec vol, 20 sec rustig dóórdraaien. Je hartslag blijft hoog over het hele blok — maximale prikkel voor je zuurstofopname. 1x per week.'});
+    blokken.push({type:'VO2MAX — OPTIE B · LANGERE REPS', oms:`80-40 op ${wB(1.10,1.20)} · 2–3 blokken van 8–12 min, 5 min rust`, det:'Langere inspanningen op een lager percentage. Goed alternatief als de 40-20 te zwaar voelt, of voor variatie. Kies één optie per week.'});
   } else {
-    blokken.push({type:'DUURKRACHT â€” DREMPELBLOK Â· 1X PER WEEK', oms:`5x5 min op ${wB(0.70,0.75)} Â· 3 min rust tussen sets`, det:'De efficiÃ«nte manier om je aerobe basis te bouwen als je weinig tijd hebt. Comfortabel zwaar, niet vol. Ã‰Ã©n keer per week â€” vaker is niet nodig.'});
-    blokken.push({type:'VO2MAX â€” OPTIE A Â· KORTE MICRO-INTERVALLEN', oms:`20-10 op ${wB(1.10,1.30)} Â· 2â€“3 blokken van 8â€“12 min, 5 min rust`, det:'20 sec aan, 10 sec uit. Toegankelijk maar effectief â€” je houdt het vol terwijl de prikkel hoog blijft. Ideaal als je minder fietst. 1x per week.'});
-    blokken.push({type:'VO2MAX â€” OPTIE B Â· PITTIGER', oms:`30-30 op ${wB(1.20,1.50)} Â· 2â€“3 blokken van 8â€“12 min, 5 min rust`, det:'30 sec stevig, 30 sec rustig. Iets meer bite dan de 20-10. Kies Ã©Ã©n van beide opties per week voor afwisseling.'});
+    blokken.push({type:'DUURKRACHT — DREMPELBLOK · 1X PER WEEK', oms:`5x5 min op ${wB(0.70,0.75)} · 3 min rust tussen sets`, det:'De efficiënte manier om je aerobe basis te bouwen als je weinig tijd hebt. Comfortabel zwaar, niet vol. Één keer per week — vaker is niet nodig.'});
+    blokken.push({type:'VO2MAX — OPTIE A · KORTE MICRO-INTERVALLEN', oms:`20-10 op ${wB(1.10,1.30)} · 2–3 blokken van 8–12 min, 5 min rust`, det:'20 sec aan, 10 sec uit. Toegankelijk maar effectief — je houdt het vol terwijl de prikkel hoog blijft. Ideaal als je minder fietst. 1x per week.'});
+    blokken.push({type:'VO2MAX — OPTIE B · PITTIGER', oms:`30-30 op ${wB(1.20,1.50)} · 2–3 blokken van 8–12 min, 5 min rust`, det:'30 sec stevig, 30 sec rustig. Iets meer bite dan de 20-10. Kies één van beide opties per week voor afwisseling.'});
   }
   ensure(30);
   txt('INTERVALBLOKKEN VOOR JOUW NIVEAU',M,y,{font:bold,size:9,color:WIT}); y-=14;
@@ -296,10 +296,10 @@ async function bouwRapportPdf(meta) {
   const ctaH=58; ensure(ctaH+24);
   card(M,y-ctaH,R-M,ctaH,{fill:CARD2,border:BORDERO});
   txt('VAN INZICHT NAAR UITVOERING',M+16,y-18,{font:bold,size:9,color:ORANJE});
-  txt('Een persoonlijk trainingsschema vertaalt dit rapport naar week-voor-week training â€” vanaf â‚¬59.',M+16,y-34,{font:reg,size:9,color:MUT});
+  txt('Een persoonlijk trainingsschema vertaalt dit rapport naar week-voor-week training — vanaf €59.',M+16,y-34,{font:reg,size:9,color:MUT});
   txt('michelkredercoaching.nl/trainingsschemas',M+16,y-49,{font:bold,size:9,color:WIT});
 
-  txt('Power Profileâ„¢ Â· Michel Kreder Coaching Â· momentopname op basis van je Strava-data.',M,26,{font:reg,size:7,color:DIM});
+  txt('Power Profile™ · Michel Kreder Coaching · momentopname op basis van je Strava-data.',M,26,{font:reg,size:7,color:DIM});
 
   return await doc.save();
 }
@@ -311,47 +311,47 @@ function klantHtml(naam) {
   return `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
     <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
-    <p style="font-size:15px;margin:0 0 14px;">Je rapport zit als PDF bij deze mail. Maar voordat je 'm opent â€” Ã©Ã©n instructie.</p>
-    <p style="font-size:15px;margin:0 0 14px;">Kijk eerst naar Ã©Ã©n getal: <strong>je percentage in het grijze gebied</strong> (Tempo/Sweetspot).</p>
+    <p style="font-size:15px;margin:0 0 14px;">Je rapport zit als PDF bij deze mail. Maar voordat je 'm opent — één instructie.</p>
+    <p style="font-size:15px;margin:0 0 14px;">Kijk eerst naar één getal: <strong>je percentage in het grijze gebied</strong> (Tempo/Sweetspot).</p>
     <p style="font-size:15px;margin:0 0 18px;">Dat ene getal verklaart bij de meeste renners waarom ze hard trainen zonder sneller te worden. Te zwaar om van te herstellen. Te licht om van te groeien.</p>
     <p style="font-size:15px;margin:0 0 8px;">Daarna, in deze volgorde:</p>
     <table cellpadding="0" cellspacing="0" style="margin:0 0 18px;">
-      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">1.</td><td style="font-size:15px;padding:3px 0;"><strong>Je FTP</strong> â€” dit is vanaf nu de referentie voor elke training die je doet</td></tr>
-      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">2.</td><td style="font-size:15px;padding:3px 0;"><strong>Je actieplan</strong> â€” 3 stappen. Begin deze week met stap 1.</td></tr>
-      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">3.</td><td style="font-size:15px;padding:3px 0;"><strong>De intervalblokken</strong> â€” kies er Ã©Ã©n en zet 'm nÃº in je agenda</td></tr>
+      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">1.</td><td style="font-size:15px;padding:3px 0;"><strong>Je FTP</strong> — dit is vanaf nu de referentie voor elke training die je doet</td></tr>
+      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">2.</td><td style="font-size:15px;padding:3px 0;"><strong>Je actieplan</strong> — 3 stappen. Begin deze week met stap 1.</td></tr>
+      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">3.</td><td style="font-size:15px;padding:3px 0;"><strong>De intervalblokken</strong> — kies er één en zet 'm nú in je agenda</td></tr>
     </table>
-    <p style="font-size:15px;margin:0 0 14px;">Want hier gaat het mis bij 90% van de mensen die een analyse kopen: ze lezen 'm, denken â€œinteressantâ€, en trainen maandag exact hetzelfde als vorige week.</p>
+    <p style="font-size:15px;margin:0 0 14px;">Want hier gaat het mis bij 90% van de mensen die een analyse kopen: ze lezen 'm, denken “interessant”, en trainen maandag exact hetzelfde als vorige week.</p>
     <p style="font-size:15px;margin:0 0 18px;"><strong>Een rapport dat je leest verandert niets. Een rapport dat je uitvoert wel.</strong> De renners die over 6 weken verschil voelen, zijn de renners die vandaag hun eerste training inplannen.</p>
     <div style="margin:22px 0;padding:18px;background:#fff4ef;border:1px solid #f5d8c5;border-radius:8px;">
       <p style="font-size:13px;font-weight:700;color:#ff6b1a;letter-spacing:.5px;margin:0 0 6px;">VAN INZICHT NAAR UITVOERING</p>
-      <p style="font-size:14px;margin:0 0 10px;color:#333;">Dit rapport vertelt je wÃ¡t er mis gaat. Een persoonlijk trainingsschema regelt hÃ³e je het oplost â€” elke week exact weten wat je rijdt, in welke zone, en wanneer je herstelt. Gebouwd op jouw FTP en jouw uren. Vanaf â‚¬59.</p>
-      <a href="https://michelkredercoaching.nl/trainingsschemas" style="display:inline-block;background:#ff6b1a;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:11px 20px;border-radius:6px;">Bekijk de trainingsschema's â†’</a>
+      <p style="font-size:14px;margin:0 0 10px;color:#333;">Dit rapport vertelt je wát er mis gaat. Een persoonlijk trainingsschema regelt hóe je het oplost — elke week exact weten wat je rijdt, in welke zone, en wanneer je herstelt. Gebouwd op jouw FTP en jouw uren. Vanaf €59.</p>
+      <a href="https://michelkredercoaching.nl/trainingsschemas" style="display:inline-block;background:#ff6b1a;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:11px 20px;border-radius:6px;">Bekijk de trainingsschema's →</a>
     </div>
-    <p style="font-size:14px;margin:0 0 4px;">Vragen over je cijfers? Reageer gewoon op deze mail â€” ik lees alles zelf.</p>
+    <p style="font-size:14px;margin:0 0 4px;">Vragen over je cijfers? Reageer gewoon op deze mail — ik lees alles zelf.</p>
     <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
-    <p style="font-size:13px;margin:20px 0 0;color:#888;border-top:1px solid #eee;padding-top:14px;">P.S. Denk je dat je FTP niet klopt? Op je rapportpagina staat â€œKlopt dit niet? Pas je FTP aanâ€ â€” vul je echte waarde in en je zones en intervallen herrekenen direct.</p>
+    <p style="font-size:13px;margin:20px 0 0;color:#888;border-top:1px solid #eee;padding-top:14px;">P.S. Denk je dat je FTP niet klopt? Op je rapportpagina staat “Klopt dit niet? Pas je FTP aan” — vul je echte waarde in en je zones en intervallen herrekenen direct.</p>
   </div>`;
 }
 
 function interneHtml(m, bedrag, id, pdfErbij) {
   const r=(label,val)=>`<tr><td style="padding:4px 16px 4px 0;color:#666;">${label}</td><td style="padding:4px 0;font-weight:700;">${val}</td></tr>`;
   const statusBalk = pdfErbij
-    ? `<p style="margin:16px 0 0;padding:10px 14px;border-radius:6px;background:#eef7f0;color:#2e7d4f;font-size:14px;font-weight:600;">ðŸ“Ž PDF zit als bijlage bij deze mail â€” klaar om te forwarden naar de klant.</p>`
-    : `<p style="margin:16px 0 0;padding:10px 14px;border-radius:6px;background:#fdecea;color:#c0392b;font-size:14px;font-weight:600;">âš  PDF kon NIET worden gegenereerd. De klant heeft (nog) niets ontvangen â€” check handmatig.</p>`;
+    ? `<p style="margin:16px 0 0;padding:10px 14px;border-radius:6px;background:#eef7f0;color:#2e7d4f;font-size:14px;font-weight:600;">📎 PDF zit als bijlage bij deze mail — klaar om te forwarden naar de klant.</p>`
+    : `<p style="margin:16px 0 0;padding:10px 14px;border-radius:6px;background:#fdecea;color:#c0392b;font-size:14px;font-weight:600;">⚠ PDF kon NIET worden gegenereerd. De klant heeft (nog) niets ontvangen — check handmatig.</p>`;
   return `
   <div style="font-family:Arial,sans-serif;color:#111;line-height:1.6;">
-    <h2 style="margin:0 0 4px;">ðŸš´ Nieuwe verkoop</h2>
-    <p style="margin:0 0 16px;color:#666;">Power Profileâ„¢ Â· ${escHtml(bedrag)} betaald</p>
+    <h2 style="margin:0 0 4px;">🚴 Nieuwe verkoop</h2>
+    <p style="margin:0 0 16px;color:#666;">Power Profile™ · ${escHtml(bedrag)} betaald</p>
     <table style="border-collapse:collapse;font-size:15px;">
       ${r('Naam', escHtml(m.naam||'Sporter'))}
-      ${r('E-mail', escHtml(m.email||'â€”'))}
+      ${r('E-mail', escHtml(m.email||'—'))}
       ${r('FTP', escHtml((m.ftp||'?'))+' W')}
-      ${r('FTP-betrouwbaarheid', escHtml(m.ftpBetrouwbaarheid||'â€”'))}
+      ${r('FTP-betrouwbaarheid', escHtml(m.ftpBetrouwbaarheid||'—'))}
       ${r('Uren/week', m.uren!=null?escHtml(m.uren):'?')}
       ${r('Trainingsscore', m.score!=null?escHtml(m.score):'?')}
       ${r('VO2max-sessies', m.vo2max!=null?escHtml(m.vo2max):'?')}
-      ${r('Herstelbalans', m.herstel!=null?escHtml(m.herstel)+'/10':'â€”')}
-      ${r('Zones', escHtml(m.zones||'â€”'))}
+      ${r('Herstelbalans', m.herstel!=null?escHtml(m.herstel)+'/10':'—')}
+      ${r('Zones', escHtml(m.zones||'—'))}
     </table>
     ${statusBalk}
     <p style="margin:16px 0 0;color:#999;font-size:12px;">Mollie betaling-id: ${escHtml(id)}</p>
@@ -414,7 +414,14 @@ async function maakCoupons(m, id) {
     try {
       const r = await fetch(`${WC_URL}/wp-json/wc/v3/coupons`, {
         method: 'POST',
-        headers: { Authorization: auth, 'Content-Type': 'application/json' },
+        headers: {
+          Authorization: auth,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          // User-Agent meesturen: zonder deze header ziet Cloudflare/WAF de
+          // aanvraag als bot en blokkeert 'ie met een "Just a moment"-challenge.
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        },
         body: JSON.stringify({
           code,
           discount_type: 'fixed_product',
@@ -486,19 +493,19 @@ export default async function handler(req, res) {
     betaling = await mr.json();
   } catch (err) {
     console.error('Mollie ophalen faalde:', err);
-    return res.status(503).send('mollie onbereikbaar'); // â†’ Mollie probeert later opnieuw
+    return res.status(503).send('mollie onbereikbaar');
   }
 
   console.log('Webhook:', id, '| status:', betaling.status, '| email:', (betaling.metadata && betaling.metadata.email) || 'GEEN');
   if (betaling.status !== 'paid') return res.status(200).send('niet betaald');
 
-  // 2) ONTDUBBELING â€” al eerder volledig verstuurd? Dan niets meer doen.
+  // 2) ONTDUBBELING — al eerder volledig verstuurd? Dan niets meer doen.
   if (await alVerstuurd(id)) {
     console.log('Webhook: al verstuurd, skip', id);
     return res.status(200).send('al verstuurd');
   }
 
-  // 3) LOCK â€” voorkom dat twee gelijktijdige webhooks dezelfde betaling verwerken.
+  // 3) LOCK — voorkom dat twee gelijktijdige webhooks dezelfde betaling verwerken.
   if (await pakLock(id) === 'bezig') {
     console.log('Webhook: andere invocatie is bezig, later opnieuw', id);
     return res.status(503).send('bezig - retry');
@@ -507,10 +514,10 @@ export default async function handler(req, res) {
   try {
     const m = betaling.metadata || {};
     const naam = kapitaal(m.naam);
-    const bedrag = betaling.amount && betaling.amount.value ? `â‚¬${betaling.amount.value}` : 'â€”';
+    const bedrag = betaling.amount && betaling.amount.value ? `€${betaling.amount.value}` : '—';
     const veiligeBestandsnaam = String(naam).replace(/[^a-z0-9]/gi,'_').slice(0,40) || 'sporter';
 
-    // 4) PDF bouwen â€” de kern van het rapport.
+    // 4) PDF bouwen — de kern van het rapport.
     let pdfB64 = null;
     try {
       const bytes = await bouwRapportPdf(m);
@@ -518,12 +525,12 @@ export default async function handler(req, res) {
       console.log('PDF gebouwd:', bytes.length, 'bytes');
     } catch (e) { console.error('PDF genereren faalde:', e); }
 
-    // Geval A: PDF mislukt â†’ klant GEEN lege mail, Michel waarschuwen (max 1x/uur), retry.
+    // Geval A: PDF mislukt → klant GEEN lege mail, Michel waarschuwen (max 1x/uur), retry.
     if (!pdfB64) {
       if (await magWaarschuwen(id)) {
         await stuurMail({
           from: AFZENDER, to: INTERNE_MAIL,
-          subject: `âš  PDF MISLUKT â€” ${naam} Â· betaald maar geen rapport`,
+          subject: `⚠ PDF MISLUKT — ${naam} · betaald maar geen rapport`,
           html: interneHtml(m, bedrag, id, false)
         });
       }
@@ -536,36 +543,35 @@ export default async function handler(req, res) {
     if (m.email) {
       klantMailGelukt = await stuurMail({
         from: AFZENDER, to: m.email, reply_to: REPLY_TO,
-        subject: 'Je rapport zit erbij â€” maar kijk eÃ©rst naar dit ene getal ðŸš´',
+        subject: 'Je rapport zit erbij — maar kijk eérst naar dit ene getal 🚴',
         html: klantHtml(naam),
         attachments: [{ filename: 'Power-Profile-trainingsrapport.pdf', content: pdfB64 }]
       });
     }
 
-    // 5b) Interne mail MÃ‰T de PDF als bijlage â€” jouw kopie, met Ã©Ã©n herkansing.
+    // 5b) Interne mail MÉT de PDF als bijlage — jouw kopie, met één herkansing.
     const internePayload = {
       from: AFZENDER, to: INTERNE_MAIL,
-      subject: `ðŸš´ Nieuwe verkoop â€” ${naam} Â· FTP ${m.ftp||'?'}W`,
+      subject: `🚴 Nieuwe verkoop — ${naam} · FTP ${m.ftp||'?'}W`,
       html: interneHtml(m, bedrag, id, true),
       attachments: [{ filename: `Power-Profile-${veiligeBestandsnaam}.pdf`, content: pdfB64 }]
     };
     let interneGelukt = await stuurMail(internePayload);
     if (!interneGelukt) interneGelukt = await stuurMail(internePayload);
 
-    // 6) Klant-adres aanwezig Ã©n mail mislukt â†’ 503 zodat Mollie retryt (nog NIET
-    //    als verstuurd gemarkeerd, dus de klant krijgt nooit een dubbele mail).
+    // 6) Klant-adres aanwezig én mail mislukt → 503 zodat Mollie retryt.
     if (m.email && !klantMailGelukt) {
       return res.status(503).send('klantmail mislukt - retry');
     }
 
-    // 6b) NURTURE â€” unieke 72u-coupons + koper naar Mailchimp. Faalt dit, dan
+    // 6b) NURTURE — unieke 72u-coupons + koper naar Mailchimp. Faalt dit, dan
     //     gaan de verkoop en PDF gewoon door; we loggen het alleen.
     try {
       const couponInfo = await maakCoupons(m, id);
       await naarMailchimp(m, couponInfo);
     } catch (e) { console.error('Nurture-stap faalde (blokkeert niet):', e); }
 
-    // 7) Succes â†’ vastleggen zodat een latere retry niks dubbel doet.
+    // 7) Succes → vastleggen zodat een latere retry niks dubbel doet.
     await markeerVerstuurd(id);
     return res.status(200).send('ok');
 
