@@ -1,13 +1,14 @@
 // /api/betaling.js
 import { huidigePrijs } from '../lib/prijs.js';
 import { unseal } from '../lib/gate.js';
+import { controleerKortingToken, kortingAlGebruikt } from '../lib/korting.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { blob, email, gewicht } = req.body || {};
+  const { blob, email, gewicht, korting: kortingToken } = req.body || {};
 
   // De volledige analyse zit versleuteld in 'blob' (door strava-callback gemaakt).
   // We ontsleutelen 'm hier server-side om de Mollie-metadata + PDF te kunnen bouwen.
@@ -17,6 +18,23 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('Blob ontsleutelen mislukt:', e);
     return res.status(400).json({ error: 'Ongeldige sessie. Koppel Strava opnieuw.' });
+  }
+
+  // ===== SERVICEKORTING — eenmalige persoonlijke kortingslink =====
+  // Token komt uit ?korting= op de funnelpagina. Handtekening + houdbaarheid
+  // worden hier gecheckt, en of de link al eens verzilverd is (Redis).
+  // Een kapotte/gebruikte link weigeren we expliciet, zodat de klant nooit
+  // ongemerkt de volle prijs betaalt terwijl hij korting verwachtte.
+  let korting = null;
+  if (kortingToken) {
+    const check = controleerKortingToken(kortingToken);
+    if (!check.geldig) {
+      return res.status(400).json({ error: 'Deze kortingslink is verlopen of ongeldig. Stuur even een mailtje, dan krijg je een nieuwe.', kortingOngeldig: true });
+    }
+    if (await kortingAlGebruikt(check.id)) {
+      return res.status(400).json({ error: 'Deze kortingslink is al een keer gebruikt. Stuur even een mailtje als dat niet klopt.', kortingOngeldig: true });
+    }
+    korting = check;
   }
 
   const slim = {
@@ -43,7 +61,10 @@ export default async function handler(req, res) {
   // ===== PRIJS — server-side, datum-afhankelijk (één bron van waarheid) =====
   // Het bedrag dat Mollie afschrijft komt HIER vandaan, niet uit de browser.
   // Zo kan de getoonde prijs nooit afwijken van wat er afgeschreven wordt.
+  // Een geldige servicekorting-link overschrijft de normale prijs.
   const p = huidigePrijs();
+  const bedrag = korting ? korting.bedrag : p.bedrag;
+  const prijsGetal = korting ? korting.prijs : p.prijs;
 
   try {
     const mollieRes = await fetch('https://api.mollie.com/v2/payments', {
@@ -53,7 +74,7 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        amount: { currency: 'EUR', value: p.bedrag },
+        amount: { currency: 'EUR', value: bedrag },
         description: 'Strava Trainingsrapport — Michel Kreder Coaching',
         // Geen 'method' meegegeven: Mollie toont automatisch alle betaalmethodes
         // die in het dashboard actief staan. Het dashboard is dus de enige bron
@@ -80,7 +101,10 @@ export default async function handler(req, res) {
           weight: finalW,
           piek1min: stravaData?.piek1min || '',
           piek5min: stravaData?.piek5min || '',
-          piek20min: stravaData?.piek20min || ''
+          piek20min: stravaData?.piek20min || '',
+          // ===== SERVICEKORTING =====
+          // De webhook markeert dit ID als verzilverd zodra de betaling 'paid' is.
+          kortingId: korting ? korting.id : ''
         }
       })
     });
@@ -89,12 +113,13 @@ export default async function handler(req, res) {
     console.log('Mollie response:', JSON.stringify(betaling).substring(0, 200));
 
     if (betaling._links?.checkout?.href && betaling.id) {
-      // prijs + isDeal teruggeven zodat de frontend hetzelfde kan tonen.
+      // prijs + isDeal + korting teruggeven zodat de frontend hetzelfde kan tonen.
       return res.status(200).json({
         checkoutUrl: betaling._links.checkout.href,
         pid: betaling.id,
-        prijs: p.prijs,
-        isDeal: p.isDeal
+        prijs: prijsGetal,
+        isDeal: p.isDeal,
+        korting: !!korting
       });
     }
 
