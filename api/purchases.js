@@ -1,20 +1,8 @@
 /* ============================================================
-   /api/purchases.js — Vercel serverless function (v2)
-   ------------------------------------------------------------
-   Haalt betaalde bestellingen op bij Mollie — uit ÉÉN of
-   MEERDERE Mollie-profielen — en geeft alleen voornaam +
-   product + relatieve tijd terug. AVG-vriendelijk.
-
-   Installatie:
-   1. Dit bestand in de map /api van je Vercel-repo
-   2. Environment Variables (Vercel dashboard):
-      MOLLIE_API_KEYS = live_key1,live_key2
-      (één key? gewoon één invullen, zonder komma)
-   3. Test: https://strava-analyse.michelkredercoaching.nl/api/purchases
-
-   Optioneel filteren per pagina:
-   /api/purchases?product=schema  → alleen schema-bestellingen
-   /api/purchases?product=analyse → alleen analyses
+   /api/purchases.js — v3
+   Strenger naamfilter: aanhef (Hr/Mw) en bank-initialen
+   (J.P.M. / Ijpm / M.) worden overgeslagen. Alleen echte
+   voornamen komen door. Liever minder popups dan rare namen.
    ============================================================ */
 
 const PRODUCT_LABELS = {
@@ -22,11 +10,18 @@ const PRODUCT_LABELS = {
   "analyse": "Strava-analyse",
   "schema": "trainingsschema",
   "coaching": "1-op-1 coaching",
-  "keuzehulp": "trainingsschema"
+  "keuzehulp": "trainingsschema",
+  "order": "trainingsschema" // hoofdsite-checkout geeft "Order X" mee
 };
 
 const MAX_ITEMS = 10;
 const CACHE_SECONDS = 300;
+
+// Aanhef en tussenvoegsels die nooit een voornaam zijn
+const BLOCKLIST = new Set([
+  "hr", "dhr", "mw", "mevr", "mevrouw", "meneer", "heer",
+  "de", "van", "der", "den", "mr", "mrs", "ms", "dr", "fam"
+]);
 
 export default async function handler(req, res) {
   try {
@@ -36,20 +31,16 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "MOLLIE_API_KEYS ontbreekt" });
     }
 
-    // Alle profielen parallel ophalen en samenvoegen
     const results = await Promise.all(keys.map(fetchPayments));
     let payments = results.flat().filter(p => p.status === "paid");
-
-    // Nieuwste eerst (over beide profielen heen)
     payments.sort((a, b) => new Date(b.paidAt) - new Date(a.paidAt));
 
-    // Optioneel filter: ?product=schema of ?product=analyse
     const filter = String(req.query?.product || "").toLowerCase();
 
     const items = [];
     for (const p of payments) {
       const name = firstName(p);
-      if (!name) continue;
+      if (!name) continue; // geen bruikbare voornaam → overslaan
 
       const label = productLabel(p.description || "");
       if (filter && !label.toLowerCase().includes(filter) &&
@@ -83,16 +74,33 @@ async function fetchPayments(key) {
   }
 }
 
+/* Voornaam bepalen — metadata heeft voorrang, want daar staat
+   de naam die de klant zelf intypte. Banknamen (consumerName)
+   bevatten vaak alleen initialen en vallen dan af. */
 function firstName(p) {
-  const raw =
-    p.metadata?.name ||
-    p.details?.consumerName ||
-    p.details?.cardHolder ||
-    p.billingAddress?.givenName ||
-    "";
-  const first = String(raw).trim().split(/\s+/)[0];
-  if (!first || first.length < 2) return null;
-  return first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+  const candidates = [
+    p.metadata?.voornaam,
+    p.metadata?.name,
+    p.metadata?.firstName,
+    p.billingAddress?.givenName,
+    p.details?.consumerName,
+    p.details?.cardHolder
+  ];
+
+  for (const raw of candidates) {
+    if (!raw) continue;
+    // Pak het eerste woord dat een echte voornaam lijkt
+    const words = String(raw).trim().split(/\s+/);
+    for (const w of words) {
+      const clean = w.replace(/[^A-Za-zÀ-ÿ]/g, ""); // punten/cijfers weg
+      if (clean.length < 3) continue;                // "M", "JP" → skip
+      if (BLOCKLIST.has(clean.toLowerCase())) continue;
+      if (!/[aeiouyàáäèéëìíïòóöùúü]/i.test(clean)) continue; // geen klinkers = initialen
+      if (w.includes(".")) continue;                 // "J.P.M." → skip
+      return clean.charAt(0).toUpperCase() + clean.slice(1).toLowerCase();
+    }
+  }
+  return null;
 }
 
 function productLabel(description) {
