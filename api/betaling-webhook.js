@@ -457,8 +457,8 @@ function maakToken(email) {
   return { token, deadlineNL };
 }
 
-// Koper + pijnpunt + tegoed-token naar Mailchimp (Keuzehulp-audience).
-async function naarMailchimp(m, token, deadlineNL) {
+// Koper + pijnpunt + tegoed-token + schema-advies naar Mailchimp (Keuzehulp-audience).
+async function naarMailchimp(m, token, deadlineNL, advies) {
   if (!MC_KEY || !MC_LIST || !MC_DC || !m.email) { console.log('Mailchimp overslaan (config/email mist)'); return; }
   const { pijn, pct } = bepaalPijn(m);
   const hash = crypto.createHash('md5').update(String(m.email).toLowerCase()).digest('hex');
@@ -475,7 +475,11 @@ async function naarMailchimp(m, token, deadlineNL) {
           FNAME: m.naam || '', FTP: m.ftp || '', SCORE: m.score || '',
           PIJN: pijn, PIJNPCT: String(pct),
           PPTOKEN: token || '',
-          DEADLINE: deadlineNL || ''
+          DEADLINE: deadlineNL || '',
+          ADVSCHEMA: advies ? `${advies.niveau} ${advies.weken}-wekenplan` : '',
+          ADVOUD:    advies && advies.origPrijs  != null ? String(advies.origPrijs)  : '',
+          ADVNIEUW:  advies && advies.finalPrijs != null ? String(advies.finalPrijs) : '',
+          ADVTEGOED: advies ? String(advies.tegoed) : ''
         }
       }),
       signal: AbortSignal.timeout(10000)
@@ -578,7 +582,7 @@ export default async function handler(req, res) {
 
     // 6b) NURTURE — koper + versleuteld tegoed-linkje naar Mailchimp.
     try {
-      await naarMailchimp(m, ppToken, ppDeadline);
+      await naarMailchimp(m, ppToken, ppDeadline, advies);
     } catch (e) { console.error('Nurture-stap faalde (blokkeert niet):', e); }
 
     // 7) Succes → vastleggen zodat een latere retry niks dubbel doet.
