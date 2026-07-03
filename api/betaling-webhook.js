@@ -11,6 +11,7 @@
 // Optioneel in Vercel: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
 // Vereist in package.json: "pdf-lib"
 import crypto from 'node:crypto';
+import { markeerKortingGebruikt } from '../lib/korting.js';
 
 // Pas deze drie regels eventueel aan:
 const INTERNE_MAIL = 'michel.kredercoaching@gmail.com';
@@ -587,6 +588,11 @@ export default async function handler(req, res) {
 
     // 7) Succes → vastleggen zodat een latere retry niks dubbel doet.
     await markeerVerstuurd(id);
+
+    // 8) Servicekorting-link verzilveren: deze betaling is rond, dus het
+    //    eenmalige linkje mag vanaf nu geweigerd worden.
+    if (m.kortingId) await markeerKortingGebruikt(m.kortingId);
+
     return res.status(200).send('ok');
 
   } finally {
