@@ -2,11 +2,15 @@
 // Alleen voor jou (Michel): maakt in de browser een persoonlijke, EENMALIGE
 // kortingslink voor de Power Profile-funnel. Aanroepen:
 //
-//   https://rapport.michelkredercoaching.nl/api/maak-korting?sleutel=JOUW_PP_TOKEN_SECRET&prijs=19
+//   https://rapport.michelkredercoaching.nl/api/maak-korting?sleutel=JOUW_ADMIN_SLEUTEL&prijs=19
 //
 // Optioneel: &dagen=14 (hoe lang de link geldig blijft, standaard 14 dagen).
 // De link werkt precies één keer: zodra er een betaling mee is afgerond,
 // wordt hij in Redis als verzilverd gemarkeerd en daarna geweigerd.
+//
+// Vereist in Vercel: ADMIN_SLEUTEL — een zelfgekozen wachtwoord, alleen voor
+// deze pagina. Bewust een ANDERE sleutel dan PP_TOKEN_SECRET: die laatste
+// ondertekent de tokens zelf en hoort nooit in een browser-URL te staan.
 // Zonder de juiste sleutel doet dit adres alsof het niet bestaat (404).
 import crypto from 'node:crypto';
 import { maakKortingToken } from '../lib/korting.js';
@@ -18,7 +22,7 @@ function sleutelKlopt(gegeven, secret) {
 }
 
 export default function handler(req, res) {
-  const secret = process.env.PP_TOKEN_SECRET || '';
+  const secret = process.env.ADMIN_SLEUTEL || '';
   const q = req.query || {};
   if (!secret || !sleutelKlopt(q.sleutel, secret)) return res.status(404).send('niet gevonden');
 
