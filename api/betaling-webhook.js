@@ -36,8 +36,11 @@ function naarHtmlEntities(s) {
 }
 
 // ===== REDIS (Upstash REST) — ontdubbeling & lock =====
-const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL;
-const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+// De Vercel-marketplace-koppeling van Upstash maakt variabelen met KV_-namen
+// aan; een handmatige Upstash-koppeling gebruikt UPSTASH_-namen. We accepteren
+// allebei, zodat het werkt ongeacht hoe de database is aangesloten.
+const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || process.env.KV_REST_API_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
 const redisAan    = !!(REDIS_URL && REDIS_TOKEN);
 
 async function redis(cmd) {
