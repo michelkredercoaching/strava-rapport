@@ -465,7 +465,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
         <span class="hstat-l">sec analyse</span>
       </div>
       <div class="hstat">
-        <span class="hstat-n">€29</span>
+        <span class="hstat-n" id="prijsHero">€29</span>
         <span class="hstat-l">eenmalig</span>
       </div>
       <div class="hstat">
@@ -511,7 +511,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     <div class="strava-uitleg">
       <div class="strava-stap"><div class="strava-stap-nr">1</div><div class="strava-stap-txt">Log in op Strava en geef toegang</div></div>
       <div class="strava-stap"><div class="strava-stap-nr">2</div><div class="strava-stap-txt">Wij analyseren je trainingsdata (60 sec)</div></div>
-      <div class="strava-stap"><div class="strava-stap-nr">3</div><div class="strava-stap-txt">Betaal €29 en ontvang je volledige rapport</div></div>
+      <div class="strava-stap"><div class="strava-stap-nr">3</div><div class="strava-stap-txt" id="prijsStravaStap">Betaal €29 en ontvang je volledige rapport</div></div>
     </div>
     <p class="strava-privacy">🔒 Alleen-lezen toegang · Versleuteld verwerkt · <a href="/privacy" target="_blank" rel="noopener" style="color:rgba(255,255,255,0.4);text-decoration:underline;">Privacy</a></p>
   </div>
@@ -574,7 +574,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     </div>
     <div class="verfijn-status" style="color:#4caf80;">Analyse compleet</div>
     <h2 class="verfijn-titel">Wij hebben jouw<br>FTP gevonden.</h2>
-    <p class="verfijn-sub">Jouw vermogensprofiel staat klaar. Ontgrendel voor €29 en zie alles.</p>
+    <p class="verfijn-sub" id="prijsVerfijnSub">Jouw vermogensprofiel staat klaar. Ontgrendel voor €29 en zie alles.</p>
     <!-- FTP TEASER CARD -->
     <div style="width:100%;max-width:340px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px;margin-bottom:16px;position:relative;overflow:hidden;">
 
@@ -637,7 +637,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       </div>
     </div>
 
-    <button class="verfijn-btn" onclick="slaZonesOver()">Ontgrendel mijn rapport — €29 →</button>
+    <button class="verfijn-btn" id="prijsVerfijnBtn" onclick="slaZonesOver()">Ontgrendel mijn rapport — €29 →</button>
   </div>
 </div>
 
@@ -675,8 +675,9 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <div class="blur-balk" style="width:55%"></div>
     </div>
     <div class="unlock-box">
-      <div class="unlock-box-titel">Volledig rapport — €29</div>
+      <div class="unlock-box-titel" id="prijsUnlockTitel">Volledig rapport — €29</div>
       <div class="unlock-box-sub">Eenmalig. Geen abonnement. Direct beschikbaar.</div>
+      <div id="kortingBanner" style="display:none;margin:10px 0 4px;padding:10px 14px;background:rgba(255,107,26,0.12);border:1px solid rgba(255,107,26,0.4);border-radius:8px;font-size:12px;font-weight:700;color:var(--oranje);">🎟️ Persoonlijke korting actief — deze link werkt eenmalig</div>
       <div class="unlock-items">
         <div class="unlock-item">Volledige zoneverdeling analyse</div>
         <div class="unlock-item">Jouw limiterende factor benoemd</div>
@@ -685,8 +686,8 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
         <div class="unlock-item">Rapport per email (PDF)</div>
       </div>
       <div class="prijs-rij">
-        <span class="prijs-groot" style="color:var(--oranje);">€29</span>
-        <span class="prijs-label">eenmalig</span>
+        <span class="prijs-groot" style="color:var(--oranje);" id="prijsGroot">€29</span>
+        <span class="prijs-label" id="prijsLabel">eenmalig</span>
       </div>
       <div style="margin-bottom:14px;">
         <label for="klantEmail" style="display:block;font-size:11px;color:rgba(255,255,255,0.55);font-weight:600;letter-spacing:.3px;margin-bottom:7px;">Waar sturen we je rapport (PDF) naartoe?</label>
@@ -892,7 +893,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     <h2 class="bedankt-titel">Betaling geslaagd.</h2>
     <p class="bedankt-sub">Je rapport wordt nu gegenereerd. Dit duurt maximaal 60 seconden.</p>
     <div class="bedankt-stappen">
-      <div class="bedankt-stap"><div class="bedankt-stap-icon">✅</div><div class="bedankt-stap-txt"><strong>Betaling bevestigd</strong>€29 via iDEAL · Mollie</div></div>
+      <div class="bedankt-stap"><div class="bedankt-stap-icon">✅</div><div class="bedankt-stap-txt"><strong>Betaling bevestigd</strong><span id="prijsBedankt">€29 via iDEAL · Mollie</span></div></div>
       <div class="bedankt-stap"><div class="bedankt-stap-icon">⚙️</div><div class="bedankt-stap-txt"><strong>Rapport wordt gegenereerd</strong>Jouw Strava-data wordt geanalyseerd</div></div>
       <div class="bedankt-stap"><div class="bedankt-stap-icon">📧</div><div class="bedankt-stap-txt"><strong>Email onderweg</strong>Rapport en PDF komen binnen 2 min aan</div></div>
     </div>
@@ -939,6 +940,52 @@ function verbindStrava() {
   window.location.href = '/api/strava-auth';
 }
 
+// ===== SERVICEKORTING — eenmalige persoonlijke kortingslink =====
+// Het token komt binnen via ?korting=... en overleeft de Strava- en Mollie-
+// omwegen via localStorage. De echte controle gebeurt server-side; hier lezen
+// we alleen de prijs en houdbaarheid uit het token om de juiste bedragen te
+// TONEN (token-opbouw: "korting|<prijs>|<vervalt-ms>|<id>|<handtekening>").
+function leesKorting() {
+  try {
+    const t = localStorage.getItem('pp_korting');
+    if (!t) return null;
+    let b64 = t.replace(/-/g, '+').replace(/_/g, '/');
+    b64 += '='.repeat((4 - b64.length % 4) % 4);
+    const delen = atob(b64).split('|');
+    if (delen.length !== 5 || delen[0] !== 'korting') return null;
+    const prijs = Math.round(Number(delen[1]));
+    const exp = Number(delen[2]);
+    if (!prijs || !exp) return null;
+    if (Date.now() > exp) { wisKorting(); return null; }
+    return { token: t, prijs };
+  } catch (e) { return null; }
+}
+function wisKorting() { try { localStorage.removeItem('pp_korting'); } catch (e) {} }
+function betaalKnopHtml() {
+  const k = leesKorting();
+  return '<span class="ideal-pill">iDEAL</span> Betaal €' + (k ? k.prijs : 29) + ' en ontvang rapport';
+}
+// Zet overal op de pagina de juiste prijs neer (met of zonder korting).
+function toonKortingPrijzen() {
+  const k = leesKorting();
+  const zet = (id, fn) => { const el = document.getElementById(id); if (el) fn(el); };
+  if (k) {
+    const p = '€' + k.prijs;
+    zet('prijsHero', el => el.textContent = p);
+    zet('prijsStravaStap', el => el.textContent = 'Betaal ' + p + ' (persoonlijke korting) en ontvang je volledige rapport');
+    zet('prijsVerfijnSub', el => el.textContent = 'Jouw vermogensprofiel staat klaar. Ontgrendel voor ' + p + ' en zie alles.');
+    zet('prijsVerfijnBtn', el => el.textContent = 'Ontgrendel mijn rapport — ' + p + ' →');
+    zet('prijsUnlockTitel', el => el.textContent = 'Volledig rapport — ' + p);
+    zet('prijsGroot', el => el.innerHTML = '<span style="font-size:22px;color:rgba(255,255,255,0.35);text-decoration:line-through;margin-right:8px;">€29</span>' + p);
+    zet('prijsLabel', el => el.textContent = 'eenmalig · persoonlijke korting');
+    zet('prijsBedankt', el => el.textContent = p + ' via iDEAL · Mollie');
+    zet('kortingBanner', el => el.style.display = 'block');
+    zet('betaalKnop', el => { if (!el.disabled) el.innerHTML = betaalKnopHtml(); });
+  } else {
+    zet('kortingBanner', el => el.style.display = 'none');
+  }
+}
+
 async function startBetaling() {
   const emailEl = document.getElementById('klantEmail');
   const foutEl = document.getElementById('emailFout');
@@ -965,11 +1012,13 @@ async function startBetaling() {
   if (gewicht) { try { localStorage.setItem('pp_gewicht', gewicht); } catch(e) {} }
   const knop = document.getElementById('betaalKnop');
   if (knop) { knop.textContent = 'Betaling aanmaken...'; knop.disabled = true; }
+  // Eenmalige servicekorting meesturen als die in deze browser actief is.
+  const kortingActief = leesKorting();
   try {
     const res = await fetch('/api/betaling', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ blob: window._blob || '', email, gewicht })
+      body: JSON.stringify({ blob: window._blob || '', email, gewicht, korting: kortingActief ? kortingActief.token : undefined })
     });
     const data = await res.json();
     if (data.checkoutUrl) {
@@ -983,13 +1032,20 @@ async function startBetaling() {
         localStorage.setItem('pp_email', email);
       } catch(e) {}
       window.location.href = data.checkoutUrl;
+    } else if (data.kortingOngeldig) {
+      // Kortingslink verlopen of al gebruikt → korting loslaten en de normale
+      // prijzen tonen, zodat de klant weet waar hij aan toe is vóór hij betaalt.
+      alert(data.error || 'Deze kortingslink is niet meer geldig.');
+      wisKorting();
+      toonKortingPrijzen();
+      if (knop) { knop.innerHTML = betaalKnopHtml(); knop.disabled = false; }
     } else {
       alert('Er ging iets mis met de betaling. Probeer het opnieuw.');
-      if (knop) { knop.textContent = 'Betaal €29 en ontvang rapport'; knop.disabled = false; }
+      if (knop) { knop.innerHTML = betaalKnopHtml(); knop.disabled = false; }
     }
   } catch (err) {
     alert('Er ging iets mis. Probeer het opnieuw.');
-    if (knop) { knop.textContent = 'Betaal €29 en ontvang rapport'; knop.disabled = false; }
+    if (knop) { knop.innerHTML = betaalKnopHtml(); knop.disabled = false; }
   }
 }
 
@@ -1872,6 +1928,13 @@ window.addEventListener('DOMContentLoaded', function() {
   const ready = params.get('ready');
   const pv = params.get('pv');
 
+  // ===== SERVICEKORTING: token uit ?korting= bewaren en prijzen aanpassen.
+  // Dit gebeurt vóór alle andere routes, zodat de korting ook actief blijft
+  // als de klant via Strava of Mollie terugkomt (dan zonder URL-parameter).
+  const kortingParam = params.get('korting');
+  if (kortingParam) { try { localStorage.setItem('pp_korting', kortingParam); } catch(e) {} }
+  toonKortingPrijzen();
+
   if(error) { gaNaar('s8'); return; }
 
   // ===== NA BETALING: rapport ophalen via de server-gate =====
@@ -1919,7 +1982,7 @@ window.addEventListener('DOMContentLoaded', function() {
       .then(function(analyse){
         if(aiProgVul) aiProgVul.style.width = '100%';
         window._claudeAnalyse = analyse;
-        try { localStorage.removeItem('pp_blob'); localStorage.removeItem('pp_pid'); localStorage.removeItem('pp_pv'); localStorage.removeItem('pp_email'); } catch(e) {}
+        try { localStorage.removeItem('pp_blob'); localStorage.removeItem('pp_pid'); localStorage.removeItem('pp_pv'); localStorage.removeItem('pp_email'); localStorage.removeItem('pp_korting'); } catch(e) {}
         setTimeout(function(){ toonRapport(data, analyse); }, 400);
       });
     })
@@ -1986,6 +2049,5 @@ window.addEventListener('DOMContentLoaded', function() {
     <button onclick="sluitPrivacy()" style="background:#ff6b1a;color:#fff;border:none;border-radius:8px;padding:11px 22px;font-size:14px;font-weight:600;cursor:pointer;">Sluiten</button>
   </div>
 </div>
-  <script src="/social-proof.js" defer></script>
 </body>
 </html>
