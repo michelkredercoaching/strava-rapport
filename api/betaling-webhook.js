@@ -488,6 +488,14 @@ async function naarMailchimp(m, token, deadlineNL, advies) {
       }),
       signal: AbortSignal.timeout(10000)
     });
+    // Tag eerst weghalen: alleen een NIEUW geplaatste tag triggert de koper-journey,
+    // zodat ook een herhaalkoper de tegoed-mails weer krijgt (journey: re-enter aan).
+    await fetch(`${base}/members/${hash}/tags`, {
+      method: 'POST',
+      headers: { Authorization: auth, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tags: [{ name: 'power-profile-koper', status: 'inactive' }] }),
+      signal: AbortSignal.timeout(10000)
+    });
     await fetch(`${base}/members/${hash}/tags`, {
       method: 'POST',
       headers: { Authorization: auth, 'Content-Type': 'application/json' },
