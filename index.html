@@ -911,8 +911,8 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     <div class="fout-cirkel">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#c0392b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     </div>
-    <h2 class="fout-titel">Oeps. Dat ging niet goed.</h2>
-    <p class="fout-sub">Er is iets misgegaan. Je bent <strong style="color:var(--wit)">niet</strong> in rekening gebracht.</p>
+    <h2 class="fout-titel" id="foutTitel">Oeps. Dat ging niet goed.</h2>
+    <p class="fout-sub" id="foutSub">Er is iets misgegaan. Je bent <strong style="color:var(--wit)">niet</strong> in rekening gebracht.</p>
     <div class="fout-opties">
       <button class="fout-btn-primary" onclick="gaNaar('s2')">Opnieuw proberen</button>
       <button class="fout-btn-secondary" onclick="gaNaar('s1')">Terug naar start</button>
@@ -1935,7 +1935,32 @@ window.addEventListener('DOMContentLoaded', function() {
   if (kortingParam) { try { localStorage.setItem('pp_korting', kortingParam); } catch(e) {} }
   toonKortingPrijzen();
 
-  if(error) { gaNaar('s8'); return; }
+  if(error) {
+    // Specifieke uitleg per foutsoort, zodat de sporter weet wat hij kan doen.
+    const foutTeksten = {
+      geen_ritten: {
+        titel: 'Geen fietsritten gevonden.',
+        sub: 'Op dit Strava-account vonden we geen fietsritten in de laatste 90 dagen, dus een analyse is niet mogelijk. Check of je het juiste Strava-account koppelde. Staan je ritten op ‘Alleen jij’? Laat dan bij het koppelen het vinkje voor privé-activiteiten <strong style="color:var(--wit)">aan</strong> staan. Je bent <strong style="color:var(--wit)">niet</strong> in rekening gebracht.'
+      },
+      scope_prive: {
+        titel: 'Eén vinkje nodig.',
+        sub: 'Je hebt het vinkje ‘activiteiten bekijken die je als privé hebt gemarkeerd’ uitgezet. Zonder dat vinkje kunnen we je ritten niet analyseren. Probeer het opnieuw en laat beide vinkjes aan — we hebben alleen-lezen toegang en koppelen direct na de analyse weer los. Je bent <strong style="color:var(--wit)">niet</strong> in rekening gebracht.'
+      },
+      strava_druk: {
+        titel: 'Het is even druk.',
+        sub: 'Strava beperkt tijdelijk hoeveel data we mogen ophalen. Wacht een kwartiertje en probeer het dan opnieuw. Je bent <strong style="color:var(--wit)">niet</strong> in rekening gebracht.'
+      }
+    };
+    const ft = foutTeksten[error];
+    if (ft) {
+      const t = document.getElementById('foutTitel');
+      const s = document.getElementById('foutSub');
+      if (t) t.textContent = ft.titel;
+      if (s) s.innerHTML = ft.sub;
+    }
+    gaNaar('s8');
+    return;
+  }
 
   // ===== NA BETALING: rapport ophalen via de server-gate =====
   if(betaald === 'true') {
