@@ -76,6 +76,19 @@ export default async function handler(req, res) {
     return res.redirect('/?error=strava_denied');
   }
 
+  // ===== SCOPE-CHECK =====
+  // Strava laat de sporter op het toestemmingsscherm het vinkje 'activiteiten
+  // bekijken die je als privé hebt gemarkeerd' uitzetten. Zonder
+  // activity:read_all krijgen we bij sporters met privé-ritten een LEGE lijst
+  // → leeg rapport (Ed-case, juli 2026). De daadwerkelijk verleende scope komt
+  // als parameter mee op deze redirect; wijkt die af, dan meteen uitleggen
+  // i.p.v. een lege analyse maken.
+  const verleendeScope = String(req.query.scope || '');
+  if (verleendeScope && !verleendeScope.includes('activity:read_all')) {
+    console.log('Scope zonder activity:read_all verleend:', verleendeScope);
+    return res.redirect('/?error=scope_prive');
+  }
+
   try {
     const tokenRes = await fetch('https://www.strava.com/oauth/token', {
       method: 'POST',
@@ -189,6 +202,17 @@ export default async function handler(req, res) {
     }
 
     const stats = berekenStats(activiteiten, alleActiviteiten, athlete, streamMap);
+
+    // ===== GEEN RITTEN? DAN GEEN BETAALPAGINA =====
+    // (Ed-case, juli 2026): 0 fietsritten in 90 dagen → voorheen liep de
+    // sporter gewoon door naar de paywall en kocht een leeg rapport. Nu
+    // leggen we uit wat er waarschijnlijk aan de hand is (verkeerd account,
+    // of alle ritten op 'Alleen jij' zonder het privé-vinkje).
+    if (!stats.aantalActiviteiten) {
+      console.log('Geen fietsritten in 90 dagen · athleet', athlete?.id, '· rapport-flow afgebroken');
+      await deauthorize(accessToken, athlete?.id);
+      return res.redirect('/?error=geen_ritten');
+    }
 
     // Eenmalig rapport: data is binnen en wordt zo verzegeld in de blob, de live
     // koppeling hebben we niet meer nodig. Meteen loskoppelen => slot vrij +
