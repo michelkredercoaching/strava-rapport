@@ -516,6 +516,17 @@ export default async function handler(req, res) {
   console.log('Webhook:', id, '| status:', betaling.status, '| email:', (betaling.metadata && betaling.metadata.email) || 'GEEN');
   if (betaling.status !== 'paid') return res.status(200).send('niet betaald');
 
+  // ===== TERUGBETAALD? DAN NIKS DOEN =====
+  // Mollie roept deze webhook óók aan bij statuswijzigingen van een refund;
+  // de betaling blijft dan gewoon 'paid'. Zonder deze check wordt het rapport
+  // dan opnieuw verstuurd — precies wat er bij Ed gebeurde (3 juli 2026).
+  // Een (deels) terugbetaalde betaling is per definitie al lang afgehandeld.
+  const terugbetaald = parseFloat((betaling.amountRefunded && betaling.amountRefunded.value) || '0');
+  if (terugbetaald > 0) {
+    console.log('Webhook: betaling is (deels) terugbetaald, geen actie', id);
+    return res.status(200).send('terugbetaald - geen actie');
+  }
+
   if (await alVerstuurd(id)) {
     console.log('Webhook: al verstuurd, skip', id);
     return res.status(200).send('al verstuurd');
