@@ -33,7 +33,7 @@ function maakKeuzehulpKorting(email) {
   const sig = crypto.createHmac('sha256', PP_SECRET).update(payload).digest('hex').slice(0, 16);
   const token = Buffer.from(`${payload}|${sig}`).toString('base64url');
   const deadlineNL = new Date(Date.now() + 11 * 24 * 3600 * 1000)
-    .toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+    .toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Amsterdam' });
   return { token, deadlineNL };
 }
 
