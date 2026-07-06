@@ -1,21 +1,31 @@
 // /api/keuzehulp-inschrijving.js
-// Ontvangt de keuzehulp-inschrijving vanaf michelkredercoaching.nl/trainingsschema-keuzehulp
+// Ontvangt inschrijvingen vanaf de keuzehulp-pagina's op michelkredercoaching.nl
 // en zet het contact in Mailchimp via de API (in plaats van het gewone inschrijfformulier).
 //
-// Waarom: de welkomst-journey met trigger "meldt zich aan" vuurt alleen bij NIEUWE
-// contacten. Dit endpoint werkt met een tag: het verwijdert de tag 'keuzehulp-gedaan'
-// en zet hem daarna opnieuw. Een journey met trigger "tag toegevoegd: keuzehulp-gedaan"
-// (en herhalen toegestaan) gaat dan af voor iedereen — nieuw én bestaand.
+// Twee routes (veld `route` in de POST-body):
+//   - 'schema' (of geen route, backward-compatible met de oude keuzehulp):
+//     upsert + merge-velden + journey-tag 'keuzehulp-gedaan'. De welkomst-journey
+//     met trigger "tag toegevoegd" gaat af; de tag wordt eerst verwijderd en
+//     opnieuw gezet zodat hij ook voor bestaande contacten opnieuw triggert.
+//   - 'coaching': eigen tag 'keuzehulp-coaching' (dus GEEN schema-journey met
+//     kortingsmail). Bij `inschrijving: 'ja'` (het begeleidingsformulier) gaat
+//     er een notificatie naar Michel en een warme bevestiging naar de lead,
+//     allebei via Resend.
 //
 // Vereist in Vercel (staan er al voor de betaling-webhook):
-//   MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID, PP_TOKEN_SECRET
+//   MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID, PP_TOKEN_SECRET, RESEND_API_KEY
 import crypto from 'node:crypto';
 
 const MC_KEY  = process.env.MAILCHIMP_API_KEY;      // ...-usXX
 const MC_LIST = process.env.MAILCHIMP_LIST_ID;
 const MC_DC   = MC_KEY ? MC_KEY.split('-')[1] : null;
 
-const TAG = 'keuzehulp-gedaan';
+const TAG_SCHEMA   = 'keuzehulp-gedaan';
+const TAG_COACHING = 'keuzehulp-coaching';
+
+const AFZENDER     = 'Michel Kreder Coaching <rapport@michelkredercoaching.nl>';
+const REPLY_TO     = 'info@michelkredercoaching.nl';
+const INTERNE_MAIL = 'michel.kredercoaching@gmail.com';
 
 // ===== Kortingstoken voor nurture-mail 5 (€10 op elk schema) =====
 // Zelfde HMAC-aanpak als het Power Profile-tegoed, maar met 'kh10' als
@@ -53,6 +63,80 @@ function zetCors(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
+// ===== Mail-helpers (zelfde patroon als de betaling-webhook) =====
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+function naarHtmlEntities(s) {
+  return String(s).replace(/[^\x00-\x7F]/g, function(ch){ return "&#" + ch.charCodeAt(0) + ";"; });
+}
+
+async function stuurMail(payload) {
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(20000)
+    });
+    if (!r.ok) { console.error('Resend fout:', r.status, await r.text()); return false; }
+    console.log('Resend OK ->', payload.to, '|', payload.subject);
+    return true;
+  } catch (e) { console.error('Resend exception:', e); return false; }
+}
+
+function interneCoachingHtml(b) {
+  const r = (label, val) => `<tr><td style="padding:4px 16px 4px 0;color:#666;">${label}</td><td style="padding:4px 0;font-weight:700;">${val}</td></tr>`;
+  return naarHtmlEntities(`
+  <div style="font-family:Arial,sans-serif;color:#111;line-height:1.6;">
+    <h2 style="margin:0 0 4px;">🚴 Nieuwe coaching-aanvraag</h2>
+    <p style="margin:0 0 16px;color:#666;">Via de keuzehulp · reageer binnen 24 uur</p>
+    <table style="border-collapse:collapse;font-size:15px;">
+      ${r('Naam', escHtml(b.naam || '—'))}
+      ${r('E-mail', escHtml(b.email || '—'))}
+      ${r('Telefoon', escHtml(b.telefoon || '—'))}
+      ${r('Pakket', escHtml(b.pakket || '—'))}
+      ${r('Uren per week', escHtml(b.uren || '—'))}
+      ${r('Rijdt wedstrijden', escHtml(b.wedstrijden || '—'))}
+    </table>
+    <p style="margin:16px 0 4px;color:#666;">Doel of grootste frustratie:</p>
+    <p style="margin:0;padding:10px 14px;border-radius:6px;background:#f5f5f5;font-size:15px;">${escHtml(b.doel || '—')}</p>
+  </div>`);
+}
+
+function bevestigingHtml(naam, pakket) {
+  const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
+  const pakketTxt = pakket ? `voor <strong>${escHtml(pakket)}</strong> ` : '';
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 14px;">Goed dat je deze stap zet. Je aanvraag ${pakketTxt}is binnen.</p>
+    <p style="font-size:15px;margin:0 0 14px;">Ik neem <strong>binnen 24 uur</strong> persoonlijk contact met je op. Dan nemen we je doelen door, kijk ik naar je huidige training en bespreken we hoe we samen aan de slag gaan. Je hoeft nu verder niets te doen.</p>
+    <p style="font-size:15px;margin:0 0 18px;">Wil je alvast iets kwijt over je situatie of je doelen? Reageer gewoon op deze mail, ik lees alles zelf.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
+// Tag eerst weghalen en dan opnieuw zetten: alleen een NIEUW geplaatste tag
+// triggert een journey, ook bij contacten die de keuzehulp eerder deden.
+async function hertag(base, headers, hash, tag) {
+  await fetch(`${base}/members/${hash}/tags`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ tags: [{ name: tag, status: 'inactive' }] }),
+    signal: AbortSignal.timeout(10000),
+  });
+  await fetch(`${base}/members/${hash}/tags`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ tags: [{ name: tag, status: 'active' }] }),
+    signal: AbortSignal.timeout(10000),
+  });
+}
+
 export default async function handler(req, res) {
   zetCors(req, res);
   if (req.method === 'OPTIONS') return res.status(204).end();
@@ -68,6 +152,8 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, fout: 'ongeldig e-mailadres' });
   }
 
+  const route = b.route === 'coaching' ? 'coaching' : 'schema';
+
   const hash = crypto.createHash('md5').update(email).digest('hex');
   const base = `https://${MC_DC}.api.mailchimp.com/3.0/lists/${MC_LIST}`;
   const auth = 'Basic ' + Buffer.from('any:' + MC_KEY).toString('base64');
@@ -76,19 +162,21 @@ export default async function handler(req, res) {
   // Merge-velden: alleen meesturen wat is ingevuld, zodat we bestaande
   // waarden niet per ongeluk leegmaken bij een tweede inschrijving.
   const merge = {};
-  if (b.naam)       merge.FNAME     = String(b.naam).trim().replace(/\b\p{L}/gu, c => c.toUpperCase());
-  if (b.schema)     merge.SCHEMA    = String(b.schema);
-  if (b.schemaUrl)  merge.SCHURL    = String(b.schemaUrl);
-  if (b.registratie) merge.REGISTR  = String(b.registratie);
-  if (b.ftpkennis)  merge.FTPKENNIS = String(b.ftpkennis);
-  if (b.meetmethode) merge.MEETMETH = String(b.meetmethode);
+  if (b.naam)        merge.FNAME     = String(b.naam).trim().replace(/\b\p{L}/gu, c => c.toUpperCase());
+  if (b.schema)      merge.SCHEMA    = String(b.schema);
+  if (b.schemaUrl)   merge.SCHURL    = String(b.schemaUrl);
+  if (b.registratie) merge.REGISTR   = String(b.registratie);
+  if (b.ftpkennis)   merge.FTPKENNIS = String(b.ftpkennis);
+  if (b.meetmethode) merge.MEETMETH  = String(b.meetmethode);
 
-  // Kortingstoken voor mail 5 — bij elke (her)inschrijving vers gezet,
-  // zodat de deadline meeloopt met de laatste keer dat iemand de quiz deed.
-  const korting = maakKeuzehulpKorting(email);
-  if (korting.token) {
-    merge.KHTOKEN    = korting.token;
-    merge.KHDEADLINE = korting.deadlineNL;
+  // Kortingstoken voor mail 5 — alleen voor de schema-route; coaching-leads
+  // horen geen schemakorting te krijgen terwijl Michel ze belt.
+  if (route === 'schema') {
+    const korting = maakKeuzehulpKorting(email);
+    if (korting.token) {
+      merge.KHTOKEN    = korting.token;
+      merge.KHDEADLINE = korting.deadlineNL;
+    }
   }
 
   try {
@@ -109,23 +197,27 @@ export default async function handler(req, res) {
       return res.status(502).json({ ok: false, fout: 'mailchimp weigerde het adres' });
     }
 
-    // 2) Tag eerst weghalen... (alleen een NIEUW geplaatste tag triggert de journey)
-    await fetch(`${base}/members/${hash}/tags`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ tags: [{ name: TAG, status: 'inactive' }] }),
-      signal: AbortSignal.timeout(10000),
-    });
+    // 2) Journey-tag per route.
+    await hertag(base, headers, hash, route === 'coaching' ? TAG_COACHING : TAG_SCHEMA);
 
-    // 3) ...en daarna opnieuw zetten → journey "tag toegevoegd" gaat af.
-    await fetch(`${base}/members/${hash}/tags`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ tags: [{ name: TAG, status: 'active' }] }),
-      signal: AbortSignal.timeout(10000),
-    });
+    // 3) Coaching-inschrijving: notificatie naar Michel + bevestiging naar de lead.
+    //    (De e-mailpoort eerder in de flow stuurt geen `inschrijving`, alleen
+    //    het begeleidingsformulier doet dat — dus geen dubbele mails.)
+    if (route === 'coaching' && String(b.inschrijving || '') === 'ja') {
+      await stuurMail({
+        from: AFZENDER, to: INTERNE_MAIL,
+        reply_to: email,
+        subject: `🚴 Coaching-aanvraag: ${String(b.naam || email)} · ${String(b.pakket || 'keuzehulp')}`,
+        html: interneCoachingHtml(b),
+      });
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: 'Je aanvraag is binnen — ik neem binnen 24 uur contact op',
+        html: bevestigingHtml(b.naam, b.pakket),
+      });
+    }
 
-    console.log('Keuzehulp OK:', email, '| schema:', b.schema || '-');
+    console.log('Keuzehulp OK:', email, '| route:', route, '| schema:', b.schema || '-', '| inschrijving:', b.inschrijving || '-');
     return res.status(200).json({ ok: true });
   } catch (e) {
     console.error('Keuzehulp: Mailchimp faalde:', e);
