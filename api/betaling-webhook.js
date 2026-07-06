@@ -465,7 +465,7 @@ function maakToken(email) {
   const sig = crypto.createHmac('sha256', PP_SECRET).update(payload).digest('hex').slice(0, 16);
   const token = Buffer.from(`${payload}|${sig}`).toString('base64url');
   const deadlineNL = new Date(Date.now() + 72*3600*1000)   // in de mail communiceren we 72 uur
-    .toLocaleString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+    .toLocaleString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' });
   return { token, deadlineNL };
 }
 
