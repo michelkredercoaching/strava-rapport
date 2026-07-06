@@ -92,7 +92,7 @@ function interneCoachingHtml(b) {
   return naarHtmlEntities(`
   <div style="font-family:Arial,sans-serif;color:#111;line-height:1.6;">
     <h2 style="margin:0 0 4px;">🚴 Nieuwe coaching-aanvraag</h2>
-    <p style="margin:0 0 16px;color:#666;">Via de keuzehulp · reageer binnen 24 uur</p>
+    <p style="margin:0 0 16px;color:#666;">Via de adviestool · reageer binnen 24 uur</p>
     <table style="border-collapse:collapse;font-size:15px;">
       ${r('Naam', escHtml(b.naam || '—'))}
       ${r('E-mail', escHtml(b.email || '—'))}
@@ -113,7 +113,7 @@ function bevestigingHtml(naam, pakket) {
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
     <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
     <p style="font-size:15px;margin:0 0 14px;">Goed dat je deze stap zet. Je aanvraag ${pakketTxt}is binnen.</p>
-    <p style="font-size:15px;margin:0 0 14px;">Ik neem <strong>binnen 24 uur</strong> persoonlijk contact met je op. Dan nemen we je doelen door, kijk ik naar je huidige training en bespreken we hoe we samen aan de slag gaan. Je hoeft nu verder niets te doen.</p>
+    <p style="font-size:15px;margin:0 0 14px;">Ik neem persoonlijk contact met je op voor een <strong>intakegesprek</strong>. Daarin nemen we je doelen door, kijk ik naar je huidige training en bespreken we hoe we samen aan de slag gaan. Je hoeft nu verder niets te doen.</p>
     <p style="font-size:15px;margin:0 0 18px;">Wil je alvast iets kwijt over je situatie of je doelen? Reageer gewoon op deze mail, ik lees alles zelf.</p>
     <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
   </div>`;
@@ -179,18 +179,35 @@ export default async function handler(req, res) {
     }
   }
 
+  // Coaching-route: pakket + terugkeer-link voor de adviesmail
+  // (*|KHPAKKET|* en *|KHPURL|* in de coaching-journey).
+  if (route === 'coaching') {
+    if (b.pakket)    merge.KHPAKKET = String(b.pakket);
+    if (b.pakketUrl) merge.KHPURL   = String(b.pakketUrl);
+  }
+
   try {
     // 1) Contact toevoegen of bijwerken (PUT = upsert).
-    const lid = await fetch(`${base}/members/${hash}`, {
+    const upsert = (velden) => fetch(`${base}/members/${hash}`, {
       method: 'PUT',
       headers,
       body: JSON.stringify({
         email_address: email,
         status_if_new: 'subscribed',
-        ...(Object.keys(merge).length ? { merge_fields: merge } : {}),
+        ...(Object.keys(velden).length ? { merge_fields: velden } : {}),
       }),
       signal: AbortSignal.timeout(10000),
     });
+    let lid = await upsert(merge);
+    if (!lid.ok && (merge.KHPAKKET || merge.KHPURL)) {
+      // Vangnet: bestaan KHPAKKET/KHPURL (nog) niet als merge-veld in
+      // Mailchimp, dan weigert de API de hele upsert. Liever het contact
+      // binnen zonder die velden dan de lead kwijt.
+      const detail = await lid.text().catch(() => '');
+      console.error('Keuzehulp: upsert met KH-velden faalde, retry zonder:', lid.status, detail);
+      const { KHPAKKET, KHPURL, ...rest } = merge;
+      lid = await upsert(rest);
+    }
     if (!lid.ok) {
       const detail = await lid.text().catch(() => '');
       console.error('Keuzehulp: lid upsert faalde:', lid.status, detail);
@@ -207,12 +224,12 @@ export default async function handler(req, res) {
       await stuurMail({
         from: AFZENDER, to: INTERNE_MAIL,
         reply_to: email,
-        subject: `🚴 Coaching-aanvraag: ${String(b.naam || email)} · ${String(b.pakket || 'keuzehulp')}`,
+        subject: `🚴 Coaching-aanvraag: ${String(b.naam || email)} · ${String(b.pakket || 'adviestool')}`,
         html: interneCoachingHtml(b),
       });
       await stuurMail({
         from: AFZENDER, to: email, reply_to: REPLY_TO,
-        subject: 'Je aanvraag is binnen — ik neem binnen 24 uur contact op',
+        subject: 'Je aanvraag is binnen — we plannen een intakegesprek',
         html: bevestigingHtml(b.naam, b.pakket),
       });
     }
