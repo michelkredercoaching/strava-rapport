@@ -299,6 +299,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       weight,                 // ===== W/KG =====
       piek1min: null,
       piek5min: null,
+      piek12min: null,
       piek20min: null,
     };
   }
@@ -611,11 +612,13 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   }));
 
   // ===== W/KG: PIEKVERMOGENS (power curve) =====
-  // De 1/5/20-min pieken zijn hierboven al berekend voor de FTP-detectie
+  // De 1/5/12/20-min pieken zijn hierboven al berekend voor de FTP-detectie
   // (piek[sec]). We geven ze nu mee in W, zodat de frontend ze deelt door het
-  // gewicht → W/kg-power-curve. Null als er geen stream-data was.
+  // gewicht → W/kg-power-curve, en de interne verkoopmail de FTP kan herrekenen.
+  // Null als er geen stream-data was.
   const piek1min  = piek[60]   ? Math.round(piek[60])   : null;
   const piek5min  = piek[300]  ? Math.round(piek[300])  : null;
+  const piek12min = piek[720]  ? Math.round(piek[720])  : null;
   const piek20min = piek[1200] ? Math.round(piek[1200]) : null;
 
   return {
@@ -656,6 +659,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     weight,          // ===== W/KG ===== gewicht in kg (of null)
     piek1min,        // ===== W/KG ===== piekvermogen 1 min in W (of null)
     piek5min,        // ===== W/KG ===== piekvermogen 5 min in W (of null)
+    piek12min,       // ===== W/KG ===== piekvermogen 12 min in W (of null)
     piek20min,       // ===== W/KG ===== piekvermogen 20 min in W (of null)
   };
 }
