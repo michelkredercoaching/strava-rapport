@@ -101,6 +101,7 @@ export default async function handler(req, res) {
           weight: finalW,
           piek1min: stravaData?.piek1min || '',
           piek5min: stravaData?.piek5min || '',
+          piek12min: stravaData?.piek12min || '',
           piek20min: stravaData?.piek20min || '',
           // ===== SERVICEKORTING =====
           // De webhook markeert dit ID als verzilverd zodra de betaling 'paid' is.
