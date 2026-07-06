@@ -209,8 +209,8 @@ async function bouwRapportPdf(meta) {
     } else {
       volgLines = wrapTxt('Je zit in de hoogste categorie — WorldTour-niveau. Chapeau.', reg, 8.5, R-M-32);
     }
-    const piek1 = parseInt(meta.piek1min)||null, piek5 = parseInt(meta.piek5min)||null, piek20 = parseInt(meta.piek20min)||null;
-    const curve = [['1 min',piek1],['5 min',piek5],['20 min',piek20]].filter(pp => pp[1] && pp[1] > 0);
+    const piek1 = parseInt(meta.piek1min)||null, piek5 = parseInt(meta.piek5min)||null, piek12 = parseInt(meta.piek12min)||null, piek20 = parseInt(meta.piek20min)||null;
+    const curve = [['1 min',piek1],['5 min',piek5],['12 min',piek12],['20 min',piek20]].filter(pp => pp[1] && pp[1] > 0);
     const ladderRijH = 15;
     const wkgH = 192 + volgLines.length*11 + (curve.length ? (13 + curve.length*13) : 0) + 14;
     ensure(wkgH);
@@ -392,6 +392,7 @@ function klantHtml(naam, token, deadline, advies) {
 
 function interneHtml(m, bedrag, id, pdfErbij) {
   const r=(label,val)=>`<tr><td style="padding:4px 16px 4px 0;color:#666;">${label}</td><td style="padding:4px 0;font-weight:700;">${val}</td></tr>`;
+  const watt=(v)=>{ const n=parseInt(v); return n>0 ? escHtml(String(n))+' W' : '—'; };
   const statusBalk = pdfErbij
     ? `<p style="margin:16px 0 0;padding:10px 14px;border-radius:6px;background:#eef7f0;color:#2e7d4f;font-size:14px;font-weight:600;">📎 PDF zit als bijlage bij deze mail — klaar om te forwarden naar de klant.</p>`
     : `<p style="margin:16px 0 0;padding:10px 14px;border-radius:6px;background:#fdecea;color:#c0392b;font-size:14px;font-weight:600;">⚠ PDF kon NIET worden gegenereerd. De klant heeft (nog) niets ontvangen — check handmatig.</p>`;
@@ -404,9 +405,16 @@ function interneHtml(m, bedrag, id, pdfErbij) {
       ${r('E-mail', escHtml(m.email||'—'))}
       ${r('FTP', escHtml((m.ftp||'?'))+' W')}
       ${r('FTP-betrouwbaarheid', escHtml(m.ftpBetrouwbaarheid||'—'))}
+      ${r('Piek 1 min', watt(m.piek1min))}
+      ${r('Piek 5 min', watt(m.piek5min))}
+      ${r('Piek 12 min', watt(m.piek12min))}
+      ${r('Piek 20 min', watt(m.piek20min))}
+      ${r('Gewicht', m.weight ? escHtml(m.weight)+' kg' : '—')}
+      ${r('Ritten (90 dgn)', m.ritten!=null&&m.ritten!==''?escHtml(m.ritten):'—')}
       ${r('Uren/week', m.uren!=null?escHtml(m.uren):'?')}
       ${r('Trainingsscore', m.score!=null?escHtml(m.score):'?')}
       ${r('VO2max-sessies', m.vo2max!=null?escHtml(m.vo2max):'?')}
+      ${r('Gem. intensiteit', m.intensiteit!=null&&m.intensiteit!==''?escHtml(m.intensiteit)+'%':'—')}
       ${r('Herstelbalans', m.herstel!=null?escHtml(m.herstel)+'/10':'—')}
       ${r('Zones', escHtml(m.zones||'—'))}
     </table>
