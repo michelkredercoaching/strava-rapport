@@ -8,7 +8,7 @@
 // (en herhalen toegestaan) gaat dan af voor iedereen — nieuw én bestaand.
 //
 // Vereist in Vercel (staan er al voor de betaling-webhook):
-//   MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID
+//   MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID, PP_TOKEN_SECRET
 import crypto from 'node:crypto';
 
 const MC_KEY  = process.env.MAILCHIMP_API_KEY;      // ...-usXX
@@ -16,6 +16,26 @@ const MC_LIST = process.env.MAILCHIMP_LIST_ID;
 const MC_DC   = MC_KEY ? MC_KEY.split('-')[1] : null;
 
 const TAG = 'keuzehulp-gedaan';
+
+// ===== Kortingstoken voor nurture-mail 5 (€10 op elk schema) =====
+// Zelfde HMAC-aanpak als het Power Profile-tegoed, maar met 'kh10' als
+// type zodat de twee soorten tokens elkaars snippet niet activeren.
+// Opbouw: base64url("kh10|email|exp|sig"), sig = eerste 16 hex tekens van
+// HMAC-SHA256(PP_TOKEN_SECRET, "kh10|email|exp").
+// Mail 5 valt op dag 8; deadline = dag 11 (dus "nog 3 dagen"), het token
+// zelf is 12 dagen geldig als buffer rond tijdzones en late opens.
+const PP_SECRET = process.env.PP_TOKEN_SECRET || '';
+
+function maakKeuzehulpKorting(email) {
+  if (!PP_SECRET || !email) return { token: '', deadlineNL: '' };
+  const exp = Date.now() + 12 * 24 * 3600 * 1000;
+  const payload = `kh10|${String(email).toLowerCase()}|${exp}`;
+  const sig = crypto.createHmac('sha256', PP_SECRET).update(payload).digest('hex').slice(0, 16);
+  const token = Buffer.from(`${payload}|${sig}`).toString('base64url');
+  const deadlineNL = new Date(Date.now() + 11 * 24 * 3600 * 1000)
+    .toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+  return { token, deadlineNL };
+}
 
 // Alleen de eigen sites mogen dit endpoint vanuit de browser aanroepen.
 const TOEGESTANE_ORIGINS = [
@@ -62,6 +82,14 @@ export default async function handler(req, res) {
   if (b.registratie) merge.REGISTR  = String(b.registratie);
   if (b.ftpkennis)  merge.FTPKENNIS = String(b.ftpkennis);
   if (b.meetmethode) merge.MEETMETH = String(b.meetmethode);
+
+  // Kortingstoken voor mail 5 — bij elke (her)inschrijving vers gezet,
+  // zodat de deadline meeloopt met de laatste keer dat iemand de quiz deed.
+  const korting = maakKeuzehulpKorting(email);
+  if (korting.token) {
+    merge.KHTOKEN    = korting.token;
+    merge.KHDEADLINE = korting.deadlineNL;
+  }
 
   try {
     // 1) Contact toevoegen of bijwerken (PUT = upsert).
