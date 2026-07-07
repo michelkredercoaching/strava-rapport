@@ -1,14 +1,21 @@
 // /api/lead.js
-// E-mailcapture direct na de Strava-koppeling, vóór de betaalmuur.
-// Doet twee dingen:
+// Eén endpoint voor de e-mailcapture én de hervat-route, zodat we binnen de
+// Vercel Hobby-limiet van 12 serverless functions blijven.
+//
+// POST — capture direct na de Strava-koppeling, vóór de betaalmuur:
 //   1. Bewaart de analyse (blob + preview) 30 dagen in Redis onder een
 //      willekeurig hervat-id, zodat de knop in de verlaten-mails de bezoeker
-//      terugbrengt bij zijn eigen resultaat (?hervat=<id> → /api/hervat).
+//      terugbrengt bij zijn eigen resultaat (?hervat=<id> op de funnel).
 //   2. Zet het adres in Mailchimp (Keuzehulp-audience) met de tag
 //      'pp-niet-afgemaakt' (trigger van de journey "PP verlaten analyse")
 //      en het hervat-id in mergeveld PPHERVAT.
-// Mislukt Redis of Mailchimp, dan blokkeert dat de funnel nooit: de bezoeker
-// gaat gewoon door naar zijn resultaat en wij loggen de fout.
+//   Mislukt Redis of Mailchimp, dan blokkeert dat de funnel nooit: de
+//   bezoeker gaat gewoon door naar zijn resultaat en wij loggen de fout.
+//
+// GET ?id=<hervat-id> — geeft de bewaarde analyse terug (pv, blob, email).
+//   Het id is 24 tekens willekeurige hex en alleen bekend via de mail van de
+//   eigenaar; de blob is bovendien versleuteld (seal), dus hier lekt geen
+//   leesbare trainingsdata.
 import crypto from 'node:crypto';
 
 const MC_KEY  = process.env.MAILCHIMP_API_KEY;      // ...-usXX
@@ -36,6 +43,27 @@ async function redis(cmd) {
 }
 
 export default async function handler(req, res) {
+  // ===== HERVAT: bewaarde analyse terughalen =====
+  if (req.method === 'GET') {
+    const id = String((req.query && req.query.id) || '');
+    if (!/^[0-9a-f]{16,48}$/.test(id)) {
+      return res.status(400).json({ error: 'Ongeldig id' });
+    }
+    const r = await redis(['GET', `pp:hervat:${id}`]);
+    if (!r.ok || !r.result) {
+      return res.status(404).json({ error: 'Niet gevonden of verlopen' });
+    }
+    let data;
+    try { data = JSON.parse(r.result); } catch (e) {
+      return res.status(404).json({ error: 'Niet gevonden of verlopen' });
+    }
+    return res.status(200).json({
+      pv: data.pv || {},
+      blob: data.blob || '',
+      email: data.email || ''
+    });
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
