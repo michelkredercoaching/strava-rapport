@@ -637,7 +637,15 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       </div>
     </div>
 
+    <!-- E-mailcapture vóór de betaalmuur, op het moment van hoogste nieuwsgierigheid -->
+    <div style="width:100%;max-width:340px;margin-bottom:14px;">
+      <label for="leadEmail" style="display:block;font-size:11px;color:rgba(255,255,255,0.55);font-weight:600;letter-spacing:.3px;margin-bottom:7px;text-align:left;">Waar mogen we je analyse naartoe sturen?</label>
+      <input id="leadEmail" type="email" inputmode="email" autocomplete="email" placeholder="jouw@email.nl" onchange="leadVeldGewijzigd()"
+        style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
+      <div id="leadEmailFout" style="display:none;font-size:11px;color:#ff6b5e;margin-top:6px;line-height:1.4;text-align:left;"></div>
+    </div>
     <button class="verfijn-btn" id="prijsVerfijnBtn" onclick="slaZonesOver()">Ontgrendel mijn rapport — €29 →</button>
+    <p style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:14px;max-width:340px;line-height:1.5;">We bewaren je analyse en mailen je er een paar keer over. Uitschrijven kan altijd, onderaan elke mail.</p>
   </div>
 </div>
 
@@ -1089,6 +1097,38 @@ async function startAIAnalyse(data) {
   toonZonesScherm(data);
 }
 
+// Lead naar de server: analyse bewaren voor de hervat-link en het adres in
+// Mailchimp zetten (tag pp-niet-afgemaakt, journey "PP verlaten analyse").
+// Fire-and-forget en per adres maar één keer per sessie: een fout of dubbele
+// invoer mag de funnel nooit blokkeren.
+let _leadVerstuurd = '';
+function stuurLeadEenmalig(email) {
+  if (!email || email === _leadVerstuurd) return;
+  _leadVerstuurd = email;
+  try { localStorage.setItem('pp_email', email); } catch(e) {}
+  try {
+    fetch('/api/lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, pv: window._preview || {}, blob: window._blob || '' })
+    }).catch(function(){});
+  } catch(e) {}
+}
+
+// Zodra het veld op de teaser een geldig adres bevat (onchange vuurt bij het
+// verlaten van het veld), leggen we de lead direct vast. Zo vangen we ook
+// bezoekers die hun adres intypen maar nooit op de ontgrendel-knop klikken.
+function leadVeldGewijzigd() {
+  const el = document.getElementById('leadEmail');
+  const email = el ? el.value.trim() : '';
+  if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    const foutEl = document.getElementById('leadEmailFout');
+    if (foutEl) foutEl.style.display = 'none';
+    if (el) el.style.borderColor = 'rgba(255,255,255,0.15)';
+    stuurLeadEenmalig(email);
+  }
+}
+
 function herberekeningZones(rittenRuw, ftp, omslagpunt) {
   // Gewogen op moving_time (t) — niet 1 stem per rit
   // Verdeling model: 60% dominante zone, 20% zone eronder, 20% zone erboven
@@ -1198,9 +1238,39 @@ function toonZonesScherm(data) {
       </div>
     `).join('');
   }
+
+  // Bekend e-mailadres (eerdere sessie of hervat-link) alvast invullen en
+  // eenmalig opnieuw aanmelden voor een verse hervat-link; nieuw publiek
+  // vult het veld zelf in.
+  try {
+    const em = (localStorage.getItem('pp_email') || '').trim();
+    const el = document.getElementById('leadEmail');
+    if (el && em && !el.value) el.value = em;
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) stuurLeadEenmalig(em);
+  } catch(e) {}
 }
 
-function slaZonesOver() { voerAIAnalyseUit(window._preview || {}); }
+function slaZonesOver() {
+  // Ontgrendelen kan pas met een geldig e-mailadres: daar sturen we het
+  // rapport heen én het is de capture voor wie uiteindelijk niet koopt.
+  const emailEl = document.getElementById('leadEmail');
+  const foutEl = document.getElementById('leadEmailFout');
+  const email = emailEl ? emailEl.value.trim() : '';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (foutEl) { foutEl.textContent = 'Vul eerst je e-mailadres in, dan bewaren we je analyse.'; foutEl.style.display = 'block'; }
+    if (emailEl) { emailEl.style.borderColor = '#ff6b5e'; emailEl.focus(); }
+    return;
+  }
+  if (foutEl) foutEl.style.display = 'none';
+  if (emailEl) emailEl.style.borderColor = 'rgba(255,255,255,0.15)';
+  stuurLeadEenmalig(email);
+  // Alvast invullen op de betaalpagina, zodat de koper 'm niet twee keer typt.
+  try {
+    const el = document.getElementById('klantEmail');
+    if (el && !el.value) el.value = email;
+  } catch(e) {}
+  voerAIAnalyseUit(window._preview || {});
+}
 
 // ===== Handmatige FTP-correctie OP HET RAPPORT (teruggezet 9 juni) =====
 // De geblurde teaser en de hele paywall blijven ongemoeid. Een betalende
@@ -1935,6 +2005,30 @@ window.addEventListener('DOMContentLoaded', function() {
   const kortingParam = params.get('korting');
   if (kortingParam) { try { localStorage.setItem('pp_korting', kortingParam); } catch(e) {} }
   toonKortingPrijzen();
+
+  // ===== HERVAT-LINK uit de verlaten-mails: bewaarde analyse terughalen =====
+  // Lukt het ophalen niet (verlopen, ongeldig, lege mergetag), dan blijft
+  // gewoon het startscherm staan en kan de bezoeker opnieuw beginnen.
+  const hervat = params.get('hervat');
+  if (hervat && !error && !betaald && !ready) {
+    if (/^[0-9a-f]{16,48}$/.test(hervat)) {
+      fetch('/api/hervat?id=' + encodeURIComponent(hervat))
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(d){
+          if (d && d.pv) {
+            window._preview = d.pv;
+            window._blob = d.blob || '';
+            try {
+              if (d.blob) localStorage.setItem('pp_blob', d.blob);
+              if (d.email) localStorage.setItem('pp_email', d.email);
+            } catch(e) {}
+            toonZonesScherm(window._preview);
+          }
+        })
+        .catch(function(){});
+    }
+    return;
+  }
 
   if(error) {
     // Specifieke uitleg per foutsoort, zodat de sporter weet wat hij kan doen.
