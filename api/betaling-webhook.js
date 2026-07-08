@@ -413,6 +413,8 @@ function interneHtml(m, bedrag, id, pdfErbij) {
       ${r('FTP', escHtml((m.ftp||'?'))+' W')}
       ${r('FTP-betrouwbaarheid', escHtml(m.ftpBetrouwbaarheid||'—'))}
       ${r('Omslagpunt', m.omslagpunt ? escHtml(m.omslagpunt)+' bpm' : '—')}
+      ${r('HR-piek 12 min', m.piek12minHr ? escHtml(m.piek12minHr)+' bpm' : '—')}
+      ${r('HR-piek 20 min', m.piek20minHr ? escHtml(m.piek20minHr)+' bpm' : '—')}
       ${r('Piek 1 min', watt(m.piek1min))}
       ${r('Piek 5 min', watt(m.piek5min))}
       ${r('Piek 12 min', watt(m.piek12min))}
