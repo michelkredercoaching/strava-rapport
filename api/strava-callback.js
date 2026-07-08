@@ -235,7 +235,8 @@ export default async function handler(req, res) {
       herstelScore: stats.herstelScore,
       herstelLabel: stats.herstelLabel,
       heeftVermogensmeter: stats.heeftVermogensmeter,
-      ftpBetrouwbaarheid: stats.ftpBetrouwbaarheid   // ← zodat de teaser (s3c) de juiste betrouwbaarheid toont
+      ftpBetrouwbaarheid: stats.ftpBetrouwbaarheid,        // ← zodat de teaser (s3c) de juiste betrouwbaarheid toont
+      omslagpuntBetrouwbaarheid: stats.omslagpuntBetrouwbaarheid  // ← HR-spoor: betrouwbaarheid van het omslagpunt (geen bpm-waarde, dus veilig vóór betaling)
     };
     const pvParam = encodeURIComponent(JSON.stringify(preview));
     const html = `<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Even geduld…</title></head>` +
@@ -550,16 +551,16 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
         stream.heartrate.data.forEach(hr => {
           if (!hr) return;
           const pct = (hr / omslagpunt) * 100;
-          if (pct < 75) zones[0]++;
-          else if (pct < 85) zones[1]++;
-          else if (pct < 95) zones[2]++;
-          else if (pct < 100) zones[3]++;
-          else zones[4]++;
+          if (pct < 75) zones[0]++;        // Herstel
+          else if (pct < 85) zones[1]++;   // D1
+          else if (pct < 90) zones[2]++;   // D2
+          else if (pct < 100) zones[3]++;  // D3
+          else zones[4]++;                 // Weerstand
         });
       } else if (rit.average_heartrate) {
         const pct = (rit.average_heartrate / omslagpunt) * 100;
         const t = rit.moving_time || 3600;
-        const grenzen = [75, 85, 95, 100];
+        const grenzen = [75, 85, 90, 100];   // Herstel / D1 / D2 / D3 / Weerstand
         let dz = 4;
         for (let i = 0; i < grenzen.length; i++) {
           if (pct < grenzen[i]) { dz = i; break; }
@@ -625,9 +626,14 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     : null;
 
   // ===== BEOORDELINGEN =====
+  // Zone-groepen verschillen per systeem. Vermogen (6 zones): grijs = Tempo+
+  // Sweetspot, kwaliteit = FTP+VO2max. Hartslag (5 zones): grijs = alleen Tempo,
+  // kwaliteit = Drempel+VO2max. Zonder deze split telt de Drempel-zone van een
+  // hartslag-renner als 'grijs' mee en diagnosticeert /api/analyse 'm verkeerd.
+  const _isPowerZones = heeftVermogensmeter && ftp;
   const duurZonePct = (zonesPct[0] || 0) + (zonesPct[1] || 0);
-  const grijsZonePct = (zonesPct[2] || 0) + (zonesPct[3] || 0);
-  const kwaliteitZonePct = (zonesPct[4] || 0) + (zonesPct[5] || 0);
+  const grijsZonePct = _isPowerZones ? (zonesPct[2] || 0) + (zonesPct[3] || 0) : (zonesPct[2] || 0);
+  const kwaliteitZonePct = _isPowerZones ? (zonesPct[4] || 0) + (zonesPct[5] || 0) : (zonesPct[3] || 0) + (zonesPct[4] || 0);
   const duurvermogen = urenPerWeek >= 8 ? 'goed' : urenPerWeek >= 5 ? 'matig' : 'slecht';
   const intensiteitsverdeling = grijsZonePct > 20 ? 'slecht' : duurZonePct >= 78 && kwaliteitZonePct >= 15 ? 'goed' : 'matig';
   const herstelbalans = maxGapDagen > 14 ? 'slecht' : maxGapDagen > 7 ? 'matig' : 'goed';
