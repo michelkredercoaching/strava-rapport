@@ -496,6 +496,7 @@ async function naarMailchimp(m, token, deadlineNL, advies) {
         merge_fields: {
           FNAME: m.naam ? m.naam.trim().replace(/\b\p{L}/gu, c => c.toUpperCase()) : '', FTP: m.ftp || '', SCORE: m.score || '',
           PIJN: pijn, PIJNPCT: String(pct),
+          MEETMETH: m.meetmethode === 'hartslag' ? 'hartslag' : 'vermogen',
           PPTOKEN: token || '',
           DEADLINE: deadlineNL || '',
           ADVSCHEMA: advies ? `${advies.niveau} ${advies.weken}-wekenplan` : '',
