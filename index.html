@@ -1431,12 +1431,15 @@ function vulUnlockPagina(data, analyse) {
       pvHerstel.textContent = data.herstelRatio || '—';
     }
   }
-  // Gewichtsveld alleen tonen als Strava geen gewicht meegaf (data = preview).
+  // Gewichtsveld is alleen voor W/kg — en W/kg bestaat alleen mét vermogen.
+  // Dus tonen we het uitsluitend aan vermogens-renners die nog geen gewicht in
+  // Strava hebben. Een hartslag-renner krijgt het nooit.
   const gwWrap = document.getElementById('gewichtVeldWrap');
   if (gwWrap) {
     let heeftGewicht = !!(data && data.weight);
     if (!heeftGewicht) { try { const g = parseFloat(localStorage.getItem('pp_gewicht')); if (g >= 35 && g <= 200) heeftGewicht = true; } catch(e) {} }
-    gwWrap.style.display = heeftGewicht ? 'none' : 'block';
+    const toonGewicht = !!data.heeftVermogensmeter && !heeftGewicht;
+    gwWrap.style.display = toonGewicht ? 'block' : 'none';
   }
   if (!analyse) analyse = deterministischeInzichten(data);
   const alertTxt = document.getElementById('unlockAlertTxt');
