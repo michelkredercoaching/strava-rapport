@@ -435,18 +435,18 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
   <div class="hero">
 
     <!-- HOOK -->
-    <div class="hero-eyebrow">Voor wielrenners met een vermogensmeter</div>
+    <div class="hero-eyebrow">Voor wielrenners met vermogen of hartslag</div>
 
     <h1 class="hero-titel">Stop met<br>trainen<br>zonder <em>data.</em></h1>
 
     <!-- MECHANISM -->
-    <p class="hero-sub">Koppel je Strava. Wij analyseren je laatste 90 dagen, detecteren jouw FTP <strong>zonder test</strong> en vertellen je precies welke trainingen je tijd verspillen.</p>
+    <p class="hero-sub">Koppel je Strava. Wij analyseren je laatste 90 dagen, bepalen jouw FTP of omslagpunt <strong>zonder test</strong> en vertellen je precies welke trainingen je tijd verspillen.</p>
 
     <!-- WAT JE KRIJGT -->
     <div class="hero-wat-krijg-je">
       <div class="hwk-item">
         <div class="hwk-icon">⚡</div>
-        <div class="hwk-tekst"><strong>FTP zonder test</strong><span>Berekend uit jouw Strava ritten</span></div>
+        <div class="hwk-tekst"><strong>FTP of omslagpunt</strong><span>Zonder test, uit jouw Strava ritten</span></div>
       </div>
       <div class="hwk-item">
         <div class="hwk-icon">📊</div>
@@ -481,7 +481,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <span class="tr-dot"></span>
       <div class="tr-item">🔒 SSL versleuteld</div>
       <span class="tr-dot"></span>
-      <div class="tr-item">Vermogensmeter vereist</div>
+      <div class="tr-item">Vermogen of hartslag</div>
     </div>
     <p style="text-align:center;margin-top:16px;font-size:12px;color:rgba(255,255,255,0.5);letter-spacing:.3px;"><span style="color:var(--oranje);letter-spacing:1px;">★★★★★</span>&nbsp; 4.9 uit 100+ reviews &middot; <a href="https://michelkredercoaching.nl/reviews/" target="_blank" rel="noopener" style="color:rgba(255,255,255,0.5);text-decoration:underline;">lees ze</a></p>
     <p style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:10px;text-align:center;letter-spacing:.5px;"><a href="/privacy" target="_blank" rel="noopener" style="color:rgba(255,255,255,0.35);text-decoration:underline;">Privacyverklaring</a></p>
@@ -504,10 +504,10 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     <a href="#" onclick="verbindStrava();return false;" style="display:block;margin:0 auto 16px;line-height:0;" aria-label="Connect with Strava">
       <img src="/assets/btn_strava_connectwith_orange.svg" alt="Connect with Strava" style="height:48px;width:auto;display:block;margin:0 auto;">
     </a>
-    <!-- Vereiste: vermogensmeter -->
+    <!-- Werkt met vermogen én hartslag -->
     <div class="strava-vereiste">
       <span class="strava-vereiste-icon">⚡</span>
-      <span class="strava-vereiste-txt">Let op: dit werkt <strong>alleen voor renners met een vermogensmeter</strong>. Zonder wattage kunnen we geen FTP en zones berekenen.</span>
+      <span class="strava-vereiste-txt">Werkt met <strong>vermogen én hartslag</strong>. Rijd je met een powermeter, dan krijg je je FTP. Rijd je op hartslag, dan berekenen we je omslagpunt en je hartslagzones.</span>
     </div>
     <div class="strava-uitleg">
       <div class="strava-stap"><div class="strava-stap-nr">1</div><div class="strava-stap-txt">Log in op Strava en geef toegang</div></div>
@@ -574,7 +574,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#4caf80" stroke-width="1.5"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
     <div class="verfijn-status" style="color:#4caf80;">Analyse compleet</div>
-    <h2 class="verfijn-titel">Wij hebben jouw<br>FTP gevonden.</h2>
+    <h2 class="verfijn-titel" id="verfijnTitel">Wij hebben jouw<br>FTP gevonden.</h2>
     <p class="verfijn-sub" id="prijsVerfijnSub">Jouw vermogensprofiel staat klaar. Ontgrendel voor €29 en zie alles.</p>
     <!-- FTP TEASER CARD -->
     <div style="width:100%;max-width:340px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:20px;margin-bottom:16px;position:relative;overflow:hidden;">
@@ -583,7 +583,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
         <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--oranje);font-weight:700;display:flex;align-items:center;gap:6px;">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="var(--oranje)"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-          FTP Gedetecteerd
+          <span id="detectieBadgeTekst">FTP Gedetecteerd</span>
         </div>
         <div style="background:rgba(46,125,79,0.15);border:1px solid rgba(46,125,79,0.3);border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;color:#4caf80;letter-spacing:1px;">✓ GEVONDEN</div>
       </div>
@@ -592,7 +592,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <div style="position:relative;margin-bottom:16px;">
         <div style="display:flex;align-items:baseline;gap:8px;filter:blur(8px);user-select:none;pointer-events:none;">
           <span id="ftpDetectieWaarde" style="font-size:64px;font-weight:900;line-height:1;letter-spacing:-3px;color:var(--wit);">247</span>
-          <span style="font-size:18px;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:2px;">WATT</span>
+          <span id="detectieEenheid" style="font-size:18px;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:2px;">WATT</span>
         </div>
         <!-- Lock overlay -->
         <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;">
@@ -625,7 +625,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     <div style="width:100%;max-width:340px;margin-bottom:16px;display:flex;flex-direction:column;gap:8px;">
       <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.3);font-weight:600;text-align:left;margin-bottom:4px;">In het volledige rapport:</div>
       <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:rgba(255,255,255,0.5);">
-        <span style="color:var(--groen);font-weight:700;font-size:14px;">✓</span> Jouw exacte FTP en alle 6 trainingszones
+        <span style="color:var(--groen);font-weight:700;font-size:14px;">✓</span> Jouw exacte FTP of omslagpunt en al je trainingszones
       </div>
       <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:rgba(255,255,255,0.5);">
         <span style="color:var(--groen);font-weight:700;font-size:14px;">✓</span> Zoneverdeling — waar verspil je tijd?
@@ -780,7 +780,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <!-- Ingevulde FTP (groot) -->
       <div class="ftp-getal-rij">
         <div class="ftp-getal" id="ftpGetal">—</div>
-        <div class="ftp-eenheid">WATT</div>
+        <div class="ftp-eenheid" id="ftpEenheid">WATT</div>
       </div>
 
       <!-- Detectie vergelijking (alleen zichtbaar als handmatig ingevuld) -->
@@ -805,7 +805,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       </div>
 
       <!-- Handmatige FTP-correctie (teruggezet) -->
-      <div style="margin-bottom:14px;">
+      <div style="margin-bottom:14px;" id="ftpCorrectieBlok">
         <button type="button" class="ftp-correctie-toggle" onclick="toonFtpCorrectie()">Klopt dit niet? Pas je FTP aan</button>
         <div id="ftpCorrectieVeld" style="display:none;margin-top:10px;">
           <div class="ftp-correctie-rij">
@@ -818,7 +818,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 
       <button class="ftp-cta-btn">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--wit)"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-        GEEN FTP-TEST NODIG
+        <span id="ftpCtaTekst">GEEN FTP-TEST NODIG</span>
       </button>
     </div>
 
@@ -1207,17 +1207,39 @@ function toonZonesScherm(data) {
   // De echte FTP + zones zitten versleuteld en komen pas vrij na betaling.
   // Hier tonen we alleen een geblurde placeholder + de betrouwbaarheid. Geen
   // gevoelige data in de browser.
-  const placeholder = 250;
+  // ===== DUBBEL SPOOR: vermogen (FTP/watt) of hartslag (omslagpunt/bpm) =====
+  // We lezen heeftVermogensmeter uit de preview. Rijdt iemand op hartslag, dan
+  // toont de teaser het omslagpunt in bpm en hartslagzones i.p.v. FTP/watt.
+  const heeftVermogen = !!data.heeftVermogensmeter;
+  const placeholder = heeftVermogen ? 250 : 158;            // geblurde placeholder: watt vs bpm
+
+  const verfijnTitel = document.getElementById('verfijnTitel');
+  if (verfijnTitel) verfijnTitel.innerHTML = heeftVermogen
+    ? 'Wij hebben jouw<br>FTP gevonden.'
+    : 'Wij hebben jouw<br>omslagpunt gevonden.';
+  const detectieBadge = document.getElementById('detectieBadgeTekst');
+  if (detectieBadge) detectieBadge.textContent = heeftVermogen ? 'FTP Gedetecteerd' : 'Omslagpunt Gedetecteerd';
+  const detectieEenheid = document.getElementById('detectieEenheid');
+  if (detectieEenheid) detectieEenheid.textContent = heeftVermogen ? 'WATT' : 'BPM';
+  // Subregel HR-bewust maken. Draait ná toonKortingPrijzen(), dus we lezen de
+  // actuele prijs uit prijsHero zodat een persoonlijke korting behouden blijft.
+  const verfijnSub = document.getElementById('prijsVerfijnSub');
+  if (verfijnSub) {
+    const prijsEl = document.getElementById('prijsHero');
+    const prijs = (prijsEl && prijsEl.textContent.trim()) || '€29';
+    verfijnSub.textContent = `Jouw ${heeftVermogen ? 'vermogensprofiel' : 'hartslagprofiel'} staat klaar. Ontgrendel voor ${prijs} en zie alles.`;
+  }
+
   const detectieWaarde = document.getElementById('ftpDetectieWaarde');
   const ftpRittenTekst = document.getElementById('ftpRittenTekst');
   const ftpBetrouwS3c = document.getElementById('ftpBetrouwS3c');
   if (detectieWaarde) detectieWaarde.textContent = placeholder;
   if (ftpRittenTekst) ftpRittenTekst.textContent = aantalRitten;
-  // Betrouwbaarheid op de DATABRON (ftpBetrouwbaarheid uit de preview), niet
-  // alleen op het aantal ritten. Een schatting zonder power-streams is 'laag',
-  // ook al zijn er veel ritten.
+  // Betrouwbaarheid op de DATABRON uit de preview: FTP-spoor gebruikt
+  // ftpBetrouwbaarheid, HR-spoor het omslagpuntBetrouwbaarheid. Een schatting
+  // zonder stream-data is 'laag', ook al zijn er veel ritten.
   if (ftpBetrouwS3c) {
-    const bron = data.ftpBetrouwbaarheid;
+    const bron = heeftVermogen ? data.ftpBetrouwbaarheid : data.omslagpuntBetrouwbaarheid;
     if (bron === 'laag') { ftpBetrouwS3c.textContent = 'schatting'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
     else if (bron === 'hoog' && aantalRitten >= 8) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
     else if (aantalRitten >= 15) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
@@ -1225,19 +1247,33 @@ function toonZonesScherm(data) {
     else { ftpBetrouwS3c.textContent = 'laag'; ftpBetrouwS3c.style.color = 'var(--rood)'; }
   }
 
-  // Geblurde zone-preview op basis van de placeholder (puur cosmetisch).
+  // Geblurde zone-preview (puur cosmetisch): 6 vermogenszones in %FTP, of
+  // 5 hartslagzones in %omslagpunt.
   const zonesList = document.getElementById('ftpZonesList');
   if (zonesList) {
-    const ftp = placeholder;
-    const zoneNamen = ['Herstel', 'Duur', 'Tempo', 'Sweetspot', 'FTP', 'VO2max'];
-    const zoneGrenzen = [
-      `<${Math.round(ftp*0.55)}W`,
-      `${Math.round(ftp*0.55)}–${Math.round(ftp*0.75)}W`,
-      `${Math.round(ftp*0.75)}–${Math.round(ftp*0.85)}W`,
-      `${Math.round(ftp*0.85)}–${Math.round(ftp*0.95)}W`,
-      `${Math.round(ftp*0.95)}–${Math.round(ftp*1.05)}W`,
-      `>${Math.round(ftp*1.05)}W`
-    ];
+    let zoneNamen, zoneGrenzen;
+    if (heeftVermogen) {
+      const ftp = placeholder;
+      zoneNamen = ['Herstel', 'Duur', 'Tempo', 'Sweetspot', 'FTP', 'VO2max'];
+      zoneGrenzen = [
+        `<${Math.round(ftp*0.55)}W`,
+        `${Math.round(ftp*0.55)}–${Math.round(ftp*0.75)}W`,
+        `${Math.round(ftp*0.75)}–${Math.round(ftp*0.85)}W`,
+        `${Math.round(ftp*0.85)}–${Math.round(ftp*0.95)}W`,
+        `${Math.round(ftp*0.95)}–${Math.round(ftp*1.05)}W`,
+        `>${Math.round(ftp*1.05)}W`
+      ];
+    } else {
+      const op = placeholder;
+      zoneNamen = ['Herstel', 'D1', 'D2', 'D3', 'Weerstand'];
+      zoneGrenzen = [
+        `<${Math.round(op*0.75)} bpm`,
+        `${Math.round(op*0.75)}–${Math.round(op*0.85)} bpm`,
+        `${Math.round(op*0.85)}–${Math.round(op*0.90)} bpm`,
+        `${Math.round(op*0.90)}–${op} bpm`,
+        `>${op} bpm`
+      ];
+    }
     zonesList.innerHTML = zoneNamen.map((naam, i) => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:3px 0;">
         <span style="font-size:11px;color:rgba(255,255,255,0.5);">Z${i+1} ${naam}</span>
@@ -1441,6 +1477,19 @@ function toonRapport(data, analyse) {
   const ftpRittenAantal = document.getElementById('ftpRittenAantal');
   const ftpBetrouw = document.getElementById('ftpBetrouw');
 
+  // Reset naar de vermogens-standaard; de hartslag-tak overschrijft deze hieronder.
+  // Houdt toonRapport idempotent (bv. na een herberekening op hetzelfde scherm).
+  (function resetFtpKaart(){
+    const el = (id) => document.getElementById(id);
+    const label = el('ftpCardLabel'), sub = el('ftpCardSubtitel'), eenheid = el('ftpEenheid');
+    const cta = el('ftpCtaTekst'), corr = el('ftpCorrectieBlok');
+    if(label) label.textContent = 'FTP Detector™: Jouw FTP';
+    if(sub) sub.textContent = 'Zones zijn berekend op basis van deze waarde';
+    if(eenheid) eenheid.textContent = 'WATT';
+    if(cta) cta.textContent = 'GEEN FTP-TEST NODIG';
+    if(corr) corr.style.display = '';
+  })();
+
   if(data.ftp) {
     // Toon de actieve FTP (handmatig ingevuld of gedetecteerd)
     if(ftpGetal) ftpGetal.textContent = data.ftp;
@@ -1516,6 +1565,30 @@ function toonRapport(data, analyse) {
         if(vergelijkNote) vergelijkNote.textContent = 'Onze detectie had onvoldoende data. Jouw ingevulde waarde wordt gebruikt.';
       }
     }
+  } else if (data.omslagpunt) {
+    // ===== HARTSLAG-SPOOR: toon het omslagpunt i.p.v. FTP =====
+    // Geen vermogen, maar wel een drempelhartslag: de kaart wordt een
+    // omslagpunt-kaart in bpm, niet verborgen.
+    const label = document.getElementById('ftpCardLabel');
+    const subtitel = document.getElementById('ftpCardSubtitel');
+    const eenheid = document.getElementById('ftpEenheid');
+    const ctaTekst = document.getElementById('ftpCtaTekst');
+    if(label) label.textContent = 'Omslagpunt: Jouw drempelhartslag';
+    if(subtitel) subtitel.textContent = 'Je hartslagzones zijn berekend op basis van deze waarde';
+    if(eenheid) eenheid.textContent = 'BPM';
+    if(ctaTekst) ctaTekst.textContent = 'GEEN VELDTEST NODIG';
+    if(ftpGetal) ftpGetal.textContent = data.omslagpunt;
+    if(ftpRittenAantal) ftpRittenAantal.textContent = aantalRitten;
+    if(ftpBetrouw) {
+      const bron = data.omslagpuntBetrouwbaarheid;
+      if (bron === 'hoog' && aantalRitten >= 8) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; }
+      else if (bron === 'hoog') { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; }
+      else { ftpBetrouw.textContent = 'schatting'; ftpBetrouw.style.color = 'var(--oranje)'; }
+    }
+    // De handmatige FTP-correctie vraagt om watt en slaat nergens op zonder
+    // vermogen: die verbergen we voor de hartslag-renner.
+    const corrBlok = document.getElementById('ftpCorrectieBlok');
+    if(corrBlok) corrBlok.style.display = 'none';
   } else {
     const ftpCard = document.getElementById('ftpDetectorCard');
     if(ftpCard) ftpCard.style.display = 'none';
@@ -1705,22 +1778,56 @@ function vulZoneTabel(data) {
   if(!tabel) return;
 
   const ftp = data.ftp || 0;
+  const isHR = !ftp && !!data.omslagpunt;   // hartslag-spoor: 5 zones in bpm
+  const op = data.omslagpunt || 0;
 
-  // Zone definities
-  const zoneDefs = [
-    { naam:'Herstel', kleur:'#22c55e', balk:'rgba(34,197,94,0.7)',
-      watt: ftp ? `<${Math.round(ftp*0.55)}W` : '<Z1', pct: 0 },
-    { naam:'Duur',    kleur:'#eab308', balk:'rgba(234,179,8,0.8)',
-      watt: ftp ? `${Math.round(ftp*0.55)}–${Math.round(ftp*0.75)}W` : 'Z2', pct: 0 },
-    { naam:'Tempo',   kleur:'var(--oranje)', balk:'rgba(255,107,26,0.9)',
-      watt: ftp ? `${Math.round(ftp*0.75)}–${Math.round(ftp*0.85)}W` : 'Z3', pct: 0 },
-    { naam:'Sweetspot',kleur:'#3b82f6', balk:'rgba(59,130,246,0.8)',
-      watt: ftp ? `${Math.round(ftp*0.85)}–${Math.round(ftp*0.95)}W` : 'Z4', pct: 0 },
-    { naam:'FTP',     kleur:'#8b5cf6', balk:'rgba(139,92,246,0.8)',
-      watt: ftp ? `${Math.round(ftp*0.95)}–${Math.round(ftp*1.05)}W` : 'Z5', pct: 0 },
-    { naam:'VO2max',  kleur:'#6b7280', balk:'rgba(107,114,128,0.8)',
-      watt: ftp ? `>${Math.round(ftp*1.05)}W` : 'Z6', pct: 0 },
-  ];
+  // Zone definities: 6 vermogenszones (%FTP) of 5 hartslagzones (%omslagpunt).
+  let zoneDefs, zoneIcons;
+  if (isHR) {
+    zoneDefs = [
+      { naam:'Herstel',   kleur:'#22c55e', balk:'rgba(34,197,94,0.7)',        watt:`<${Math.round(op*0.75)} bpm`, pct: 0 },
+      { naam:'D1',        kleur:'#eab308', balk:'rgba(234,179,8,0.8)',        watt:`${Math.round(op*0.75)}–${Math.round(op*0.85)} bpm`, pct: 0 },
+      { naam:'D2',        kleur:'var(--oranje)', balk:'rgba(255,107,26,0.9)', watt:`${Math.round(op*0.85)}–${Math.round(op*0.90)} bpm`, pct: 0 },
+      { naam:'D3',        kleur:'#8b5cf6', balk:'rgba(139,92,246,0.8)',       watt:`${Math.round(op*0.90)}–${op} bpm`, pct: 0 },
+      { naam:'Weerstand', kleur:'#6b7280', balk:'rgba(107,114,128,0.8)',      watt:`>${op} bpm`, pct: 0 },
+    ];
+    zoneIcons = [
+      `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.45"/></svg>`,
+      `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+      `<svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(255,107,26,0.9)" stroke="none"><path d="M12 23c-4.42 0-8-3.58-8-8 0-3.5 2.25-7.12 6.71-10.81.28-.23.67-.23.95 0C15.75 7.88 18 11.5 18 15c0 4.42-3.58 8-8 8z"/></svg>`,
+      `<svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(139,92,246,0.8)" stroke="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`,
+      `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(107,114,128,0.8)" stroke-width="2"><polygon points="12 2 22 20 2 20"/></svg>`,
+    ];
+  } else {
+    zoneDefs = [
+      { naam:'Herstel', kleur:'#22c55e', balk:'rgba(34,197,94,0.7)',
+        watt: ftp ? `<${Math.round(ftp*0.55)}W` : '<Z1', pct: 0 },
+      { naam:'Duur',    kleur:'#eab308', balk:'rgba(234,179,8,0.8)',
+        watt: ftp ? `${Math.round(ftp*0.55)}–${Math.round(ftp*0.75)}W` : 'Z2', pct: 0 },
+      { naam:'Tempo',   kleur:'var(--oranje)', balk:'rgba(255,107,26,0.9)',
+        watt: ftp ? `${Math.round(ftp*0.75)}–${Math.round(ftp*0.85)}W` : 'Z3', pct: 0 },
+      { naam:'Sweetspot',kleur:'#3b82f6', balk:'rgba(59,130,246,0.8)',
+        watt: ftp ? `${Math.round(ftp*0.85)}–${Math.round(ftp*0.95)}W` : 'Z4', pct: 0 },
+      { naam:'FTP',     kleur:'#8b5cf6', balk:'rgba(139,92,246,0.8)',
+        watt: ftp ? `${Math.round(ftp*0.95)}–${Math.round(ftp*1.05)}W` : 'Z5', pct: 0 },
+      { naam:'VO2max',  kleur:'#6b7280', balk:'rgba(107,114,128,0.8)',
+        watt: ftp ? `>${Math.round(ftp*1.05)}W` : 'Z6', pct: 0 },
+    ];
+    zoneIcons = [
+      // Herstel - recycle icon
+      `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.45"/></svg>`,
+      // Duur - clock
+      `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+      // Tempo - fire
+      `<svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(255,107,26,0.9)" stroke="none"><path d="M12 23c-4.42 0-8-3.58-8-8 0-3.5 2.25-7.12 6.71-10.81.28-.23.67-.23.95 0C15.75 7.88 18 11.5 18 15c0 4.42-3.58 8-8 8z"/></svg>`,
+      // Sweetspot - droplet
+      `<svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(59,130,246,0.8)" stroke="none"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`,
+      // FTP - bolt
+      `<svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(139,92,246,0.8)" stroke="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`,
+      // VO2max - triangle
+      `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(107,114,128,0.8)" stroke-width="2"><polygon points="12 2 22 20 2 20"/></svg>`,
+    ];
+  }
 
   // Vul percentages in vanuit data
   const zones = data.zones || [];
@@ -1729,23 +1836,22 @@ function vulZoneTabel(data) {
   });
 
   // ===== Duurtraining-balans (gegroepeerd) =====
-  // Polarized: verhouding tussen de polen — laag (Z1+Z2) vs kwaliteit (Z5+Z6).
-  // Het grijze gebied (Z3+Z4) telt NIET mee in de verhouding; dat is het lek.
-  // Doel: ~80-20 tot 85-15 (laag : kwaliteit).
-  const herstelPct    = zoneDefs[0].pct;
-  const duurPct       = zoneDefs[1].pct;
-  const tempoPct      = zoneDefs[2].pct;
-  const sweetspotPct  = zoneDefs[3].pct;
-  const vo2maxPct     = zoneDefs[5].pct;
-  const laagTotaal      = herstelPct + duurPct;            // Herstel + Duur
-  const grijsTotaal     = tempoPct + sweetspotPct;         // Tempo + Sweetspot
-  const kwaliteitTotaal = zoneDefs[4].pct + zoneDefs[5].pct; // FTP + VO2max
+  // Polarized: laag volume (Herstel+Duur) vs kwaliteit (de twee zwaarste zones).
+  // Het grijze middengebied telt NIET mee in de verhouding; dat is het lek.
+  // Power: kwaliteit = FTP+VO2max, grijs = Tempo+Sweetspot.
+  // Hartslag: kwaliteit = Drempel+VO2max, grijs = alleen Tempo.
+  const kwaliteitNamen = isHR ? ['D3','Weerstand'] : ['FTP','VO2max'];
+  const grijsNamen     = isHR ? ['D2'] : ['Tempo','Sweetspot'];
+  const somNamen = (namen) => zoneDefs.filter(z => namen.includes(z.naam)).reduce((s,z)=>s+z.pct,0);
+  const laagTotaal      = zoneDefs[0].pct + zoneDefs[1].pct;   // Herstel + Duur
+  const grijsTotaal     = somNamen(grijsNamen);
+  const kwaliteitTotaal = somNamen(kwaliteitNamen);
   const polen           = laagTotaal + kwaliteitTotaal;
   const kwaliteitAandeel = polen > 0 ? (kwaliteitTotaal / polen) * 100 : 0;
 
   function getBadge(zone, pct) {
-    // Kwaliteit (FTP + VO2max) samen beoordeeld op de polarized-verhouding
-    if(zone === 'FTP' || zone === 'VO2max') {
+    // Kwaliteit samen beoordeeld op de polarized-verhouding
+    if(kwaliteitNamen.includes(zone)) {
       if(kwaliteitAandeel >= 13 && kwaliteitAandeel <= 30) return 'goed';
       return kwaliteitAandeel < 13 ? 'laag' : 'hoog';
     }
@@ -1755,8 +1861,8 @@ function vulZoneTabel(data) {
       if(laagTotaal >= 58) return 'ok';
       return 'laag';
     }
-    // Grijze gebied (Tempo + Sweetspot) — hoort minimaal
-    if(zone === 'Tempo' || zone === 'Sweetspot') {
+    // Grijze gebied — hoort minimaal
+    if(grijsNamen.includes(zone)) {
       return grijsTotaal > 12 ? 'hoog' : 'ok';
     }
     return 'ok';
@@ -1770,21 +1876,6 @@ function vulZoneTabel(data) {
   }
 
   const maxPct = Math.max(...zoneDefs.map(z => z.pct), 1);
-
-  const zoneIcons = [
-    // Herstel - recycle icon
-    `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.45"/></svg>`,
-    // Duur - clock
-    `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
-    // Tempo - fire
-    `<svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(255,107,26,0.9)" stroke="none"><path d="M12 23c-4.42 0-8-3.58-8-8 0-3.5 2.25-7.12 6.71-10.81.28-.23.67-.23.95 0C15.75 7.88 18 11.5 18 15c0 4.42-3.58 8-8 8z"/></svg>`,
-    // Sweetspot - droplet
-    `<svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(59,130,246,0.8)" stroke="none"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>`,
-    // FTP - bolt
-    `<svg width="13" height="13" viewBox="0 0 24 24" fill="rgba(139,92,246,0.8)" stroke="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>`,
-    // VO2max - triangle
-    `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(107,114,128,0.8)" stroke-width="2"><polygon points="12 2 22 20 2 20"/></svg>`,
-  ];
 
   tabel.innerHTML = zoneDefs.map((z, i) => {
     const badge = getBadge(z.naam, z.pct);
@@ -1825,7 +1916,9 @@ function vulActieplan(analyse, data) {
       'Verhoog frequentie naar minimaal 3x per week — elke week, geen uitzonderingen',
       ftp
         ? `Voeg 1x per week een VO2max-sessie toe: 4x4 min boven ${w110}W met 3 min herstel`
-        : 'Voeg 1x per week een VO2max-sessie toe: 4x4 min hard met 3 min herstel',
+        : (data.omslagpunt
+            ? `Voeg 1x per week een VO2max-sessie toe: 4x4 min max effort (HR richting ${data.omslagpunt} bpm) met 3 min herstel`
+            : 'Voeg 1x per week een VO2max-sessie toe: 4x4 min hard met 3 min herstel'),
       'Plan je trainingen vast in je agenda: bijv. dinsdag duur, donderdag VO2max, zondag lange rustige rit'
     ];
   }
@@ -1843,14 +1936,22 @@ function vulIntervalBlokken(analyse, data) {
 
   const ftp  = data.ftp || 0;
   const uren = data.urenPerWeek || 0;
+  const isHR = !ftp && !!data.omslagpunt;   // hartslag-spoor
+  const op   = data.omslagpunt || 0;
 
   // KNOP 1: vanaf hoeveel uur/week zie je iemand als 'meer trainend'
   const meerVolume = uren >= 8;
 
-  // Watt-bereik op basis van FTP. Geen FTP? Dan tonen we % FTP.
-  const w = (lo, hi) => ftp
-    ? `${Math.round(ftp*lo)}–${Math.round(ftp*hi)}W`
-    : `${Math.round(lo*100)}–${Math.round(hi*100)}% FTP`;
+  // Intensiteit per blok. Met vermogen: watt-bereik uit FTP. Met hartslag:
+  // sub-drempel (hi ≤ 1.0) op ~90% van het omslagpunt, VO2max (hi > 1.0) als
+  // max effort met het omslagpunt als richtlijn (mag een paar slagen afwijken).
+  const w = (lo, hi) => {
+    if (ftp) return `${Math.round(ftp*lo)}–${Math.round(ftp*hi)}W`;
+    if (isHR) return hi <= 1.0
+      ? `${Math.round(op*0.88)}–${Math.round(op*0.92)} bpm`
+      : `max effort · HR ~${Math.round(op*0.97)}–${op} bpm`;
+    return `${Math.round(lo*100)}–${Math.round(hi*100)}% FTP`;
+  };
 
   const blokken = [];
 
