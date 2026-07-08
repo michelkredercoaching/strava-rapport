@@ -12,6 +12,7 @@
 // Vereist in package.json: "pdf-lib"
 import crypto from 'node:crypto';
 import { markeerKortingGebruikt } from '../lib/korting.js';
+import { bouwRapportPdfHr } from '../lib/rapport-hr.js';
 
 // Pas deze drie regels eventueel aan:
 const INTERNE_MAIL = 'michel.kredercoaching@gmail.com';
@@ -567,12 +568,15 @@ export default async function handler(req, res) {
     // Aanbevolen schema (duur + niveau + prijzen) voor de mail.
     const advies = bepaalAdvies(m);
 
-    // 4) PDF bouwen — de kern van het rapport.
+        // 4) PDF bouwen — de kern van het rapport. Kies het spoor: een hartslag-
+    //    renner (geen/te weinig vermogensdata) krijgt het omslagpunt-rapport,
+    //    de rest het vermogens-rapport. meetmethode komt uit de Mollie-metadata.
+    const isHartslag = m.meetmethode === 'hartslag';
     let pdfB64 = null;
     try {
-      const bytes = await bouwRapportPdf(m);
+      const bytes = isHartslag ? await bouwRapportPdfHr(m) : await bouwRapportPdf(m);
       pdfB64 = Buffer.from(bytes).toString('base64');
-      console.log('PDF gebouwd:', bytes.length, 'bytes');
+      console.log(`PDF gebouwd (${isHartslag ? 'hartslag' : 'vermogen'}):`, bytes.length, 'bytes');
     } catch (e) { console.error('PDF genereren faalde:', e); }
 
     if (!pdfB64) {
@@ -600,7 +604,7 @@ export default async function handler(req, res) {
     // 5b) Interne mail MÉT de PDF als bijlage — jouw kopie, met één herkansing.
     const internePayload = {
       from: AFZENDER, to: INTERNE_MAIL,
-      subject: `Nieuwe verkoop - ${naam} - FTP ${m.ftp||'?'}W`,
+            subject: `Nieuwe verkoop - ${naam} - ${isHartslag ? `omslagpunt ${m.omslagpunt||'?'} bpm` : `FTP ${m.ftp||'?'}W`}`,
       html: interneHtml(m, bedrag, id, true),
       attachments: [{ filename: `Power-Profile-${veiligeBestandsnaam}.pdf`, content: pdfB64 }]
     };
