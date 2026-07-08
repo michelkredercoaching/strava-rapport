@@ -290,6 +290,8 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       heeftVermogensmeter: false,
       ftp: null,
       ftpBetrouwbaarheid: null,
+      bonusFtp: null,
+      bonusFtpBetrouwbaarheid: null,
       maxHf: null,
       omslagpunt: null,
       omslagpuntBetrouwbaarheid: null,
@@ -499,12 +501,24 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     : null;
   const gemIntensiteit = gemHr && maxHf ? Math.round((gemHr / maxHf) * 100) : null;
 
+  // ===== SPOOR-KEUZE: vermogen of hartslag =====
+  // Eén losse vermogensrit mag het rapport niet kapen. Alleen ECHTE vermogensdata
+  // telt mee (device_watts of een per-seconde power-stream), niet Strava's
+  // geschatte watts. Zit er in minder dan 60% van je ritten echt vermogen, dan
+  // draait het hele rapport op je omslagpunt (representatieve hartslagzones); een
+  // wel-gedetecteerde FTP tonen we dan als bonusgetal.
+  const rittenMetEchtePower = fietsritten90.filter(a =>
+    a.device_watts === true || (streamMap[a.id]?.watts?.data)
+  ).length;
+  const powerDekking = fietsritten90.length ? rittenMetEchtePower / fietsritten90.length : 0;
+  const gebruikVermogen = !!(ftp && powerDekking >= 0.60);
+
   // ===== ZONE ANALYSE =====
   let zones = [0, 0, 0, 0, 0, 0];
   let vo2maxSessies = 0;
   let heeftStreamData = false;
 
-  if (heeftVermogensmeter && ftp) {
+  if (gebruikVermogen) {
     fietsritten90.forEach(rit => {
       const stream = streamMap[rit.id];
       if (stream?.watts?.data) {
@@ -592,7 +606,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
 
   // ===== ZWARE RITTEN + HERSTELBALANS-SCORE 1-10 =====
   const zwaarRitten = fietsritten90.filter(rit => {
-    if (heeftVermogensmeter && ftp && rit.average_watts) {
+    if (gebruikVermogen && rit.average_watts) {
       if ((rit.average_watts / ftp) >= 0.76) return true;
       const wd = streamMap[rit.id]?.watts?.data;
       if (wd) {
@@ -630,7 +644,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   // Sweetspot, kwaliteit = FTP+VO2max. Hartslag (5 zones): grijs = alleen Tempo,
   // kwaliteit = Drempel+VO2max. Zonder deze split telt de Drempel-zone van een
   // hartslag-renner als 'grijs' mee en diagnosticeert /api/analyse 'm verkeerd.
-  const _isPowerZones = heeftVermogensmeter && ftp;
+  const _isPowerZones = gebruikVermogen;
   const duurZonePct = (zonesPct[0] || 0) + (zonesPct[1] || 0);
   const grijsZonePct = _isPowerZones ? (zonesPct[2] || 0) + (zonesPct[3] || 0) : (zonesPct[2] || 0);
   const kwaliteitZonePct = _isPowerZones ? (zonesPct[4] || 0) + (zonesPct[5] || 0) : (zonesPct[3] || 0) + (zonesPct[4] || 0);
@@ -687,11 +701,13 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     herstelbalans,
     intensiteitsverdeling,
     zonescore,
-    heeftVermogensmeter,
+    heeftVermogensmeter: gebruikVermogen,   // effectief spoor (na 60%-drempel), stuurt teaser/paywall/rapport
     heeftEchteVermogensmeter,
     vermogenIsGeschat,
-    ftp,
-    ftpBetrouwbaarheid,
+    ftp: gebruikVermogen ? ftp : null,       // op het hartslag-spoor geen FTP op de kaart
+    ftpBetrouwbaarheid: gebruikVermogen ? ftpBetrouwbaarheid : null,
+    bonusFtp: (!gebruikVermogen && ftp) ? ftp : null,                       // wel gedetecteerd? toon als bonus
+    bonusFtpBetrouwbaarheid: (!gebruikVermogen && ftp) ? ftpBetrouwbaarheid : null,
     ftpBronnen,
     ftpUitStream: heeftPowerStream,
     aantalRittenMetStream,
