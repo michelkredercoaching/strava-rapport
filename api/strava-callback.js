@@ -686,6 +686,10 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   const piek5min  = piek[300]  ? Math.round(piek[300])  : null;
   const piek12min = piek[720]  ? Math.round(piek[720])  : null;
   const piek20min = piek[1200] ? Math.round(piek[1200]) : null;
+  // ===== HR-PIEKEN ===== beste 12- en 20-min hartslag (bpm) uit je streams,
+  // dezelfde piekHr die het omslagpunt voedt — voor inzicht in de interne mail.
+  const piek12minHr = piekHr[720]  ? Math.round(piekHr[720])  : null;
+  const piek20minHr = piekHr[1200] ? Math.round(piekHr[1200]) : null;
 
   return {
     naam: athlete?.firstname || 'Sporter',
@@ -730,5 +734,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     piek5min,        // ===== W/KG ===== piekvermogen 5 min in W (of null)
     piek12min,       // ===== W/KG ===== piekvermogen 12 min in W (of null)
     piek20min,       // ===== W/KG ===== piekvermogen 20 min in W (of null)
+    piek12minHr,     // ===== HR ===== beste 12-min hartslag in bpm (of null)
+    piek20minHr,     // ===== HR ===== beste 20-min hartslag in bpm (of null)
   };
 }
