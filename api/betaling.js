@@ -103,6 +103,16 @@ export default async function handler(req, res) {
           piek5min: stravaData?.piek5min || '',
           piek12min: stravaData?.piek12min || '',
           piek20min: stravaData?.piek20min || '',
+          // ===== HR-SPOOR =====
+          // Zonder deze velden kan de webhook alleen een vermogens-rapport bouwen.
+          // 'meetmethode' vertelt de webhook welk rapport hij moet maken; het
+          // omslagpunt + max-HF zijn de kerngetallen voor het hartslag-rapport.
+          // heeftVermogensmeter is in strava-callback het EFFECTIEVE spoor (na de
+          // 60%-power-dekkingsdrempel), dus precies de juiste vlag om op te sturen.
+          meetmethode: stravaData?.heeftVermogensmeter ? 'vermogen' : 'hartslag',
+          omslagpunt: stravaData?.omslagpunt || '',
+          maxHf: stravaData?.maxHf || '',
+          omslagpuntBetrouwbaarheid: stravaData?.omslagpuntBetrouwbaarheid || '',
           // ===== SERVICEKORTING =====
           // De webhook markeert dit ID als verzilverd zodra de betaling 'paid' is.
           kortingId: korting ? korting.id : ''
