@@ -77,7 +77,7 @@ export default async function handler(req, res) {
   // Alleen bekende, onschuldige preview-velden overnemen (client-input).
   const preview = {};
   if (pv && typeof pv === 'object') {
-    for (const k of ['naam', 'aantalActiviteiten', 'urenPerWeek', 'prestatiescore', 'vo2maxSessies', 'ftpBetrouwbaarheid']) {
+    for (const k of ['naam', 'aantalActiviteiten', 'urenPerWeek', 'prestatiescore', 'vo2maxSessies', 'ftpBetrouwbaarheid', 'heeftVermogensmeter']) {
       if (pv[k] !== undefined) preview[k] = pv[k];
     }
   }
@@ -105,6 +105,9 @@ export default async function handler(req, res) {
     const merge = {};
     if (preview.naam) merge.FNAME = String(preview.naam).trim().replace(/\b\p{L}/gu, c => c.toUpperCase());
     if (hervatId) merge.PPHERVAT = hervatId;
+    // MEETMETH zodat de verlaten-mails de juiste spoor-tekst tonen (omslagpunt
+    // vs FTP). heeftVermogensmeter is in de preview het effectieve spoor.
+    if (preview.heeftVermogensmeter !== undefined) merge.MEETMETH = preview.heeftVermogensmeter ? 'vermogen' : 'hartslag';
     try {
       await fetch(`${base}/members/${hash}`, {
         method: 'PUT',
