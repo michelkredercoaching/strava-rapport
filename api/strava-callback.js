@@ -291,6 +291,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       ftpBetrouwbaarheid: null,
       maxHf: null,
       omslagpunt: null,
+      omslagpuntBetrouwbaarheid: null,
       maxGapDagen: 90,
       gemAfstandPerWeek: 0,
       langsteRit: 0,
@@ -443,7 +444,52 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   const maxHf = gebruikteHrWaarden.length > 0
     ? Math.round(gebruikteHrWaarden.reduce((s, v) => s + v, 0) / gebruikteHrWaarden.length)
     : null;
-  const omslagpunt = maxHf ? Math.round(maxHf * 0.90) : null;
+
+  // ===== OMSLAGPUNT (drempelhartslag / LTHR) =====
+  // Voorheen een platte 90% × max-HR. Nu data-gedreven uit je hartslag-streams,
+  // net als de FTP uit vermogen — maar met twee vensters i.p.v. vier: de beste
+  // 12- en 20-minuten voortschrijdende hartslag. 30-60 min voluit doet bijna
+  // niemand, dus daar rekenen we niet op; het 12-min venster vangt de renner die
+  // wél een stevig blok reed maar geen volle 20 min. Een langer venster ligt
+  // dichter bij je drempel (kleinere correctie), een korter venster ligt er iets
+  // boven (grotere correctie). We tellen een venster alleen mee als het uit een
+  // échte inspanning komt (piek ≥ 85% van je max), middelen gewogen (20 min telt
+  // zwaarder), cappen op 93% van je max, en vallen anders terug op 90% × max.
+  const hrWindows = [
+    { naam: '12min', sec: 720,  factor: 0.96, gewicht: 1 },
+    { naam: '20min', sec: 1200, factor: 0.98, gewicht: 2 },
+  ];
+  const piekHr = {};
+  fietsritten90.forEach(rit => {
+    const hrData = streamMap[rit.id]?.heartrate?.data;
+    if (!hrData || hrData.length < 720) return;             // minstens 12 min HR-stream
+    hrWindows.forEach(w => {
+      const beste = besteRollingGemiddelde(hrData, w.sec);
+      if (beste && beste > 100 && (!piekHr[w.sec] || beste > piekHr[w.sec])) piekHr[w.sec] = beste;
+    });
+  });
+
+  let omslagpunt = null;
+  let omslagpuntBron = null;                                // 'stream' (gemeten) of 'schatting'
+  let gewogenSomHr = 0, gewogenTotaalHr = 0, aantalHrVensters = 0;
+  hrWindows.forEach(w => {
+    const piekVal = piekHr[w.sec];
+    if (piekVal && maxHf && piekVal >= maxHf * 0.85) {      // alleen een échte inspanning telt mee
+      gewogenSomHr += piekVal * w.factor * w.gewicht;
+      gewogenTotaalHr += w.gewicht;
+      aantalHrVensters++;
+    }
+  });
+  if (gewogenTotaalHr > 0 && maxHf) {
+    omslagpunt = Math.min(Math.round(gewogenSomHr / gewogenTotaalHr), Math.round(maxHf * 0.93));
+    omslagpuntBron = 'stream';
+    console.log(`Omslagpunt (stream, 12/20-min HR): ${omslagpunt} bpm uit ${aantalHrVensters} venster(s)`);
+  } else if (maxHf) {
+    omslagpunt = Math.round(maxHf * 0.90);
+    omslagpuntBron = 'schatting';
+    console.log(`Omslagpunt (schatting 90% × max ${maxHf}): ${omslagpunt} bpm`);
+  }
+  const omslagpuntBetrouwbaarheid = !omslagpunt ? null : (omslagpuntBron === 'stream' ? 'hoog' : 'laag');
 
   // ===== GEMIDDELDE INTENSITEIT =====
   const rittenMetHr = fietsritten90.filter(a => a.average_heartrate);
@@ -645,6 +691,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     aantalRittenMetStream,
     maxHf,
     omslagpunt,
+    omslagpuntBetrouwbaarheid,
     gemHr,
     gemIntensiteit,
     herstelRatio: herstelRatioGetal,
