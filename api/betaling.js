@@ -113,6 +113,8 @@ export default async function handler(req, res) {
           omslagpunt: stravaData?.omslagpunt || '',
           maxHf: stravaData?.maxHf || '',
           omslagpuntBetrouwbaarheid: stravaData?.omslagpuntBetrouwbaarheid || '',
+          piek12minHr: stravaData?.piek12minHr || '',
+          piek20minHr: stravaData?.piek20minHr || '',
           // ===== SERVICEKORTING =====
           // De webhook markeert dit ID als verzilverd zodra de betaling 'paid' is.
           kortingId: korting ? korting.id : ''
