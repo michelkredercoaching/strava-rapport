@@ -353,21 +353,26 @@ function bepaalAdvies(m) {
   return { weken, niveau, tegoed, origPrijs, finalPrijs };
 }
 
-function klantHtml(naam, token, deadline, advies) {
+function klantHtml(naam, token, deadline, advies, isHartslag) {
   const veiligeNaam = escHtml(naam);
   const schemaUrl = token
     ? `https://michelkredercoaching.nl/trainingsschemas/?pp=${encodeURIComponent(token)}`
     : 'https://michelkredercoaching.nl/trainingsschemas';
   const deadlineTxt = deadline ? escHtml(deadline) : '';
   const a = advies || {};
+  // Spoor-bewuste woorden: een hartslag-koper heeft geen FTP maar een omslagpunt,
+  // en zijn grijze middenzone is D2 (niet Tempo/Sweetspot).
+  const kernGetal = isHartslag ? 'omslagpunt' : 'FTP';
+  const grijsZone = isHartslag ? 'D2, je tempo-zone' : 'Tempo/Sweetspot';
+  const kernRegel = isHartslag ? 'Je omslagpunt' : 'Je FTP';
   const prijsRegel = (a.origPrijs != null && a.finalPrijs != null)
     ? ` Van <span style="text-decoration:line-through;color:#8a8a8a;">€${a.origPrijs}</span> naar <strong style="color:#ff6b1a;">€${a.finalPrijs}</strong> met je €${a.tegoed} tegoed.`
     : ` Jouw tegoed: <strong style="color:#ff6b1a;">€${a.tegoed}</strong>.`;
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
     <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
-    <p style="font-size:15px;margin:0 0 14px;">Je rapport zit als PDF bij deze mail, met je FTP, je zones en je actieplan. Maar één ding eerst.</p>
-    <p style="font-size:15px;margin:0 0 18px;">Kijk naar je percentage in het <strong>grijze gebied</strong> (Tempo/Sweetspot). Dat ene getal verklaart bij de meeste renners waarom ze hard trainen zonder sneller te worden. Te zwaar om van te herstellen, te licht om van te groeien.</p>
+    <p style="font-size:15px;margin:0 0 14px;">Je rapport zit als PDF bij deze mail, met je ${kernGetal}, je zones en je actieplan. Maar één ding eerst.</p>
+    <p style="font-size:15px;margin:0 0 18px;">Kijk naar je percentage in het <strong>grijze gebied</strong> (${grijsZone}). Dat ene getal verklaart bij de meeste renners waarom ze hard trainen zonder sneller te worden. Te zwaar om van te herstellen, te licht om van te groeien.</p>
 
     <div style="margin:22px 0;padding:22px;background:#0d0d0d;border-radius:12px;">
       <p style="font-size:12px;font-weight:800;color:#ff6b1a;letter-spacing:1.5px;margin:0 0 10px;text-transform:uppercase;">Je analyse-tegoed staat klaar</p>
@@ -380,7 +385,7 @@ function klantHtml(naam, token, deadline, advies) {
 
     <p style="font-size:15px;margin:0 0 8px;">Open je rapport daarna in deze volgorde:</p>
     <table cellpadding="0" cellspacing="0" style="margin:0 0 18px;">
-      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">1.</td><td style="font-size:15px;padding:3px 0;"><strong>Je FTP:</strong> vanaf nu de referentie voor elke training</td></tr>
+      <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">1.</td><td style="font-size:15px;padding:3px 0;"><strong>${kernRegel}:</strong> vanaf nu de referentie voor elke training</td></tr>
       <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">2.</td><td style="font-size:15px;padding:3px 0;"><strong>Je actieplan:</strong> 3 stappen. Begin deze week met stap 1.</td></tr>
       <tr><td style="font-size:15px;padding:3px 10px 3px 0;font-weight:700;color:#ff6b1a;vertical-align:top;">3.</td><td style="font-size:15px;padding:3px 0;"><strong>De intervalblokken:</strong> kies er één en zet 'm in je agenda</td></tr>
     </table>
@@ -404,8 +409,10 @@ function interneHtml(m, bedrag, id, pdfErbij) {
     <table style="border-collapse:collapse;font-size:15px;">
       ${r('Naam', escHtml(m.naam||'Sporter'))}
       ${r('E-mail', escHtml(m.email||'—'))}
+      ${r('Meetmethode', escHtml(m.meetmethode==='hartslag' ? 'hartslag (omslagpunt)' : 'vermogen (FTP)'))}
       ${r('FTP', escHtml((m.ftp||'?'))+' W')}
       ${r('FTP-betrouwbaarheid', escHtml(m.ftpBetrouwbaarheid||'—'))}
+      ${r('Omslagpunt', m.omslagpunt ? escHtml(m.omslagpunt)+' bpm' : '—')}
       ${r('Piek 1 min', watt(m.piek1min))}
       ${r('Piek 5 min', watt(m.piek5min))}
       ${r('Piek 12 min', watt(m.piek12min))}
@@ -568,7 +575,7 @@ export default async function handler(req, res) {
     // Aanbevolen schema (duur + niveau + prijzen) voor de mail.
     const advies = bepaalAdvies(m);
 
-        // 4) PDF bouwen — de kern van het rapport. Kies het spoor: een hartslag-
+    // 4) PDF bouwen — de kern van het rapport. Kies het spoor: een hartslag-
     //    renner (geen/te weinig vermogensdata) krijgt het omslagpunt-rapport,
     //    de rest het vermogens-rapport. meetmethode komt uit de Mollie-metadata.
     const isHartslag = m.meetmethode === 'hartslag';
@@ -596,7 +603,7 @@ export default async function handler(req, res) {
       klantMailGelukt = await stuurMail({
         from: AFZENDER, to: m.email, reply_to: REPLY_TO,
         subject: 'Je rapport staat klaar, en je analyse-tegoed ook',
-        html: klantHtml(naam, ppToken, ppDeadline, advies),
+        html: klantHtml(naam, ppToken, ppDeadline, advies, isHartslag),
         attachments: [{ filename: 'Power-Profile-trainingsrapport.pdf', content: pdfB64 }]
       });
     }
@@ -604,7 +611,7 @@ export default async function handler(req, res) {
     // 5b) Interne mail MÉT de PDF als bijlage — jouw kopie, met één herkansing.
     const internePayload = {
       from: AFZENDER, to: INTERNE_MAIL,
-            subject: `Nieuwe verkoop - ${naam} - ${isHartslag ? `omslagpunt ${m.omslagpunt||'?'} bpm` : `FTP ${m.ftp||'?'}W`}`,
+      subject: `Nieuwe verkoop - ${naam} - ${isHartslag ? `omslagpunt ${m.omslagpunt||'?'} bpm` : `FTP ${m.ftp||'?'}W`}`,
       html: interneHtml(m, bedrag, id, true),
       attachments: [{ filename: `Power-Profile-${veiligeBestandsnaam}.pdf`, content: pdfB64 }]
     };
