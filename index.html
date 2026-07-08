@@ -804,6 +804,9 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
         </div>
       </div>
 
+      <!-- Bonus-FTP: alleen op het hartslag-spoor, als er tóch vermogen gedetecteerd is -->
+      <div id="omslagBonusFtp" style="display:none;font-size:12px;line-height:1.55;color:rgba(255,255,255,0.55);margin-bottom:14px;padding:11px 13px;background:rgba(255,255,255,0.04);border-left:3px solid rgba(255,255,255,0.18);border-radius:6px;"></div>
+
       <!-- Handmatige FTP-correctie (teruggezet) -->
       <div style="margin-bottom:14px;" id="ftpCorrectieBlok">
         <button type="button" class="ftp-correctie-toggle" onclick="toonFtpCorrectie()">Klopt dit niet? Pas je FTP aan</button>
@@ -1504,6 +1507,8 @@ function toonRapport(data, analyse) {
     if(eenheid) eenheid.textContent = 'WATT';
     if(cta) cta.textContent = 'GEEN FTP-TEST NODIG';
     if(corr) corr.style.display = '';
+    const bonus = el('omslagBonusFtp');
+    if(bonus) bonus.style.display = 'none';
   })();
 
   if(data.ftp) {
@@ -1605,6 +1610,16 @@ function toonRapport(data, analyse) {
     // vermogen: die verbergen we voor de hartslag-renner.
     const corrBlok = document.getElementById('ftpCorrectieBlok');
     if(corrBlok) corrBlok.style.display = 'none';
+    // Bonus-FTP: was er tóch vermogen in een paar ritten, toon dat als extraatje.
+    const bonusEl = document.getElementById('omslagBonusFtp');
+    if(bonusEl) {
+      if(data.bonusFtp) {
+        bonusEl.textContent = `Bonus: uit je vermogensritten zagen we ook een geschatte FTP van ~${data.bonusFtp} W. Je zones en analyse draaien op je omslagpunt, want daar zit het gros van je ritten.`;
+        bonusEl.style.display = 'block';
+      } else {
+        bonusEl.style.display = 'none';
+      }
+    }
   } else {
     const ftpCard = document.getElementById('ftpDetectorCard');
     if(ftpCard) ftpCard.style.display = 'none';
