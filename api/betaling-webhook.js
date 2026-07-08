@@ -466,16 +466,30 @@ function bepaalPijn(m) {
   return { pijn: 'grijs', pct: grijs };
 }
 
-// Versleuteld tegoed-linkje (72u geldig). WordPress verifieert de handtekening
-// en past dán zelf de juiste korting toe — Vercel hoeft WooCommerce niet te bellen.
+// 23:59 (Amsterdam) op de dag die 'dagen' dagen na nu valt. DST-proof: de
+// Amsterdam-offset (zomer +2 / winter +1) leiden we af uit 12:00 UTC op de
+// doeldatum, ruim weg van de nachtelijke DST-overgang, dus betrouwbaar.
+function eindeVanDagAmsterdam(dagen) {
+  const doel = new Date(Date.now() + dagen * 24 * 3600 * 1000);
+  const ymd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit' }).format(doel);
+  const [y, m, d] = ymd.split('-').map(Number);
+  const amsUur = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', hour: '2-digit', hour12: false }).format(new Date(Date.UTC(y, m - 1, d, 12))));
+  const offset = amsUur - 12;                            // +2 (zomer) of +1 (winter)
+  return new Date(Date.UTC(y, m - 1, d, 23 - offset, 59, 0));
+}
+
+// Versleuteld tegoed-linkje. WordPress verifieert de handtekening en past dán zelf
+// de juiste korting toe — Vercel hoeft WooCommerce niet te bellen. De deadline is
+// EINDE VAN DAG 3 (23:59 Amsterdam), niet exact 72u na aankoop, zodat "vandaag /
+// tot vanavond" in mail 3 klopt ongeacht het tijdstip van bestellen.
 function maakToken(email) {
   if (!PP_SECRET || !email) return { token: '', deadlineNL: '' };
-  const exp = Date.now() + 4*24*3600*1000;              // token 4 dagen geldig (buffer)
+  const deadline = eindeVanDagAmsterdam(3);
+  const exp = deadline.getTime() + 24 * 3600 * 1000;    // token nog 1 dag ná de deadline geldig (buffer)
   const payload = `${String(email).toLowerCase()}|${exp}`;
   const sig = crypto.createHmac('sha256', PP_SECRET).update(payload).digest('hex').slice(0, 16);
   const token = Buffer.from(`${payload}|${sig}`).toString('base64url');
-  const deadlineNL = new Date(Date.now() + 72*3600*1000)   // in de mail communiceren we 72 uur
-    .toLocaleString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' });
+  const deadlineNL = deadline.toLocaleString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' });
   return { token, deadlineNL };
 }
 
