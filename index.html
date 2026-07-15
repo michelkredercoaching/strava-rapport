@@ -974,21 +974,37 @@ function leesKorting() {
     if (delen.length !== 5 || delen[0] !== 'korting') return null;
     const prijs = Math.round(Number(delen[1]));
     const exp = Number(delen[2]);
-    if (!prijs || !exp) return null;
+    // prijs mag 0 zijn (volledig gratis link), dus check op eindig getal i.p.v. waarheid.
+    if (!Number.isFinite(prijs) || !exp) return null;
     if (Date.now() > exp) { wisKorting(); return null; }
-    return { token: t, prijs };
+    return { token: t, prijs, gratis: prijs === 0 };
   } catch (e) { return null; }
 }
 function wisKorting() { try { localStorage.removeItem('pp_korting'); } catch (e) {} }
 function betaalKnopHtml() {
   const k = leesKorting();
+  if (k && k.gratis) return 'Ontvang je gratis rapport →';
   return '<span class="ideal-pill">iDEAL</span> Betaal €' + (k ? k.prijs : 29) + ' en ontvang rapport';
 }
 // Zet overal op de pagina de juiste prijs neer (met of zonder korting).
 function toonKortingPrijzen() {
   const k = leesKorting();
   const zet = (id, fn) => { const el = document.getElementById(id); if (el) fn(el); };
-  if (k) {
+  if (k && k.gratis) {
+    // Volledig gratis link: Mollie wordt overgeslagen, rapport komt direct per mail.
+    const p = 'Gratis';
+    zet('prijsHero', el => el.textContent = p);
+    zet('prijsStravaStap', el => el.textContent = 'Ontvang je volledige rapport gratis — direct per e-mail');
+    zet('prijsVerfijnSub', el => el.textContent = 'Jouw vermogensprofiel staat klaar. Ontgrendel het gratis en zie alles.');
+    zet('prijsVerfijnBtn', el => el.textContent = 'Ontgrendel mijn rapport — gratis →');
+    zet('prijsUnlockTitel', el => el.textContent = 'Volledig rapport — gratis');
+    zet('prijsGroot', el => el.innerHTML = '<span style="font-size:22px;color:rgba(255,255,255,0.35);text-decoration:line-through;margin-right:8px;">€29</span>' + p);
+    zet('prijsLabel', el => el.textContent = 'eenmalig · gratis via persoonlijke link');
+    zet('prijsBedankt', el => el.textContent = 'Gratis · direct per e-mail');
+    zet('kortingBanner', el => el.textContent = '🎁 Gratis toegang actief — deze link werkt eenmalig');
+    zet('kortingBanner', el => el.style.display = 'block');
+    zet('betaalKnop', el => { if (!el.disabled) el.innerHTML = betaalKnopHtml(); });
+  } else if (k) {
     const p = '€' + k.prijs;
     zet('prijsHero', el => el.textContent = p);
     zet('prijsStravaStap', el => el.textContent = 'Betaal ' + p + ' (persoonlijke korting) en ontvang je volledige rapport');
@@ -1030,9 +1046,9 @@ async function startBetaling() {
   if (!gewicht) { try { const g = parseFloat(localStorage.getItem('pp_gewicht')); if (g >= 35 && g <= 200) gewicht = g; } catch(e) {} }
   if (gewicht) { try { localStorage.setItem('pp_gewicht', gewicht); } catch(e) {} }
   const knop = document.getElementById('betaalKnop');
-  if (knop) { knop.textContent = 'Betaling aanmaken...'; knop.disabled = true; }
   // Eenmalige servicekorting meesturen als die in deze browser actief is.
   const kortingActief = leesKorting();
+  if (knop) { knop.textContent = (kortingActief && kortingActief.gratis) ? 'Rapport maken...' : 'Betaling aanmaken...'; knop.disabled = true; }
   try {
     const res = await fetch('/api/betaling', {
       method: 'POST',
@@ -1051,6 +1067,25 @@ async function startBetaling() {
         localStorage.setItem('pp_email', email);
       } catch(e) {}
       window.location.href = data.checkoutUrl;
+    } else if (data.gratis) {
+      // Gratis link: rapport is al gebouwd en gemaild (Mollie overgeslagen).
+      // Sessie opruimen en naar het 'check je mail'-scherm sturen.
+      try {
+        localStorage.removeItem('pp_blob'); localStorage.removeItem('pp_pid');
+        localStorage.removeItem('pp_pv'); localStorage.removeItem('pp_email');
+        localStorage.removeItem('pp_korting');
+      } catch(e) {}
+      // S7 zegt standaard "Betaling geslaagd" — bij een gratis link kloppen die
+      // woorden niet, dus even omzetten naar toegang-taal.
+      try {
+        const s7 = document.getElementById('s7');
+        if (s7) {
+          const t = s7.querySelector('.bedankt-titel'); if (t) t.textContent = 'Gelukt! Je rapport komt eraan.';
+          const ind = s7.querySelector('.stap-indicator'); if (ind) ind.textContent = 'Rapport verwerkt';
+          const st = s7.querySelector('.bedankt-stap .bedankt-stap-txt strong'); if (st) st.textContent = 'Toegang bevestigd';
+        }
+      } catch(e) {}
+      gaNaar('s7');
     } else if (data.kortingOngeldig) {
       // Kortingslink verlopen of al gebruikt → korting loslaten en de normale
       // prijzen tonen, zodat de klant weet waar hij aan toe is vóór hij betaalt.
