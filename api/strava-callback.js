@@ -431,17 +431,38 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   const ftpBetrouwbaarheid = !ftp ? null : (heeftPowerStream ? 'hoog' : 'laag');
 
   // ===== MAX HARTSLAG =====
-  const maxHrWaarden = alleRitten
-    .filter(a => a.max_heartrate && a.max_heartrate > 100)
-    .map(a => a.max_heartrate)
-    .sort((a, b) => b - a)
-    .slice(0, 3);
+  // Een borstband/optische sensor schrijft af en toe een onmogelijke piek weg
+  // (bv. 245 bpm). Vroeger pakten we simpelweg de 3 HOOGSTE rit-maxima — juist
+  // dán selecteer je de glitch, met een veel te hoog omslagpunt tot gevolg. Nu
+  // filteren we twee keer:
+  //   1) een hard fysiologisch plafond (glitch-achtervang: alles daarboven is
+  //      vrijwel zeker meetfout);
+  //   2) een mediaan-check die uitschieters t.o.v. de sporter zélf weggooit — een
+  //      sensor-spike staat ver boven de mediaan van je rit-maxima, een reële piek
+  //      slechts iets. Van wat overblijft nemen we de top-3 en middelen die.
+  // De twee constanten staan bewust los zodat je ze makkelijk kunt bijstellen.
+  // MAX_HF_MARGE = 20 kan bij sterk gepolariseerde training (veel rustige ritten)
+  // een reële piek net iets afknijpen; dat valt aan de LAGE kant uit (bewuste
+  // keuze). Zie je maxHf structureel te laag, zet MAX_HF_MARGE dan op 25.
+  const MAX_HF_PLAFOND = 200;   // bpm; alles hierboven telt als meetfout
+  const MAX_HF_MARGE   = 20;    // bpm die een piek boven de mediaan mag uitsteken
+  function plausibeleMaxHr(ritten) {
+    const ruw = ritten
+      .filter(a => a.max_heartrate && a.max_heartrate > 100 && a.max_heartrate <= MAX_HF_PLAFOND)
+      .map(a => a.max_heartrate)
+      .sort((a, b) => a - b);                 // oplopend, voor de mediaan
+    if (ruw.length < 4) {                      // te weinig data om te filteren
+      return ruw.slice().sort((a, b) => b - a).slice(0, 3);
+    }
+    const mediaan = ruw[Math.floor(ruw.length / 2)];
+    return ruw
+      .filter(v => v <= mediaan + MAX_HF_MARGE) // uitschieters t.o.v. de sporter eruit
+      .sort((a, b) => b - a)                    // hoogste eerst
+      .slice(0, 3);
+  }
 
-  const maxHrFallback = fietsritten90
-    .filter(a => a.max_heartrate && a.max_heartrate > 100)
-    .map(a => a.max_heartrate)
-    .sort((a, b) => b - a)
-    .slice(0, 3);
+  const maxHrWaarden = plausibeleMaxHr(alleRitten);
+  const maxHrFallback = plausibeleMaxHr(fietsritten90);
 
   const gebruikteHrWaarden = maxHrWaarden.length > 0 ? maxHrWaarden : maxHrFallback;
   const maxHf = gebruikteHrWaarden.length > 0
@@ -511,7 +532,16 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     a.device_watts === true || (streamMap[a.id]?.watts?.data)
   ).length;
   const powerDekking = fietsritten90.length ? rittenMetEchtePower / fietsritten90.length : 0;
-  const gebruikVermogen = !!(ftp && powerDekking >= 0.60);
+  // Een gevonden FTP is niet genoeg: normaal eist het vermogen-spoor 60% dekking
+  // zodat één losse power-rit het rapport niet kaapt. MAAR een FTP die uit échte
+  // per-seconde stream-data komt (heeftPowerStream) is betrouwbaar; die mag met
+  // minder dekking al op vermogen — anders belandt een sporter met gemengde data
+  // (buiten mét meter, binnen zonder) onterecht op het hartslag-spoor.
+  const gebruikVermogen = !!(ftp && (
+    powerDekking >= 0.60 ||
+    (heeftPowerStream && powerDekking >= 0.40)
+  ));
+  console.log(`Spoor: ${gebruikVermogen ? 'VERMOGEN' : 'HARTSLAG'} · dekking ${Math.round(powerDekking * 100)}% (${rittenMetEchtePower}/${fietsritten90.length}) · ftp ${ftp || '-'}W · stream ${heeftPowerStream ? 'ja' : 'nee'}`);
 
   // ===== ZONE ANALYSE =====
   let zones = [0, 0, 0, 0, 0, 0];
