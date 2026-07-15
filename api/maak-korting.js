@@ -5,7 +5,9 @@
 //   https://rapport.michelkredercoaching.nl/api/maak-korting?sleutel=JOUW_ADMIN_SLEUTEL&prijs=19
 //
 // Optioneel: &dagen=14 (hoe lang de link geldig blijft, standaard 14 dagen).
-// De link werkt precies één keer: zodra er een betaling mee is afgerond,
+// Prijs 0 = VOLLEDIG GRATIS: de funnel slaat Mollie over en mailt het rapport
+// direct (Mollie kan geen €0 verwerken). Bv. &prijs=0 voor een gratis link.
+// De link werkt precies één keer: zodra de betaling/aflevering is afgerond,
 // wordt hij in Redis als verzilverd gemarkeerd en daarna geweigerd.
 //
 // Vereist in Vercel: ADMIN_SLEUTEL — een zelfgekozen wachtwoord, alleen voor
@@ -26,11 +28,12 @@ export default function handler(req, res) {
   const q = req.query || {};
   if (!secret || !sleutelKlopt(q.sleutel, secret)) return res.status(404).send('niet gevonden');
 
-  const prijs = q.prijs || 19;
+  const prijs = q.prijs != null && q.prijs !== '' ? q.prijs : 19;
   const dagen = q.dagen || 14;
   const token = maakKortingToken(prijs, dagen);
-  if (!token) return res.status(400).send('Ongeldige prijs — kies een heel bedrag tussen 1 en 29.');
+  if (!token) return res.status(400).send('Ongeldige prijs — kies een heel bedrag tussen 0 en 29 (0 = gratis).');
 
+  const gratis = Number(prijs) === 0;
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.host}`;
   const link = `${baseUrl}/?korting=${token}`;
 
@@ -47,8 +50,8 @@ export default function handler(req, res) {
   button{background:#ff6b1a;color:#fff;border:0;border-radius:8px;padding:12px 24px;font-size:15px;font-weight:800;cursor:pointer;margin-top:12px;}
 </style></head><body>
 <div class="kaart">
-  <h1>Eenmalige kortingslink klaar</h1>
-  <p>Prijs voor de klant: <strong style="color:#ff6b1a;">&euro;${Number(prijs)}</strong> &middot; <strong>${Number(dagen) || 14} dagen</strong> geldig &middot; werkt precies &eacute;&eacute;n keer. Stuur deze link naar de klant; de funnel rekent automatisch de aangepaste prijs.</p>
+  <h1>${gratis ? 'Eenmalige GRATIS link klaar' : 'Eenmalige kortingslink klaar'}</h1>
+  <p>Prijs voor de klant: <strong style="color:#ff6b1a;">${gratis ? 'Gratis' : '&euro;' + Number(prijs)}</strong> &middot; <strong>${Number(dagen) || 14} dagen</strong> geldig &middot; werkt precies &eacute;&eacute;n keer. Stuur deze link naar &eacute;&eacute;n persoon.${gratis ? ' Die koppelt Strava, vult zijn e-mailadres in en krijgt het volledige rapport meteen per mail &mdash; zonder te betalen (Mollie wordt overgeslagen).' : ' De funnel rekent automatisch de aangepaste prijs.'}</p>
   <textarea id="link" readonly>${link}</textarea>
   <button onclick="navigator.clipboard.writeText(document.getElementById('link').value).then(()=>{this.textContent='Gekopieerd ✓'})">Kopieer link</button>
 </div>
