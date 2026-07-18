@@ -1279,6 +1279,7 @@ function toonZonesScherm(data) {
   if (ftpBetrouwS3c) {
     const bron = heeftVermogen ? data.ftpBetrouwbaarheid : data.omslagpuntBetrouwbaarheid;
     if (bron === 'laag') { ftpBetrouwS3c.textContent = 'schatting'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
+      else if (bron === 'gemiddeld') { ftpBetrouwS3c.textContent = 'gemiddeld'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
     else if (bron === 'hoog' && aantalRitten >= 8) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
     else if (aantalRitten >= 15) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
     else if (aantalRitten >= 8) { ftpBetrouwS3c.textContent = 'gemiddeld'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
@@ -1557,26 +1558,33 @@ function toonRapport(data, analyse) {
     // uit berekenStats: 'hoog' = uit power-streams, 'laag' = fallback-schatting.
     if(ftpBetrouw) {
       const bron = data.ftpBetrouwbaarheid;
+      const cta = document.getElementById('ftpCtaTekst');
+      let testNodig = false;
       if (data.ftpHandmatig) {
         ftpBetrouw.textContent = 'jouw eigen waarde';
         ftpBetrouw.style.color = 'var(--groen)';
       } else if (bron === 'laag') {
-        ftpBetrouw.textContent = 'schatting — controleer hieronder';
+        ftpBetrouw.textContent = 'laag — doe eerst een test';
+        ftpBetrouw.style.color = 'var(--rood)';
+        testNodig = true;
+      } else if (bron === 'gemiddeld') {
+        ftpBetrouw.textContent = 'gemiddeld — check hieronder';
         ftpBetrouw.style.color = 'var(--oranje)';
+        testNodig = true;
       } else if (bron === 'hoog') {
         if (aantalRitten >= 8) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; }
-        else { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; }
+        else { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; testNodig = true; }
       } else {
-        // Oudere data zonder bron-veld: val terug op het aantal ritten.
         if (aantalRitten >= 15) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; }
-        else if (aantalRitten >= 8) { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; }
-        else { ftpBetrouw.textContent = 'laag'; ftpBetrouw.style.color = 'var(--rood)'; }
+        else if (aantalRitten >= 8) { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; testNodig = true; }
+        else { ftpBetrouw.textContent = 'laag'; ftpBetrouw.style.color = 'var(--rood)'; testNodig = true; }
       }
+      if (cta) cta.textContent = testNodig ? 'DOE EERST EEN FTP-TEST' : 'GEEN FTP-TEST NODIG';
     }
 
     // Lage betrouwbaarheid? Klap de FTP-correctie open en vul de detectie in,
     // zodat de sporter wordt aangespoord z'n echte FTP te controleren.
-    if (data.ftpBetrouwbaarheid === 'laag' && !data.ftpHandmatig) {
+    if ((data.ftpBetrouwbaarheid === 'laag' || data.ftpBetrouwbaarheid === 'gemiddeld') && !data.ftpHandmatig) {
       const veld = document.getElementById('ftpCorrectieVeld');
       const inputC = document.getElementById('ftpCorrectieInput');
       if (veld) veld.style.display = 'block';
