@@ -332,10 +332,11 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   const heeftVermogensmeter = rittenMetEchtVermogen.length >= 1 || rittenMetSchatting.length >= 5;
   const vermogenIsGeschat = !heeftEchteVermogensmeter && rittenMetSchatting.length >= 5;
 
-  // ===== FTP DETECTIE =====
-  let ftp = null;
-  let ftpBronnen = [];
-
+  // ===== HULPFUNCTIES STREAM-ANALYSE =====
+  // besteRollingGemiddelde: hoogste voortschrijdende gemiddelde over een venster.
+  // besteVenster: idem, maar geeft ook de POSITIE van dat venster terug, zodat we
+  // de hartslag over exact hetzelfde stuk kunnen uitrekenen (nodig voor de
+  // HR-plausibiliteitscheck in de FTP-detectie).
   function besteRollingGemiddelde(data, vensterSec) {
     if (!data || data.length < vensterSec) return null;
     let som = 0;
@@ -347,6 +348,74 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     }
     return beste / vensterSec;
   }
+  function besteVenster(data, vensterSec) {
+    if (!data || data.length < vensterSec) return null;
+    let som = 0;
+    for (let i = 0; i < vensterSec; i++) som += (data[i] || 0);
+    let beste = som, besteStart = 0;
+    for (let i = vensterSec; i < data.length; i++) {
+      som += (data[i] || 0) - (data[i - vensterSec] || 0);
+      if (som > beste) { beste = som; besteStart = i - vensterSec + 1; }
+    }
+    return { avg: beste / vensterSec, start: besteStart, eind: besteStart + vensterSec };
+  }
+
+  // ===== MAX HARTSLAG =====
+  // Staat bewust BOVEN de FTP-detectie: de HR-plausibiliteitscheck daar heeft
+  // maxHf nodig. Het blok hangt alleen af van alleRitten/fietsritten90.
+  //
+  // Een borstband/optische sensor schrijft af en toe een onmogelijke piek weg
+  // (bv. 245 bpm). Vroeger pakten we simpelweg de 3 HOOGSTE rit-maxima — juist
+  // dán selecteer je de glitch, met een veel te hoog omslagpunt tot gevolg. Nu
+  // filteren we twee keer:
+  //   1) een hard fysiologisch plafond (glitch-achtervang: alles daarboven is
+  //      vrijwel zeker meetfout);
+  //   2) een mediaan-check die uitschieters t.o.v. de sporter zélf weggooit — een
+  //      sensor-spike staat ver boven de mediaan van je rit-maxima, een reële piek
+  //      slechts iets. Van wat overblijft nemen we de top-3 en middelen die.
+  // De twee constanten staan bewust los zodat je ze makkelijk kunt bijstellen.
+  // MAX_HF_MARGE = 20 kan bij sterk gepolariseerde training (veel rustige ritten)
+  // een reële piek net iets afknijpen; dat valt aan de LAGE kant uit (bewuste
+  // keuze). Zie je maxHf structureel te laag, zet MAX_HF_MARGE dan op 25.
+  const MAX_HF_PLAFOND = 200;   // bpm; alles hierboven telt als meetfout
+  const MAX_HF_MARGE   = 20;    // bpm die een piek boven de mediaan mag uitsteken
+  function plausibeleMaxHr(ritten) {
+    const ruw = ritten
+      .filter(a => a.max_heartrate && a.max_heartrate > 100 && a.max_heartrate <= MAX_HF_PLAFOND)
+      .map(a => a.max_heartrate)
+      .sort((a, b) => a - b);                 // oplopend, voor de mediaan
+    if (ruw.length < 4) {                      // te weinig data om te filteren
+      return ruw.slice().sort((a, b) => b - a).slice(0, 3);
+    }
+    const mediaan = ruw[Math.floor(ruw.length / 2)];
+    return ruw
+      .filter(v => v <= mediaan + MAX_HF_MARGE) // uitschieters t.o.v. de sporter eruit
+      .sort((a, b) => b - a)                    // hoogste eerst
+      .slice(0, 3);
+  }
+
+  const maxHrWaarden = plausibeleMaxHr(alleRitten);
+  const maxHrFallback = plausibeleMaxHr(fietsritten90);
+
+  const gebruikteHrWaarden = maxHrWaarden.length > 0 ? maxHrWaarden : maxHrFallback;
+  const maxHf = gebruikteHrWaarden.length > 0
+    ? Math.round(gebruikteHrWaarden.reduce((s, v) => s + v, 0) / gebruikteHrWaarden.length)
+    : null;
+
+  // ===================================================================
+  // ===== FTP DETECTIE (met plausibiliteitsfilter) =====
+  // ===================================================================
+  // Vier verdedigingslagen tegen één ongekalibreerde/geschatte rit die de FTP
+  // omhoog kaapt:
+  //   1) BRON       – alleen echte meter (device_watts === true) telt mee.
+  //   2) HARTSLAG   – een 12/20-min piekvermogen dat niet bij een drempel-HR
+  //                   hoort is geen echte inspanning → genegeerd.
+  //   3) DOMINANTIE – wint één rit ≥3 van de 4 vensters én is 'ie niet met HR
+  //                   te verifiëren → uitgesloten en herrekend. Wél HR-
+  //                   geverifieerd = echte topdag → behouden.
+  //   4) VORM/W-kg  – te vlakke curve of onmogelijke W/kg → betrouwbaarheid laag.
+  let ftp = null;
+  let ftpBronnen = [];
 
   const ftpWindows = [
     { naam: '1min',  sec: 60,   factor: 0.72, gewicht: 1 },
@@ -355,22 +424,129 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     { naam: '20min', sec: 1200, factor: 0.95, gewicht: 4 },
   ];
 
-  const piek = {};
+  const PIEK_FILTER = {
+    hrCheckVensters: [720, 1200], // HR-plausibiliteit alleen op 12 en 20 min
+    hrMinFractie: 0.85,           // piek-venster-HR ≥ 85% van max-HR = echte inspanning
+    hrMinDekking: 0.80,           // minstens 80% van het venster moet HR-data hebben
+    dominantieVensters: 3,        // wint één rit ≥ dit aantal vensters → verdacht
+    minVormRatio: 1.30,           // piek1min / piek20min hieronder = te vlak (geen test)
+    maxWattPerKg: 6.0,            // hierboven vrijwel zeker meetfout voor deze doelgroep
+  };
+
   let heeftPowerStream = false;
   let aantalRittenMetStream = 0;
+  let piekFilterNotities = [];
 
-  fietsritten90.forEach(rit => {
-    const wattsData = streamMap[rit.id]?.watts?.data;
-    if (!wattsData || wattsData.length < 60) return;
+  // (1) BRON — alleen ritten met een echte meter. Geschat vermogen piekt op
+  // afdalingen en is de #1 bron van rotdata → uitgesloten voor de pieken.
+  let powerRitten = fietsritten90.filter(r =>
+    r.device_watts === true && streamMap[r.id]?.watts?.data?.length >= 60
+  );
+  let bronIsEcht = true;
+  // Vangnet: niemand met een echte meter, maar wél streams (iemand rijdt alleen
+  // op geschat vermogen)? Dan gebruiken we die tóch, maar betrouwbaarheid wordt
+  // nooit 'hoog'.
+  if (powerRitten.length === 0) {
+    powerRitten = fietsritten90.filter(r => streamMap[r.id]?.watts?.data?.length >= 60);
+    if (powerRitten.length) {
+      bronIsEcht = false;
+      piekFilterNotities.push('geen echte meter — geschatte streams gebruikt');
+    }
+  }
+
+  // Per venster de piek van ELKE rit verzamelen, met de HR over datzelfde stuk.
+  // Zo oordelen we per rit i.p.v. blind de hoogste te pakken.
+  const kandidaten = {};          // { [sec]: [{ id, peak, hrAvg, hrDekking }] }
+  ftpWindows.forEach(w => { kandidaten[w.sec] = []; });
+
+  powerRitten.forEach(rit => {
+    const wattsData = streamMap[rit.id].watts.data;
+    const hrData = streamMap[rit.id]?.heartrate?.data;
     heeftPowerStream = true;
     aantalRittenMetStream++;
     ftpWindows.forEach(w => {
-      const beste = besteRollingGemiddelde(wattsData, w.sec);
-      if (beste && beste > 50 && (!piek[w.sec] || beste > piek[w.sec])) {
-        piek[w.sec] = beste;
+      const v = besteVenster(wattsData, w.sec);
+      if (!v || v.avg <= 50) return;
+      let hrAvg = null, hrDekking = 0;
+      if (hrData) {
+        let som = 0, n = 0;
+        for (let i = v.start; i < v.eind; i++) {
+          const h = hrData[i];
+          if (h != null && h > 40) { som += h; n++; }
+        }
+        if (n) { hrAvg = som / n; hrDekking = n / w.sec; }
       }
+      kandidaten[w.sec].push({ id: rit.id, peak: v.avg, hrAvg, hrDekking });
     });
   });
+
+  // (2) HARTSLAG-CHECK + piek kiezen, per venster.
+  // Alleen op lange vensters (12/20 min). Bij 1/5 min loopt HR achter op het
+  // vermogen, dus daar is een HR-drempel onbetrouwbaar. Een lange piek die op
+  // herstel-HR draait is geen drempelinspanning → het vermogen klopt niet met de
+  // inspanning → weg. Ritten zonder bruikbare HR laten we staan (kunnen we niet
+  // beoordelen); die vangen we op dominantie/vorm/W-kg.
+  // exclude = rit-id dat volledig genegeerd wordt (voor de dominantie-herrekening).
+  // logIgnore = of we de 'genegeerd'-notities schrijven (alleen op de eerste pass).
+  function kiesPieken(exclude = null, logIgnore = true) {
+    const uit = {}, bron = {};
+    ftpWindows.forEach(w => {
+      let lijst = kandidaten[w.sec].filter(k => k.id !== exclude);
+      if (PIEK_FILTER.hrCheckVensters.includes(w.sec) && maxHf) {
+        const drempel = maxHf * PIEK_FILTER.hrMinFractie;
+        lijst = lijst.filter(k => {
+          const bruikbaar = k.hrAvg != null && k.hrDekking >= PIEK_FILTER.hrMinDekking;
+          if (!bruikbaar) return true;           // geen oordeel mogelijk → houden
+          if (k.hrAvg < drempel) {
+            if (logIgnore) piekFilterNotities.push(
+              `rit ${k.id} ${w.naam}: ${Math.round(k.peak)}W bij ${Math.round(k.hrAvg)}bpm (< ${Math.round(drempel)}) → genegeerd`
+            );
+            return false;
+          }
+          return true;
+        });
+      }
+      if (lijst.length) {
+        lijst.sort((a, b) => b.peak - a.peak);   // hoogste van wat overblijft
+        uit[w.sec] = lijst[0].peak;
+        bron[w.sec] = lijst[0].id;
+      }
+    });
+    return { uit, bron };
+  }
+
+  let { uit: piek, bron: piekBron } = kiesPieken();
+
+  // (3) DOMINANTIE — welke rit levert de piek uit hoeveel vensters?
+  function bepaalDominant(bron) {
+    const lijst = Object.values(bron);
+    if (!lijst.length) return null;
+    const telling = {};
+    lijst.forEach(id => { telling[id] = (telling[id] || 0) + 1; });
+    const [topId, topAantal] = Object.entries(telling).sort((a, b) => b[1] - a[1])[0];
+    return topAantal >= PIEK_FILTER.dominantieVensters
+      ? { id: Number(topId), aantal: topAantal }
+      : null;
+  }
+
+  let dominantieVerdacht = false;
+  const dom = bepaalDominant(piekBron);
+  if (dom) {
+    // Kon deze rit op minstens één lang venster mét een geldige HR als échte
+    // drempelinspanning worden bevestigd? Zo ja → echte topdag, behouden.
+    const geverifieerd = PIEK_FILTER.hrCheckVensters.some(sec => {
+      const k = kandidaten[sec].find(x => x.id === dom.id);
+      return k && k.hrAvg != null && k.hrDekking >= PIEK_FILTER.hrMinDekking
+               && maxHf && k.hrAvg >= maxHf * PIEK_FILTER.hrMinFractie;
+    });
+    if (geverifieerd) {
+      piekFilterNotities.push(`rit ${dom.id} domineert ${dom.aantal}/${ftpWindows.length} maar is HR-geverifieerd → echte topdag, behouden`);
+    } else {
+      ({ uit: piek, bron: piekBron } = kiesPieken(dom.id, false));
+      dominantieVerdacht = true;
+      piekFilterNotities.push(`rit ${dom.id} domineert ${dom.aantal}/${ftpWindows.length} en niet met HR te verifiëren → uitgesloten, herrekend`);
+    }
+  }
 
   const schatFactor = 1.0;
 
@@ -383,7 +559,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
           gewogenSom += schatting * w.gewicht;
           gewogenTotaal += w.gewicht;
           ftpBronnen.push({ naam: w.naam, piek: Math.round(piek[w.sec]), schatting, gewicht: w.gewicht });
-          console.log(`FTP ${w.naam}: piek ${Math.round(piek[w.sec])}W × ${w.factor} × ${schatFactor} = ${schatting}W (gewicht ${w.gewicht})`);
+          console.log(`FTP ${w.naam}: piek ${Math.round(piek[w.sec])}W × ${w.factor} × ${schatFactor} = ${schatting}W (gewicht ${w.gewicht}, rit ${piekBron[w.sec]})`);
         }
       }
     });
@@ -426,48 +602,35 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     }
   }
 
-  // Betrouwbaarheid hangt af van de BRON, niet van het aantal ritten: alleen een
-  // uit stream-data berekende FTP is 'hoog'; een fallback-schatting is 'laag'.
-  const ftpBetrouwbaarheid = !ftp ? null : (heeftPowerStream ? 'hoog' : 'laag');
+  // (4) BETROUWBAARHEID — bron, dominantie, curvevorm en W/kg samen.
+  // Alleen een uit échte stream-data berekende, plausibele FTP is 'hoog'.
+  let ftpBetrouwbaarheid = null;
+  if (ftp) {
+    ftpBetrouwbaarheid = heeftPowerStream ? 'hoog' : 'laag';
+    const verlaag = () => { ftpBetrouwbaarheid = ftpBetrouwbaarheid === 'hoog' ? 'gemiddeld' : 'laag'; };
 
-  // ===== MAX HARTSLAG =====
-  // Een borstband/optische sensor schrijft af en toe een onmogelijke piek weg
-  // (bv. 245 bpm). Vroeger pakten we simpelweg de 3 HOOGSTE rit-maxima — juist
-  // dán selecteer je de glitch, met een veel te hoog omslagpunt tot gevolg. Nu
-  // filteren we twee keer:
-  //   1) een hard fysiologisch plafond (glitch-achtervang: alles daarboven is
-  //      vrijwel zeker meetfout);
-  //   2) een mediaan-check die uitschieters t.o.v. de sporter zélf weggooit — een
-  //      sensor-spike staat ver boven de mediaan van je rit-maxima, een reële piek
-  //      slechts iets. Van wat overblijft nemen we de top-3 en middelen die.
-  // De twee constanten staan bewust los zodat je ze makkelijk kunt bijstellen.
-  // MAX_HF_MARGE = 20 kan bij sterk gepolariseerde training (veel rustige ritten)
-  // een reële piek net iets afknijpen; dat valt aan de LAGE kant uit (bewuste
-  // keuze). Zie je maxHf structureel te laag, zet MAX_HF_MARGE dan op 25.
-  const MAX_HF_PLAFOND = 200;   // bpm; alles hierboven telt als meetfout
-  const MAX_HF_MARGE   = 20;    // bpm die een piek boven de mediaan mag uitsteken
-  function plausibeleMaxHr(ritten) {
-    const ruw = ritten
-      .filter(a => a.max_heartrate && a.max_heartrate > 100 && a.max_heartrate <= MAX_HF_PLAFOND)
-      .map(a => a.max_heartrate)
-      .sort((a, b) => a - b);                 // oplopend, voor de mediaan
-    if (ruw.length < 4) {                      // te weinig data om te filteren
-      return ruw.slice().sort((a, b) => b - a).slice(0, 3);
+    if (!bronIsEcht) ftpBetrouwbaarheid = 'laag';   // geen echte meter
+    if (dominantieVerdacht) verlaag();               // verdachte rit eruit gehaald
+
+    // (4a) VORM — een echte power curve daalt duidelijk van 1 → 20 min.
+    if (piek[60] && piek[1200]) {
+      const vorm = piek[60] / piek[1200];
+      if (vorm < PIEK_FILTER.minVormRatio) {
+        ftpBetrouwbaarheid = 'laag';
+        piekFilterNotities.push(`curve te vlak (1min/20min = ${vorm.toFixed(2)} < ${PIEK_FILTER.minVormRatio}) → geen echte test`);
+      }
     }
-    const mediaan = ruw[Math.floor(ruw.length / 2)];
-    return ruw
-      .filter(v => v <= mediaan + MAX_HF_MARGE) // uitschieters t.o.v. de sporter eruit
-      .sort((a, b) => b - a)                    // hoogste eerst
-      .slice(0, 3);
+
+    // (4b) W/kg-plafond — onmogelijke waarde = data klopt niet, wat de rest ook zegt.
+    if (weight) {
+      const wkg = ftp / weight;
+      if (wkg > PIEK_FILTER.maxWattPerKg) {
+        ftpBetrouwbaarheid = 'laag';
+        piekFilterNotities.push(`${wkg.toFixed(1)} W/kg boven plafond ${PIEK_FILTER.maxWattPerKg} → onwaarschijnlijk`);
+      }
+    }
   }
-
-  const maxHrWaarden = plausibeleMaxHr(alleRitten);
-  const maxHrFallback = plausibeleMaxHr(fietsritten90);
-
-  const gebruikteHrWaarden = maxHrWaarden.length > 0 ? maxHrWaarden : maxHrFallback;
-  const maxHf = gebruikteHrWaarden.length > 0
-    ? Math.round(gebruikteHrWaarden.reduce((s, v) => s + v, 0) / gebruikteHrWaarden.length)
-    : null;
+  if (piekFilterNotities.length) console.log('Piekfilter:', piekFilterNotities.join(' · '));
 
   // ===== OMSLAGPUNT (drempelhartslag / LTHR) =====
   // Voorheen een platte 90% × max-HR. Nu data-gedreven uit je hartslag-streams,
@@ -708,10 +871,10 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   }));
 
   // ===== W/KG: PIEKVERMOGENS (power curve) =====
-  // De 1/5/12/20-min pieken zijn hierboven al berekend voor de FTP-detectie
-  // (piek[sec]). We geven ze nu mee in W, zodat de frontend ze deelt door het
-  // gewicht → W/kg-power-curve, en de interne verkoopmail de FTP kan herrekenen.
-  // Null als er geen stream-data was.
+  // De 1/5/12/20-min pieken zijn hierboven al berekend (en gefilterd) voor de
+  // FTP-detectie (piek[sec]). We geven ze nu mee in W, zodat de frontend ze deelt
+  // door het gewicht → W/kg-power-curve, en de interne verkoopmail de FTP kan
+  // herrekenen. Null als er geen (bruikbare) stream-data was.
   const piek1min  = piek[60]   ? Math.round(piek[60])   : null;
   const piek5min  = piek[300]  ? Math.round(piek[300])  : null;
   const piek12min = piek[720]  ? Math.round(piek[720])  : null;
