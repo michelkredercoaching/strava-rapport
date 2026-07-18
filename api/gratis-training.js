@@ -91,7 +91,7 @@ function downloadMailHtml(naam, url, meetmethode) {
     <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
     <p style="font-size:15px;margin:0 0 14px;">Hier is je gratis training (${escHtml(isVermogen ? 'vermogen' : 'hartslag')}-versie). Klik op de knop om het bestand te downloaden.</p>
     <p style="margin:0 0 20px;">
-      <a href="${escHtml(url)}" style="display:inline-block;background:#e63329;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 26px;border-radius:8px;">Download je training</a>
+      <a href="${escHtml(url)}" style="display:inline-block;background:#FF6B00;color:#0D0D0D;text-decoration:none;font-weight:700;font-size:15px;padding:13px 26px;border-radius:8px;">Download je training</a>
     </p>
     <p style="font-size:15px;margin:0 0 6px;"><strong>Hoe laad je 'm in?</strong></p>
     <ul style="font-size:15px;margin:0 0 14px;padding-left:20px;">
@@ -100,7 +100,7 @@ function downloadMailHtml(naam, url, meetmethode) {
     </ul>
     <div style="border:1px solid #eee;border-radius:10px;padding:14px 16px;margin:0 0 16px;background:#fafafa;">
       <p style="font-size:15px;margin:0 0 8px;"><strong>Weet je je ${waarde} niet?</strong></p>
-      <p style="font-size:15px;margin:0 0 12px;">Dan kloppen ${eenheid} in deze training niet — en train je op de verkeerde intensiteit. Bepaal eerst je ${waarde} met de Power Profile-analyse (&euro;29), dan voer je 'm perfect uit.</p>
+      <p style="font-size:15px;margin:0 0 12px;">Dan kloppen ${eenheid} in deze training niet, en train je op de verkeerde intensiteit. Bepaal eerst je ${waarde} met de Power Profile-analyse (&euro;29), dan voer je 'm perfect uit.</p>
       <p style="margin:0;">
         <a href="${escHtml(ANALYSE_URL)}" style="display:inline-block;color:#e63329;text-decoration:none;font-weight:700;font-size:15px;">Bepaal mijn ${waarde} &rarr;</a>
       </p>
