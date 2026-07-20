@@ -398,9 +398,33 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   const maxHrFallback = plausibeleMaxHr(fietsritten90);
 
   const gebruikteHrWaarden = maxHrWaarden.length > 0 ? maxHrWaarden : maxHrFallback;
-  const maxHf = gebruikteHrWaarden.length > 0
+  const maxHfSummary = gebruikteHrWaarden.length > 0
     ? Math.round(gebruikteHrWaarden.reduce((s, v) => s + v, 0) / gebruikteHrWaarden.length)
     : null;
+
+  // ===== KRUIS-CHECK MAX-HF MET DE HR-STREAM =====
+  // Het mediaan-filter hierboven vangt sensor-glitches, maar knijpt bij een sterk
+  // gepolariseerde rijder (veel rustige ritten, af en toe een harde) de ECHTE
+  // piek weg: zijn harde rit-maxima staan ver boven de mediaan en vliegen er als
+  // "uitschieter" uit. Dan komt maxHf te laag uit en wordt het omslagpunt
+  // onterecht afgetopt (min(..., maxHf × 0,93)) — precies de Dries-case (max 143
+  // terwijl hij 12/20 min rond 170 bpm reed, fysiek onmogelijk).
+  // Een hard volgehouden inspanning bewijst dat je max minstens zo hoog ligt. We
+  // nemen daarom de beste voortschrijdende 15-seconden-HR uit de streams (een
+  // losse sensor-spike overleeft dat gemiddelde niet), houden hetzelfde
+  // fysiologische plafond aan, en gebruiken de hoogste van summary en stream.
+  let streamMaxHf = null;
+  fietsritten90.forEach(rit => {
+    const hrData = streamMap[rit.id]?.heartrate?.data;
+    if (!hrData || hrData.length < 15) return;
+    const beste15s = besteRollingGemiddelde(hrData, 15);
+    if (beste15s && beste15s > 100 && beste15s <= MAX_HF_PLAFOND) {
+      const afgerond = Math.round(beste15s);
+      if (!streamMaxHf || afgerond > streamMaxHf) streamMaxHf = afgerond;
+    }
+  });
+  const maxHf = Math.max(maxHfSummary || 0, streamMaxHf || 0) || null;
+  console.log(`Max HF: ${maxHf} bpm (summary ${maxHfSummary ?? '-'}, stream-15s ${streamMaxHf ?? '-'})`);
 
   // ===================================================================
   // ===== FTP DETECTIE (met plausibiliteitsfilter) =====
