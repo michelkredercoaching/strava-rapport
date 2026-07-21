@@ -10,12 +10,20 @@
 // De link werkt precies één keer: zodra de betaling/aflevering is afgerond,
 // wordt hij in Redis als verzilverd gemarkeerd en daarna geweigerd.
 //
+// ===== TWEEDE FUNCTIE: WOOCOMMERCE-TEST =====
+//   https://rapport.michelkredercoaching.nl/api/maak-korting?sleutel=...&test=woo
+// Controleert of Vercel bij de WooCommerce-API kan, zodat je een blokkade kunt
+// opsporen zonder elke keer een echte betaling te doen. Dit zit bewust IN dit
+// bestand en niet in een eigen endpoint: het Hobby-plan van Vercel staat maximaal
+// 12 serverless functions toe en die zijn allemaal in gebruik.
+//
 // Vereist in Vercel: ADMIN_SLEUTEL — een zelfgekozen wachtwoord, alleen voor
 // deze pagina. Bewust een ANDERE sleutel dan PP_TOKEN_SECRET: die laatste
 // ondertekent de tokens zelf en hoort nooit in een browser-URL te staan.
 // Zonder de juiste sleutel doet dit adres alsof het niet bestaat (404).
 import crypto from 'node:crypto';
 import { maakKortingToken } from '../lib/korting.js';
+import { wooVerzoek } from '../lib/woo-factuur.js';
 
 function sleutelKlopt(gegeven, secret) {
   const a = Buffer.from(String(gegeven || ''));
@@ -23,10 +31,53 @@ function sleutelKlopt(gegeven, secret) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-export default function handler(req, res) {
+// Doet exact hetzelfde verzoek als de factuurcode, maar dan alleen LEZEND: het
+// haalt het product Strava-analyse op. Krijg je HTML terug in plaats van JSON,
+// dan zit er een firewall (Cloudflare of Wordfence) tussen, en staat in dat
+// stukje HTML wie het verzoek tegenhoudt.
+async function wooTest(res) {
+  const productId = Number(process.env.WC_PRODUCT_ANALYSE || 12131);
+
+  // Alleen melden OF een variabele gevuld is, nooit de waarde zelf.
+  const regels = [
+    `WC_URL             : ${process.env.WC_URL || '(leeg, valt terug op michelkredercoaching.nl)'}`,
+    `WC_CONSUMER_KEY    : ${process.env.WC_CONSUMER_KEY ? 'ingesteld' : 'ONTBREEKT'}`,
+    `WC_CONSUMER_SECRET : ${process.env.WC_CONSUMER_SECRET ? 'ingesteld' : 'ONTBREEKT'}`,
+    `Product-ID         : ${productId}`,
+    ''
+  ];
+
+  try {
+    const r = await wooVerzoek(`/wp-json/wc/v3/products/${productId}`);
+
+    regels.push(`HTTP-status        : ${r.status}`);
+    regels.push('');
+
+    if (r.ok) {
+      regels.push('GELUKT. Vercel mag bij de WooCommerce-API.');
+      regels.push(`Product gevonden   : ${r.data && r.data.name} (${r.data && r.data.price})`);
+    } else {
+      regels.push('MISLUKT.');
+      regels.push(r.fout);
+      regels.push('');
+      regels.push('--- eerste 1500 tekens van het antwoord ---');
+      regels.push(String(r.tekst || '').slice(0, 1500));
+    }
+  } catch (e) {
+    regels.push(`MISLUKT: ${e.message}`);
+  }
+
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  return res.status(200).send(regels.join('\n'));
+}
+
+export default async function handler(req, res) {
   const secret = process.env.ADMIN_SLEUTEL || '';
   const q = req.query || {};
   if (!secret || !sleutelKlopt(q.sleutel, secret)) return res.status(404).send('niet gevonden');
+
+  if (q.test === 'woo') return wooTest(res);
 
   const prijs = q.prijs != null && q.prijs !== '' ? q.prijs : 19;
   const dagen = q.dagen || 14;
