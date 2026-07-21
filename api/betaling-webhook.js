@@ -17,6 +17,7 @@
 // Vereist in package.json: "pdf-lib"
 import { markeerKortingGebruikt } from '../lib/korting.js';
 import { leverRapport, stuurMail, interneHtml, kapitaal, AFZENDER, INTERNE_MAIL } from '../lib/lever-rapport.js';
+import { maakWooFactuur } from '../lib/woo-factuur.js';
 
 // ===== REDIS (Upstash REST) — ontdubbeling & lock =====
 // De Vercel-marketplace-koppeling van Upstash maakt variabelen met KV_-namen
@@ -56,6 +57,14 @@ async function pakLock(id) {
 async function geefLockVrij(id) { await redis(['DEL', `pp:lock:${id}`]); }
 async function magWaarschuwen(id) {
   const r = await redis(['SET', `pp:warned:${id}`, '1', 'NX', 'EX', '3600']);
+  if (!r.ok) return true;
+  return r.result === 'OK';
+}
+// Zorgt dat er per betaling hoogstens één bestelling in WooCommerce ontstaat,
+// ook als deze functie ooit twee keer tegelijk zou draaien. Zonder Redis laten
+// we het gewoon toe: een ontbrekende factuur is vervelender dan een dubbele.
+async function magFactureren(id) {
+  const r = await redis(['SET', `pp:woo:${id}`, '1', 'NX', 'EX', '2592000']); // 30 dagen
   if (!r.ok) return true;
   return r.result === 'OK';
 }
@@ -133,6 +142,35 @@ export default async function handler(req, res) {
     // 4) Servicekorting-link verzilveren: deze betaling is rond, dus het
     //    eenmalige linkje mag vanaf nu geweigerd worden.
     if (m.kortingId) await markeerKortingGebruikt(m.kortingId);
+
+    // 5) Factuur: bestelling aanmaken in WooCommerce, zodat WordPress er een
+    //    PDF-factuur van maakt met het volgende nummer uit dezelfde reeks als de
+    //    trainingsschema's. Dit gebeurt bewust ALS LAATSTE en zonder de levering
+    //    te blokkeren: het rapport is hier al bij de klant. Gaat het mis, dan
+    //    krijg jij een mail zodat je de factuur handmatig kunt maken.
+    if (await magFactureren(id)) {
+      const f = await maakWooFactuur({
+        naam: m.naam,
+        email: m.email,
+        bedrag: betaling.amount && betaling.amount.value,
+        betaalId: id,
+        methode: betaling.method
+      });
+
+      if (f.ok) {
+        console.log('WooCommerce-bestelling aangemaakt:', f.nummer, '| betaling:', id);
+      } else {
+        console.error('WooCommerce-factuur mislukt:', f.fout, '| betaling:', id);
+        await stuurMail({
+          from: AFZENDER, to: INTERNE_MAIL,
+          subject: `FACTUUR MISLUKT - ${naam} - handmatig aanmaken`,
+          html: `<p>De betaling van <strong>${naam}</strong> (${m.email || 'geen e-mail'}) van ${bedrag} is gelukt en het rapport is verstuurd, maar de bestelling in WooCommerce aanmaken lukte niet.</p>
+                 <p><strong>Reden:</strong> ${f.fout}</p>
+                 <p><strong>Mollie-betaling:</strong> ${id}</p>
+                 <p>Maak de factuur handmatig aan in WooCommerce, anders ontbreekt hij straks in de boekhouding.</p>`
+        });
+      }
+    }
 
     return res.status(200).send('ok');
 
