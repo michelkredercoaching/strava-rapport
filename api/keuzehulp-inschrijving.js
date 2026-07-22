@@ -11,6 +11,11 @@
 //     kortingsmail). Bij `inschrijving: 'ja'` (het begeleidingsformulier) gaat
 //     er een notificatie naar Michel en een warme bevestiging naar de lead,
 //     allebei via Resend.
+//   - 'gratis-training': de lead magnet vanaf /gratis-training/. Zet de tag
+//     'gratis-training' + mergeveld MEETMETH (vermogen/hartslag), mailt de
+//     bijbehorende .fit-download en geeft die link ook terug aan de pagina.
+//     Woont hier en niet in een eigen /api/gratis-training.js omdat de Vercel
+//     Hobby-limiet van 12 serverless functions al vol zat (zie ook lead.js).
 //
 // Vereist in Vercel (staan er al voor de betaling-webhook):
 //   MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID, PP_TOKEN_SECRET, RESEND_API_KEY
@@ -22,6 +27,15 @@ const MC_DC   = MC_KEY ? MC_KEY.split('-')[1] : null;
 
 const TAG_SCHEMA   = 'keuzehulp-gedaan';
 const TAG_COACHING = 'keuzehulp-coaching';
+const TAG_GRATIS   = 'gratis-training';
+
+// ===== Gratis-training lead magnet (route 'gratis-training') =====
+// Woont bewust in dit endpoint en niet in een eigen /api/gratis-training.js:
+// de Vercel Hobby-limiet is 12 serverless functions en die zat al vol.
+// Zelfde truc als in lead.js.
+const GT_URL_VERMOGEN = process.env.GRATIS_TRAINING_URL_VERMOGEN || process.env.GRATIS_TRAINING_URL || '';
+const GT_URL_HARTSLAG = process.env.GRATIS_TRAINING_URL_HARTSLAG || process.env.GRATIS_TRAINING_URL || '';
+const ANALYSE_URL     = 'https://strava-analyse.michelkredercoaching.nl/';
 
 const AFZENDER     = 'Michel Kreder Coaching <rapport@michelkredercoaching.nl>';
 const REPLY_TO     = 'info@michelkredercoaching.nl';
@@ -70,7 +84,12 @@ function escHtml(s) {
   ));
 }
 function naarHtmlEntities(s) {
-  return String(s).replace(/[^\x00-\x7F]/g, function(ch){ return "&#" + ch.charCodeAt(0) + ";"; });
+  // Array.from itereert per codepoint, zodat emoji's (surrogaatparen)
+  // heel blijven in plaats van als twee kapotte entities te eindigen.
+  return Array.from(String(s)).map(ch => {
+    const cp = ch.codePointAt(0);
+    return cp > 127 ? '&#' + cp + ';' : ch;
+  }).join('');
 }
 
 async function stuurMail(payload) {
@@ -120,6 +139,45 @@ function bevestigingHtml(naam, pakket) {
   return naarHtmlEntities(html);
 }
 
+// Downloadmail voor de gratis-training lead magnet. Past zich aan op
+// meetmethode: bij vermogen draait het om FTP/watt, bij hartslag om het
+// omslagpunt/HR-zones. In beide gevallen de brug naar de analyse voor wie
+// zijn eigen waarden niet kent.
+function gratisTrainingHtml(naam, url, meetmethode) {
+  const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
+  const isVermogen = meetmethode !== 'hartslag';
+  const waarde  = isVermogen ? 'FTP' : 'omslagpunt';
+  const eenheid = isVermogen ? 'de watt-doelen' : 'de hartslagzones';
+  const onthoud = isVermogen
+    ? 'de blokken lopen op watt, dus stel je FTP goed in op je fietscomputer.'
+    : 'de blokken lopen op hartslag, dus stel je zones goed in op je fietscomputer.';
+
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 14px;">Hier is je gratis training (${escHtml(isVermogen ? 'vermogen' : 'hartslag')}-versie). Klik op de knop om het bestand te downloaden.</p>
+    <p style="margin:0 0 20px;">
+      <a href="${escHtml(url)}" style="display:inline-block;background:#FF6B1A;color:#0A0A0A;text-decoration:none;font-weight:700;font-size:15px;padding:13px 26px;border-radius:4px;">Download je training</a>
+    </p>
+    <p style="font-size:15px;margin:0 0 6px;"><strong>Hoe laad je hem in?</strong></p>
+    <ul style="font-size:15px;margin:0 0 14px;padding-left:20px;">
+      <li style="margin:0 0 6px;"><strong>Garmin of Wahoo:</strong> importeer het bestand in Garmin Connect (Training &gt; Workouts) en stuur het naar je fietscomputer.</li>
+      <li style="margin:0 0 6px;"><strong>TrainingPeaks:</strong> upload het bestand bij een geplande dag in je agenda.</li>
+      <li style="margin:0 0 6px;"><strong>Onthoud:</strong> ${onthoud}</li>
+    </ul>
+    <div style="border:1px solid #eee;border-radius:8px;padding:14px 16px;margin:0 0 16px;background:#fafafa;">
+      <p style="font-size:15px;margin:0 0 8px;"><strong>Weet je je ${waarde} nog niet?</strong></p>
+      <p style="font-size:15px;margin:0 0 12px;">Dan kloppen ${eenheid} in deze training niet, en train je op de verkeerde intensiteit. Bepaal eerst je ${waarde} met de Power Profile-analyse (&euro;29), dan voer je hem perfect uit.</p>
+      <p style="margin:0;">
+        <a href="${escHtml(ANALYSE_URL)}" style="display:inline-block;color:#FF6B1A;text-decoration:none;font-weight:700;font-size:15px;">Bepaal mijn ${waarde}</a>
+      </p>
+    </div>
+    <p style="font-size:15px;margin:0 0 14px;">Kom je er niet uit? Reageer gewoon op deze mail, ik help je op weg.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
 // Tag eerst weghalen en dan opnieuw zetten: alleen een NIEUW geplaatste tag
 // triggert een journey, ook bij contacten die de keuzehulp eerder deden.
 async function hertag(base, headers, hash, tag) {
@@ -152,7 +210,19 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, fout: 'ongeldig e-mailadres' });
   }
 
-  const route = b.route === 'coaching' ? 'coaching' : 'schema';
+  const route = b.route === 'coaching'        ? 'coaching'
+              : b.route === 'gratis-training' ? 'gratis-training'
+              :                                 'schema';
+
+  // Gratis-training: bepaal meteen welk bestand deze bezoeker krijgt, zodat we
+  // niet eerst een contact aanmaken en daarna alsnog stukloepen op een
+  // ontbrekende env-var.
+  const gtMeetmethode = b.meetmethode === 'hartslag' ? 'hartslag' : 'vermogen';
+  const gtDownloadUrl = gtMeetmethode === 'hartslag' ? GT_URL_HARTSLAG : GT_URL_VERMOGEN;
+  if (route === 'gratis-training' && !gtDownloadUrl) {
+    console.error('Gratis-training: download-URL ontbreekt voor meetmethode', gtMeetmethode);
+    return res.status(500).json({ ok: false, fout: 'download nog niet ingesteld' });
+  }
 
   const hash = crypto.createHash('md5').update(email).digest('hex');
   const base = `https://${MC_DC}.api.mailchimp.com/3.0/lists/${MC_LIST}`;
@@ -186,6 +256,10 @@ export default async function handler(req, res) {
     if (b.pakketUrl) merge.KHPURL   = String(b.pakketUrl);
   }
 
+  // Gratis-training: meetmethode altijd vastleggen, zodat de journey erop
+  // kan vertakken (vermogen of hartslag).
+  if (route === 'gratis-training') merge.MEETMETH = gtMeetmethode;
+
   try {
     // 1) Contact toevoegen of bijwerken (PUT = upsert).
     const upsert = (velden) => fetch(`${base}/members/${hash}`, {
@@ -215,7 +289,22 @@ export default async function handler(req, res) {
     }
 
     // 2) Journey-tag per route.
-    await hertag(base, headers, hash, route === 'coaching' ? TAG_COACHING : TAG_SCHEMA);
+    const tag = route === 'coaching'        ? TAG_COACHING
+              : route === 'gratis-training' ? TAG_GRATIS
+              :                               TAG_SCHEMA;
+    await hertag(base, headers, hash, tag);
+
+    // 2b) Gratis-training: de juiste downloadlink meteen mailen (bevestigt het
+    //     adres) en teruggeven aan de pagina voor een directe download.
+    if (route === 'gratis-training') {
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: 'Je gratis training staat klaar',
+        html: gratisTrainingHtml(b.naam, gtDownloadUrl, gtMeetmethode),
+      });
+      console.log('Gratis-training OK:', email, '| meetmethode:', gtMeetmethode);
+      return res.status(200).json({ ok: true, downloadUrl: gtDownloadUrl, meetmethode: gtMeetmethode });
+    }
 
     // 3) Coaching-inschrijving: notificatie naar Michel + bevestiging naar de lead.
     //    (De e-mailpoort eerder in de flow stuurt geen `inschrijving`, alleen
