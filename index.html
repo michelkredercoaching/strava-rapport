@@ -2091,7 +2091,7 @@ function vulUpsell(analyse, data) {
   const heeftTegoed = !!data.ppToken;
   const deadline = data.ppDeadline || '';
   // Aanbevolen schema: uit de AI-analyse (niveau + weken) of anders op uren.
-  const TEGOED_PER_WEKEN = { 8: 10, 12: 20, 16: 29 };
+  const TEGOED_PER_WEKEN = { 8: 5, 12: 10, 16: 10 };
   let advWeken, advNiveau = '';
   if (analyse && analyse.upsell && analyse.upsell.weken) {
     advWeken = Number(analyse.upsell.weken);
@@ -2100,7 +2100,7 @@ function vulUpsell(analyse, data) {
     const u = Number(data.urenPerWeek) || 0;
     advWeken = u >= 8.5 ? 16 : (u >= 4.5 ? 12 : 8);
   }
-  const advTegoed = TEGOED_PER_WEKEN[advWeken] || 10;
+  const advTegoed = TEGOED_PER_WEKEN[advWeken] || 5;
   const adviesTekst = (advNiveau ? advNiveau + ', ' : '') + advWeken + ' weken';
   // Echte schemaprijs (niveau × duur) = zelfde matrix als op de website.
   const PRIJS_MATRIX = {
@@ -2135,7 +2135,7 @@ function vulUpsell(analyse, data) {
       tegoedBlok.style.display = 'block';
       tegoedBlok.innerHTML =
         `<div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--oranje);text-transform:uppercase;margin-bottom:8px;">Je analyse-tegoed staat klaar</div>` +
-        `<div style="font-size:13px;color:rgba(255,255,255,0.7);line-height:1.6;margin-bottom:12px;">Je €29 telt volledig mee als tegoed op je schema. Kies er één en het wordt automatisch verrekend.</div>` +
+        `<div style="font-size:13px;color:rgba(255,255,255,0.7);line-height:1.6;margin-bottom:12px;"> Je analyse levert je korting op op elk trainingsschema. Kies er één en het wordt automatisch verrekend.</div>` +
         `<div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:10px 12px;background:rgba(255,107,26,0.1);border-radius:6px;margin-bottom:${deadline ? '10px' : '0'};">` +
           `<span style="color:rgba(255,255,255,0.9);">Ons advies: <strong>${adviesTekst}</strong></span>` +
           `<span style="color:var(--oranje);font-weight:800;">€${advTegoed} tegoed</span>` +
