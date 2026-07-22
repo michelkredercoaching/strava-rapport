@@ -157,7 +157,7 @@ function gratisTrainingHtml(naam, url, meetmethode) {
     <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
     <p style="font-size:15px;margin:0 0 14px;">Hier is je gratis training (${escHtml(isVermogen ? 'vermogen' : 'hartslag')}-versie). Klik op de knop om het bestand te downloaden.</p>
     <p style="margin:0 0 20px;">
-      <a href="${escHtml(url)}" style="display:inline-block;background:#FF6B1A;color:#0A0A0A;text-decoration:none;font-weight:700;font-size:15px;padding:13px 26px;border-radius:4px;">Download je training</a>
+      <a href="${escHtml(url)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Download je training</a>
     </p>
     <p style="font-size:15px;margin:0 0 6px;"><strong>Hoe laad je hem in?</strong></p>
     <ul style="font-size:15px;margin:0 0 14px;padding-left:20px;">
@@ -165,12 +165,12 @@ function gratisTrainingHtml(naam, url, meetmethode) {
       <li style="margin:0 0 6px;"><strong>TrainingPeaks:</strong> upload het bestand bij een geplande dag in je agenda.</li>
       <li style="margin:0 0 6px;"><strong>Onthoud:</strong> ${onthoud}</li>
     </ul>
-    <div style="border:1px solid #eee;border-radius:8px;padding:14px 16px;margin:0 0 16px;background:#fafafa;">
-      <p style="font-size:15px;margin:0 0 8px;"><strong>Weet je je ${waarde} nog niet?</strong></p>
-      <p style="font-size:15px;margin:0 0 12px;">Dan kloppen ${eenheid} in deze training niet, en train je op de verkeerde intensiteit. Bepaal eerst je ${waarde} met de Power Profile-analyse (&euro;29), dan voer je hem perfect uit.</p>
-      <p style="margin:0;">
-        <a href="${escHtml(ANALYSE_URL)}" style="display:inline-block;color:#FF6B1A;text-decoration:none;font-weight:700;font-size:15px;">Bepaal mijn ${waarde}</a>
-      </p>
+    <div style="margin:22px 0;padding:22px;background:#0d0d0d;border-radius:12px;">
+      <p style="font-size:12px;font-weight:800;color:#ff6b1a;letter-spacing:1.5px;margin:0 0 10px;text-transform:uppercase;">Aanbevolen eerste stap</p>
+      <p style="font-size:18px;line-height:1.4;color:#ffffff;margin:0 0 8px;font-weight:800;">Weet je je ${waarde} nog niet?</p>
+      <p style="font-size:14px;color:#c8c8c8;margin:0 0 14px;">Dan kloppen ${eenheid} in deze training niet, en train je op de verkeerde intensiteit. Je rijdt de blokken dan te zwaar of te licht.</p>
+      <p style="font-size:15px;color:#ffffff;margin:0 0 16px;">Bepaal eerst je ${waarde} met de <strong style="color:#ff6b1a;">Power Profile-analyse</strong> voor &euro;29. Daarna voer je deze training, en elke volgende, precies goed uit.</p>
+      <a href="${escHtml(ANALYSE_URL)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Bepaal mijn ${waarde} &rarr;</a>
     </div>
     <p style="font-size:15px;margin:0 0 14px;">Kom je er niet uit? Reageer gewoon op deze mail, ik help je op weg.</p>
     <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
