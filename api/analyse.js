@@ -274,11 +274,11 @@ export default async function handler(req, res) {
   // ===== SCHEMA AANBEVELING (zelfde mapping als voorheen) =====
   let schema;
   if (urenPerWeek < 4) {
-    schema = { niveau: 'Beginner', weken: 8, prijs: 39, url: 'https://michelkredercoaching.nl/checkout/?add-to-cart=6440&variation_id=11084' };
+    schema = { niveau: 'Basis', weken: 8, prijs: 39, url: 'https://michelkredercoaching.nl/checkout/?add-to-cart=6440&variation_id=11084' };
   } else if (urenPerWeek < 8) {
-    schema = { niveau: 'Gevorderd', weken: 12, prijs: 59, url: 'https://michelkredercoaching.nl/checkout/?add-to-cart=8387&variation_id=11091' };
+    schema = { niveau: 'Opbouw', weken: 12, prijs: 59, url: 'https://michelkredercoaching.nl/checkout/?add-to-cart=8387&variation_id=11091' };
   } else {
-    schema = { niveau: 'Expert', weken: 16, prijs: 79, url: 'https://michelkredercoaching.nl/checkout/?add-to-cart=8388&variation_id=11108' };
+    schema = { niveau: 'Piek', weken: 16, prijs: 79, url: 'https://michelkredercoaching.nl/checkout/?add-to-cart=8388&variation_id=11108' };
   }
 
   const upsellTekstVarianten = [
