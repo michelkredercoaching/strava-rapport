@@ -1279,7 +1279,6 @@ function toonZonesScherm(data) {
   if (ftpBetrouwS3c) {
     const bron = heeftVermogen ? data.ftpBetrouwbaarheid : data.omslagpuntBetrouwbaarheid;
     if (bron === 'laag') { ftpBetrouwS3c.textContent = 'schatting'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
-      else if (bron === 'gemiddeld') { ftpBetrouwS3c.textContent = 'gemiddeld'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
     else if (bron === 'hoog' && aantalRitten >= 8) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
     else if (aantalRitten >= 15) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
     else if (aantalRitten >= 8) { ftpBetrouwS3c.textContent = 'gemiddeld'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
@@ -1558,33 +1557,26 @@ function toonRapport(data, analyse) {
     // uit berekenStats: 'hoog' = uit power-streams, 'laag' = fallback-schatting.
     if(ftpBetrouw) {
       const bron = data.ftpBetrouwbaarheid;
-      const cta = document.getElementById('ftpCtaTekst');
-      let testNodig = false;
       if (data.ftpHandmatig) {
         ftpBetrouw.textContent = 'jouw eigen waarde';
         ftpBetrouw.style.color = 'var(--groen)';
       } else if (bron === 'laag') {
-        ftpBetrouw.textContent = 'laag — doe eerst een test';
-        ftpBetrouw.style.color = 'var(--rood)';
-        testNodig = true;
-      } else if (bron === 'gemiddeld') {
-        ftpBetrouw.textContent = 'gemiddeld — check hieronder';
+        ftpBetrouw.textContent = 'schatting — controleer hieronder';
         ftpBetrouw.style.color = 'var(--oranje)';
-        testNodig = true;
       } else if (bron === 'hoog') {
         if (aantalRitten >= 8) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; }
-        else { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; testNodig = true; }
+        else { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; }
       } else {
+        // Oudere data zonder bron-veld: val terug op het aantal ritten.
         if (aantalRitten >= 15) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; }
-        else if (aantalRitten >= 8) { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; testNodig = true; }
-        else { ftpBetrouw.textContent = 'laag'; ftpBetrouw.style.color = 'var(--rood)'; testNodig = true; }
+        else if (aantalRitten >= 8) { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; }
+        else { ftpBetrouw.textContent = 'laag'; ftpBetrouw.style.color = 'var(--rood)'; }
       }
-      if (cta) cta.textContent = testNodig ? 'DOE EERST EEN FTP-TEST' : 'GEEN FTP-TEST NODIG';
     }
 
     // Lage betrouwbaarheid? Klap de FTP-correctie open en vul de detectie in,
     // zodat de sporter wordt aangespoord z'n echte FTP te controleren.
-    if ((data.ftpBetrouwbaarheid === 'laag' || data.ftpBetrouwbaarheid === 'gemiddeld') && !data.ftpHandmatig) {
+    if (data.ftpBetrouwbaarheid === 'laag' && !data.ftpHandmatig) {
       const veld = document.getElementById('ftpCorrectieVeld');
       const inputC = document.getElementById('ftpCorrectieInput');
       if (veld) veld.style.display = 'block';
@@ -2091,6 +2083,8 @@ function vulUpsell(analyse, data) {
   const heeftTegoed = !!data.ppToken;
   const deadline = data.ppDeadline || '';
   // Aanbevolen schema: uit de AI-analyse (niveau + weken) of anders op uren.
+  // Staffel (juli 2026): 8 weken €5, 12 en 16 weken €10.
+  // Moet gelijk blijven aan lib/lever-rapport.js en het WP-snippet.
   const TEGOED_PER_WEKEN = { 8: 5, 12: 10, 16: 10 };
   let advWeken, advNiveau = '';
   if (analyse && analyse.upsell && analyse.upsell.weken) {
@@ -2104,9 +2098,9 @@ function vulUpsell(analyse, data) {
   const adviesTekst = (advNiveau ? advNiveau + ', ' : '') + advWeken + ' weken';
   // Echte schemaprijs (niveau × duur) = zelfde matrix als op de website.
   const PRIJS_MATRIX = {
-    8:  { beginner: 39, gevorderd: 49, expert: 59 },
-    12: { beginner: 59, gevorderd: 69, expert: 79 },
-    16: { beginner: 79, gevorderd: 89, expert: 99 }
+    8:  { basis: 39, opbouw: 49, piek: 59 },
+    12: { basis: 59, opbouw: 69, piek: 79 },
+    16: { basis: 79, opbouw: 89, piek: 99 }
   };
   const nivKey = String(advNiveau || '').toLowerCase();
   const origPrijs = (PRIJS_MATRIX[advWeken] && PRIJS_MATRIX[advWeken][nivKey]) ||
@@ -2135,7 +2129,7 @@ function vulUpsell(analyse, data) {
       tegoedBlok.style.display = 'block';
       tegoedBlok.innerHTML =
         `<div style="font-size:11px;font-weight:800;letter-spacing:1px;color:var(--oranje);text-transform:uppercase;margin-bottom:8px;">Je analyse-tegoed staat klaar</div>` +
-        `<div style="font-size:13px;color:rgba(255,255,255,0.7);line-height:1.6;margin-bottom:12px;"> Je analyse levert je korting op op elk trainingsschema. Kies er één en het wordt automatisch verrekend.</div>` +
+        `<div style="font-size:13px;color:rgba(255,255,255,0.7);line-height:1.6;margin-bottom:12px;">Je analyse levert je korting op op elk trainingsschema. Kies er één en het wordt automatisch verrekend.</div>` +
         `<div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;padding:10px 12px;background:rgba(255,107,26,0.1);border-radius:6px;margin-bottom:${deadline ? '10px' : '0'};">` +
           `<span style="color:rgba(255,255,255,0.9);">Ons advies: <strong>${adviesTekst}</strong></span>` +
           `<span style="color:var(--oranje);font-weight:800;">€${advTegoed} tegoed</span>` +
