@@ -17,6 +17,7 @@
 // Vereist in package.json: "pdf-lib"
 import { markeerKortingGebruikt } from '../lib/korting.js';
 import { leverRapport, stuurMail, interneHtml, kapitaal, AFZENDER, INTERNE_MAIL } from '../lib/lever-rapport.js';
+import { maakMollieFactuur } from '../lib/mollie-factuur.js';
 
 // ===== REDIS (Upstash REST) — ontdubbeling & lock =====
 // De Vercel-marketplace-koppeling van Upstash maakt variabelen met KV_-namen
@@ -134,11 +135,45 @@ export default async function handler(req, res) {
     //    eenmalige linkje mag vanaf nu geweigerd worden.
     if (m.kortingId) await markeerKortingGebruikt(m.kortingId);
 
-    // GEEN automatische factuur in WooCommerce. Dat is op 21 juli 2026 geprobeerd
-    // (lib/woo-factuur.js), maar Cloudflare blokkeert het verzoek van Vercel naar
-    // de WooCommerce REST API met een 403. Die firewall draait bij de host en
-    // daar hebben we geen toegang toe. De code blijft staan voor als dat ooit
-    // verandert; hier wordt hij bewust niet aangeroepen.
+    // 5) Verkoopfactuur via Mollie Invoicing (vervangt de geblokkeerde
+    //    WooCommerce-route; zie lib/woo-factuur.js). Mollie maakt de factuur-PDF,
+    //    regelt nummering + btw + bedrijfsgegevens en mailt 'm naar de klant.
+    //
+    //    Bewust ACHTER een schakelaar (MOLLIE_FACTUUR='aan') én fail-safe: het
+    //    rapport is hierboven al geleverd en de betaling is al gemarkeerd, dus
+    //    een factuurfout mag niks blokkeren. Draait maar één keer per betaling
+    //    (na deze regel is 'alVerstuurd' waar, dus een webhook-retry komt hier
+    //    niet nog eens). Bij een fout krijg jij een interne mail om 'm handmatig
+    //    in Mollie aan te maken. De Sales Invoice API is nog beta: zet 'm pas op
+    //    'aan' nadat je Mollie Invoicing hebt ingericht en in testmode getest.
+    if ((process.env.MOLLIE_FACTUUR || '').toLowerCase() === 'aan') {
+      try {
+        const f = await maakMollieFactuur({
+          naam: m.naam,
+          email: m.email,
+          bedrag: (betaling.amount && betaling.amount.value) || '',
+          betaalId: id
+        });
+        if (f.ok) {
+          // Mollie mailt de factuur zelf naar de klant én BCC't 'm naar de
+          // boekhouding (ingesteld in het Mollie-dashboard: Invoicing ->
+          // E-mailinstellingen -> Standaard BCC). Dus hier hoeven we niks te doen.
+          console.log('Mollie-factuur aangemaakt:', f.nummer || f.id, 'voor', id);
+        } else {
+          console.error('Mollie-factuur mislukt:', f.fout);
+          await stuurMail({
+            from: AFZENDER, to: INTERNE_MAIL,
+            subject: `FACTUUR MISLUKT - ${naam} - maak handmatig aan in Mollie`,
+            html: interneHtml(m, bedrag, id, true) +
+              `<p style="font-family:Arial,sans-serif;color:#c0392b;margin-top:16px;">` +
+              `Automatische Mollie-factuur mislukte: ${f.fout || 'onbekende fout'}. ` +
+              `Het rapport is wél geleverd. Maak de factuur even handmatig aan in het Mollie-dashboard.</p>`
+          });
+        }
+      } catch (e) {
+        console.error('Mollie-factuur wierp een fout (genegeerd):', e);
+      }
+    }
 
     return res.status(200).send('ok');
 
