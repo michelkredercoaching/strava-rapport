@@ -152,7 +152,12 @@ export default async function handler(req, res) {
           naam: m.naam,
           email: m.email,
           bedrag: (betaling.amount && betaling.amount.value) || '',
-          betaalId: id
+          betaalId: id,
+          land: m.land,
+          postcode: m.postcode,
+          huisnummer: m.huisnummer,
+          straat: m.straat,
+          plaats: m.plaats
         });
         if (f.ok) {
           // Mollie mailt de factuur zelf naar de klant én BCC't 'm naar de
