@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { blob, email, gewicht, korting: kortingToken } = req.body || {};
+  const { blob, email, gewicht, land, postcode, huisnummer, straat, plaats, korting: kortingToken } = req.body || {};
 
   // De volledige analyse zit versleuteld in 'blob' (door strava-callback gemaakt).
   // We ontsleutelen 'm hier server-side om de Mollie-metadata + PDF te kunnen bouwen.
@@ -105,7 +105,16 @@ export default async function handler(req, res) {
     piek20minHr: stravaData?.piek20minHr || '',
     // ===== SERVICEKORTING =====
     // De webhook markeert dit ID als verzilverd zodra de betaling 'paid' is.
-    kortingId: korting ? korting.id : ''
+    kortingId: korting ? korting.id : '',
+    // ===== FACTUURADRES =====
+    // NL: postcode + huisnummer; de factuurcode zoekt straat + plaats erbij via
+    // PDOK. BE (en overig): straat + postcode + plaats komen rechtstreeks mee,
+    // want daar is geen postcode-API. Mollie eist een volledig adres.
+    land: (land || 'NL').toString().trim().toUpperCase().slice(0, 2),
+    postcode: (postcode || '').toString().trim().slice(0, 10),
+    huisnummer: (huisnummer || '').toString().trim().slice(0, 12),
+    straat: (straat || '').toString().trim().slice(0, 80),
+    plaats: (plaats || '').toString().trim().slice(0, 60)
   };
 
   // ===== GRATIS LINK (€0) — Mollie overslaan, rapport direct mailen =====
