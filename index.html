@@ -435,7 +435,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
   <div class="hero">
 
     <!-- HOOK -->
-    <div class="hero-eyebrow">Voor wielrenners met vermogen of hartslag</div>
+    <div class="hero-eyebrow">Voor wielrenners met vermogensmeter of hartslagmeter</div>
 
     <h1 class="hero-titel">Ontdek waar<br>jij <em>snelheid</em><br>laat liggen.</h1>
 
@@ -517,8 +517,8 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     <div class="strava-icon">
       <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
     </div>
-    <h2 class="strava-titel">Koppel je<br>Strava account</h2>
-    <p class="strava-sub">We lezen je laatste 90 dagen trainingsdata uit. Veilig, eenmalig, alleen-lezen toegang.</p>
+    <h2 class="strava-titel">Nog één klik<br>tot je analyse</h2>
+    <p class="strava-sub">We vinden jouw FTP of omslagpunt in je eigen ritten van de laatste 90 dagen. Alleen-lezen, eenmalig, daarna koppelen we weer los. Je data blijft van jou.</p>
     <!-- Officiële "Connect with Strava" knop (Strava brand guidelines: niet aanpassen, hoogte 48px) -->
     <a href="#" onclick="verbindStrava();return false;" style="display:block;margin:0 auto 16px;line-height:0;" aria-label="Connect with Strava">
       <img src="/assets/btn_strava_connectwith_orange.svg" alt="Connect with Strava" style="height:48px;width:auto;display:block;margin:0 auto;">
@@ -680,8 +680,8 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <div class="unlock-alert-icon">⚡</div>
       <div class="unlock-alert-txt" id="unlockAlertTxt"><strong>2 prestatielekken gevonden.</strong> Je trainingsstructuur veroorzaakt vermoeidheid zonder maximale progressie.</div>
     </div>
-    <div class="preview-titel">Jouw preview</div>
-    <div class="preview-sub">Deels zichtbaar — ontgrendel voor volledig rapport</div>
+    <div class="preview-titel">Je analyse staat klaar</div>
+    <div class="preview-sub">Dit is een voorproefje. Ontgrendel hieronder je volledige rapport.</div>
     <div class="metrics-grid">
       <div class="metric-kaart"><div class="metric-label">Trainingsuren/week</div><div class="metric-waarde" id="pvUren">—</div><div class="metric-sub">Laatste 90 dagen</div></div>
       <div class="metric-kaart alert"><div class="metric-label">VO2max sessies</div><div class="metric-waarde rood" id="pvVo2">—</div><div class="metric-sub" id="pvVo2Sub">Van activiteiten</div></div>
@@ -717,6 +717,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
         <span class="prijs-groot" style="color:var(--oranje);" id="prijsGroot">€29</span>
         <span class="prijs-label" id="prijsLabel">eenmalig</span>
       </div>
+      <div style="font-size:12px;color:rgba(255,255,255,0.45);margin:-6px 0 14px;line-height:1.5;">Ter vergelijking: een inspanningstest in een lab kost <span style="color:rgba(255,255,255,0.8);">€200+</span> en een halve dag vrij. Dit heb je nu al, klaar voor je koffie koud is.</div>
       <div style="margin:4px 0 16px;padding:14px 16px;background:rgba(255,255,255,0.04);border-left:3px solid var(--oranje);border-radius:6px;">
         <p style="font-size:13px;line-height:1.6;color:var(--wit);margin:0;" id="unlockValueTekst">Je FTP, je zones en je grootste lek, berekend uit je eigen ritten zonder testrit. <span style="color:rgba(255,255,255,0.55);">100+ renners gingen je voor, beoordeeld met 4.9.</span></p>
       </div>
