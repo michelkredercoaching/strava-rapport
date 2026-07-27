@@ -727,6 +727,39 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
           style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
         <div id="emailFout" style="display:none;font-size:11px;color:#ff6b5e;margin-top:6px;line-height:1.4;"></div>
       </div>
+      <!-- Factuuradres. NL: postcode + huisnummer, straat + woonplaats zoeken we
+           automatisch op (PDOK). BE (en overig): straat, postcode en gemeente
+           zelf invullen, want daar bestaat geen gratis postcode-API. -->
+      <div style="margin-bottom:14px;">
+        <label for="klantLand" style="display:block;font-size:11px;color:rgba(255,255,255,0.55);font-weight:600;letter-spacing:.3px;margin-bottom:7px;">Voor je factuur: adres</label>
+        <select id="klantLand" onchange="wisselLand()"
+          style="width:100%;margin-bottom:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
+          <option value="NL">Nederland</option>
+          <option value="BE">België</option>
+        </select>
+        <!-- NL: postcode + huisnummer -->
+        <div id="nlAdres">
+          <div style="display:flex;gap:8px;">
+            <input id="klantPostcode" type="text" inputmode="text" autocomplete="postal-code" placeholder="1234 AB" maxlength="7" oninput="checkFactuurAdres()"
+              style="flex:1;min-width:0;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
+            <input id="klantHuisnr" type="text" inputmode="numeric" autocomplete="off" placeholder="12" maxlength="12" oninput="checkFactuurAdres()"
+              style="width:96px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
+          </div>
+          <div id="adresPreview" style="display:none;font-size:11px;color:#4caf80;margin-top:6px;line-height:1.4;"></div>
+        </div>
+        <!-- BE (en overig): straat + huisnummer, postcode, gemeente -->
+        <div id="beAdres" style="display:none;">
+          <input id="klantStraat" type="text" autocomplete="street-address" placeholder="Straat + huisnummer (bv. Kerkstraat 12)" maxlength="80"
+            style="width:100%;box-sizing:border-box;margin-bottom:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
+          <div style="display:flex;gap:8px;">
+            <input id="klantPostcodeBE" type="text" inputmode="numeric" autocomplete="postal-code" placeholder="Postcode" maxlength="10"
+              style="width:120px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
+            <input id="klantPlaats" type="text" autocomplete="address-level2" placeholder="Gemeente" maxlength="60"
+              style="flex:1;min-width:0;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
+          </div>
+        </div>
+        <div id="adresFout" style="display:none;font-size:11px;color:#ff6b5e;margin-top:6px;line-height:1.4;"></div>
+      </div>
       <!-- Gewicht (optioneel) — alleen getoond als Strava geen gewicht gaf. Zo
            staat W/kg straks óók in de PDF, niet alleen op de webpagina. -->
       <div id="gewichtVeldWrap" style="display:none;margin-bottom:14px;">
@@ -1051,6 +1084,48 @@ function toonKortingPrijzen() {
   }
 }
 
+// Live adres-preview: zodra postcode + huisnummer geldig zijn, zoeken we straat
+// + woonplaats op via PDOK en tonen we die ter bevestiging. Best-effort: lukt de
+// lookup niet (of blokkeert de browser 'm), dan gebeurt er niks zichtbaars en
+// zoekt de server het adres later alsnog op.
+// Wisselt tussen het NL-adresblok (postcode + huisnummer + PDOK) en het BE-blok
+// (straat, postcode, gemeente zelf invullen).
+function wisselLand() {
+  const land = (document.getElementById('klantLand') || {}).value || 'NL';
+  const nl = document.getElementById('nlAdres');
+  const be = document.getElementById('beAdres');
+  const fout = document.getElementById('adresFout');
+  if (nl) nl.style.display = land === 'BE' ? 'none' : 'block';
+  if (be) be.style.display = land === 'BE' ? 'block' : 'none';
+  if (fout) fout.style.display = 'none';
+}
+
+let _adresTimer = null;
+function checkFactuurAdres() {
+  const pcEl = document.getElementById('klantPostcode');
+  const hnrEl = document.getElementById('klantHuisnr');
+  const prev = document.getElementById('adresPreview');
+  const fout = document.getElementById('adresFout');
+  if (fout) fout.style.display = 'none';
+  if (pcEl) pcEl.style.borderColor = 'rgba(255,255,255,0.15)';
+  if (hnrEl) hnrEl.style.borderColor = 'rgba(255,255,255,0.15)';
+  const pc = pcEl ? pcEl.value.trim().toUpperCase().replace(/\s+/g, '') : '';
+  const hnr = hnrEl ? hnrEl.value.trim() : '';
+  if (prev) { prev.style.display = 'none'; prev.textContent = ''; }
+  if (!/^[1-9][0-9]{3}[A-Z]{2}$/.test(pc) || !hnr) return;
+  clearTimeout(_adresTimer);
+  _adresTimer = setTimeout(function() {
+    const url = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q='
+      + encodeURIComponent(pc + ' ' + hnr) + '&fq=type:adres&rows=1&fl=straatnaam,huis_nlt,postcode,woonplaatsnaam';
+    fetch(url).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
+      const d = j && j.response && j.response.docs && j.response.docs[0];
+      if (d && d.straatnaam && d.woonplaatsnaam && String(d.postcode||'').toUpperCase().replace(/\s+/g,'') === pc) {
+        if (prev) { prev.textContent = '✓ ' + d.straatnaam + ' ' + (d.huis_nlt || hnr) + ', ' + d.woonplaatsnaam; prev.style.display = 'block'; }
+      }
+    }).catch(function(){});
+  }, 400);
+}
+
 async function startBetaling() {
   const emailEl = document.getElementById('klantEmail');
   const foutEl = document.getElementById('emailFout');
@@ -1063,6 +1138,42 @@ async function startBetaling() {
   }
   if (foutEl) foutEl.style.display = 'none';
   if (emailEl) emailEl.style.borderColor = 'rgba(255,255,255,0.15)';
+  // Factuuradres verplicht (Mollie eist een adres op de factuur). NL: postcode +
+  // huisnummer (server zoekt straat + plaats erbij via PDOK). BE: straat +
+  // postcode + gemeente zelf.
+  const land = (document.getElementById('klantLand') || {}).value || 'NL';
+  const adresFoutEl = document.getElementById('adresFout');
+  let postcode = '', huisnummer = '', straat = '', plaats = '';
+  if (land === 'BE') {
+    const sEl = document.getElementById('klantStraat');
+    const pcbEl = document.getElementById('klantPostcodeBE');
+    const plEl = document.getElementById('klantPlaats');
+    straat = sEl ? sEl.value.trim() : '';
+    postcode = pcbEl ? pcbEl.value.trim() : '';
+    plaats = plEl ? plEl.value.trim() : '';
+    if (!straat || !postcode || !plaats) {
+      if (adresFoutEl) { adresFoutEl.textContent = 'Vul je straat + huisnummer, postcode en gemeente in — die staan op je factuur.'; adresFoutEl.style.display = 'block'; }
+      [sEl, pcbEl, plEl].forEach(el => { if (el) el.style.borderColor = el.value.trim() ? 'rgba(255,255,255,0.15)' : '#ff6b5e'; });
+      const eerste = [sEl, pcbEl, plEl].find(el => el && !el.value.trim());
+      if (eerste) eerste.focus();
+      return;
+    }
+    [sEl, pcbEl, plEl].forEach(el => { if (el) el.style.borderColor = 'rgba(255,255,255,0.15)'; });
+  } else {
+    const pcEl = document.getElementById('klantPostcode');
+    const hnrEl = document.getElementById('klantHuisnr');
+    postcode = pcEl ? pcEl.value.trim().toUpperCase().replace(/\s+/g, '') : '';
+    huisnummer = hnrEl ? hnrEl.value.trim() : '';
+    if (!/^[1-9][0-9]{3}[A-Z]{2}$/.test(postcode) || !huisnummer) {
+      if (adresFoutEl) { adresFoutEl.textContent = 'Vul je postcode (1234 AB) en huisnummer in — die staan op je factuur.'; adresFoutEl.style.display = 'block'; }
+      if (pcEl && !/^[1-9][0-9]{3}[A-Z]{2}$/.test(postcode)) { pcEl.style.borderColor = '#ff6b5e'; pcEl.focus(); }
+      else if (hnrEl) { hnrEl.style.borderColor = '#ff6b5e'; hnrEl.focus(); }
+      return;
+    }
+    if (pcEl) pcEl.style.borderColor = 'rgba(255,255,255,0.15)';
+    if (hnrEl) hnrEl.style.borderColor = 'rgba(255,255,255,0.15)';
+  }
+  if (adresFoutEl) adresFoutEl.style.display = 'none';
   // Optioneel gewicht (alleen aanwezig als Strava geen gewicht gaf). Meesturen
   // zodat W/kg ook in de PDF komt; lokaal bewaren zodat het rapport 'm overneemt.
   let gewicht = null;
@@ -1083,7 +1194,7 @@ async function startBetaling() {
     const res = await fetch('/api/betaling', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ blob: window._blob || '', email, gewicht, korting: kortingActief ? kortingActief.token : undefined })
+      body: JSON.stringify({ blob: window._blob || '', email, gewicht, land, postcode, huisnummer, straat, plaats, korting: kortingActief ? kortingActief.token : undefined })
     });
     const data = await res.json();
     if (data.checkoutUrl) {
