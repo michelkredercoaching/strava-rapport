@@ -196,6 +196,18 @@ export default async function handler(req, res) {
     const rittenMetPower = fietsritten90.filter(a => a.average_watts && a.average_watts > 0);
     const streamsGelukt = Object.keys(streamMap).length;
     if (rittenMetPower.length >= 3 && streamsGelukt === 0 && (rateLimitGeraakt || tokenGeraakt)) { // FIX
+      // Kwam de 401/403 doordat een PARALLELLE run van dezelfde sporter net de
+      // app-brede deauthorize deed, dan heeft die run z'n correcte HTML vlak
+      // daarvoor al gecachet (cachen gebeurt vóór loskoppelen). Serveer die dan
+      // alsnog i.p.v. de foutpagina — de sporter ziet gewoon z'n eigen rapport.
+      if (tokenGeraakt && athlete?.id) {
+        const gecachedParallel = cacheGet(athlete.id);
+        if (gecachedParallel) {
+          console.log('Parallelle run — token weg, maar cache-hit · athleet', athlete.id);
+          res.setHeader('Content-Type', 'text/html; charset=utf-8');
+          return res.status(200).send(gecachedParallel.html);
+        }
+      }
       const oorzaak = rateLimitGeraakt ? 'rate limit (429)' : 'token ingetrokken (401/403, parallelle run)';
       console.error(`Geen stream-data — ${oorzaak} — athleet ${athlete?.id} — rapport afgebroken i.p.v. foutieve FTP`);
       return res.redirect('/?error=strava_druk');
@@ -213,11 +225,6 @@ export default async function handler(req, res) {
       await deauthorize(accessToken, athlete?.id);
       return res.redirect('/?error=geen_ritten');
     }
-
-    // Eenmalig rapport: data is binnen en wordt zo verzegeld in de blob, de live
-    // koppeling hebben we niet meer nodig. Meteen loskoppelen => slot vrij +
-    // compliance-plus (data-minimalisatie, read-only).
-    await deauthorize(accessToken, athlete?.id);
 
     // ===== GATE: versleutel de analyse, zet 'm in browseropslag, geef alleen
     // een onschuldige preview mee in de URL. Geen FTP/zones in de browser. =====
@@ -247,7 +254,16 @@ export default async function handler(req, res) {
       `</body></html>`;
 
     // In de dedupe-cache zodat een snelle herhaling dezelfde analyse terugkrijgt.
+    // BELANGRIJK: cachen VÓÓR het loskoppelen. Een parallelle dubbel-run krijgt
+    // pas een 401/403 op z'n streams zodra deze deauthorize landt — en dan staat
+    // de correcte HTML dus al in de cache, zodat die run 'm alsnog kan serveren
+    // (zie de token-guard hierboven) i.p.v. de "even druk"-foutpagina.
     if (athlete?.id) cacheSet(athlete.id, html);
+
+    // Eenmalig rapport: data is binnen en verzegeld in de blob, de live koppeling
+    // hebben we niet meer nodig. Loskoppelen => slot vrij + compliance-plus
+    // (data-minimalisatie, read-only).
+    await deauthorize(accessToken, athlete?.id);
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     return res.status(200).send(html);
