@@ -529,11 +529,12 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   // exclude = rit-id dat volledig genegeerd wordt (voor de dominantie-herrekening).
   // logIgnore = of we de 'genegeerd'-notities schrijven (alleen op de eerste pass).
   function kiesPieken(exclude = null, logIgnore = true) {
-    const uit = {}, bron = {};
+    const uit = {}, bron = {}, geverifieerd = {};
     ftpWindows.forEach(w => {
       let lijst = kandidaten[w.sec].filter(k => k.id !== exclude);
-      if (PIEK_FILTER.hrCheckVensters.includes(w.sec) && maxHf) {
-        const drempel = maxHf * PIEK_FILTER.hrMinFractie;
+      const isHrVenster = PIEK_FILTER.hrCheckVensters.includes(w.sec) && maxHf;
+      const drempel = maxHf ? maxHf * PIEK_FILTER.hrMinFractie : null;
+      if (isHrVenster) {
         lijst = lijst.filter(k => {
           const bruikbaar = k.hrAvg != null && k.hrDekking >= PIEK_FILTER.hrMinDekking;
           if (!bruikbaar) return true;           // geen oordeel mogelijk → houden
@@ -548,14 +549,25 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       }
       if (lijst.length) {
         lijst.sort((a, b) => b.peak - a.peak);   // hoogste van wat overblijft
-        uit[w.sec] = lijst[0].peak;
-        bron[w.sec] = lijst[0].id;
+        const gekozen = lijst[0];
+        uit[w.sec] = gekozen.peak;
+        bron[w.sec] = gekozen.id;
+        // Is de GEKOZEN piek gedekt door een échte drempel-HR? Alleen op de lange
+        // vensters (12/20 min) en alleen dan telt 'ie als bewijs van een échte
+        // duurinspanning. Een piek die enkel bleef staan omdat er geen bruikbare
+        // HR was (no-HR-rit), of die uit een blok ver onder je drempel komt, is
+        // GEEN bewijs → geverifieerd blijft false. Voedt de betrouwbaarheid (4c).
+        if (isHrVenster) {
+          geverifieerd[w.sec] = gekozen.hrAvg != null
+            && gekozen.hrDekking >= PIEK_FILTER.hrMinDekking
+            && gekozen.hrAvg >= drempel;
+        }
       }
     });
-    return { uit, bron };
+    return { uit, bron, geverifieerd };
   }
 
-  let { uit: piek, bron: piekBron } = kiesPieken();
+  let { uit: piek, bron: piekBron, geverifieerd: piekGeverifieerd } = kiesPieken();
 
   // (3) DOMINANTIE — welke rit levert de piek uit hoeveel vensters?
   function bepaalDominant(bron) {
@@ -582,7 +594,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     if (geverifieerd) {
       piekFilterNotities.push(`rit ${dom.id} domineert ${dom.aantal}/${ftpWindows.length} maar is HR-geverifieerd → echte topdag, behouden`);
     } else {
-      ({ uit: piek, bron: piekBron } = kiesPieken(dom.id, false));
+      ({ uit: piek, bron: piekBron, geverifieerd: piekGeverifieerd } = kiesPieken(dom.id, false));
       dominantieVerdacht = true;
       piekFilterNotities.push(`rit ${dom.id} domineert ${dom.aantal}/${ftpWindows.length} en niet met HR te verifiëren → uitgesloten, herrekend`);
     }
@@ -668,6 +680,20 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
         ftpBetrouwbaarheid = 'laag';
         piekFilterNotities.push(`${wkg.toFixed(1)} W/kg boven plafond ${PIEK_FILTER.maxWattPerKg} → onwaarschijnlijk`);
       }
+    }
+
+    // (4c) LANGE INSPANNING — FTP is een DUURmetric. 'Hoog' mag alleen als er
+    // bewijs is van een échte drempelinspanning van 12 of 20 min: de gekozen
+    // piek op dat venster moet gedekt zijn door een HR ≥ 85% van je max. Is die
+    // dekking er niet (geen hartslag op die rit, óf je reed dat blok ruim onder
+    // je drempel, óf er is überhaupt geen lang venster), dan leunt de FTP in
+    // feite op je korte pieken. Dat is een voorzichtige ONDERgrens, geen gemeten
+    // plafond — precies de Ard-case (232W "hoog" terwijl z'n zwaarste 20 min op
+    // 151bpm bij een drempel van 177 lag). Zo'n getal krijgt nooit 'hoog'.
+    const langGeverifieerd = !!(piekGeverifieerd[720] || piekGeverifieerd[1200]);
+    if (ftpBetrouwbaarheid === 'hoog' && !langGeverifieerd) {
+      ftpBetrouwbaarheid = 'gemiddeld';
+      piekFilterNotities.push('geen HR-geverifieerde 12/20-min inspanning → FTP is een ondergrens, betrouwbaarheid verlaagd naar gemiddeld');
     }
   }
   if (piekFilterNotities.length) console.log('Piekfilter:', piekFilterNotities.join(' · '));
