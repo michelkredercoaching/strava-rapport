@@ -1424,6 +1424,7 @@ function toonZonesScherm(data) {
     const bron = heeftVermogen ? data.ftpBetrouwbaarheid : data.omslagpuntBetrouwbaarheid;
     if (bron === 'laag') { ftpBetrouwS3c.textContent = 'schatting'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
     else if (bron === 'hoog' && aantalRitten >= 8) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
+    else if (bron === 'gemiddeld') { ftpBetrouwS3c.textContent = 'gemiddeld'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
     else if (aantalRitten >= 15) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
     else if (aantalRitten >= 8) { ftpBetrouwS3c.textContent = 'gemiddeld'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
     else { ftpBetrouwS3c.textContent = 'laag'; ftpBetrouwS3c.style.color = 'var(--rood)'; }
@@ -1710,6 +1711,12 @@ function toonRapport(data, analyse) {
       } else if (bron === 'hoog') {
         if (aantalRitten >= 8) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; }
         else { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; }
+      } else if (bron === 'gemiddeld') {
+        // Backend zegt expliciet 'gemiddeld' (geen HR-geverifieerde 12/20-min
+        // inspanning → FTP is een ondergrens). Respecteren, NIET terugrekenen
+        // naar 'hoog' uit het aantal ritten.
+        ftpBetrouw.textContent = 'gemiddeld — doe een 20-min test';
+        ftpBetrouw.style.color = 'var(--oranje)';
       } else {
         // Oudere data zonder bron-veld: val terug op het aantal ritten.
         if (aantalRitten >= 15) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; }
