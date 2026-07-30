@@ -652,7 +652,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     <div style="width:100%;max-width:340px;margin-bottom:16px;display:flex;flex-direction:column;gap:8px;">
       <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.3);font-weight:600;text-align:left;margin-bottom:4px;">In het volledige rapport:</div>
       <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:rgba(255,255,255,0.5);">
-        <span style="color:var(--groen);font-weight:700;font-size:14px;">✓</span> Jouw exacte FTP of omslagpunt en al je trainingszones
+        <span style="color:var(--groen);font-weight:700;font-size:14px;">✓</span> <span id="rapportKernRegel">Jouw exacte FTP of omslagpunt en al je trainingszones</span>
       </div>
       <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:rgba(255,255,255,0.5);">
         <span style="color:var(--groen);font-weight:700;font-size:14px;">✓</span> Zoneverdeling — waar verspil je tijd?
@@ -1455,6 +1455,13 @@ function toonZonesScherm(data) {
     }
   }
 
+  // "In het volledige rapport"-lijst: het woord 'exacte' alleen bij 'hoog'.
+  // Bij een ondergrens beloven we geen exact getal.
+  const rapportKernRegel = document.getElementById('rapportKernRegel');
+  if (rapportKernRegel) rapportKernRegel.textContent = isHoog
+    ? 'Jouw exacte FTP of omslagpunt en al je trainingszones'
+    : 'Jouw FTP of omslagpunt en al je trainingszones';
+
   // Subregel HR-bewust maken. Draait ná toonKortingPrijzen(), dus we lezen de
   // actuele prijs uit prijsHero zodat een persoonlijke korting behouden blijft.
   const verfijnSub = document.getElementById('prijsVerfijnSub');
@@ -1743,26 +1750,34 @@ function toonRapport(data, analyse) {
     // uit berekenStats: 'hoog' = uit power-streams, 'laag' = fallback-schatting.
     if(ftpBetrouw) {
       const bron = data.ftpBetrouwbaarheid;
+      // De grote CTA-knop moet de betrouwbaarheid volgen: alleen bij 'hoog' (of een
+      // eigen ingevulde waarde) beloven we 'geen test nodig'. Anders is de FTP een
+      // ondergrens en spoort de knop juist aan tot een test — nooit meer allebei.
+      const ctaEl = document.getElementById('ftpCtaTekst');
+      const zetCta = (testNodig) => { if (ctaEl) ctaEl.textContent = testNodig ? 'DOE EEN 20-MIN TEST' : 'GEEN FTP-TEST NODIG'; };
       if (data.ftpHandmatig) {
         ftpBetrouw.textContent = 'jouw eigen waarde';
         ftpBetrouw.style.color = 'var(--groen)';
+        zetCta(false);
       } else if (bron === 'laag') {
         ftpBetrouw.textContent = 'schatting — controleer hieronder';
         ftpBetrouw.style.color = 'var(--oranje)';
+        zetCta(true);
       } else if (bron === 'hoog') {
-        if (aantalRitten >= 8) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; }
-        else { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; }
+        if (aantalRitten >= 8) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; zetCta(false); }
+        else { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; zetCta(true); }
       } else if (bron === 'gemiddeld') {
         // Backend zegt expliciet 'gemiddeld' (geen HR-geverifieerde 12/20-min
         // inspanning → FTP is een ondergrens). Respecteren, NIET terugrekenen
         // naar 'hoog' uit het aantal ritten.
         ftpBetrouw.textContent = 'gemiddeld — doe een 20-min test';
         ftpBetrouw.style.color = 'var(--oranje)';
+        zetCta(true);
       } else {
         // Oudere data zonder bron-veld: val terug op het aantal ritten.
-        if (aantalRitten >= 15) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; }
-        else if (aantalRitten >= 8) { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; }
-        else { ftpBetrouw.textContent = 'laag'; ftpBetrouw.style.color = 'var(--rood)'; }
+        if (aantalRitten >= 15) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; zetCta(false); }
+        else if (aantalRitten >= 8) { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; zetCta(true); }
+        else { ftpBetrouw.textContent = 'laag'; ftpBetrouw.style.color = 'var(--rood)'; zetCta(true); }
       }
     }
 
@@ -1824,14 +1839,16 @@ function toonRapport(data, analyse) {
     if(label) label.textContent = 'Omslagpunt: Jouw drempelhartslag';
     if(subtitel) subtitel.textContent = 'Je hartslagzones zijn berekend op basis van deze waarde';
     if(eenheid) eenheid.textContent = 'BPM';
-    if(ctaTekst) ctaTekst.textContent = 'GEEN VELDTEST NODIG';
     if(ftpGetal) ftpGetal.textContent = data.omslagpunt;
     if(ftpRittenAantal) ftpRittenAantal.textContent = aantalRitten;
     if(ftpBetrouw) {
       const bron = data.omslagpuntBetrouwbaarheid;
-      if (bron === 'hoog' && aantalRitten >= 8) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; }
-      else if (bron === 'hoog') { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; }
-      else { ftpBetrouw.textContent = 'schatting'; ftpBetrouw.style.color = 'var(--oranje)'; }
+      // CTA volgt de betrouwbaarheid, net als het vermogen-spoor: 'geen veldtest
+      // nodig' alleen bij een hoog-geverifieerd omslagpunt, anders juist aansporen.
+      const zetCta = (testNodig) => { if (ctaTekst) ctaTekst.textContent = testNodig ? 'DOE EEN VELDTEST' : 'GEEN VELDTEST NODIG'; };
+      if (bron === 'hoog' && aantalRitten >= 8) { ftpBetrouw.textContent = 'hoog'; ftpBetrouw.style.color = 'var(--groen)'; zetCta(false); }
+      else if (bron === 'hoog') { ftpBetrouw.textContent = 'gemiddeld'; ftpBetrouw.style.color = 'var(--oranje)'; zetCta(true); }
+      else { ftpBetrouw.textContent = 'schatting'; ftpBetrouw.style.color = 'var(--oranje)'; zetCta(true); }
     }
     // De handmatige FTP-correctie vraagt om watt en slaat nergens op zonder
     // vermogen: die verbergen we voor de hartslag-renner.
