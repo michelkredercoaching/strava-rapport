@@ -607,7 +607,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
           <svg width="11" height="11" viewBox="0 0 24 24" fill="var(--oranje)"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
           <span id="detectieBadgeTekst">FTP Gedetecteerd</span>
         </div>
-        <div style="background:rgba(46,125,79,0.15);border:1px solid rgba(46,125,79,0.3);border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;color:#4caf80;letter-spacing:1px;">✓ GEVONDEN</div>
+        <div id="gevondenPill" style="background:rgba(46,125,79,0.15);border:1px solid rgba(46,125,79,0.3);border-radius:20px;padding:3px 10px;font-size:9px;font-weight:700;color:#4caf80;letter-spacing:1px;">✓ GEVONDEN</div>
       </div>
 
       <!-- Geblurd FTP getal -->
@@ -641,6 +641,11 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
         <div style="display:flex;flex-direction:column;gap:4px;" id="ftpZonesList"></div>
       </div>
 
+    </div>
+
+    <!-- Eerlijke heads-up bij zwakke data — alleen zichtbaar als betrouwbaarheid niet 'hoog' is (JS zet display) -->
+    <div id="ondergrensMelding" style="display:none;width:100%;max-width:340px;background:rgba(230,126,34,0.08);border:1px solid rgba(230,126,34,0.28);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;line-height:1.55;color:rgba(255,255,255,0.78);text-align:left;">
+      <strong style="color:var(--oranje);">Let op.</strong> <span id="ondergrensTekst">In je recente ritten zien we geen volle inspanning. Je krijgt daarom een voorzichtige ondergrens, plus precies wat je moet rijden om je échte top te zien.</span>
     </div>
 
     <!-- Wat je nog meer krijgt -->
@@ -1395,14 +1400,61 @@ function toonZonesScherm(data) {
   const heeftVermogen = !!data.heeftVermogensmeter;
   const placeholder = heeftVermogen ? 250 : 158;            // geblurde placeholder: watt vs bpm
 
+  // ===== BETROUWBAARHEID bepalen (stuurt kop, badge, pill én de eerlijke heads-up) =====
+  // Bron uit de preview: FTP-spoor gebruikt ftpBetrouwbaarheid, HR-spoor het
+  // omslagpuntBetrouwbaarheid. Een schatting zonder stream-data is 'laag', ook
+  // al zijn er veel ritten. Alleen bij 'hoog' beloven we exactheid ("gevonden");
+  // anders is de waarde een ONDERgrens en zeggen we dat eerlijk vóór de betaling.
+  const betrouwBron = heeftVermogen ? data.ftpBetrouwbaarheid : data.omslagpuntBetrouwbaarheid;
+  let betrouwTekst, betrouwKleur;
+  if (betrouwBron === 'laag') { betrouwTekst = 'schatting'; betrouwKleur = 'var(--oranje)'; }
+  else if (betrouwBron === 'hoog' && aantalRitten >= 8) { betrouwTekst = 'hoog'; betrouwKleur = 'var(--groen)'; }
+  else if (betrouwBron === 'gemiddeld') { betrouwTekst = 'gemiddeld'; betrouwKleur = 'var(--oranje)'; }
+  else if (aantalRitten >= 15) { betrouwTekst = 'hoog'; betrouwKleur = 'var(--groen)'; }
+  else if (aantalRitten >= 8) { betrouwTekst = 'gemiddeld'; betrouwKleur = 'var(--oranje)'; }
+  else { betrouwTekst = 'laag'; betrouwKleur = 'var(--rood)'; }
+  const isHoog = betrouwTekst === 'hoog';
+  const kern = heeftVermogen ? 'FTP' : 'omslagpunt';
+
   const verfijnTitel = document.getElementById('verfijnTitel');
-  if (verfijnTitel) verfijnTitel.innerHTML = heeftVermogen
-    ? 'Wij hebben jouw<br>FTP gevonden.'
-    : 'Wij hebben jouw<br>omslagpunt gevonden.';
+  if (verfijnTitel) verfijnTitel.innerHTML = isHoog
+    ? `Wij hebben jouw<br>${kern} gevonden.`
+    : `Wij hebben jouw<br>${kern} geschat.`;
   const detectieBadge = document.getElementById('detectieBadgeTekst');
-  if (detectieBadge) detectieBadge.textContent = heeftVermogen ? 'FTP Gedetecteerd' : 'Omslagpunt Gedetecteerd';
+  if (detectieBadge) detectieBadge.textContent = `${heeftVermogen ? 'FTP' : 'Omslagpunt'} ${isHoog ? 'Gedetecteerd' : 'Geschat'}`;
   const detectieEenheid = document.getElementById('detectieEenheid');
   if (detectieEenheid) detectieEenheid.textContent = heeftVermogen ? 'WATT' : 'BPM';
+
+  // Groene "GEVONDEN"-pill alleen bij 'hoog'. Anders neutraal oranje "SCHATTING",
+  // zodat de kaart niet meer zekerheid uitstraalt dan de data toelaat.
+  const gevondenPill = document.getElementById('gevondenPill');
+  if (gevondenPill) {
+    if (isHoog) {
+      gevondenPill.textContent = '✓ GEVONDEN';
+      gevondenPill.style.color = '#4caf80';
+      gevondenPill.style.background = 'rgba(46,125,79,0.15)';
+      gevondenPill.style.borderColor = 'rgba(46,125,79,0.3)';
+    } else {
+      gevondenPill.textContent = '≈ SCHATTING';
+      gevondenPill.style.color = 'var(--oranje)';
+      gevondenPill.style.background = 'rgba(230,126,34,0.12)';
+      gevondenPill.style.borderColor = 'rgba(230,126,34,0.3)';
+    }
+  }
+
+  // Eerlijke heads-up onder de kaart: alleen tonen als de waarde géén 'hoog' is
+  // (dan is 't een ondergrens). Zet de tekst spoor-bewust.
+  const ondergrensMelding = document.getElementById('ondergrensMelding');
+  if (ondergrensMelding) {
+    ondergrensMelding.style.display = isHoog ? 'none' : 'block';
+    const ondergrensTekst = document.getElementById('ondergrensTekst');
+    if (ondergrensTekst && !isHoog) {
+      ondergrensTekst.textContent = heeftVermogen
+        ? 'In je recente ritten zien we geen volle inspanning. Je krijgt daarom een voorzichtige ondergrens voor je FTP, plus precies welke test je échte top laat zien.'
+        : 'In je recente ritten zien we geen volle inspanning. Je krijgt daarom een voorzichtige ondergrens voor je omslagpunt, plus precies wat je moet rijden om je échte top te zien.';
+    }
+  }
+
   // Subregel HR-bewust maken. Draait ná toonKortingPrijzen(), dus we lezen de
   // actuele prijs uit prijsHero zodat een persoonlijke korting behouden blijft.
   const verfijnSub = document.getElementById('prijsVerfijnSub');
@@ -1417,18 +1469,7 @@ function toonZonesScherm(data) {
   const ftpBetrouwS3c = document.getElementById('ftpBetrouwS3c');
   if (detectieWaarde) detectieWaarde.textContent = placeholder;
   if (ftpRittenTekst) ftpRittenTekst.textContent = aantalRitten;
-  // Betrouwbaarheid op de DATABRON uit de preview: FTP-spoor gebruikt
-  // ftpBetrouwbaarheid, HR-spoor het omslagpuntBetrouwbaarheid. Een schatting
-  // zonder stream-data is 'laag', ook al zijn er veel ritten.
-  if (ftpBetrouwS3c) {
-    const bron = heeftVermogen ? data.ftpBetrouwbaarheid : data.omslagpuntBetrouwbaarheid;
-    if (bron === 'laag') { ftpBetrouwS3c.textContent = 'schatting'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
-    else if (bron === 'hoog' && aantalRitten >= 8) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
-    else if (bron === 'gemiddeld') { ftpBetrouwS3c.textContent = 'gemiddeld'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
-    else if (aantalRitten >= 15) { ftpBetrouwS3c.textContent = 'hoog'; ftpBetrouwS3c.style.color = 'var(--groen)'; }
-    else if (aantalRitten >= 8) { ftpBetrouwS3c.textContent = 'gemiddeld'; ftpBetrouwS3c.style.color = 'var(--oranje)'; }
-    else { ftpBetrouwS3c.textContent = 'laag'; ftpBetrouwS3c.style.color = 'var(--rood)'; }
-  }
+  if (ftpBetrouwS3c) { ftpBetrouwS3c.textContent = betrouwTekst; ftpBetrouwS3c.style.color = betrouwKleur; }
 
   // Geblurde zone-preview (puur cosmetisch): 6 vermogenszones in %FTP, of
   // 5 hartslagzones in %omslagpunt.
