@@ -315,7 +315,17 @@ export default async function handler(req, res) {
         html: gratisTrainingHtml(b.naam, GT_PDF_URL, gtDownloadUrl, gtMeetmethode),
       });
       console.log('Gratis-training OK:', email, '| meetmethode:', gtMeetmethode);
-      return res.status(200).json({ ok: true, downloadUrl: gtDownloadUrl, meetmethode: gtMeetmethode });
+      // De PDF is de hoofd-download (opent overal). downloadUrl valt terug op
+      // het .fit-bestand zolang er nog geen PDF-URL is ingesteld. pdfUrl en
+      // fitUrl geven we los mee zodat de pagina de PDF vooropzet en de .fit als
+      // klein extra kan tonen.
+      return res.status(200).json({
+        ok: true,
+        downloadUrl: GT_PDF_URL || gtDownloadUrl,
+        pdfUrl: GT_PDF_URL,
+        fitUrl: gtDownloadUrl,
+        meetmethode: gtMeetmethode,
+      });
     }
 
     // 3) Coaching-inschrijving: notificatie naar Michel + bevestiging naar de lead.
