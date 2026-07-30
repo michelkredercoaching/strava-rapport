@@ -35,6 +35,10 @@ const TAG_GRATIS   = 'gratis-training';
 // Zelfde truc als in lead.js.
 const GT_URL_VERMOGEN = process.env.GRATIS_TRAINING_URL_VERMOGEN || process.env.GRATIS_TRAINING_URL || '';
 const GT_URL_HARTSLAG = process.env.GRATIS_TRAINING_URL_HARTSLAG || process.env.GRATIS_TRAINING_URL || '';
+// De leesbare PDF is het hoofdaanbod (opent op elk apparaat, rijd je zo van je
+// scherm of papier). Universeel, dus één bestand voor vermogen en hartslag. Het
+// .fit-bestand blijft als klein extra voor wie hem op zijn fietscomputer wil.
+const GT_PDF_URL      = process.env.GRATIS_TRAINING_PDF_URL || '';
 const ANALYSE_URL     = 'https://strava-analyse.michelkredercoaching.nl/';
 
 const AFZENDER     = 'Michel Kreder Coaching <rapport@michelkredercoaching.nl>';
@@ -143,28 +147,36 @@ function bevestigingHtml(naam, pakket) {
 // meetmethode: bij vermogen draait het om FTP/watt, bij hartslag om het
 // omslagpunt/HR-zones. In beide gevallen de brug naar de analyse voor wie
 // zijn eigen waarden niet kent.
-function gratisTrainingHtml(naam, url, meetmethode) {
+function gratisTrainingHtml(naam, pdfUrl, fitUrl, meetmethode) {
   const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
   const isVermogen = meetmethode !== 'hartslag';
   const waarde  = isVermogen ? 'FTP' : 'omslagpunt';
   const eenheid = isVermogen ? 'de watt-doelen' : 'de hartslagzones';
-  const onthoud = isVermogen
-    ? 'de blokken lopen op watt, dus stel je FTP goed in op je fietscomputer.'
-    : 'de blokken lopen op hartslag, dus stel je zones goed in op je fietscomputer.';
+
+  // De PDF is het hoofdaanbod: die opent iedereen zonder gedoe. Valt de PDF-URL
+  // (nog) weg, dan gebruiken we het .fit-bestand als knop zodat er nooit een
+  // dode link in de mail staat.
+  const heroUrl = pdfUrl || fitUrl;
+
+  // Het .fit-bestand tonen we alleen als klein extra wanneer we ook een echte
+  // PDF hebben. Zonder PDF is het .fit al de hoofdknop hierboven.
+  const fitBlok = (pdfUrl && fitUrl) ? `
+    <div style="border-top:1px solid #eee;padding-top:16px;margin:0 0 18px;">
+      <p style="font-size:14px;margin:0 0 6px;color:#444;"><strong>Liever automatisch op je fietscomputer?</strong> Download dan ook <a href="${escHtml(fitUrl)}" style="color:#ff6b1a;font-weight:700;">het trainingsbestand (.fit)</a>.</p>
+      <ul style="font-size:13px;margin:0;padding-left:20px;color:#555;">
+        <li style="margin:0 0 4px;"><strong>TrainingPeaks:</strong> zet het bij een dag in je agenda, dan gaat hij vanzelf naar je fietscomputer. Werkt ook vanaf je telefoon.</li>
+        <li style="margin:0 0 4px;"><strong>Garmin:</strong> importeer het via Garmin Connect op je computer (Training, Workouts, Importeren) en stuur het naar je toestel.</li>
+      </ul>
+    </div>` : '';
 
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
     <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
-    <p style="font-size:15px;margin:0 0 14px;">Hier is je gratis training (${escHtml(isVermogen ? 'vermogen' : 'hartslag')}-versie). Klik op de knop om het bestand te downloaden.</p>
+    <p style="font-size:15px;margin:0 0 14px;">Hier is je gratis training. Klik op de knop, dan opent hij meteen. Je kunt hem zo van je scherm of van papier rijden, alle blokjes staan er netjes in.</p>
     <p style="margin:0 0 20px;">
-      <a href="${escHtml(url)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Download je training</a>
+      <a href="${escHtml(heroUrl)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Download je training</a>
     </p>
-    <p style="font-size:15px;margin:0 0 6px;"><strong>Hoe laad je hem in?</strong></p>
-    <ul style="font-size:15px;margin:0 0 14px;padding-left:20px;">
-      <li style="margin:0 0 6px;"><strong>Garmin of Wahoo:</strong> importeer het bestand in Garmin Connect (Training &gt; Workouts) en stuur het naar je fietscomputer.</li>
-      <li style="margin:0 0 6px;"><strong>TrainingPeaks:</strong> upload het bestand bij een geplande dag in je agenda.</li>
-      <li style="margin:0 0 6px;"><strong>Onthoud:</strong> ${onthoud}</li>
-    </ul>
+    ${fitBlok}
     <div style="margin:22px 0;padding:22px;background:#0d0d0d;border-radius:12px;">
       <p style="font-size:12px;font-weight:800;color:#ff6b1a;letter-spacing:1.5px;margin:0 0 10px;text-transform:uppercase;">Aanbevolen eerste stap</p>
       <p style="font-size:18px;line-height:1.4;color:#ffffff;margin:0 0 8px;font-weight:800;">Weet je je ${waarde} nog niet?</p>
@@ -300,7 +312,7 @@ export default async function handler(req, res) {
       await stuurMail({
         from: AFZENDER, to: email, reply_to: REPLY_TO,
         subject: 'Je gratis training staat klaar',
-        html: gratisTrainingHtml(b.naam, gtDownloadUrl, gtMeetmethode),
+        html: gratisTrainingHtml(b.naam, GT_PDF_URL, gtDownloadUrl, gtMeetmethode),
       });
       console.log('Gratis-training OK:', email, '| meetmethode:', gtMeetmethode);
       return res.status(200).json({ ok: true, downloadUrl: gtDownloadUrl, meetmethode: gtMeetmethode });
