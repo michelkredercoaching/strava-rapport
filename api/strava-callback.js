@@ -761,16 +761,39 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     a.device_watts === true || (streamMap[a.id]?.watts?.data)
   ).length;
   const powerDekking = fietsritten90.length ? rittenMetEchtePower / fietsritten90.length : 0;
+
+  // Heeft het hartslag-spoor überhaupt data om op te draaien? Zonder ook maar één
+  // rit met average_heartrate én zonder HR-stream voor het omslagpunt levert de
+  // zone-analyse [0,0,0,0,0] op → de diff-correctie (zie zonesPct) dumpt de volle
+  // 100% in "Herstel" en we verkopen een verzonnen rapport (Marcel-case, juli
+  // 2026: 33% powerdekking → HR-spoor, maar géén HR-data → 100% herstel, 0
+  // kwaliteitssessies, omslagpunt enkel een schatting).
+  const hrSpoorHeeftBasis = gemHr != null || omslagpuntBron === 'stream';
+
   // Een gevonden FTP is niet genoeg: normaal eist het vermogen-spoor 60% dekking
   // zodat één losse power-rit het rapport niet kaapt. MAAR een FTP die uit échte
   // per-seconde stream-data komt (heeftPowerStream) is betrouwbaar; die mag met
   // minder dekking al op vermogen — anders belandt een sporter met gemengde data
   // (buiten mét meter, binnen zonder) onterecht op het hartslag-spoor.
+  //
+  // HOMETRAINER-RIJDER: wie buiten zonder meter rijdt maar regelmatig binnen mét
+  // vermogen traint, haalt die 40% dekking niet, terwijl z'n FTP wél op meerdere
+  // échte power-sessies rust. Daarom mag het vermogen-spoor ook bij lagere dekking
+  // (≥ 20%) zolang er GENOEG echte power-ritten zijn (≥ MIN_POWER_RITTEN). De
+  // dominantie-filter hierboven gooit een enkele uitschieter er al uit, dus met
+  // meerdere power-ritten kan één losse rit het rapport niet kapen.
+  //
+  // EN (Marcel-fix): heeft de sporter een échte stream-FTP terwijl het HR-spoor
+  // géén basis heeft, dan is een powerrapport met lagere dekking altijd beter dan
+  // een leeg (verzonnen) hartslagrapport → dan tóch vermogen, ongeacht dekking.
+  const MIN_POWER_RITTEN = 3;   // minimum aantal échte power-ritten voor lage-dekking-vermogen
   const gebruikVermogen = !!(ftp && (
     powerDekking >= 0.60 ||
-    (heeftPowerStream && powerDekking >= 0.40)
+    (heeftPowerStream && powerDekking >= 0.40) ||
+    (heeftPowerStream && powerDekking >= 0.20 && aantalRittenMetStream >= MIN_POWER_RITTEN) ||
+    (heeftPowerStream && !hrSpoorHeeftBasis)
   ));
-  console.log(`Spoor: ${gebruikVermogen ? 'VERMOGEN' : 'HARTSLAG'} · dekking ${Math.round(powerDekking * 100)}% (${rittenMetEchtePower}/${fietsritten90.length}) · ftp ${ftp || '-'}W · stream ${heeftPowerStream ? 'ja' : 'nee'}`);
+  console.log(`Spoor: ${gebruikVermogen ? 'VERMOGEN' : 'HARTSLAG'} · dekking ${Math.round(powerDekking * 100)}% (${rittenMetEchtePower}/${fietsritten90.length}) · ftp ${ftp || '-'}W · stream ${heeftPowerStream ? 'ja' : 'nee'} · hr-basis ${hrSpoorHeeftBasis ? 'ja' : 'nee'}`);
 
   // ===== ZONE ANALYSE =====
   let zones = [0, 0, 0, 0, 0, 0];
