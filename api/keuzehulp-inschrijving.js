@@ -25,9 +25,10 @@ const MC_KEY  = process.env.MAILCHIMP_API_KEY;      // ...-usXX
 const MC_LIST = process.env.MAILCHIMP_LIST_ID;
 const MC_DC   = MC_KEY ? MC_KEY.split('-')[1] : null;
 
-const TAG_SCHEMA   = 'keuzehulp-gedaan';
-const TAG_COACHING = 'keuzehulp-coaching';
-const TAG_GRATIS   = 'gratis-training';
+const TAG_SCHEMA      = 'keuzehulp-gedaan';
+const TAG_COACHING    = 'keuzehulp-coaching';
+const TAG_GRATIS      = 'gratis-training';
+const TAG_BEGELEIDING = 'begeleiding-aanvraag';
 
 // ===== Gratis-training lead magnet (route 'gratis-training') =====
 // Woont bewust in dit endpoint en niet in een eigen /api/gratis-training.js:
@@ -44,6 +45,13 @@ const ANALYSE_URL     = 'https://strava-analyse.michelkredercoaching.nl/';
 const AFZENDER     = 'Michel Kreder Coaching <rapport@michelkredercoaching.nl>';
 const REPLY_TO     = 'info@michelkredercoaching.nl';
 const INTERNE_MAIL = 'michel.kredercoaching@gmail.com';
+
+// Persoonlijke TrainingPeaks-link waarmee een nieuwe klant Michel als coach
+// koppelt. Staat in de onboarding-mail van de begeleiding-route.
+const TP_COACH_LINK = process.env.TP_COACH_LINK
+  || 'https://home.trainingpeaks.com/attachtocoach?sharedKey=WVUCQ5NS247P2';
+const TP_ANDROID = 'https://play.google.com/store/apps/details?id=com.peaksware.trainingpeaks';
+const TP_APPLE   = 'https://apps.apple.com/app/id408047715';
 
 // ===== Kortingstoken voor nurture-mail 5 (€10 op elk schema) =====
 // Zelfde HMAC-aanpak als het Power Profile-tegoed, maar met 'kh10' als
@@ -129,6 +137,38 @@ function interneCoachingHtml(b) {
   </div>`);
 }
 
+// Volledige inschrijving via de begeleiding-inschrijfpagina's
+// (/trainingsbegeleiding-inschrijven/ en de premium-variant). Toont alle
+// ingevulde velden zodat Michel de aanvraag meteen kan verwerken.
+function interneBegeleidingHtml(b) {
+  const r = (label, val) => `<tr><td style="padding:5px 16px 5px 0;color:#666;vertical-align:top;white-space:nowrap;">${label}</td><td style="padding:5px 0;font-weight:700;">${escHtml(val || '—')}</td></tr>`;
+  const blok = (label, val) => val ? `<p style="margin:16px 0 4px;color:#666;">${label}</p><p style="margin:0;padding:10px 14px;border-radius:6px;background:#f5f5f5;font-size:15px;white-space:pre-wrap;">${escHtml(val)}</p>` : '';
+  return naarHtmlEntities(`
+  <div style="font-family:Arial,sans-serif;color:#111;line-height:1.6;">
+    <h2 style="margin:0 0 4px;">🚴 Nieuwe inschrijving trainingsbegeleiding</h2>
+    <p style="margin:0 0 16px;color:#666;">${escHtml(b.pakket || 'Begeleiding')} · reageer binnen 24 uur</p>
+    <table style="border-collapse:collapse;font-size:15px;">
+      ${r('Naam', b.naam)}
+      ${r('E-mail', b.email)}
+      ${r('Telefoon', b.telefoon)}
+      ${r('Geboortedatum', b.geboortedatum)}
+      ${r('Adres', b.adres)}
+      ${r('Postcode', b.postcode)}
+      ${r('Woonplaats', b.woonplaats)}
+      ${r('Pakket', b.pakket)}
+      ${r('Meetmethode', b.meetmethode)}
+      ${r('Omslagpunt/FTP', b.ftp)}
+      ${r('Trainingen per week', b.frequentie)}
+      ${r('Uren per week', b.uren)}
+      ${r('Rijdt wedstrijden', b.wedstrijden)}
+      ${r('Cadeaubon', b.cadeaubon)}
+      ${r('Gevonden via', b.gevonden)}
+    </table>
+    ${blok('Doel:', b.doel)}
+    ${blok('Opmerkingen:', b.opmerkingen)}
+  </div>`);
+}
+
 function bevestigingHtml(naam, pakket) {
   const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
   const pakketTxt = pakket ? `voor <strong>${escHtml(pakket)}</strong> ` : '';
@@ -139,6 +179,106 @@ function bevestigingHtml(naam, pakket) {
     <p style="font-size:15px;margin:0 0 14px;">Ik neem persoonlijk contact met je op voor een <strong>intakegesprek</strong>. Daarin nemen we je doelen door, kijk ik naar je huidige training en bespreken we hoe we samen aan de slag gaan. Je hoeft nu verder niets te doen.</p>
     <p style="font-size:15px;margin:0 0 18px;">Wil je alvast iets kwijt over je situatie of je doelen? Reageer gewoon op deze mail, ik lees alles zelf.</p>
     <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
+// Onboarding-mail voor een nieuwe begeleidingsklant. Bevestigt de
+// inschrijving en geeft meteen de vliegende start: TrainingPeaks aanmaken,
+// Michel als coach koppelen, en het eigen toestel of app (Garmin, Wahoo,
+// Zwift, Rouvy) koppelen en synchroniseren. Onderaan een overzicht van de
+// inschrijving zodat de klant ziet wat is doorgegeven.
+function onboardingBegeleidingHtml(b) {
+  const veiligeNaam = escHtml((b.naam || '').trim() || 'renner');
+  const stap = (nr, titel) =>
+    `<tr><td style="padding:0 12px 0 0;vertical-align:top;"><div style="width:30px;height:30px;border-radius:50%;background:#FF6B00;color:#fff;font-weight:800;font-size:15px;text-align:center;line-height:30px;">${nr}</div></td><td style="padding:0 0 2px;"><p style="margin:0;font-size:16px;font-weight:800;color:#1a1a1a;">${titel}</p></td></tr>`;
+
+  // Overzichtsregel: alleen tonen wat is ingevuld.
+  const r = (label, val) => val ? `<tr><td style="padding:4px 16px 4px 0;color:#777;vertical-align:top;white-space:nowrap;">${label}</td><td style="padding:4px 0;color:#1a1a1a;font-weight:600;">${escHtml(val)}</td></tr>` : '';
+
+  const koppelBlok = (naam, stappen) => `
+    <div style="border:1px solid #eee;border-radius:10px;padding:16px 18px;margin:0 0 12px;">
+      <p style="margin:0 0 8px;font-size:15px;font-weight:800;color:#1a1a1a;">${naam}</p>
+      <ol style="margin:0;padding-left:18px;font-size:14px;color:#444;line-height:1.6;">
+        ${stappen.map(s => `<li style="margin:0 0 4px;">${s}</li>`).join('')}
+      </ol>
+    </div>`;
+
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:600px;">
+    <p style="font-size:16px;margin:0 0 14px;">Beste ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 14px;">Bedankt voor je inschrijving en je interesse in trainingsbegeleiding. Wat leuk dat je erbij komt. Hieronder zet ik precies op een rij hoe we een vliegende start maken, zodat alles klaarstaat voor onze eerste belafspraak.</p>
+
+    <table style="border-collapse:collapse;margin:22px 0 6px;"><tbody>
+      ${stap('1', 'Maak je gratis TrainingPeaks account aan')}
+    </tbody></table>
+    <p style="font-size:15px;margin:0 0 12px;">Download de app en maak een gratis account aan:</p>
+    <p style="margin:0 0 18px;">
+      <a href="${TP_ANDROID}" style="display:inline-block;background:#0d0d0d;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:11px 18px;border-radius:8px;margin:0 8px 8px 0;">Android downloaden</a>
+      <a href="${TP_APPLE}" style="display:inline-block;background:#0d0d0d;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:11px 18px;border-radius:8px;margin:0 0 8px 0;">Apple downloaden</a>
+    </p>
+
+    <table style="border-collapse:collapse;margin:14px 0 6px;"><tbody>
+      ${stap('2', 'Koppel mij als jouw coach')}
+    </tbody></table>
+    <p style="font-size:15px;margin:0 0 12px;">Is je account gelukt? Klik dan op de knop hieronder, dan accepteer je mij als coach in TrainingPeaks:</p>
+    <p style="margin:0 0 18px;">
+      <a href="${TP_COACH_LINK}" style="display:inline-block;background:#FF6B00;color:#fff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 28px;border-radius:8px;">Koppel Michel als coach</a>
+    </p>
+
+    <table style="border-collapse:collapse;margin:14px 0 10px;"><tbody>
+      ${stap('3', 'Koppel je fietscomputer of app')}
+    </tbody></table>
+    <p style="font-size:15px;margin:0 0 14px;">TrainingPeaks is de spil. Koppel je toestel of app er één keer aan, dan verschijnen je geplande trainingen automatisch op je apparaat en komen je gereden ritten vanzelf terug in TrainingPeaks. Kies wat jij gebruikt:</p>
+
+    ${koppelBlok('Garmin', [
+      'Maak (of gebruik) je gratis Garmin Connect account.',
+      'Ga in TrainingPeaks naar je accountinstellingen en kies bij de koppelingen Garmin Connect. Log in en geef toestemming.',
+      'Je geplande trainingen verschijnen dan via Garmin Connect op je Garmin, en je ritten uploaden vanzelf terug naar TrainingPeaks.'
+    ])}
+    ${koppelBlok('Wahoo', [
+      'Open de Wahoo app (ELEMNT) op je telefoon.',
+      'Ga naar de instellingen en kies Authorized Apps, oftewel gekoppelde apps.',
+      'Koppel TrainingPeaks en log in. Je geplande trainingen staan dan klaar op je Wahoo en je ritten komen terug in TrainingPeaks.'
+    ])}
+    ${koppelBlok('Zwift', [
+      'Ga in Zwift naar Settings en dan Connections.',
+      'Koppel TrainingPeaks en geef toestemming.',
+      'Je trainingen uit TrainingPeaks staan dan in Zwift onder Workouts, en je ritten synchroniseren terug naar TrainingPeaks.'
+    ])}
+    ${koppelBlok('Rouvy', [
+      'Open Rouvy en ga naar je profiel en dan de instellingen of Connections.',
+      'Koppel TrainingPeaks en geef toestemming.',
+      'Je geplande trainingen synchroniseren dan naar Rouvy en je ritten weer terug naar TrainingPeaks.'
+    ])}
+
+    <p style="font-size:15px;margin:18px 0 14px;">Heb je de afgelopen weken of maanden al trainingsdata geregistreerd? Upload die dan in je TrainingPeaks account, dan zie ik meteen waar je nu staat. Heb je dat niet, geen probleem, dat bespreken we samen zodat je alsnog een goede start maakt.</p>
+
+    <p style="font-size:15px;margin:0 0 14px;">Ik neem zo snel mogelijk contact met je op, binnen 1 tot 3 werkdagen, om onze eerste belafspraak in te plannen. Ik kijk ernaar uit om je te mogen begeleiden. Heb je nog vragen, reageer gerust op deze mail.</p>
+
+    <p style="font-size:14px;margin:18px 0 0;color:#555;">Met vriendelijke groet,<br><strong style="color:#1a1a1a;">Michel Kreder</strong><br>06 39771314<br><a href="https://www.michelkredercoaching.nl" style="color:#FF6B00;">www.michelkredercoaching.nl</a></p>
+
+    <div style="margin:26px 0 0;padding:20px 22px;background:#f6f6f6;border-radius:10px;">
+      <p style="margin:0 0 10px;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#888;">Overzicht van je inschrijving</p>
+      <table style="border-collapse:collapse;font-size:14px;"><tbody>
+        ${r('Naam', b.naam)}
+        ${r('Geboortedatum', b.geboortedatum)}
+        ${r('Adres', b.adres)}
+        ${r('Postcode', b.postcode)}
+        ${r('Woonplaats', b.woonplaats)}
+        ${r('Telefoon', b.telefoon)}
+        ${r('E-mail', b.email)}
+        ${r('Pakket', b.pakket)}
+        ${r('Vermogen of hartslag', b.meetmethode)}
+        ${r('Omslagpunt/FTP', b.ftp)}
+        ${r('Trainingen per week', b.frequentie)}
+        ${r('Uren per week', b.uren)}
+        ${r('Doel', b.doel)}
+        ${r('Opmerkingen', b.opmerkingen)}
+        ${r('Cadeaubon', b.cadeaubon)}
+        ${r('Gevonden via', b.gevonden)}
+      </tbody></table>
+    </div>
   </div>`;
   return naarHtmlEntities(html);
 }
@@ -233,6 +373,7 @@ export default async function handler(req, res) {
   }
 
   const route = b.route === 'coaching'        ? 'coaching'
+              : b.route === 'begeleiding'     ? 'begeleiding'
               : b.route === 'gratis-training' ? 'gratis-training'
               :                                 'schema';
 
@@ -282,6 +423,13 @@ export default async function handler(req, res) {
   // kan vertakken (vermogen of hartslag).
   if (route === 'gratis-training') merge.MEETMETH = gtMeetmethode;
 
+  // Begeleiding-inschrijving: pakket vastleggen + meetmethode, zodat Michel
+  // in Mailchimp ziet welk pakket en (indien ingevuld) waarop iemand traint.
+  if (route === 'begeleiding') {
+    if (b.pakket)      merge.KHPAKKET = String(b.pakket);
+    if (b.meetmethode) merge.MEETMETH = String(b.meetmethode);
+  }
+
   try {
     // 1) Contact toevoegen of bijwerken (PUT = upsert).
     const upsert = (velden) => fetch(`${base}/members/${hash}`, {
@@ -312,6 +460,7 @@ export default async function handler(req, res) {
 
     // 2) Journey-tag per route.
     const tag = route === 'coaching'        ? TAG_COACHING
+              : route === 'begeleiding'     ? TAG_BEGELEIDING
               : route === 'gratis-training' ? TAG_GRATIS
               :                               TAG_SCHEMA;
     await hertag(base, headers, hash, tag);
@@ -352,6 +501,23 @@ export default async function handler(req, res) {
         from: AFZENDER, to: email, reply_to: REPLY_TO,
         subject: 'Je aanvraag is binnen — we plannen een intakegesprek',
         html: bevestigingHtml(b.naam, b.pakket),
+      });
+    }
+
+    // 3b) Volledige begeleiding-inschrijving: alle gegevens naar Michel +
+    //     warme bevestiging naar de klant. Zelfde mailpatroon als coaching,
+    //     maar met het complete inschrijfformulier.
+    if (route === 'begeleiding') {
+      await stuurMail({
+        from: AFZENDER, to: INTERNE_MAIL,
+        reply_to: email,
+        subject: `🚴 Inschrijving begeleiding: ${String(b.naam || email)} · ${String(b.pakket || 'begeleiding')}`,
+        html: interneBegeleidingHtml(b),
+      });
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: 'Welkom bij Michel Kreder Coaching, zo maken we een vliegende start',
+        html: onboardingBegeleidingHtml({ ...b, email }),
       });
     }
 
