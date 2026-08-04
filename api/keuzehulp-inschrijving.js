@@ -162,11 +162,21 @@ function gratisTrainingHtml(naam, pdfUrl, fitUrl, meetmethode) {
   // PDF hebben. Zonder PDF is het .fit al de hoofdknop hierboven.
   const fitBlok = (pdfUrl && fitUrl) ? `
     <div style="border-top:1px solid #eee;padding-top:16px;margin:0 0 18px;">
-      <p style="font-size:14px;margin:0 0 6px;color:#444;"><strong>Liever automatisch op je fietscomputer?</strong> Download dan ook <a href="${escHtml(fitUrl)}" style="color:#ff6b1a;font-weight:700;">het trainingsbestand (.fit)</a>.</p>
-      <ul style="font-size:13px;margin:0;padding-left:20px;color:#555;">
-        <li style="margin:0 0 4px;"><strong>TrainingPeaks:</strong> zet het bij een dag in je agenda, dan gaat hij vanzelf naar je fietscomputer. Werkt ook vanaf je telefoon.</li>
-        <li style="margin:0 0 4px;"><strong>Garmin:</strong> importeer het via Garmin Connect op je computer (Training, Workouts, Importeren) en stuur het naar je toestel.</li>
-      </ul>
+      <p style="font-size:14px;margin:0 0 10px;color:#444;"><strong>Liever automatisch op je fietscomputer?</strong> Download dan ook <a href="${escHtml(fitUrl)}" style="color:#ff6b1a;font-weight:700;">het trainingsbestand (.fit)</a>. Zo krijg je hem op je toestel:</p>
+      <p style="font-size:13px;margin:0 0 4px;color:#1a1a1a;"><strong>Op je Garmin</strong> (even via je computer, de telefoon-app kan een training niet inladen):</p>
+      <ol style="font-size:13px;margin:0 0 12px;padding-left:20px;color:#555;">
+        <li style="margin:0 0 4px;">Sluit je Garmin met het usb-kabeltje aan op je computer.</li>
+        <li style="margin:0 0 4px;">Je Garmin verschijnt als een schijf, net als een usb-stick.</li>
+        <li style="margin:0 0 4px;">Open de map Garmin en daarin de map NewFiles, en zet het .fit-bestand daarin.</li>
+        <li style="margin:0 0 4px;">Koppel los. De training staat nu onder Training, Workouts.</li>
+      </ol>
+      <p style="font-size:13px;margin:0 0 4px;color:#1a1a1a;"><strong>Op je Wahoo</strong> (via TrainingPeaks):</p>
+      <ol style="font-size:13px;margin:0;padding-left:20px;color:#555;">
+        <li style="margin:0 0 4px;">Maak een gratis account op TrainingPeaks.</li>
+        <li style="margin:0 0 4px;">Koppel TrainingPeaks in de Wahoo-app onder Authorized Apps.</li>
+        <li style="margin:0 0 4px;">Zet de training in je TrainingPeaks-agenda, dan synct hij vanzelf naar je Wahoo.</li>
+      </ol>
+      <p style="font-size:13px;margin:10px 0 0;color:#888;">Geen zin in gedoe? De pdf blijft de makkelijkste manier: rijd hem gewoon van je scherm of van papier.</p>
     </div>` : '';
 
   const html = `
