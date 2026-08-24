@@ -82,6 +82,27 @@ export default async function handler(req, res) {
   const prijs = q.prijs != null && q.prijs !== '' ? q.prijs : 19;
   const dagen = q.dagen || 14;
   const token = maakKortingToken(prijs, dagen);
+
+  // ===== JSON-ANTWOORD (&json=1) =====
+  // Voor machines in plaats van mensen. De WordPress-snippet die na een
+  // bundelbestelling automatisch een gratis analyse-link mailt, roept dit
+  // adres server-side aan met &prijs=0&json=1 en krijgt hier de link terug.
+  // Bewust in dit bestand en niet in een eigen endpoint: het Hobby-plan van
+  // Vercel staat maximaal 12 serverless functions toe en die zijn allemaal
+  // in gebruik. Zelfde ADMIN_SLEUTEL, dus de sleutel blijft server-side.
+  if (q.json === '1' || q.json === 'true') {
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    if (!token) return res.status(400).json({ ok: false, fout: 'ongeldige prijs (0 t/m 29)' });
+    const basis = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.host}`;
+    return res.status(200).json({
+      ok: true,
+      link: `${basis}/?korting=${token}`,
+      prijs: Number(prijs),
+      dagen: Number(dagen) || 14
+    });
+  }
+
   if (!token) return res.status(400).send('Ongeldige prijs — kies een heel bedrag tussen 0 en 29 (0 = gratis).');
 
   const gratis = Number(prijs) === 0;
