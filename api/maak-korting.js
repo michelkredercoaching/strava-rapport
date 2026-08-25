@@ -72,6 +72,90 @@ async function wooTest(res) {
   return res.status(200).send(regels.join('\n'));
 }
 
+// ===== ADMIN-PANEEL =====
+// Knoppen-pagina waarmee je met 1 klik een verse link maakt. De pagina roept
+// dit endpoint zelf aan via fetch met &json=1 en toont elke link met een
+// kopieerknop. De sleutel leest de pagina uit haar eigen URL, dus die komt niet
+// extra in de HTML-broncode te staan.
+function paneelHtml() {
+  return `<!doctype html>
+<html lang="nl"><head><meta charset="utf-8"><title>Linkgenerator</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<style>
+  *{box-sizing:border-box}
+  body{font-family:Arial,Helvetica,sans-serif;background:#0d0d0d;color:#fafafa;margin:0;padding:28px 16px;}
+  .wrap{max-width:680px;margin:0 auto;}
+  h1{font-size:15px;color:#ff6b1a;letter-spacing:1px;text-transform:uppercase;margin:0 0 6px;}
+  .sub{font-size:13px;color:#9a9a9a;line-height:1.6;margin:0 0 20px;}
+  .knoppen{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+  .groot{flex:1;min-width:180px;background:#ff6b1a;color:#fff;border:0;border-radius:10px;padding:18px;font-size:17px;font-weight:800;cursor:pointer;}
+  .groot.grijs{background:#232323;color:#fafafa;border:1px solid #333;}
+  .groot:active{transform:translateY(1px);}
+  details{background:#141414;border:1px solid #262626;border-radius:10px;padding:12px 16px;margin-bottom:20px;}
+  summary{cursor:pointer;font-size:13px;color:#c8c8c8;}
+  .rij{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-top:14px;}
+  .rij label{font-size:12px;color:#9a9a9a;display:flex;flex-direction:column;gap:4px;}
+  .rij input{background:#0d0d0d;color:#fafafa;border:1px solid #2b2b2b;border-radius:8px;padding:9px;font-size:14px;width:90px;}
+  .rij button{background:#ff6b1a;color:#fff;border:0;border-radius:8px;padding:10px 20px;font-size:14px;font-weight:800;cursor:pointer;}
+  .res{background:#161616;border:1px solid #2b2b2b;border-radius:10px;padding:12px;margin-bottom:10px;}
+  .lab{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#ff6b1a;margin-bottom:8px;}
+  .res .row{display:flex;gap:8px;}
+  .lnk{flex:1;background:#0d0d0d;color:#fafafa;border:1px solid #2b2b2b;border-radius:8px;padding:10px;font-size:12px;}
+  .kop{background:#ff6b1a;color:#fff;border:0;border-radius:8px;padding:0 16px;font-size:13px;font-weight:800;cursor:pointer;white-space:nowrap;}
+</style></head><body>
+<div class="wrap">
+  <h1>Power Profile &mdash; linkgenerator</h1>
+  <p class="sub">Klik en de link staat klaar met kopieerknop. Elke link werkt precies &eacute;&eacute;n keer. Standaard 30 dagen geldig.</p>
+  <div class="knoppen">
+    <button class="groot" onclick="maak(0,30)">🎁 Gratis link</button>
+    <button class="groot grijs" onclick="maak(1,30)">&euro;1 link</button>
+  </div>
+  <details>
+    <summary>Meer opties (eigen bedrag, dagen, meerdere tegelijk)</summary>
+    <div class="rij">
+      <label>Prijs &euro;<input id="p" type="number" min="0" max="29" value="0"></label>
+      <label>Dagen<input id="d" type="number" min="1" max="90" value="30"></label>
+      <label>Aantal<input id="n" type="number" min="1" max="50" value="1"></label>
+      <button onclick="maakCustom()">Maak</button>
+    </div>
+  </details>
+  <div id="uit"></div>
+</div>
+<script>
+  var KEY = new URLSearchParams(location.search).get('sleutel') || '';
+  function rij(link, label){
+    var box=document.createElement('div'); box.className='res';
+    var lab=document.createElement('div'); lab.className='lab'; lab.textContent=label;
+    var row=document.createElement('div'); row.className='row';
+    var inp=document.createElement('input'); inp.readOnly=true; inp.value=link; inp.className='lnk';
+    var btn=document.createElement('button'); btn.className='kop'; btn.textContent='Kopieer';
+    btn.onclick=function(){ navigator.clipboard.writeText(link).then(function(){ btn.textContent='Gekopieerd ✓'; setTimeout(function(){ btn.textContent='Kopieer'; },1500); }); };
+    row.appendChild(inp); row.appendChild(btn); box.appendChild(lab); box.appendChild(row);
+    var uit=document.getElementById('uit'); uit.insertBefore(box, uit.firstChild);
+    inp.focus(); inp.select();
+  }
+  function maak(prijs, dagen, aantal){
+    aantal = aantal || 1;
+    fetch('?sleutel='+encodeURIComponent(KEY)+'&prijs='+prijs+'&dagen='+dagen+'&aantal='+aantal+'&json=1')
+      .then(function(r){ return r.json(); })
+      .then(function(j){
+        if(!j.ok){ alert(j.fout || 'Er ging iets mis'); return; }
+        var label=(Number(prijs)===0?'Gratis':'\\u20ac'+prijs)+' \\u00b7 '+dagen+' dagen';
+        (j.links || [j.link]).forEach(function(l){ rij(l, label); });
+      })
+      .catch(function(e){ alert('Netwerkfout: '+e.message); });
+  }
+  function maakCustom(){
+    var p=+document.getElementById('p').value;
+    var d=+document.getElementById('d').value || 30;
+    var n=+document.getElementById('n').value || 1;
+    maak(p, d, n);
+  }
+</script>
+</body></html>`;
+}
+
 export default async function handler(req, res) {
   const secret = process.env.ADMIN_SLEUTEL || '';
   const q = req.query || {};
@@ -79,35 +163,54 @@ export default async function handler(req, res) {
 
   if (q.test === 'woo') return wooTest(res);
 
+  const basis = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.host}`;
+
+  // Kale ?sleutel=... (of &paneel=1) → toon het knoppen-paneel. Bookmark dit
+  // adres met je sleutel; daarna maak je met 1 klik links. De json/prijs-routes
+  // hieronder blijven werken voor de paneel-fetch en de WordPress-snippet.
+  if (q.paneel === '1' || (q.prijs == null && q.json == null)) {
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    return res.status(200).send(paneelHtml());
+  }
+
+  // ===== LINK(S) MAKEN =====
   const prijs = q.prijs != null && q.prijs !== '' ? q.prijs : 19;
   const dagen = q.dagen || 14;
-  const token = maakKortingToken(prijs, dagen);
+  const aantal = Math.max(1, Math.min(50, Number(q.aantal) || 1));
+  const links = [];
+  for (let i = 0; i < aantal; i++) {
+    const token = maakKortingToken(prijs, dagen);
+    if (token) links.push(`${basis}/?korting=${token}`);
+  }
 
   // ===== JSON-ANTWOORD (&json=1) =====
-  // Voor machines in plaats van mensen. De WordPress-snippet die na een
-  // bundelbestelling automatisch een gratis analyse-link mailt, roept dit
-  // adres server-side aan met &prijs=0&json=1 en krijgt hier de link terug.
+  // Voor machines/het paneel in plaats van een mensenpagina. De WordPress-snippet
+  // die na een bundelbestelling automatisch een gratis analyse-link mailt, roept
+  // dit adres server-side aan met &prijs=0&json=1 en krijgt hier de link terug.
   // Bewust in dit bestand en niet in een eigen endpoint: het Hobby-plan van
-  // Vercel staat maximaal 12 serverless functions toe en die zijn allemaal
-  // in gebruik. Zelfde ADMIN_SLEUTEL, dus de sleutel blijft server-side.
+  // Vercel staat maximaal 12 serverless functions toe en die zijn allemaal in
+  // gebruik. Zelfde ADMIN_SLEUTEL, dus de sleutel blijft server-side.
   if (q.json === '1' || q.json === 'true') {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     res.setHeader('X-Robots-Tag', 'noindex, nofollow');
-    if (!token) return res.status(400).json({ ok: false, fout: 'ongeldige prijs (0 t/m 29)' });
-    const basis = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.host}`;
+    if (!links.length) return res.status(400).json({ ok: false, fout: 'ongeldige prijs (0 t/m 29)' });
     return res.status(200).json({
       ok: true,
-      link: `${basis}/?korting=${token}`,
+      link: links[0],          // eerste link (achterwaarts compatibel met de snippet)
+      links,                   // volledige lijst bij &aantal=
       prijs: Number(prijs),
-      dagen: Number(dagen) || 14
+      dagen: Number(dagen) || 14,
+      gratis: Number(prijs) === 0
     });
   }
 
-  if (!token) return res.status(400).send('Ongeldige prijs — kies een heel bedrag tussen 0 en 29 (0 = gratis).');
+  if (!links.length) return res.status(400).send('Ongeldige prijs — kies een heel bedrag tussen 0 en 29 (0 = gratis).');
 
+  // Losse HTML-linkpagina (bestaande bookmark met &prijs=...). Bij &aantal>1
+  // tonen we de eerste; wie er meerdere wil, gebruikt het paneel.
   const gratis = Number(prijs) === 0;
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${req.headers.host}`;
-  const link = `${baseUrl}/?korting=${token}`;
+  const link = links[0];
 
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   return res.status(200).send(`<!doctype html>
