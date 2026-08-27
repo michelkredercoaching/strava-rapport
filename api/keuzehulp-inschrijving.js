@@ -37,12 +37,12 @@ const TAG_BEGELEIDING = 'begeleiding-aanvraag';
 // Het Startprotocol is de download van De Proeftraining: de nulmeting, de zones én
 // de proeftraining helemaal uitgeschreven, in een vermogen- en een
 // hartslagvariant. Daarmee vervalt het losse .fit-bestand: de training komt nu
-// via een TrainingPeaks-uitnodiging op de fietscomputer, en dat was precies de
+// via de TrainingPeaks-koppellink op de fietscomputer, en dat was precies de
 // klacht die het .fit-bestand veroorzaakte.
 const SP_PDF_VERMOGEN = process.env.PROEFTRAINING_PDF_VERMOGEN
-  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/08/Startprotocol-vermogen-2.pdf';
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/08/Startprotocol-vermogen.pdf';
 const SP_PDF_HARTSLAG = process.env.PROEFTRAINING_PDF_HARTSLAG
-  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/08/Startprotocol-hartslag-2.pdf';
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/08/Startprotocol-hartslag.pdf';
 const ANALYSE_URL     = 'https://strava-analyse.michelkredercoaching.nl/';
 
 const AFZENDER     = 'Michel Kreder Coaching <rapport@michelkredercoaching.nl>';
@@ -141,8 +141,8 @@ function interneCoachingHtml(b) {
 }
 
 // Notificatie naar Michel zodra iemand De Proeftraining aanvraagt. Doel is één
-// oogopslag: wie is binnengekomen, op welk adres moet de TrainingPeaks-
-// uitnodiging, en welke variant van de proeftraining hoort erbij.
+// oogopslag: wie is binnengekomen, welk adres zich zo dadelijk koppelt in
+// TrainingPeaks, en welke variant van de proeftraining hij nodig heeft.
 function interneProeftrainingHtml({ naam, email, meetmethode }) {
   const r = (label, val) => `<tr><td style="padding:5px 16px 5px 0;color:#666;white-space:nowrap;">${label}</td><td style="padding:5px 0;font-weight:700;">${escHtml(val || '—')}</td></tr>`;
   // Kleurtje per variant, zodat je in je inbox in één blik ziet welke versie
