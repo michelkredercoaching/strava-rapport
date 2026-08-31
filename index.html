@@ -908,7 +908,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 
       <!-- Toestand B: gewicht ontbreekt → invoerveld (fallback) -->
       <div id="wkgGewichtInvoer" style="display:none">
-        <div class="wkg-gewicht-hint">Vul je gewicht in om je W/kg te zien én hoe je je verhoudt tot een Tour de France-renner.</div>
+        <div class="wkg-gewicht-hint">Vul je gewicht in om je W/kg te zien én hoe je je verhoudt tot een WorldTour-klassementsrenner.</div>
         <div class="wkg-gewicht-rij">
           <input id="wkgGewichtInput" class="wkg-gewicht-input" type="number" inputmode="decimal" placeholder="bv. 74" min="35" max="200">
           <button type="button" class="wkg-gewicht-btn" onclick="pasGewichtToe()">Toon W/kg</button>
@@ -1908,8 +1908,8 @@ function toonRapport(data, analyse) {
 
 // ===== W/KG LADDER + TOUR-VERGELIJKING =====
 // Tredes op basis van FTP in W/kg — algemene richtwaarden voor mannelijke
-// wielrenners (vrouwen liggen ~10-12% lager). Tour-klimmer-referentie ~6.2 W/kg
-// bij drempel; dat voedt de deelbare "% van een Tour-renner"-hook.
+// wielrenners (vrouwen liggen ~10-12% lager). WorldTour-klassementsrenner-referentie ~6.2 W/kg
+// bij drempel; dat voedt de deelbare "% van een WorldTour-renner"-hook.
 const WKG_TOUR_REF = 6.2;
 const WKG_TREDES = [
   { naam: 'Recreant',            min: 0,   max: 2.5 },
@@ -1956,10 +1956,10 @@ function vulWkg(data) {
   const getalEl = document.getElementById('wkgGetal');
   if (getalEl) getalEl.textContent = wkg.toFixed(1);
 
-  // Share-hook: percentage van een Tour-klimmer.
+  // Share-hook: percentage van een WorldTour-klassementsrenner.
   const pctTour = Math.round((wkg / WKG_TOUR_REF) * 100);
   const tourEl = document.getElementById('wkgTourRegel');
-  if (tourEl) tourEl.innerHTML = `Jij trapt op <span>${pctTour}%</span> van een Tour de France-klimmer (${WKG_TOUR_REF} W/kg bij drempel).`;
+  if (tourEl) tourEl.innerHTML = `Jij trapt op <span>${pctTour}%</span> van een WorldTour-klassementsrenner (${WKG_TOUR_REF} W/kg bij drempel).`;
 
   // Ladder met jouw trede gemarkeerd.
   let actiefIdx = WKG_TREDES.findIndex(t => wkg >= t.min && wkg < t.max);
