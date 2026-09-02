@@ -158,6 +158,37 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .tr-dot{width:2px;height:2px;border-radius:50%;background:rgba(255,255,255,0.15);}
 .ideal-pill{background:#cd0067;color:#fff;font-size:9px;font-weight:800;padding:2px 6px;border-radius:2px;letter-spacing:.5px;}
 
+/* ========== GOOGLE-REVIEWS (witte kaarten, leest als geplakte screenshots) ==========
+   Woordelijk overgenomen van het Google-bedrijfsprofiel. Sterren niet oppoetsen:
+   Frits en Ilona gaven er vier. Een mix van vier en vijf leest geloofwaardiger. */
+.gr-blok{width:100%;max-width:340px;margin:26px auto 0;opacity:0;animation:fadeSlideUp .7s ease .7s both;}
+.gr-head{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:14px;text-decoration:none;}
+.gr-score{font-size:32px;font-weight:900;letter-spacing:-1.5px;color:var(--wit);line-height:1;}
+.gr-head-sterren{display:block;font-size:13px;letter-spacing:2px;color:#FBBC04;text-align:left;}
+.gr-head-meta{display:block;font-size:11px;color:rgba(255,255,255,0.45);margin-top:3px;text-align:left;border-bottom:1px solid rgba(255,255,255,0.18);}
+.gr-rail{display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+  margin:0 -24px;padding:2px 24px 12px;scrollbar-width:none;}
+.gr-rail::-webkit-scrollbar{display:none;}
+.gr{flex:0 0 262px;scroll-snap-align:center;background:#fff;border-radius:12px;padding:16px 16px 18px;
+  box-shadow:0 12px 28px rgba(0,0,0,0.45);text-align:left;}
+.gr-kop{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.gr-foto{width:34px;height:34px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:15px;font-weight:600;flex-shrink:0;}
+.gr-naam{font-size:13px;font-weight:600;color:#1A73E8;line-height:1.3;}
+.gr-meta{font-size:10px;color:#5F6368;margin-top:2px;line-height:1.4;}
+.gr-sterren{font-size:13px;letter-spacing:1.5px;color:#FBBC04;}
+.gr-sterren i{font-style:normal;color:#DADCE0;}
+.gr-chip{display:inline-block;font-size:10px;color:#3C4043;background:#F1F3F4;border-radius:12px;padding:3px 9px;margin-top:9px;}
+.gr-tekst{font-size:12.5px;line-height:1.6;color:#202124;margin-top:9px;}
+.gr-tekst span{display:block;}
+.gr-tekst span+span{margin-top:7px;}
+.gr-swipe{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.25);text-align:center;margin-top:-2px;}
+/* Losse kaart: laadscherm en betaalscherm */
+.gr-solo{width:100%;max-width:340px;margin:0 auto;}
+.gr-solo .gr{flex:none;width:100%;box-shadow:0 10px 24px rgba(0,0,0,0.4);}
+.gr-solo-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.3);
+  text-align:center;margin-bottom:10px;}
+
 /* Fade slide up animatie */
 @keyframes fadeSlideUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
 
@@ -500,12 +531,81 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <span class="tr-dot"></span>
       <div class="tr-item">Vermogens- of hartslagmeter</div>
     </div>
-    <!-- Analyse-review: gaat expliciet over het rapport, niet over een schema -->
-    <div style="max-width:340px;margin:18px auto 0;padding:14px 16px;background:rgba(255,255,255,0.03);border-left:2px solid var(--oranje);border-radius:0 8px 8px 0;text-align:left;">
-      <p style="font-size:13px;color:rgba(255,255,255,0.75);line-height:1.6;font-style:italic;margin-bottom:8px;">"Een mooi en duidelijk rapport, maakt goed duidelijk wat je sterke en zwakke punten zijn."</p>
-      <p style="font-size:11px;color:rgba(255,255,255,0.45);"><span style="color:var(--oranje);letter-spacing:1px;">★★★★★</span>&nbsp; Lakis, via Google</p>
+    <!-- Analyse-reviews: alle vier gaan over het rapport zelf, niet over een schema.
+         Woordelijk van Google, sterren zoals gegeven (Frits en Ilona: vier). -->
+    <div class="gr-blok">
+      <a class="gr-head" href="https://michelkredercoaching.nl/reviews/" target="_blank" rel="noopener">
+        <span class="gr-score">4,9</span>
+        <span>
+          <span class="gr-head-sterren">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+          <span class="gr-head-meta">Gemiddelde op Google &middot; lees ze allemaal</span>
+        </span>
+      </a>
+      <div class="gr-rail">
+
+        <div class="gr">
+          <div class="gr-kop">
+            <div class="gr-foto" style="background:#1E8E3E;">E</div>
+            <div>
+              <div class="gr-naam">Erwin</div>
+              <div class="gr-meta">Local Guide &middot; 21 reviews</div>
+            </div>
+          </div>
+          <span class="gr-sterren">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+          <div class="gr-tekst">
+            <span>Nadat ik Michel op insta voorbij zag komen en nieuwsgierig was geworden, heb ik de analyse aangevraagd.</span>
+            <span>Je krijgt een mooi overzichtelijk rapport, waar je meteen wat mee kunt.</span>
+          </div>
+        </div>
+
+        <div class="gr">
+          <div class="gr-kop">
+            <div class="gr-foto" style="background:#7B1FA2;">J</div>
+            <div>
+              <div class="gr-naam">Jan</div>
+              <div class="gr-meta">12 reviews</div>
+            </div>
+          </div>
+          <span class="gr-sterren">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+          <div class="gr-chip">Goede prijs</div>
+          <div class="gr-tekst">
+            <span>Zeer correcte analyse gekregen. Beknopt, maar wel de werkpunten aangehaald. Tevreden!</span>
+          </div>
+        </div>
+
+        <div class="gr">
+          <div class="gr-kop">
+            <div class="gr-foto" style="background:#C5221F;">F</div>
+            <div>
+              <div class="gr-naam">Frits</div>
+              <div class="gr-meta">Local Guide &middot; 22 reviews</div>
+            </div>
+          </div>
+          <span class="gr-sterren">&#9733;&#9733;&#9733;&#9733;<i>&#9733;</i></span>
+          <div class="gr-chip">Goede prijs</div>
+          <div class="gr-tekst">
+            <span>Ik was positief verrast over de snelheid en de inhoud van het rapport. Voor mij een mooie basis om weer aan de slag te gaan met mijn gezondheid en was het rapport de kosten meer dan waard.</span>
+          </div>
+        </div>
+
+        <div class="gr">
+          <div class="gr-kop">
+            <div class="gr-foto" style="background:#00897B;">I</div>
+            <div>
+              <div class="gr-naam">Ilona</div>
+              <div class="gr-meta">2 reviews &middot; 7 foto's</div>
+            </div>
+          </div>
+          <span class="gr-sterren">&#9733;&#9733;&#9733;&#9733;<i>&#9733;</i></span>
+          <div class="gr-chip">Goede prijs</div>
+          <div class="gr-tekst">
+            <span>Door mijn persoonlijke analyse ben ik nu op een verantwoorde wijze aan het trainen om een betere fietser te worden met leuke gevarieerde trainingen</span>
+          </div>
+        </div>
+
+      </div>
+      <p class="gr-swipe">Swipe voor meer &rarr;</p>
     </div>
-    <p style="text-align:center;margin-top:14px;font-size:12px;color:rgba(255,255,255,0.5);letter-spacing:.3px;"><span style="color:var(--oranje);letter-spacing:1px;">★★★★★</span>&nbsp; 4.9 uit 100+ reviews &middot; <a href="https://michelkredercoaching.nl/reviews/" target="_blank" rel="noopener" style="color:rgba(255,255,255,0.5);text-decoration:underline;">lees ze</a></p>
     <p style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:10px;text-align:center;letter-spacing:.5px;"><a href="/privacy" target="_blank" rel="noopener" style="color:rgba(255,255,255,0.35);text-decoration:underline;">Privacyverklaring</a></p>
   </div>
 </div>
@@ -559,6 +659,23 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <div class="scan-item" id="si2"><div class="scan-dot"></div>VO2max prikkels detecteren</div>
       <div class="scan-item" id="si3"><div class="scan-dot"></div>Prestatieplateaus zoeken</div>
       <div class="scan-item" id="si4"><div class="scan-dot"></div>Trainingsbalans berekenen</div>
+    </div>
+    <!-- De wachttijd is de goedkoopste plek voor bewijs: de aandacht is er toch al. -->
+    <div class="gr-solo" style="margin-top:30px;">
+      <div class="gr-solo-label">Wat anderen van hun rapport vonden</div>
+      <div class="gr">
+        <div class="gr-kop">
+          <div class="gr-foto" style="background:#1E8E3E;">E</div>
+          <div>
+            <div class="gr-naam">Erwin</div>
+            <div class="gr-meta">Local Guide &middot; 21 reviews</div>
+          </div>
+        </div>
+        <span class="gr-sterren">&#9733;&#9733;&#9733;&#9733;&#9733;</span>
+        <div class="gr-tekst">
+          <span>Je krijgt een mooi overzichtelijk rapport, waar je meteen wat mee kunt.</span>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -775,6 +892,24 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
         <input id="klantGewicht" type="number" inputmode="decimal" step="0.1" min="35" max="200" placeholder="bv. 74"
           style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
         <div style="font-size:11px;color:rgba(255,255,255,0.3);margin-top:6px;line-height:1.4;">Optioneel. Vul je in, dan berekenen we je W/kg en zetten we 'm ook in je PDF-rapport.</div>
+      </div>
+      <!-- Deze review gaat expliciet over prijs en snelheid: precies de twijfel die
+           hier speelt. Het label "Goede prijs" komt van Google zelf, niet van mij. -->
+      <div class="gr-solo" style="margin-bottom:16px;">
+        <div class="gr">
+          <div class="gr-kop">
+            <div class="gr-foto" style="background:#C5221F;">F</div>
+            <div>
+              <div class="gr-naam">Frits</div>
+              <div class="gr-meta">Local Guide &middot; 22 reviews</div>
+            </div>
+          </div>
+          <span class="gr-sterren">&#9733;&#9733;&#9733;&#9733;<i>&#9733;</i></span>
+          <div class="gr-chip">Goede prijs</div>
+          <div class="gr-tekst">
+            <span>Ik was positief verrast over de snelheid en de inhoud van het rapport. Voor mij een mooie basis om weer aan de slag te gaan met mijn gezondheid en was het rapport de kosten meer dan waard.</span>
+          </div>
+        </div>
       </div>
       <button class="betaal-btn" id="betaalKnop" onclick="startBetaling()">
         <span class="ideal-pill">iDEAL</span> Betaal €29 en ontvang rapport
