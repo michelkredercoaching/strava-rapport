@@ -183,6 +183,16 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .gr-tekst span{display:block;}
 .gr-tekst span+span{margin-top:7px;}
 .gr-swipe{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.25);text-align:center;margin-top:-2px;}
+/* FAQ op de landing: vangt de vragen die anders per DM binnenkomen */
+.faq-blok{width:100%;max-width:340px;margin:26px auto 4px;text-align:left;}
+.faq-kop{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.35);text-align:center;margin:0 0 12px;}
+.faq-blok details{border-bottom:1px solid rgba(255,255,255,0.07);}
+.faq-blok details summary{list-style:none;cursor:pointer;padding:13px 22px 13px 0;font-size:12.5px;font-weight:600;color:rgba(255,255,255,0.85);line-height:1.45;position:relative;}
+.faq-blok details summary::-webkit-details-marker{display:none;}
+.faq-blok details summary:after{content:'+';position:absolute;right:2px;top:11px;font-size:16px;font-weight:400;color:var(--oranje);}
+.faq-blok details[open] summary:after{content:'−';}
+.faq-blok details p{margin:0 0 14px;font-size:12px;line-height:1.65;color:rgba(255,255,255,0.55);}
+.faq-blok details p strong{color:rgba(255,255,255,0.85);font-weight:600;}
 /* Losse kaart: laadscherm en betaalscherm */
 .gr-solo{width:100%;max-width:340px;margin:0 auto;}
 .gr-solo .gr{flex:none;width:100%;box-shadow:0 10px 24px rgba(0,0,0,0.4);}
@@ -475,6 +485,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 
     <!-- MECHANISM -->
     <p class="hero-sub">Koppel je Strava. Wij bepalen jouw FTP of omslagpunt uit je eigen ritten, <strong>zonder testrit</strong>, en laten je in 60 seconden precies zien welke trainingen je tijd verspillen.</p>
+    <p style="width:100%;max-width:340px;margin:-8px auto 20px;padding:10px 13px;background:rgba(255,107,26,0.07);border:1px solid rgba(255,107,26,0.22);border-radius:6px;font-size:11.5px;line-height:1.55;color:rgba(255,255,255,0.7);text-align:left;">Een <strong style="color:var(--oranje);font-weight:700;">gratis Strava-account is genoeg</strong>. Geen vermogensmeter? Dan werkt de analyse op je hartslag.</p>
 
     <!-- WAT JE KRIJGT -->
     <div class="hero-wat-krijg-je">
@@ -529,7 +540,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <span class="tr-dot"></span>
       <div class="tr-item">🔒 SSL versleuteld</div>
       <span class="tr-dot"></span>
-      <div class="tr-item">Vermogens- of hartslagmeter</div>
+      <div class="tr-item">Werkt ook op hartslag</div>
     </div>
     <!-- Analyse-reviews: alle vier gaan over het rapport zelf, niet over een schema.
          Woordelijk van Google, sterren zoals gegeven (Frits en Ilona: vier). -->
@@ -606,6 +617,31 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       </div>
       <p class="gr-swipe">Swipe voor meer &rarr;</p>
     </div>
+
+    <!-- FAQ: de vragen die anders per Instagram-DM binnenkomen -->
+    <div class="faq-blok">
+      <p class="faq-kop">Voordat je begint</p>
+      <details>
+        <summary>Moet ik een betaald Strava-account hebben?</summary>
+        <p>Nee. Een <strong>gratis Strava-account is genoeg</strong>. We lezen alleen je ritten van de laatste 90 dagen uit, daar heb je geen Strava-abonnement voor nodig.</p>
+      </details>
+      <details>
+        <summary>Ik rijd zonder vermogensmeter, alleen op hartslag. Kan ik dit doen?</summary>
+        <p>Ja. Rijd je op hartslag, dan bepalen we je <strong>omslagpunt en je vijf hartslagzones</strong> in plaats van je FTP. De rest van je rapport is precies hetzelfde. Rijd je wel met een powermeter, dan krijg je je FTP en je vermogenszones.</p>
+      </details>
+      <details>
+        <summary>Moet ik eerst een testrit doen?</summary>
+        <p>Nee. We halen je waarden uit de ritten die je al gereden hebt. Heb je de afgelopen 90 dagen een paar keer stevig doorgetrapt, dan hebben we genoeg.</p>
+      </details>
+      <details>
+        <summary>Mijn ritten staan op privé. Werkt dat?</summary>
+        <p>Ja, laat bij het koppelen het vinkje voor <strong>privé-activiteiten aan</strong> staan. Zet je het uit, dan zien we een deel van je ritten niet en klopt je analyse niet.</p>
+      </details>
+      <details>
+        <summary>En als er te weinig bruikbare data in mijn Strava staat?</summary>
+        <p>Dan zeggen we dat eerlijk <strong>voordat je betaalt</strong>. Zonder hartslag of vermogen in je ritten kunnen we je zones niet berekenen, en dan gaan we niet gokken. Je wordt in dat geval niet in rekening gebracht.</p>
+      </details>
+    </div>
     <p style="font-size:10px;color:rgba(255,255,255,0.25);margin-top:10px;text-align:center;letter-spacing:.5px;"><a href="/privacy" target="_blank" rel="noopener" style="color:rgba(255,255,255,0.35);text-decoration:underline;">Privacyverklaring</a></p>
   </div>
 </div>
@@ -629,7 +665,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     <!-- Werkt met vermogen én hartslag -->
     <div class="strava-vereiste">
       <span class="strava-vereiste-icon">⚡</span>
-      <span class="strava-vereiste-txt">Werkt met <strong>vermogen én hartslag</strong>. Rijd je met een powermeter, dan krijg je je FTP. Rijd je op hartslag, dan berekenen we je omslagpunt en je hartslagzones.</span>
+      <span class="strava-vereiste-txt">Een <strong>gratis Strava-account</strong> is genoeg, en het werkt met <strong>vermogen én hartslag</strong>. Rijd je met een powermeter, dan krijg je je FTP. Rijd je op hartslag, dan berekenen we je omslagpunt en je hartslagzones.</span>
     </div>
     <div class="strava-uitleg">
       <div class="strava-stap"><div class="strava-stap-nr">1</div><div class="strava-stap-txt">Log in op Strava en geef toegang</div></div>
