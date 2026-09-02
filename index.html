@@ -104,6 +104,36 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .hero-sub strong{color:rgba(255,255,255,0.85);font-weight:600;}
 
 /* Stats */
+/* VOORBEELDRAPPORT in de hero */
+.vb-rapport{width:100%;max-width:340px;margin:0 auto 18px;padding:16px 15px 14px;background:rgba(255,255,255,0.035);border:1px solid rgba(255,255,255,0.09);border-radius:10px;text-align:left;}
+.vb-kop{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.vb-badge{font-size:8px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--oranje);border:1px solid rgba(255,107,26,0.4);border-radius:20px;padding:3px 8px;}
+.vb-titel{font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;color:rgba(255,255,255,0.45);}
+.vb-tabs{display:flex;gap:6px;margin-bottom:14px;}
+.vb-tab{flex:1;padding:7px 4px;font-size:10.5px;font-weight:700;color:rgba(255,255,255,0.45);background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:6px;cursor:pointer;font-family:inherit;}
+.vb-tab.actief{color:var(--oranje);border-color:rgba(255,107,26,0.45);background:rgba(255,107,26,0.08);}
+.vb-hoofdgetal-label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.35);font-weight:700;margin-bottom:5px;}
+.vb-hoofdgetal-rij{display:flex;align-items:baseline;gap:6px;}
+.vb-hoofdgetal{font-size:38px;font-weight:900;color:#fff;line-height:1;}
+.vb-eenheid{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.4);font-weight:700;}
+.vb-note{font-size:10.5px;color:rgba(255,255,255,0.4);margin-top:6px;}
+.vb-regel{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.07);font-size:11.5px;color:rgba(255,255,255,0.5);}
+.vb-regel strong{color:rgba(255,255,255,0.9);font-weight:700;}
+.vb-zone-kop{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.35);font-weight:700;margin:14px 0 8px;}
+.vb-balk{display:flex;height:9px;border-radius:5px;overflow:hidden;background:rgba(255,255,255,0.06);}
+.vb-seg{height:100%;}
+.vb-seg.vb-laag{background:rgba(255,255,255,0.28);}
+.vb-seg.vb-grijs{background:#8a8a8a;}
+.vb-seg.vb-kwaliteit{background:var(--oranje);}
+.vb-legenda{display:flex;justify-content:space-between;margin-top:7px;font-size:9.5px;color:rgba(255,255,255,0.4);}
+.vb-legenda i{display:inline-block;width:6px;height:6px;border-radius:2px;margin-right:4px;}
+.vb-dot.vb-laag{background:rgba(255,255,255,0.28);}
+.vb-dot.vb-grijs{background:#8a8a8a;}
+.vb-dot.vb-kwaliteit{background:var(--oranje);}
+.vb-stap{display:flex;gap:9px;align-items:flex-start;font-size:11.5px;line-height:1.55;color:rgba(255,255,255,0.6);margin-bottom:8px;}
+.vb-nr{width:18px;height:18px;border-radius:50%;background:var(--oranje);color:#fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:900;flex-shrink:0;margin-top:1px;}
+.vb-stap-vaag{filter:blur(2.5px);opacity:0.55;user-select:none;}
+.vb-voet{font-size:9.5px;color:rgba(255,255,255,0.3);line-height:1.5;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);}
 .hero-stats{
   display:flex;gap:0;margin-bottom:8px;
   border:1px solid rgba(255,255,255,0.08);border-radius:8px;
@@ -503,6 +533,55 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       </div>
     </div>
 
+    <!-- VOORBEELDRAPPORT: laat zien wat je krijgt vóór we om de Strava-koppeling vragen -->
+    <div class="vb-rapport">
+      <div class="vb-kop">
+        <span class="vb-badge">Voorbeeld</span>
+        <span class="vb-titel">Dit krijg je te zien</span>
+      </div>
+
+      <div class="vb-tabs">
+        <button type="button" class="vb-tab actief" id="vbTabPower" onclick="vbToon('power')">Met vermogensmeter</button>
+        <button type="button" class="vb-tab" id="vbTabHr" onclick="vbToon('hr')">Alleen hartslag</button>
+      </div>
+
+      <!-- VERMOGEN -->
+      <div id="vbPower">
+        <div class="vb-hoofdgetal-label">FTP Detector™ · jouw FTP</div>
+        <div class="vb-hoofdgetal-rij"><span class="vb-hoofdgetal">248</span><span class="vb-eenheid">watt</span></div>
+        <div class="vb-note">Uit je eigen ritten. Geen testrit gereden.</div>
+        <div class="vb-regel"><span>Watt per kilo</span><strong>3,4 W/kg</strong></div>
+      </div>
+
+      <!-- HARTSLAG -->
+      <div id="vbHr" style="display:none;">
+        <div class="vb-hoofdgetal-label">Jouw omslagpunt</div>
+        <div class="vb-hoofdgetal-rij"><span class="vb-hoofdgetal">162</span><span class="vb-eenheid">bpm</span></div>
+        <div class="vb-note">Uit je eigen ritten. Geen testrit gereden.</div>
+        <div class="vb-regel"><span>Je D2-zone</span><strong>138 tot 146 bpm</strong></div>
+      </div>
+
+      <!-- ZONEVERDELING -->
+      <div class="vb-zone-kop">Waar je tijd nu heen gaat</div>
+      <div class="vb-balk">
+        <div class="vb-seg vb-laag" style="width:41%;"></div>
+        <div class="vb-seg vb-grijs" style="width:44%;"></div>
+        <div class="vb-seg vb-kwaliteit" style="width:15%;"></div>
+      </div>
+      <div class="vb-legenda">
+        <span><i class="vb-dot vb-laag"></i>Rustig 41%</span>
+        <span><i class="vb-dot vb-grijs"></i>Grijs 44%</span>
+        <span><i class="vb-dot vb-kwaliteit"></i>Kwaliteit 15%</span>
+      </div>
+
+      <!-- ACTIEPLAN -->
+      <div class="vb-zone-kop" style="margin-top:14px;">Jouw actieplan</div>
+      <div class="vb-stap"><span class="vb-nr">1</span><span>Haal de intensiteit uit je rustige ritten. Je zit 44% van je tijd in het grijze midden.</span></div>
+      <div class="vb-stap vb-stap-vaag"><span class="vb-nr">2</span><span>Twee gerichte trainingen per week, de rest echt rustig.</span></div>
+
+      <div class="vb-voet">Een echt rapport, cijfers van een voorbeeldrenner. Jouw versie draait op jouw eigen ritten.</div>
+    </div>
+
     <!-- STATS -->
     <div class="hero-stats">
       <div class="hstat">
@@ -533,14 +612,16 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     </div>
 
     <p class="hero-prijs-note">Eenmalig · geen abonnement · geen verborgen kosten</p>
-    <button class="hero-cta" onclick="gaNaar('s2')">Ontdek waar ik tijd verspil →</button>
-    <p style="text-align:center;margin-top:-6px;margin-bottom:14px;font-size:11px;color:rgba(255,255,255,0.4);">Niet het inzicht dat je zocht? 14 dagen geld terug.</p>
+    <button class="hero-cta" onclick="gaNaar('s2')">Toon mijn FTP of omslagpunt →</button>
+    <p style="text-align:center;margin-top:-6px;margin-bottom:14px;font-size:11px;color:rgba(255,255,255,0.4);">Gratis starten. Je koppelt je Strava en ziet je eigen cijfers in 60 seconden.</p>
     <div class="trust-row">
       <div class="tr-item"><span class="ideal-pill">iDEAL</span> Direct betalen</div>
       <span class="tr-dot"></span>
       <div class="tr-item">🔒 SSL versleuteld</div>
       <span class="tr-dot"></span>
       <div class="tr-item">Werkt ook op hartslag</div>
+      <span class="tr-dot"></span>
+      <div class="tr-item">14 dagen geld terug</div>
     </div>
     <!-- Analyse-reviews: alle vier gaan over het rapport zelf, niet over een schema.
          Woordelijk van Google, sterren zoals gegeven (Frits en Ilona: vier). -->
@@ -1185,6 +1266,16 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 <script>
 const schermen = ['s1','s2','s3','s3b','s3c','s4','s5','s7','s8'];
 
+function vbToon(spoor){
+  var p=document.getElementById('vbPower'), h=document.getElementById('vbHr');
+  var tp=document.getElementById('vbTabPower'), th=document.getElementById('vbTabHr');
+  if(!p||!h||!tp||!th) return;
+  var isHr = spoor==='hr';
+  p.style.display = isHr ? 'none' : 'block';
+  h.style.display = isHr ? 'block' : 'none';
+  tp.classList.toggle('actief', !isHr);
+  th.classList.toggle('actief', isHr);
+}
 function gaNaar(id) {
   schermen.forEach(s => {
     const el = document.getElementById(s);
