@@ -40,6 +40,9 @@ export default async function handler(req, res) {
 
   const slim = {
     naam: stravaData?.naam || 'Sporter',
+    // Alleen voor de factuur. Leeg als Strava geen achternaam teruggaf, of bij
+    // oudere blobs van vóór deze wijziging; mollie-factuur.js vangt dat op.
+    achternaam: stravaData?.achternaam || '',
     aantalActiviteiten: stravaData?.aantalActiviteiten || 0,
     urenPerWeek: stravaData?.urenPerWeek || 0,
     prestatiescore: stravaData?.prestatiescore || 0,
@@ -72,6 +75,7 @@ export default async function handler(req, res) {
   // Mollie over en voeren we dezelfde metadata rechtstreeks aan leverRapport.
   const metadata = {
     naam: slim.naam,
+    achternaam: slim.achternaam,
     email: (email || '').toString().slice(0, 120),
     // BINDING (punt 6): nonce uit de versleutelde blob. /api/rapport eist
     // dat deze overeenkomt voordat het rapport wordt vrijgegeven.
