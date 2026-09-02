@@ -14,7 +14,9 @@
 // Vereist in Vercel: MOLLIE_API_KEY, RESEND_API_KEY
 // Voor de nurture:   MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID, PP_TOKEN_SECRET
 // Optioneel in Vercel: UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN
+// Voor Meta-tracking: META_CAPI_TOKEN  (optioneel META_PIXEL_ID; default 928014910335428)
 // Vereist in package.json: "pdf-lib"
+import crypto from 'node:crypto';
 import { markeerKortingGebruikt } from '../lib/korting.js';
 import { leverRapport, stuurMail, interneHtml, kapitaal, AFZENDER, INTERNE_MAIL } from '../lib/lever-rapport.js';
 import { maakMollieFactuur } from '../lib/mollie-factuur.js';
@@ -59,6 +61,69 @@ async function magWaarschuwen(id) {
   const r = await redis(['SET', `pp:warned:${id}`, '1', 'NX', 'EX', '3600']);
   if (!r.ok) return true;
   return r.result === 'OK';
+}
+
+// ===== META CONVERSION API — server-side Purchase =====
+// Stuurt de aankoop rechtstreeks naar Meta zodra de betaling 'paid' is, los van
+// of de klant terugkeert op een bedankpagina (vangt iDEAL, net als de shop).
+// Vuurt alleen als META_CAPI_TOKEN in Vercel staat. event_id = Mollie-betaal-id,
+// zodat een eventuele browser-pixel op de funnel (die hetzelfde id moet gebruiken)
+// niet dubbel telt. Dezelfde pixel als de shop -> alle conversies op één plek.
+const META_PIXEL_ID = process.env.META_PIXEL_ID || '928014910335428';
+
+function metaHash(v) {
+  if (!v) return undefined;
+  const s = String(v).trim().toLowerCase();
+  return s ? crypto.createHash('sha256').update(s).digest('hex') : undefined;
+}
+
+async function stuurMetaPurchase(m, betaling, id) {
+  const token = process.env.META_CAPI_TOKEN;
+  if (!token) return; // geen token = tracking uit
+
+  const naamDelen = String(m.naam || '').trim().split(/\s+/).filter(Boolean);
+  const fn   = naamDelen[0];
+  const ln   = naamDelen.length > 1 ? naamDelen.slice(1).join(' ') : '';
+  const land = (m.land && String(m.land).trim().length === 2) ? m.land : undefined;
+
+  const userData = {};
+  const em  = metaHash(m.email);    if (em)  userData.em = em;
+  const fnh = metaHash(fn);         if (fnh) userData.fn = fnh;
+  const lnh = metaHash(ln);         if (lnh) userData.ln = lnh;
+  const ct  = metaHash(m.plaats);   if (ct)  userData.ct = ct;
+  const zp  = metaHash(m.postcode); if (zp)  userData.zp = zp;
+  const co  = metaHash(land);       if (co)  userData.country = co;
+
+  const event = {
+    event_name:       'Purchase',
+    event_time:       Math.floor(Date.now() / 1000),
+    event_id:         id,
+    event_source_url: 'https://strava-rapport.michelkredercoaching.nl/',
+    action_source:    'website',
+    user_data:        userData,
+    custom_data: {
+      currency:     (betaling.amount && betaling.amount.currency) || 'EUR',
+      value:        parseFloat((betaling.amount && betaling.amount.value) || '0'),
+      content_name: 'Power Profile analyse',
+      content_type: 'product'
+    }
+  };
+
+  const r = await fetch(
+    `https://graph.facebook.com/v21.0/${META_PIXEL_ID}/events?access_token=${encodeURIComponent(token)}`,
+    {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ data: [event] }),
+      signal:  AbortSignal.timeout(10000)
+    }
+  );
+  const j = await r.json().catch(() => ({}));
+  if (r.ok && j.events_received) {
+    console.log('Meta CAPI Purchase OK:', id, '| received:', j.events_received);
+  } else {
+    console.error('Meta CAPI Purchase fout:', id, r.status, JSON.stringify(j));
+  }
 }
 
 export default async function handler(req, res) {
@@ -131,6 +196,12 @@ export default async function handler(req, res) {
     // 3) Succes → vastleggen zodat een latere retry niks dubbel doet.
     await markeerVerstuurd(id);
 
+    // 3b) Meta Conversion API: aankoop server-side naar Meta melden (fail-safe:
+    //     het rapport is al geleverd en de betaling al gemarkeerd, dus een
+    //     Meta-fout mag hier niks blokkeren).
+    try { await stuurMetaPurchase(m, betaling, id); }
+    catch (e) { console.error('Meta CAPI wierp een fout (genegeerd):', e); }
+
     // 4) Servicekorting-link verzilveren: deze betaling is rond, dus het
     //    eenmalige linkje mag vanaf nu geweigerd worden.
     if (m.kortingId) await markeerKortingGebruikt(m.kortingId);
@@ -150,6 +221,7 @@ export default async function handler(req, res) {
       try {
         const f = await maakMollieFactuur({
           naam: m.naam,
+          achternaam: m.achternaam,
           email: m.email,
           bedrag: (betaling.amount && betaling.amount.value) || '',
           betaalId: id,
