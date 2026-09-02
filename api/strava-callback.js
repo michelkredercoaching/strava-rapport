@@ -340,6 +340,10 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   if (fietsritten90.length === 0) {
     return {
       naam: athlete?.firstname || 'Sporter',
+      // Achternaam apart houden: 'naam' is de aanhef in het rapport en de mails
+      // ("Hoi Niels"), de achternaam is alleen voor de factuur. Strava geeft 'm
+      // mee, en zonder dit veld zette de factuurcode de voornaam er twee keer op.
+      achternaam: athlete?.lastname || '',
       rapportBasis: null,
       aantalActiviteiten: 0,
       urenPerWeek: 0,
@@ -1035,6 +1039,10 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
 
   return {
     naam: athlete?.firstname || 'Sporter',
+    // Achternaam apart houden: 'naam' is de aanhef in het rapport en de mails
+    // ("Hoi Niels"), de achternaam is alleen voor de factuur. Strava geeft 'm
+    // mee, en zonder dit veld zette de factuurcode de voornaam er twee keer op.
+    achternaam: athlete?.lastname || '',
     rapportBasis,          // 'vermogen' | 'hartslag' | null (null = niets te analyseren)
     aantalActiviteiten: fietsritten90.length,
     urenPerWeek,
