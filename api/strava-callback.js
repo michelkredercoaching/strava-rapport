@@ -226,6 +226,18 @@ export default async function handler(req, res) {
       return res.redirect('/?error=geen_ritten');
     }
 
+    // ===== GEEN MEETDATA? DAN OOK GEEN BETAALPAGINA =====
+    // (Rinze-case, 2 september 2026): ritten gevonden, maar zonder bruikbaar
+    // vermogen en zonder bruikbare hartslag. Het rapport zou dan draaien op de
+    // vaste placeholder-zones uit berekenStats, dus op verzonnen cijfers. Dat
+    // mogen we niet verkopen. Zelfde afhandeling als 'geen ritten': uitleggen,
+    // loskoppelen, geen betaling.
+    if (!stats.rapportBasis) {
+      console.log('Geen bruikbare meetdata · athleet', athlete?.id, '· ritten', stats.aantalActiviteiten, '· rapport-flow afgebroken');
+      await deauthorize(accessToken, athlete?.id);
+      return res.redirect('/?error=geen_meetdata');
+    }
+
     // ===== GATE: versleutel de analyse, zet 'm in browseropslag, geef alleen
     // een onschuldige preview mee in de URL. Geen FTP/zones in de browser. =====
     // BINDING (punt 6): unieke nonce in de blob. /api/betaling zet 'm in de
@@ -294,6 +306,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   if (fietsritten90.length === 0) {
     return {
       naam: athlete?.firstname || 'Sporter',
+      rapportBasis: null,
       aantalActiviteiten: 0,
       urenPerWeek: 0,
       prestatiescore: 10,
@@ -795,6 +808,19 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   ));
   console.log(`Spoor: ${gebruikVermogen ? 'VERMOGEN' : 'HARTSLAG'} · dekking ${Math.round(powerDekking * 100)}% (${rittenMetEchtePower}/${fietsritten90.length}) · ftp ${ftp || '-'}W · stream ${heeftPowerStream ? 'ja' : 'nee'} · hr-basis ${hrSpoorHeeftBasis ? 'ja' : 'nee'}`);
 
+  // ===== HARDE STOP: IS ER UBERHAUPT MEETDATA? =====
+  // (Rinze-case, 2 september 2026.) Zonder vermogen-spoor en zonder omslagpunt
+  // valt de zone-analyse hieronder terug op een VASTE, verzonnen verdeling
+  // ([5,50,30,10,5]) met vo2maxSessies = 0. Dat rapport ziet er compleet uit,
+  // maar er zit geen enkele meting in: labels als 'TE HOOG' en de kritieke
+  // bevinding '0 sessies boven je omslagpunt' slaan dan nergens op.
+  // 'hrSpoorHeeftBasis' bestond al (Marcel-fix), maar stuurde alleen de
+  // spoorkeuze aan en blokkeerde de verkoop niet. Nu wel: is rapportBasis null,
+  // dan breekt de handler de flow af voor de betaalpagina.
+  const hartslagBruikbaar = !!(omslagpunt && hrSpoorHeeftBasis);
+  const rapportBasis = gebruikVermogen ? 'vermogen' : (hartslagBruikbaar ? 'hartslag' : null);
+  if (!rapportBasis) console.log('Geen bruikbare meetdata: geen vermogen-spoor en geen hartslag-basis');
+
   // ===== ZONE ANALYSE =====
   let zones = [0, 0, 0, 0, 0, 0];
   let vo2maxSessies = 0;
@@ -975,6 +1001,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
 
   return {
     naam: athlete?.firstname || 'Sporter',
+    rapportBasis,          // 'vermogen' | 'hartslag' | null (null = niets te analyseren)
     aantalActiviteiten: fietsritten90.length,
     urenPerWeek,
     prestatiescore: score,
