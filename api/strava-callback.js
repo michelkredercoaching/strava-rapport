@@ -22,6 +22,41 @@ async function mapMetLimiet(items, limiet, fn) {
   return resultaten;
 }
 
+// ===== ACTIVITEITEN OPHALEN, MET PAGINERING =====
+// (Rinze-case, 2 september 2026.) Hiervoor haalden we EEN pagina van 100
+// activiteiten op, zonder ooit door te bladeren. Die 100 tellen ALLE sporten mee,
+// dus ook loopjes, wandelingen en krachttraining. Wie veel logt kreeg daardoor
+// maar een deel van het venster van 90 dagen te zien, en het rapport rekende
+// vervolgens die brokstukken om over 13 weken: te weinig ritten, te weinig uren.
+// Nu bladeren we door tot de laatste pagina.
+//
+// Strava geeft maximaal 200 per pagina, dus de meeste sporters zijn na een
+// enkele call binnen. MAX_ACT_PAGINAS is puur een noodrem tegen eindeloos
+// doorbladeren; 1000 activiteiten in 90 dagen komt in de praktijk niet voor.
+//
+// Belangrijk: gaat een LATERE pagina onderuit (rate limit, netwerk), dan geven
+// we ok:false terug in plaats van de halve lijst. Een incompleet venster levert
+// namelijk precies dezelfde stille misrekening op als de oude bug.
+const ACT_PER_PAGE = 200;
+const MAX_ACT_PAGINAS = 5;
+async function haalActiviteiten(accessToken, extraQuery = '') {
+  const alles = [];
+  for (let pagina = 1; pagina <= MAX_ACT_PAGINAS; pagina++) {
+    const r = await fetch(
+      `https://www.strava.com/api/v3/athlete/activities?per_page=${ACT_PER_PAGE}&page=${pagina}${extraQuery}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    let data = null;
+    try { data = await r.json(); } catch (e) { data = null; }
+    // Bij 429 of een fout stuurt Strava een OBJECT i.p.v. een array.
+    if (!Array.isArray(data)) return { ok: false, status: r.status, fout: data, paginas: pagina };
+    alles.push(...data);
+    if (data.length < ACT_PER_PAGE) return { ok: true, activiteiten: alles, paginas: pagina, compleet: true };
+  }
+  console.warn(`Paginalimiet geraakt (${MAX_ACT_PAGINAS} x ${ACT_PER_PAGE}) — lijst mogelijk afgekapt`);
+  return { ok: true, activiteiten: alles, paginas: MAX_ACT_PAGINAS, compleet: false };
+}
+
 // ===== LOSKOPPELEN (deauthorize) =====
 // Strava's deauthorize trekt ALLE tokens van deze atleet voor onze app in. Loopt
 // dezelfde atleet kort daarna nóg eens door de funnel, dan is het token al
@@ -121,21 +156,20 @@ export default async function handler(req, res) {
     }
 
     const negentigDagenGeleden = Math.floor(Date.now() / 1000) - (90 * 24 * 60 * 60);
-    const activiteitenRes = await fetch(
-      `https://www.strava.com/api/v3/athlete/activities?after=${negentigDagenGeleden}&per_page=100`,
-      { headers: { Authorization: `Bearer ${accessToken}` } }
-    );
-    const activiteiten = await activiteitenRes.json();
+    const venster = await haalActiviteiten(accessToken, `&after=${negentigDagenGeleden}`);
 
     // ===== RATE-LIMIT / FOUT-GUARD =====
     // Bij een rate limit (429) of fout geeft Strava een OBJECT i.p.v. een array.
     // Zonder deze check zou .filter() crashen en de bezoeker op het algemene
     // foutscherm belanden zónder uitleg. Nu sturen we 'm naar een herkenbare
-    // 'het is even druk'-melding.
-    if (!Array.isArray(activiteiten)) {
-      console.error('Strava activiteiten geen array (mogelijk rate limit):', activiteitenRes.status, activiteiten);
+    // 'het is even druk'-melding. Idem als pagina 2 of verder onderuit gaat: dan
+    // is het venster incompleet en mogen we er geen rapport op bouwen.
+    if (!venster.ok) {
+      console.error('Strava activiteiten niet compleet (mogelijk rate limit):', venster.status, '· pagina', venster.paginas, venster.fout);
       return res.redirect('/?error=strava_druk');
     }
+    const activiteiten = venster.activiteiten;
+    console.log(`Activiteiten in 90 dagen: ${activiteiten.length} (${venster.paginas} pagina(s))`);
 
     const alleActiviteitenRes = await fetch(
       `https://www.strava.com/api/v3/athlete/activities?per_page=200&page=1`,
