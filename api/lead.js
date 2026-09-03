@@ -42,6 +42,10 @@ async function redis(cmd) {
   } catch (e) { console.error('Redis exception (lead):', e); return { ok: false }; }
 }
 
+// Welke trechters we tellen. Alleen deze namen mogen een eigen serie sleutels
+// maken, zodat niemand met een losse POST de Redis-ruimte kan volgooien.
+const TRECHTERS = ['pp', 'schema'];
+
 export default async function handler(req, res) {
   // ===== TRECHTERRAPPORT: dagcijfers per scherm uitlezen =====
   // Afgeschermd met TRECHTER_SLEUTEL (Vercel-omgevingsvariabele). Zonder die
@@ -54,10 +58,13 @@ export default async function handler(req, res) {
     // Elke dag is één Redis-call, dus we houden het bereik klein genoeg om
     // ruim binnen de functietimeout te blijven.
     const dagen = Math.min(60, Math.max(1, Number(req.query.dagen) || 14));
+    // Elke funnel heeft zijn eigen serie sleutels: 'pp' is de Strava-analyse op
+    // dit subdomein, 'schema' is de Meta-landingspagina op de WordPress-site.
+    const funnel = TRECHTERS.includes(String(req.query.funnel || '')) ? String(req.query.funnel) : 'pp';
     const uit = {};
     for (let i = 0; i < dagen; i++) {
       const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
-      const r = await redis(['HGETALL', `pp:trechter:${d}`]);
+      const r = await redis(['HGETALL', `${funnel}:trechter:${d}`]);
       if (r.ok && Array.isArray(r.result) && r.result.length) {
         const rij = {};
         for (let j = 0; j < r.result.length; j += 2) rij[r.result[j]] = Number(r.result[j + 1]);
@@ -95,11 +102,19 @@ export default async function handler(req, res) {
   // ===== TRECHTERMETING: één scherm van één bezoeker =====
   // De funnel stuurt dit met sendBeacon, zonder e-mailadres. Geen persoons-
   // gegevens, alleen een teller per dag per scherm. 90 dagen bewaartermijn.
-  if (req.body && req.body.stap) {
-    const stap = String(req.body.stap).slice(0, 24);
+  // De WordPress-kant stuurt met content-type text/plain, zodat de browser geen
+  // CORS-preflight hoeft te doen. Dan is req.body een string in plaats van een
+  // object, dus we pakken beide vormen op.
+  let meting = req.body;
+  if (typeof meting === 'string') {
+    try { meting = JSON.parse(meting); } catch (e) { meting = null; }
+  }
+  if (meting && meting.stap) {
+    const stap = String(meting.stap).slice(0, 24);
+    const funnel = TRECHTERS.includes(String(meting.funnel || '')) ? String(meting.funnel) : 'pp';
     if (/^[a-z0-9_]{1,24}$/.test(stap)) {
       const dag = new Date().toISOString().slice(0, 10);
-      const sleutel = `pp:trechter:${dag}`;
+      const sleutel = `${funnel}:trechter:${dag}`;
       await redis(['HINCRBY', sleutel, stap, '1']);
       await redis(['EXPIRE', sleutel, '7776000']);
     }
