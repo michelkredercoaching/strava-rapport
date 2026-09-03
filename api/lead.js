@@ -43,6 +43,30 @@ async function redis(cmd) {
 }
 
 export default async function handler(req, res) {
+  // ===== TRECHTERRAPPORT: dagcijfers per scherm uitlezen =====
+  // Afgeschermd met TRECHTER_SLEUTEL (Vercel-omgevingsvariabele). Zonder die
+  // sleutel in de omgeving staat de route helemaal dicht.
+  if (req.method === 'GET' && req.query && req.query.trechter) {
+    const sleutel = process.env.TRECHTER_SLEUTEL || '';
+    if (!sleutel || String(req.query.trechter) !== sleutel) {
+      return res.status(403).json({ error: 'Geen toegang' });
+    }
+    // Elke dag is één Redis-call, dus we houden het bereik klein genoeg om
+    // ruim binnen de functietimeout te blijven.
+    const dagen = Math.min(60, Math.max(1, Number(req.query.dagen) || 14));
+    const uit = {};
+    for (let i = 0; i < dagen; i++) {
+      const d = new Date(Date.now() - i * 86400000).toISOString().slice(0, 10);
+      const r = await redis(['HGETALL', `pp:trechter:${d}`]);
+      if (r.ok && Array.isArray(r.result) && r.result.length) {
+        const rij = {};
+        for (let j = 0; j < r.result.length; j += 2) rij[r.result[j]] = Number(r.result[j + 1]);
+        uit[d] = rij;
+      }
+    }
+    return res.status(200).json(uit);
+  }
+
   // ===== HERVAT: bewaarde analyse terughalen =====
   if (req.method === 'GET') {
     const id = String((req.query && req.query.id) || '');
@@ -66,6 +90,20 @@ export default async function handler(req, res) {
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  // ===== TRECHTERMETING: één scherm van één bezoeker =====
+  // De funnel stuurt dit met sendBeacon, zonder e-mailadres. Geen persoons-
+  // gegevens, alleen een teller per dag per scherm. 90 dagen bewaartermijn.
+  if (req.body && req.body.stap) {
+    const stap = String(req.body.stap).slice(0, 24);
+    if (/^[a-z0-9_]{1,24}$/.test(stap)) {
+      const dag = new Date().toISOString().slice(0, 10);
+      const sleutel = `pp:trechter:${dag}`;
+      await redis(['HINCRBY', sleutel, stap, '1']);
+      await redis(['EXPIRE', sleutel, '7776000']);
+    }
+    return res.status(204).end();
   }
 
   const { email, pv, blob } = req.body || {};
