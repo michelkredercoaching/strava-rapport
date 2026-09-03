@@ -901,7 +901,7 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 
     <!-- E-mailcapture vóór de betaalmuur, op het moment van hoogste nieuwsgierigheid -->
     <div style="width:100%;max-width:340px;margin-bottom:14px;">
-      <label for="leadEmail" style="display:block;font-size:11px;color:rgba(255,255,255,0.55);font-weight:600;letter-spacing:.3px;margin-bottom:7px;text-align:left;">Waar mogen we je analyse naartoe sturen?</label>
+      <label for="leadEmail" id="leadEmailLabel" style="display:block;font-size:11px;color:rgba(255,255,255,0.55);font-weight:600;letter-spacing:.3px;margin-bottom:7px;text-align:left;">Waar mogen we je analyse naartoe sturen?</label>
       <input id="leadEmail" type="email" inputmode="email" autocomplete="email" placeholder="jouw@email.nl" onchange="leadVeldGewijzigd()"
         style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
       <div id="leadEmailFout" style="display:none;font-size:11px;color:#ff6b5e;margin-top:6px;line-height:1.4;text-align:left;"></div>
@@ -1773,6 +1773,15 @@ function toonZonesScherm(data) {
         <span style="font-size:11px;color:rgba(255,255,255,0.3);font-weight:600;">${zoneGrenzen[i]}</span>
       </div>
     `).join('');
+  }
+
+  // Voornaam uit Strava in het label. Strava geeft geen e-mailadres, wel een
+  // voornaam, dus vragen we het adres net iets persoonlijker. Valt de naam
+  // terug op de placeholder 'Sporter', dan laten we het label ongemoeid.
+  const leadLabel = document.getElementById('leadEmailLabel');
+  const voornaam = (data && data.naam) ? String(data.naam).trim() : '';
+  if (leadLabel && voornaam && voornaam.toLowerCase() !== 'sporter') {
+    leadLabel.textContent = 'Waar mogen we je analyse naartoe sturen, ' + voornaam + '?';
   }
 
   // Bekend e-mailadres (eerdere sessie of hervat-link) alvast invullen en
