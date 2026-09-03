@@ -1276,7 +1276,27 @@ function vbToon(spoor){
   tp.classList.toggle('actief', !isHr);
   th.classList.toggle('actief', isHr);
 }
+// ===== TRECHTERMETING =====
+// Telt per dag hoeveel BEZOEKERS elk scherm bereiken, zodat we achteraf kunnen
+// zien waar ze afhaken. Eén sessie telt elk scherm maximaal één keer, dus
+// heen-en-weer klikken vervuilt de cijfers niet. Faalt dit, dan merkt de
+// bezoeker er niets van: alles zit in een try en er wordt nooit gewacht.
+function meldStap(naam) {
+  try {
+    const gezien = JSON.parse(sessionStorage.getItem('pp_stappen') || '[]');
+    if (gezien.includes(naam)) return;
+    gezien.push(naam);
+    sessionStorage.setItem('pp_stappen', JSON.stringify(gezien));
+    const body = JSON.stringify({ stap: naam });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/api/lead', new Blob([body], { type: 'application/json' }));
+    } else {
+      fetch('/api/lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true });
+    }
+  } catch (e) {}
+}
 function gaNaar(id) {
+  meldStap(id);
   schermen.forEach(s => {
     const el = document.getElementById(s);
     if(el) el.classList.remove('actief');
@@ -1289,6 +1309,7 @@ function gaNaar(id) {
 }
 
 function verbindStrava() {
+  meldStap('strava_klik');
   window.location.href = '/api/strava-auth';
 }
 
@@ -2649,6 +2670,10 @@ function toonPrivacy(){ var o=document.getElementById('privacyOverlay'); if(o) o
 function sluitPrivacy(){ var o=document.getElementById('privacyOverlay'); if(o) o.style.display='none'; }
 
 window.addEventListener('DOMContentLoaded', function() {
+  // Landing telt als eerste trechterstap; gaNaar('s1') draait alleen bij een
+  // terugkeer uit een fout, dus die zou de bezoeken nooit tellen.
+  meldStap('s1');
+
   const params = new URLSearchParams(window.location.search);
   const error = params.get('error');
   const betaald = params.get('betaald');
