@@ -1281,8 +1281,17 @@ function vbToon(spoor){
 // zien waar ze afhaken. Eén sessie telt elk scherm maximaal één keer, dus
 // heen-en-weer klikken vervuilt de cijfers niet. Faalt dit, dan merkt de
 // bezoeker er niets van: alles zit in een try en er wordt nooit gewacht.
+// Jezelf niet meetellen: open eenmalig ?meten=uit op dit apparaat. Dat zet een
+// permanente markering in deze browser; ?meten=aan draait het terug.
+try {
+  const mz = window.location.search || '';
+  if (mz.indexOf('meten=uit') !== -1) localStorage.setItem('mkc_meten_uit', '1');
+  else if (mz.indexOf('meten=aan') !== -1) localStorage.removeItem('mkc_meten_uit');
+} catch (e) {}
+
 function meldStap(naam) {
   try {
+    if (localStorage.getItem('mkc_meten_uit') === '1') return;
     const gezien = JSON.parse(sessionStorage.getItem('pp_stappen') || '[]');
     if (gezien.includes(naam)) return;
     gezien.push(naam);
