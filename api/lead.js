@@ -44,7 +44,8 @@ async function redis(cmd) {
 
 // Welke trechters we tellen. Alleen deze namen mogen een eigen serie sleutels
 // maken, zodat niemand met een losse POST de Redis-ruimte kan volgooien.
-const TRECHTERS = ['pp', 'schema'];
+// 'wp' telt per instappunt, met velden in de vorm "schema_ads:checkout".
+const TRECHTERS = ['pp', 'schema', 'wp'];
 
 export default async function handler(req, res) {
   // ===== TRECHTERRAPPORT: dagcijfers per scherm uitlezen =====
@@ -110,9 +111,10 @@ export default async function handler(req, res) {
     try { meting = JSON.parse(meting); } catch (e) { meting = null; }
   }
   if (meting && meting.stap) {
-    const stap = String(meting.stap).slice(0, 24);
+    const stap = String(meting.stap).slice(0, 48);
     const funnel = TRECHTERS.includes(String(meting.funnel || '')) ? String(meting.funnel) : 'pp';
-    if (/^[a-z0-9_]{1,24}$/.test(stap)) {
+    // De dubbele punt scheidt het instappunt van de stap in de wp-trechter.
+    if (/^[a-z0-9_:]{1,48}$/.test(stap)) {
       const dag = new Date().toISOString().slice(0, 10);
       const sleutel = `${funnel}:trechter:${dag}`;
       await redis(['HINCRBY', sleutel, stap, '1']);
