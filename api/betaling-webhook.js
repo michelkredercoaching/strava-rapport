@@ -20,6 +20,7 @@ import crypto from 'node:crypto';
 import { markeerKortingGebruikt } from '../lib/korting.js';
 import { leverRapport, stuurMail, interneHtml, kapitaal, AFZENDER, INTERNE_MAIL } from '../lib/lever-rapport.js';
 import { maakMollieFactuur } from '../lib/mollie-factuur.js';
+import { stuurMailchimpOrder } from '../lib/mailchimp-order.js';
 
 // ===== REDIS (Upstash REST) — ontdubbeling & lock =====
 // De Vercel-marketplace-koppeling van Upstash maakt variabelen met KV_-namen
@@ -201,6 +202,12 @@ export default async function handler(req, res) {
     //     Meta-fout mag hier niks blokkeren).
     try { await stuurMetaPurchase(m, betaling, id); }
     catch (e) { console.error('Meta CAPI wierp een fout (genegeerd):', e); }
+
+    // 3c) Mailchimp-order: omzet zichtbaar maken in de Keuzehulp-audience, zodat
+    //     campagne-/journeyrapporten (o.a. de win-back-mails) niet langer €0
+    //     tonen. Zie lib/mailchimp-order.js voor de aanleiding.
+    try { await stuurMailchimpOrder(m, betaling, id); }
+    catch (e) { console.error('Mailchimp-order wierp een fout (genegeerd):', e); }
 
     // 4) Servicekorting-link verzilveren: deze betaling is rond, dus het
     //    eenmalige linkje mag vanaf nu geweigerd worden.
