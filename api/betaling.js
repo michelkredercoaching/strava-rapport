@@ -95,6 +95,10 @@ export default async function handler(req, res) {
     piek5min: stravaData?.piek5min || '',
     piek12min: stravaData?.piek12min || '',
     piek20min: stravaData?.piek20min || '',
+    // ===== HARTSLAG-DECOUPLING ===== Pw:HR-drift op de langste duurrit (alleen
+    // gezet als strava-callback een kwalificerende rit vond, anders leeg).
+    decoupling: stravaData?.decoupling ?? '',
+    decouplingMinuten: stravaData?.decouplingMinuten || '',
     // ===== HR-SPOOR =====
     // Zonder deze velden kan de webhook alleen een vermogens-rapport bouwen.
     // 'meetmethode' vertelt de webhook welk rapport hij moet maken; het
