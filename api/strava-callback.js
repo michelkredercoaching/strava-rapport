@@ -372,6 +372,9 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       piek5min: null,
       piek12min: null,
       piek20min: null,
+      decoupling: null,        // ===== HARTSLAG-DECOUPLING =====
+      decouplingMinuten: null,
+      decouplingBetrouwbaarheid: null,
     };
   }
 
@@ -846,6 +849,80 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   ));
   console.log(`Spoor: ${gebruikVermogen ? 'VERMOGEN' : 'HARTSLAG'} · dekking ${Math.round(powerDekking * 100)}% (${rittenMetEchtePower}/${fietsritten90.length}) · ftp ${ftp || '-'}W · stream ${heeftPowerStream ? 'ja' : 'nee'} · hr-basis ${hrSpoorHeeftBasis ? 'ja' : 'nee'}`);
 
+  // ===================================================================
+  // ===== HARTSLAG-DECOUPLING (Pw:HR-drift) =====
+  // ===================================================================
+  // Alleen zinvol op het vermogen-spoor: decoupling vergelijkt vermogen tegen
+  // hartslag binnen dezelfde rit, dus zonder vermogensmeter is er niets om
+  // tegen te decouplen. We pakken de LANGSTE rit met minstens 2 uur bruikbare
+  // watts- én HR-stream, en alleen als de rit overwegend steady is (Variability
+  // Index onder de grens hieronder) — op een interval- of wedstrijdrit zegt
+  // drift niets over de aerobe basis, dat verklaart alleen de pieken.
+  // Methode (Coggan aerobic decoupling): eerste 10 minuten (warming-up-drift)
+  // negeren, de rest in twee gelijke helften splitsen, per helft het
+  // vermogen:hartslag-quotiënt nemen, en het verschil tussen die twee
+  // quotiënten uitdrukken als percentage van de eerste helft.
+  const DECOUPLING_MIN_SEC = 120 * 60;   // minimaal 2 uur streamdata
+  const DECOUPLING_MAX_VI = 1.15;        // boven dit punt is de rit te grillig (intervallen/wedstrijd)
+  const DECOUPLING_WARMUP_SEC = 600;     // eerste 10 min negeren
+
+  function normalizedPower(wattsData) {
+    if (!wattsData || wattsData.length < 30) return null;
+    let som = 0;
+    for (let i = 0; i < 30; i++) som += (wattsData[i] || 0);
+    const rollend = [som / 30];
+    for (let i = 30; i < wattsData.length; i++) {
+      som += (wattsData[i] || 0) - (wattsData[i - 30] || 0);
+      rollend.push(som / 30);
+    }
+    const gemVierdeMacht = rollend.reduce((s, v) => s + Math.pow(v, 4), 0) / rollend.length;
+    return Math.pow(gemVierdeMacht, 0.25);
+  }
+
+  function bepaalDecoupling(wattsData, hrData) {
+    if (!wattsData || !hrData) return null;
+    const lengte = Math.min(wattsData.length, hrData.length);
+    if (lengte < DECOUPLING_MIN_SEC) return null;
+
+    const gemVermogen = wattsData.slice(0, lengte).reduce((s, w) => s + (w || 0), 0) / lengte;
+    if (gemVermogen <= 0) return null;
+    const np = normalizedPower(wattsData.slice(0, lengte));
+    if (!np) return null;
+    const vi = np / gemVermogen;
+    if (vi > DECOUPLING_MAX_VI) return null;   // te grillig, geen steady duurrit
+
+    const start = DECOUPLING_WARMUP_SEC < lengte * 0.4 ? DECOUPLING_WARMUP_SEC : 0;
+    const rest = lengte - start;
+    if (rest < 3600) return null;              // na de warming-up nog minstens 1 uur nodig
+    const midden = start + Math.floor(rest / 2);
+
+    const gemVanaf = (data, van, tot) => {
+      let som = 0, n = 0;
+      for (let i = van; i < tot; i++) { const v = data[i]; if (v != null && v > 0) { som += v; n++; } }
+      return n > 0 ? som / n : null;
+    };
+    const p1 = gemVanaf(wattsData, start, midden), p2 = gemVanaf(wattsData, midden, lengte);
+    const h1 = gemVanaf(hrData, start, midden), h2 = gemVanaf(hrData, midden, lengte);
+    if (!p1 || !p2 || !h1 || !h2) return null;
+
+    const ratio1 = p1 / h1, ratio2 = p2 / h2;
+    const pct = ((ratio1 - ratio2) / ratio1) * 100;
+    return { pct: Math.round(pct * 10) / 10, vi: Math.round(vi * 100) / 100, minuten: Math.round(lengte / 60) };
+  }
+
+  let decoupling = null, decouplingRitId = null;
+  if (gebruikVermogen) {
+    const kandidatenDecoupling = fietsritten90
+      .filter(r => (streamMap[r.id]?.watts?.data?.length || 0) >= DECOUPLING_MIN_SEC && (streamMap[r.id]?.heartrate?.data?.length || 0) >= DECOUPLING_MIN_SEC)
+      .sort((a, b) => streamMap[b.id].watts.data.length - streamMap[a.id].watts.data.length);   // langste eerst
+    for (const rit of kandidatenDecoupling) {
+      const res = bepaalDecoupling(streamMap[rit.id].watts.data, streamMap[rit.id].heartrate.data);
+      if (res) { decoupling = res; decouplingRitId = rit.id; break; }
+    }
+    if (decoupling) console.log(`Decoupling: ${decoupling.pct}% (VI ${decoupling.vi}, ${decoupling.minuten} min, rit ${decouplingRitId})`);
+    else console.log('Decoupling: geen kwalificerende duurrit (≥2u, steady) gevonden');
+  }
+
   // ===== HARDE STOP: IS ER UBERHAUPT MEETDATA? =====
   // (Rinze-case, 2 september 2026.) Zonder vermogen-spoor en zonder omslagpunt
   // valt de zone-analyse hieronder terug op een VASTE, verzonnen verdeling
@@ -1087,5 +1164,8 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     piek20min,       // ===== W/KG ===== piekvermogen 20 min in W (of null)
     piek12minHr,     // ===== HR ===== beste 12-min hartslag in bpm (of null)
     piek20minHr,     // ===== HR ===== beste 20-min hartslag in bpm (of null)
+    decoupling: decoupling ? decoupling.pct : null,               // ===== HARTSLAG-DECOUPLING ===== Pw:HR-drift in % (of null)
+    decouplingMinuten: decoupling ? decoupling.minuten : null,
+    decouplingBetrouwbaarheid: decoupling ? 'hoog' : null,        // alleen gezet als er een kwalificerende rit was
   };
 }
