@@ -43,6 +43,8 @@ export default async function handler(req, res) {
     maxHf = null,
     omslagpunt = null,
     maxGapDagen = 0,
+    decoupling = null,
+    decouplingMinuten = null,
   } = stravaData;
 
   // ===== AFGELEIDE WAARDEN =====
@@ -202,6 +204,29 @@ export default async function handler(req, res) {
     });
   }
 
+  // 9. Hartslag-decoupling (Pw:HR-drift) — alleen zinvol op het vermogen-spoor:
+  // decoupling vergelijkt vermogen tegen hartslag binnen dezelfde rit, dus
+  // zonder vermogensmeter is er niets om tegen te decouplen.
+  if (isPower && decoupling !== null) {
+    if (decoupling > 10) {
+      bevindingen.push({
+        prio: 4, telAlsLek: true,
+        kort: `Op je langste duurrit (${decouplingMinuten} min) steeg je hartslag ${decoupling}% ten opzichte van je vermogen — je aerobe basis geeft het op zodra het lang duurt.`,
+        html: `<strong>${decoupling}% Pw:HR-decoupling</strong> op je langste duurrit van de afgelopen 90 dagen (${decouplingMinuten} minuten): bij gelijkblijvend vermogen kroop je hartslag flink omhoog. Dat wijst op een aerobe basis die een lange inspanning nog niet aankan — of op vermoeidheid, hitte of te weinig vocht tijdens die specifieke rit.`,
+        analyse: `je Pw:HR-decoupling van ${decoupling}% op je langste rit laat zien dat je hartslag wegloopt van je vermogen zodra het lang duurt — precies wat een bredere aerobe basis oplost`,
+        actie: `Bouw je aerobe basis uit: meer rustige duurkilometers onder ${duurMax}, en let op voeding en vocht tijdens lange ritten. Daarmee zakt je decoupling vanzelf richting de 5%.`
+      });
+    } else if (decoupling >= 5) {
+      bevindingen.push({
+        prio: 8, telAlsLek: false,
+        kort: `${decoupling}% Pw:HR-decoupling op je langste duurrit — een teken dat je aerobe basis nog kan groeien.`,
+        html: `Met <strong>${decoupling}%</strong> Pw:HR-decoupling op je langste duurrit (${decouplingMinuten} min) zit je in het grijze gebied: niet slecht, maar nog niet de stabiele hartslag die bij een sterke aerobe motor hoort.`,
+        analyse: `je Pw:HR-decoupling (${decoupling}%) zit nog niet waar 'ie moet zijn, al is het geen groot alarm`,
+        actie: `Rijd je duurritten consequent onder ${duurMax} en verleng ze geleidelijk — dat traint precies het uithoudingsvermogen dat decoupling omlaag brengt.`
+      });
+    }
+  }
+
   // FALLBACK: alles in orde — scherpte-bevinding
   if (bevindingen.length === 0) {
     bevindingen.push({
@@ -220,6 +245,7 @@ export default async function handler(req, res) {
   // ===== POSITIEF PUNT (er is altijd iets) =====
   let positief;
   if (maxGapDagen < 7 && rittenPerWeek >= 3) positief = `je bent consistent — ${rittenPerWeek}x per week zonder grote gaten, en dat is het fundament dat de meesten missen`;
+  else if (isPower && decoupling !== null && decoupling <= 5) positief = `je aerobe basis staat: op je langste duurrit bleef je hartslag stabiel bij gelijkblijvend vermogen (${decoupling}% decoupling) — dat houdt vol op de lange afstand`;
   else if (laagPct !== null && laagPct >= 78) positief = `je duurbasis staat goed: ${laagPct}% rustige training is precies waar je motor van groeit`;
   else if (urenPerWeek >= 8) positief = `aan inzet geen gebrek — ${urenPerWeek} uur per week is een volume waar veel mee te winnen valt`;
   else if (langsteRit >= 80) positief = `je durft lang te rijden (langste rit ${langsteRit} km) en dat duurvermogen is een sterke basis`;
