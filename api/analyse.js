@@ -45,6 +45,9 @@ export default async function handler(req, res) {
     maxGapDagen = 0,
     decoupling = null,
     decouplingMinuten = null,
+    decouplingHr = null,
+    decouplingHrMinuten = null,
+    decouplingHrBetrouwbaarheid = null,
   } = stravaData;
 
   // ===== AFGELEIDE WAARDEN =====
@@ -227,6 +230,36 @@ export default async function handler(req, res) {
     }
   }
 
+  // 9b. Snelheid:HR-decoupling (Pa:HR-drift) — het hartslag-spoor-alternatief
+  // voor renners zonder (bruikbare) vermogensmeter: snelheid tegen hartslag
+  // i.p.v. vermogen tegen hartslag. strava-callback.js (bepaalDecouplingHr)
+  // berekent dit alleen op een overwegend VLAKKE en RUSTIGE duurrit, en het
+  // predicaat is NOOIT 'hoog' betrouwbaar — snelheid compenseert niet voor
+  // wind/terrein zoals vermogen dat wel doet. Vandaar de zachtere, eerlijke
+  // formulering met een expliciete betrouwbaarheidsvermelding in de tekst.
+  if (isHr && decouplingHr !== null) {
+    const decHrBetrTekst = decouplingHrBetrouwbaarheid === 'gemiddeld'
+      ? 'gemiddelde betrouwbaarheid, gemeten op een vlakke en rustige rit'
+      : 'indicatief — gevoelig voor wind en terrein, dus zie het als richting, niet als harde meting';
+    if (decouplingHr > 10) {
+      bevindingen.push({
+        prio: 5, telAlsLek: true,
+        kort: `Op je langste vlakke duurrit (${decouplingHrMinuten} min) steeg je hartslag ${decouplingHr}% ten opzichte van je snelheid — je aerobe basis geeft het op zodra het lang duurt.`,
+        html: `<strong>${decouplingHr}% Pa:HR-decoupling</strong> op je langste vlakke duurrit van de afgelopen 90 dagen (${decouplingHrMinuten} minuten, ${decHrBetrTekst}): bij gelijkblijvende snelheid kroop je hartslag flink omhoog. Dat wijst op een aerobe basis die een lange inspanning nog niet aankan — of op wind, terrein, hitte of te weinig vocht tijdens die specifieke rit.`,
+        analyse: `je Pa:HR-decoupling van ${decouplingHr}% op je langste rit laat zien dat je hartslag wegloopt van je snelheid zodra het lang duurt — precies wat een bredere aerobe basis oplost`,
+        actie: `Bouw je aerobe basis uit: meer rustige duurkilometers onder ${duurMax}, en let op voeding en vocht tijdens lange ritten. Daarmee zakt je decoupling vanzelf richting de 5%.`
+      });
+    } else if (decouplingHr >= 5) {
+      bevindingen.push({
+        prio: 8, telAlsLek: false,
+        kort: `${decouplingHr}% Pa:HR-decoupling op je langste vlakke duurrit — een teken dat je aerobe basis nog kan groeien.`,
+        html: `Met <strong>${decouplingHr}%</strong> Pa:HR-decoupling op je langste vlakke duurrit (${decouplingHrMinuten} min, ${decHrBetrTekst}) zit je in het grijze gebied: niet slecht, maar nog niet de stabiele hartslag die bij een sterke aerobe motor hoort.`,
+        analyse: `je Pa:HR-decoupling (${decouplingHr}%) zit nog niet waar 'ie moet zijn, al is het geen groot alarm`,
+        actie: `Rijd je duurritten consequent onder ${duurMax} en verleng ze geleidelijk — dat traint precies het uithoudingsvermogen dat decoupling omlaag brengt.`
+      });
+    }
+  }
+
   // FALLBACK: alles in orde — scherpte-bevinding
   if (bevindingen.length === 0) {
     bevindingen.push({
@@ -246,6 +279,7 @@ export default async function handler(req, res) {
   let positief;
   if (maxGapDagen < 7 && rittenPerWeek >= 3) positief = `je bent consistent — ${rittenPerWeek}x per week zonder grote gaten, en dat is het fundament dat de meesten missen`;
   else if (isPower && decoupling !== null && decoupling <= 5) positief = `je aerobe basis staat: op je langste duurrit bleef je hartslag stabiel bij gelijkblijvend vermogen (${decoupling}% decoupling) — dat houdt vol op de lange afstand`;
+  else if (isHr && decouplingHr !== null && decouplingHr <= 5) positief = `je aerobe basis staat: op je langste vlakke duurrit bleef je hartslag stabiel bij gelijkblijvende snelheid (${decouplingHr}% decoupling) — dat houdt vol op de lange afstand`;
   else if (laagPct !== null && laagPct >= 78) positief = `je duurbasis staat goed: ${laagPct}% rustige training is precies waar je motor van groeit`;
   else if (urenPerWeek >= 8) positief = `aan inzet geen gebrek — ${urenPerWeek} uur per week is een volume waar veel mee te winnen valt`;
   else if (langsteRit >= 80) positief = `je durft lang te rijden (langste rit ${langsteRit} km) en dat duurvermogen is een sterke basis`;
