@@ -206,7 +206,10 @@ export default async function handler(req, res) {
     // als "even opnieuw proberen", net als bij een rate limit.
     let tokenGeraakt = false;
     const streamResults = await mapMetLimiet(rittenVoorStreams, STREAM_CONCURRENCY, (rit) =>
-      fetch(`https://www.strava.com/api/v3/activities/${rit.id}/streams?keys=watts,heartrate&key_by_type=true`, {
+      // HARTSLAG-SPOOR (Pa:HR-decoupling): velocity_smooth (snelheid) en altitude
+      // erbij voor sporters zonder vermogensmeter. Kost geen extra API-call —
+      // dezelfde streams-aanroep geeft gewoon meer streamtypes terug.
+      fetch(`https://www.strava.com/api/v3/activities/${rit.id}/streams?keys=watts,heartrate,velocity_smooth,altitude&key_by_type=true`, {
         headers: { Authorization: `Bearer ${accessToken}` }
       })
       .then(async r => {
@@ -375,6 +378,9 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       decoupling: null,        // ===== HARTSLAG-DECOUPLING =====
       decouplingMinuten: null,
       decouplingBetrouwbaarheid: null,
+      decouplingHr: null,      // ===== HARTSLAG-SPOOR DECOUPLING (Pa:HR) =====
+      decouplingHrMinuten: null,
+      decouplingHrBetrouwbaarheid: null,
     };
   }
 
@@ -923,6 +929,131 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     else console.log('Decoupling: geen kwalificerende duurrit (≥2u, steady) gevonden');
   }
 
+  // ===================================================================
+  // ===== HARTSLAG-SPOOR DECOUPLING (Pa:HR-drift) =====
+  // ===================================================================
+  // Tegenhanger van de Pw:HR-decoupling hierboven, voor sporters ZONDER
+  // (bruikbare) vermogensmeter. In de hardloopwereld heet dit "Pa:HR-
+  // decoupling" (pace tegen hartslag) — een beproefd, geaccepteerd concept;
+  // hier toegepast op fietssnelheid (velocity_smooth-stream) i.p.v. tempo.
+  // Zelfde kernmethode als hierboven: eerste 10 min negeren (DECOUPLING_
+  // WARMUP_SEC), de rest in twee helften splitsen, per helft het
+  // snelheid:hartslag-quotiënt nemen, en het verschil uitdrukken als
+  // percentage van de eerste helft. Zelfde ondergrens (DECOUPLING_MIN_SEC,
+  // 2 uur) en dezelfde "minstens 1 uur over na de warming-up"-eis.
+  //
+  // TWEE EXTRA FILTERS t.o.v. de vermogensversie, omdat snelheid veel
+  // gevoeliger is voor omstandigheden dan vermogen:
+  //
+  //  1) VLAK-FILTER — vermogen compenseert vanzelf voor een klim (je duwt
+  //     meer watt); snelheid niet: bergop zakt je snelheid terwijl je
+  //     hartslag juist oploopt, wat het signaal zou verzieken zonder dat
+  //     het iets over je aerobe basis zegt. We rekenen hoogtemeters per
+  //     kilometer uit over hetzelfde venster (uit de altitude-stream, of
+  //     anders total_elevation_gain / afstand van de hele rit) en laten
+  //     alleen overwegend platte ritten toe. 10 m/km als harde grens komt
+  //     neer op zo'n 1% gemiddelde stijging over de hele rit — haalbaar op
+  //     een doorsnee vlakke duurrit, maar sluit een rit met een paar echte
+  //     klimmetjes al uit. Ruim eronder (≤ 6 m/km) rekenen we als
+  //     "comfortabel vlak", en dat weegt mee in de betrouwbaarheid.
+  //
+  //  2) RUSTIGE-INSPANNING-FILTER — i.p.v. de Variability Index (VI) op
+  //     vermogen (NP/gemiddelde, vierde macht — ontworpen rond de
+  //     niet-lineaire fysiologische kostencurve van vermogen) gebruiken we
+  //     de variatiecoëfficiënt (CV = standaarddeviatie / gemiddelde) van de
+  //     snelheid: dat heeft geen vermogen-specifieke aanname nodig en is
+  //     een eerlijke, generieke maat voor "hoe grillig was deze rit"
+  //     (stop-and-go, verkeerslichten, intervallen).
+  //
+  // BETROUWBAARHEID: dit predicaat wordt NOOIT 'hoog' — dat is voorbehouden
+  // aan de vermogensversie, die veel minder ruis kent. 'gemiddeld' alleen
+  // als de rit zowel ruim onder de vlak-drempel bleef als ruim boven de
+  // 2u-ondergrens dekking gaf (2,5u+): twee onafhankelijke signalen dat dit
+  // een schoon duursignaal was. Alles ertussenin (net onder de vlak-drempel,
+  // of maar net 2 uur) krijgt 'laag' — bruikbaar als indicatie, geen garantie.
+  const DECOUPLING_HR_MAX_M_PER_KM = 10;        // boven dit punt te heuvelachtig voor een betrouwbaar Pa:HR-signaal
+  const DECOUPLING_HR_GOED_M_PER_KM = 6;        // ruim eronder = "comfortabel vlak" → telt mee voor 'gemiddeld'
+  const DECOUPLING_HR_MAX_CV = 0.30;            // boven dit punt te grillig (stop-and-go, verkeer, intervallen)
+  const DECOUPLING_HR_GOED_MIN_SEC = 150 * 60;  // 2,5 uur: ruim boven de 2u-ondergrens → extra dekking voor 'gemiddeld'
+
+  function bepaalDecouplingHr(velData, hrData, altData, rit) {
+    if (!velData || !hrData) return null;
+    const lengte = Math.min(velData.length, hrData.length);
+    if (lengte < DECOUPLING_MIN_SEC) return null;
+
+    // Afstand van het gebruikte venster (voor m/km en als ondergrens-check).
+    let afstandM = 0;
+    for (let i = 0; i < lengte; i++) afstandM += (velData[i] || 0);
+    const afstandKm = afstandM / 1000;
+    if (afstandKm < 1) return null;
+
+    // Hoogtemeters/km: bij voorkeur uit de altitude-stream over hetzelfde
+    // venster; zonder stream valt terug op de rit-brede total_elevation_gain
+    // gedeeld door de rit-afstand (minder precies, maar beter dan gokken).
+    let hoogtePerKm;
+    if (altData && altData.length >= lengte) {
+      let stijging = 0;
+      for (let i = 1; i < lengte; i++) {
+        const d = (altData[i] || 0) - (altData[i - 1] || 0);
+        if (d > 0) stijging += d;
+      }
+      hoogtePerKm = stijging / afstandKm;
+    } else if (rit?.total_elevation_gain != null && rit?.distance) {
+      hoogtePerKm = rit.total_elevation_gain / (rit.distance / 1000);
+    } else {
+      return null;   // geen enkele bron voor hoogtemeters → niet te beoordelen, niet gokken
+    }
+    if (hoogtePerKm > DECOUPLING_HR_MAX_M_PER_KM) return null;   // te heuvelachtig, geen betrouwbaar vlak signaal
+
+    // Rustige-inspanning-filter: variatiecoëfficiënt van de snelheid.
+    const gemSnelheid = afstandM / lengte;
+    if (gemSnelheid <= 0) return null;
+    let kwadSom = 0;
+    for (let i = 0; i < lengte; i++) { const v = (velData[i] || 0) - gemSnelheid; kwadSom += v * v; }
+    const cv = Math.sqrt(kwadSom / lengte) / gemSnelheid;
+    if (cv > DECOUPLING_HR_MAX_CV) return null;   // te grillig, geen steady duurrit
+
+    const start = DECOUPLING_WARMUP_SEC < lengte * 0.4 ? DECOUPLING_WARMUP_SEC : 0;
+    const rest = lengte - start;
+    if (rest < 3600) return null;                  // na de warming-up nog minstens 1 uur nodig
+    const midden = start + Math.floor(rest / 2);
+
+    const gemVanaf = (data, van, tot) => {
+      let som = 0, n = 0;
+      for (let i = van; i < tot; i++) { const v = data[i]; if (v != null && v > 0) { som += v; n++; } }
+      return n > 0 ? som / n : null;
+    };
+    const s1 = gemVanaf(velData, start, midden), s2 = gemVanaf(velData, midden, lengte);
+    const h1 = gemVanaf(hrData, start, midden), h2 = gemVanaf(hrData, midden, lengte);
+    if (!s1 || !s2 || !h1 || !h2) return null;
+
+    const ratio1 = s1 / h1, ratio2 = s2 / h2;
+    const pct = ((ratio1 - ratio2) / ratio1) * 100;
+    const betrouwbaarheid = (hoogtePerKm <= DECOUPLING_HR_GOED_M_PER_KM && lengte >= DECOUPLING_HR_GOED_MIN_SEC)
+      ? 'gemiddeld' : 'laag';
+
+    return {
+      pct: Math.round(pct * 10) / 10,
+      cv: Math.round(cv * 100) / 100,
+      hoogtePerKm: Math.round(hoogtePerKm * 10) / 10,
+      minuten: Math.round(lengte / 60),
+      betrouwbaarheid,
+    };
+  }
+
+  let decouplingHr = null, decouplingHrRitId = null;
+  if (!gebruikVermogen) {
+    const kandidatenDecouplingHr = fietsritten90
+      .filter(r => (streamMap[r.id]?.velocity_smooth?.data?.length || 0) >= DECOUPLING_MIN_SEC && (streamMap[r.id]?.heartrate?.data?.length || 0) >= DECOUPLING_MIN_SEC)
+      .sort((a, b) => streamMap[b.id].velocity_smooth.data.length - streamMap[a.id].velocity_smooth.data.length);   // langste eerst
+    for (const rit of kandidatenDecouplingHr) {
+      const res = bepaalDecouplingHr(streamMap[rit.id].velocity_smooth.data, streamMap[rit.id].heartrate.data, streamMap[rit.id]?.altitude?.data, rit);
+      if (res) { decouplingHr = res; decouplingHrRitId = rit.id; break; }
+    }
+    if (decouplingHr) console.log(`Decoupling-HR: ${decouplingHr.pct}% (CV ${decouplingHr.cv}, ${decouplingHr.hoogtePerKm} hm/km, ${decouplingHr.minuten} min, betr. ${decouplingHr.betrouwbaarheid}, rit ${decouplingHrRitId})`);
+    else console.log('Decoupling-HR: geen kwalificerende vlakke/rustige duurrit (≥2u) gevonden');
+  }
+
   // ===== HARDE STOP: IS ER UBERHAUPT MEETDATA? =====
   // (Rinze-case, 2 september 2026.) Zonder vermogen-spoor en zonder omslagpunt
   // valt de zone-analyse hieronder terug op een VASTE, verzonnen verdeling
@@ -1167,5 +1298,10 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     decoupling: decoupling ? decoupling.pct : null,               // ===== HARTSLAG-DECOUPLING ===== Pw:HR-drift in % (of null)
     decouplingMinuten: decoupling ? decoupling.minuten : null,
     decouplingBetrouwbaarheid: decoupling ? 'hoog' : null,        // alleen gezet als er een kwalificerende rit was
+    // ===== HARTSLAG-SPOOR DECOUPLING (Pa:HR) ===== snelheid:HR-drift in % (of
+    // null); nooit 'hoog' (zie bepaalDecouplingHr hierboven) — max 'gemiddeld'.
+    decouplingHr: decouplingHr ? decouplingHr.pct : null,
+    decouplingHrMinuten: decouplingHr ? decouplingHr.minuten : null,
+    decouplingHrBetrouwbaarheid: decouplingHr ? decouplingHr.betrouwbaarheid : null,
   };
 }
