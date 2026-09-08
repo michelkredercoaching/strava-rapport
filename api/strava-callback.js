@@ -531,6 +531,13 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     dominantieVensters: 3,        // wint één rit ≥ dit aantal vensters → verdacht
     minVormRatio: 1.30,           // piek1min / piek20min hieronder = te vlak (geen test)
     maxWattPerKg: 6.0,            // hierboven vrijwel zeker meetfout voor deze doelgroep
+    // Per-venster hard plafond in W/kg (Maarten-case: vermogensmeter schreef
+    // 2169W/76kg = 28,5 W/kg voor 1 min — een glitch, geen mens. Ruim boven wat
+    // deze doelgroep (recreatief/sub-elite) ooit haalt, zodat een échte topdag
+    // nooit onterecht wordt weggefilterd. Toegepast per kandidaat-venster, vóór
+    // de HR- en dominantie-check, zodat een sensor-storing nooit in de gekozen
+    // piek — en dus nooit in het rapport — terechtkomt.
+    maxWattPerKgVenster: { 60: 12.0, 300: 9.0, 720: 7.0, 1200: 6.5 },
   };
 
   let heeftPowerStream = false;
@@ -567,6 +574,13 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     ftpWindows.forEach(w => {
       const v = besteVenster(wattsData, w.sec);
       if (!v || v.avg <= 50) return;
+      const plafondPerKg = PIEK_FILTER.maxWattPerKgVenster[w.sec];
+      if (weight && plafondPerKg && (v.avg / weight) > plafondPerKg) {
+        piekFilterNotities.push(
+          `rit ${rit.id} ${w.naam}: ${Math.round(v.avg)}W (${(v.avg / weight).toFixed(1)} W/kg > plafond ${plafondPerKg}) → sensor-glitch, genegeerd`
+        );
+        return;
+      }
       let hrAvg = null, hrDekking = 0;
       if (hrData) {
         let som = 0, n = 0;
