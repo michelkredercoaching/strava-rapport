@@ -16,6 +16,11 @@
 //     bijbehorende Startprotocol-pdf en geeft die link ook terug aan de pagina.
 //     Woont hier en niet in een eigen /api/gratis-training.js omdat de Vercel
 //     Hobby-limiet van 12 serverless functions al vol zat (zie ook lead.js).
+//   - 'zesuur': inline opt-in op de 6-uur-per-week-advertentiepagina. Zet de
+//     tag 'zesuur-pdf', mailt de zesuur-schema-pdf (schema + invulblad eigen
+//     zones + duw naar de Strava-analyse) en geeft de downloadUrl terug zodat
+//     de pagina 'm ook meteen kan tonen. Geen aparte meetmethode-variant nodig
+//     (het schema zelf is generiek, alleen het invulblad heeft twee kolommen).
 //
 // Vereist in Vercel (staan er al voor de betaling-webhook):
 //   MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID, PP_TOKEN_SECRET, RESEND_API_KEY
@@ -29,6 +34,7 @@ const TAG_SCHEMA      = 'keuzehulp-gedaan';
 const TAG_COACHING    = 'keuzehulp-coaching';
 const TAG_GRATIS      = 'gratis-training';
 const TAG_BEGELEIDING = 'begeleiding-aanvraag';
+const TAG_ZESUUR      = 'zesuur-pdf';
 
 // ===== Gratis-training lead magnet (route 'gratis-training') =====
 // Woont bewust in dit endpoint en niet in een eigen /api/gratis-training.js:
@@ -44,6 +50,12 @@ const SP_PDF_VERMOGEN = process.env.PROEFTRAINING_PDF_VERMOGEN
 const SP_PDF_HARTSLAG = process.env.PROEFTRAINING_PDF_HARTSLAG
   || 'https://michelkredercoaching.nl/wp-content/uploads/2026/08/Startprotocol-hartslag.pdf';
 const ANALYSE_URL     = 'https://strava-analyse.michelkredercoaching.nl/';
+
+// Bonus-pdf bij de 6-uur-per-week-advertentiepagina: het schema, wat ik zou
+// schrappen, en een invulblad voor de eigen zones met een duw naar de
+// Strava-analyse. Eén generieke pdf, geen vermogen/hartslag-variant nodig.
+const ZESUUR_PDF = process.env.ZESUUR_PDF
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/zesuur-schema.pdf';
 
 const AFZENDER     = 'Michel Kreder Coaching <rapport@michelkredercoaching.nl>';
 const REPLY_TO     = 'info@michelkredercoaching.nl';
@@ -374,6 +386,24 @@ function proeftrainingHtml(naam, pdfUrl, meetmethode) {
   return naarHtmlEntities(html);
 }
 
+// Afleveringsmail van de zesuur-schema-pdf. Kort en zonder pitch, de duw naar
+// de analyse zit al in de pdf zelf (het invulblad met de blanco zones).
+function zesuurHtml(naam, pdfUrl) {
+  const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 18px;">Hier is je schema, als pdf om te printen of op je telefoon te bewaren. Ik heb er twee dingen bij gezet: wat ik zou schrappen uit een gemiddelde week, en een invulblad voor je eigen zones.</p>
+    <p style="margin:4px 0 18px;">
+      <a href="${escHtml(pdfUrl)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Download je schema</a>
+    </p>
+    <p style="font-size:15px;margin:0 0 14px;">Rijd 'm op gevoel, dat werkt prima. Wil je 'm liever op een getal rijden, dan staat in de pdf hoe je snel aan je eigen FTP of omslagpunt komt.</p>
+    <p style="font-size:14px;margin:0 0 4px;">Vragen? Reageer gewoon op deze mail, ik lees alles zelf.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
 // Tag eerst weghalen en dan opnieuw zetten: alleen een NIEUW geplaatste tag
 // triggert een journey, ook bij contacten die de keuzehulp eerder deden.
 async function hertag(base, headers, hash, tag) {
@@ -409,6 +439,7 @@ export default async function handler(req, res) {
   const route = b.route === 'coaching'        ? 'coaching'
               : b.route === 'begeleiding'     ? 'begeleiding'
               : b.route === 'gratis-training' ? 'gratis-training'
+              : b.route === 'zesuur'          ? 'zesuur'
               :                                 'schema';
 
   // Proeftraining: bepaal meteen welke variant van het Startprotocol deze bezoeker
@@ -496,6 +527,7 @@ export default async function handler(req, res) {
     const tag = route === 'coaching'        ? TAG_COACHING
               : route === 'begeleiding'     ? TAG_BEGELEIDING
               : route === 'gratis-training' ? TAG_GRATIS
+              : route === 'zesuur'          ? TAG_ZESUUR
               :                               TAG_SCHEMA;
     await hertag(base, headers, hash, tag);
 
@@ -526,6 +558,20 @@ export default async function handler(req, res) {
         pdfUrl: gtDownloadUrl,
         meetmethode: gtMeetmethode,
       });
+    }
+
+    // 2c) Zesuur: de schema-pdf meteen mailen (bevestigt het adres) en de
+    //     downloadUrl teruggeven aan de pagina voor een directe download,
+    //     zonder handmatige stap voor Michel (geen TrainingPeaks-koppeling
+    //     nodig zoals bij de proeftraining).
+    if (route === 'zesuur') {
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: 'Je 6-uur-schema staat klaar',
+        html: zesuurHtml(b.naam, ZESUUR_PDF),
+      });
+      console.log('Zesuur OK:', email);
+      return res.status(200).json({ ok: true, downloadUrl: ZESUUR_PDF });
     }
 
     // 3) Coaching-inschrijving: notificatie naar Michel + bevestiging naar de lead.
