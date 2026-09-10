@@ -73,13 +73,16 @@ const TP_APPLE   = 'https://apps.apple.com/app/id408047715';
 // type zodat de twee soorten tokens elkaars snippet niet activeren.
 // Opbouw: base64url("kh10|email|exp|sig"), sig = eerste 16 hex tekens van
 // HMAC-SHA256(PP_TOKEN_SECRET, "kh10|email|exp").
-// Mail 5 valt op dag 8; deadline = dag 11 (dus "nog 3 dagen"), het token
-// zelf is 12 dagen geldig als buffer rond tijdzones en late opens.
+// Mail 5 valt normaal op dag 8. Het token is 25 dagen geldig — ruime buffer
+// voor tijdzones, late opens, én een stilstaande journey (zie het incident
+// van 24-08 t/m 07-09: mensen kregen mail 5 tot 19 dagen te laat, met een
+// toen al verlopen kortingslink). De mailtekst zelf noemt sinds die fix geen
+// kalenderdatum meer, dus KHDEADLINE is alleen nog informatief.
 const PP_SECRET = process.env.PP_TOKEN_SECRET || '';
 
 function maakKeuzehulpKorting(email) {
   if (!PP_SECRET || !email) return { token: '', deadlineNL: '' };
-  const exp = Date.now() + 12 * 24 * 3600 * 1000;
+  const exp = Date.now() + 25 * 24 * 3600 * 1000;
   const payload = `kh10|${String(email).toLowerCase()}|${exp}`;
   const sig = crypto.createHmac('sha256', PP_SECRET).update(payload).digest('hex').slice(0, 16);
   const token = Buffer.from(`${payload}|${sig}`).toString('base64url');
