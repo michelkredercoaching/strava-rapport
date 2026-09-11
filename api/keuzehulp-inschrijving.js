@@ -49,9 +49,9 @@ const TAG_ZESUUR      = 'zesuur-pdf';
 // via de TrainingPeaks-koppellink op de fietscomputer, en dat was precies de
 // klacht die het .fit-bestand veroorzaakte.
 const SP_PDF_VERMOGEN = process.env.PROEFTRAINING_PDF_VERMOGEN
-  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/08/Startprotocol-vermogen.pdf';
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/Startprotocolvermogen-1.pdf';
 const SP_PDF_HARTSLAG = process.env.PROEFTRAINING_PDF_HARTSLAG
-  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/08/Startprotocol-hartslag.pdf';
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/Startprotocolhartslag-1.pdf';
 const ANALYSE_URL     = 'https://strava-analyse.michelkredercoaching.nl/';
 
 // Bonus-pdf bij de 6-uur-per-week-advertentiepagina: het schema, wat ik zou
