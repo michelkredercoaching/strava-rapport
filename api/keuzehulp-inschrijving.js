@@ -14,6 +14,9 @@
 //   - 'gratis-training': de lead magnet vanaf /de-proeftraining/. Zet de tag
 //     'gratis-training' + mergeveld MEETMETH (vermogen/hartslag), mailt de
 //     bijbehorende Startprotocol-pdf en geeft die link ook terug aan de pagina.
+//     Sinds de knip (De Proeftraining = alleen de test, het opbouwblok zit nu
+//     in het betaalde Het Startpakket) is er geen TrainingPeaks-koppeling en
+//     dus geen interne notificatie naar Michel meer nodig voor deze route.
 //     Woont hier en niet in een eigen /api/gratis-training.js omdat de Vercel
 //     Hobby-limiet van 12 serverless functions al vol zat (zie ook lead.js).
 //   - 'zesuur': inline opt-in op de 6-uur-per-week-advertentiepagina. Zet de
@@ -152,39 +155,6 @@ function interneCoachingHtml(b) {
     </table>
     <p style="margin:16px 0 4px;color:#666;">Doel of grootste frustratie:</p>
     <p style="margin:0;padding:10px 14px;border-radius:6px;background:#f5f5f5;font-size:15px;">${escHtml(b.doel || '—')}</p>
-  </div>`);
-}
-
-// Notificatie naar Michel zodra iemand De Proeftraining aanvraagt. Doel is één
-// oogopslag: wie is binnengekomen, welk adres zich zo dadelijk koppelt in
-// TrainingPeaks, en welke variant van de proeftraining hij nodig heeft.
-function interneProeftrainingHtml({ naam, email, meetmethode }) {
-  const r = (label, val) => `<tr><td style="padding:5px 16px 5px 0;color:#666;white-space:nowrap;">${label}</td><td style="padding:5px 0;font-weight:700;">${escHtml(val || '—')}</td></tr>`;
-  // Kleurtje per variant, zodat je in je inbox in één blik ziet welke versie
-  // van de proeftraining je moet klaarzetten.
-  const variant = meetmethode === 'hartslag'
-    ? { woord: 'hartslag', tint: '#ffe9e0' }
-    : { woord: 'vermogen', tint: '#fff3e6' };
-  return naarHtmlEntities(`
-  <div style="font-family:Arial,sans-serif;color:#111;line-height:1.6;">
-    <h2 style="margin:0 0 4px;">🚴 Nieuwe proeftraining aangevraagd</h2>
-    <p style="margin:0 0 16px;color:#666;">Via /de-proeftraining/ · verwacht een koppelverzoek in TrainingPeaks</p>
-    <table style="border-collapse:collapse;font-size:15px;">
-      ${r('Naam', naam)}
-      ${r('E-mail', email)}
-      ${r('Traint op', meetmethode === 'hartslag' ? 'Hartslag' : 'Vermogen')}
-    </table>
-    <p style="margin:18px 0 16px;padding:14px 18px;border-radius:6px;background:${variant.tint};font-size:16px;">
-      Zet klaar zodra hij gekoppeld is: <b>de ${variant.woord}-versie</b> van de proeftraining.
-    </p>
-    <p style="margin:0 0 6px;color:#666;">Te doen:</p>
-    <ol style="margin:0;padding-left:18px;font-size:15px;">
-      <li>Wacht op het koppelverzoek van <b>${escHtml(email || '—')}</b> in je coachaccount en accepteer het. Blijft het uit, nodig hem dan zelf uit op dit adres.</li>
-      <li>Zet de proeftraining in zijn kalender, <b>${variant.woord}</b>.</li>
-    </ol>
-    <p style="margin:18px 0 0;">
-      <a href="https://app.trainingpeaks.com/" style="display:inline-block;background:#FF6B1A;color:#fff;text-decoration:none;font-weight:700;padding:10px 18px;border-radius:6px;">Open TrainingPeaks</a>
-    </p>
   </div>`);
 }
 
@@ -335,52 +305,28 @@ function onboardingBegeleidingHtml(b) {
 }
 
 // Afleveringsmail van De Proeftraining. Past zich aan op meetmethode: bij vermogen
-// draait het om FTP, bij hartslag om het omslagpunt. Bewust zonder pitch, want
-// het Startprotocol eindigt zelf al met de stap naar een schema en de
-// journey-mails pakken het daarna op.
+// draait het om FTP, bij hartslag om het omslagpunt. Sinds de knip (proeftraining
+// is nu alleen de test, geen TrainingPeaks-koppeling meer) is dit een korte mail
+// zonder handmatige vervolgstap voor Michel. Bewust zonder pitch op het schema:
+// het Startprotocol eindigt zelf al met de stap naar Het Startpakket.
 function proeftrainingHtml(naam, pdfUrl, meetmethode) {
   const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
   const isVermogen = meetmethode !== 'hartslag';
   const waarde  = isVermogen ? 'FTP' : 'omslagpunt';
 
-  const stap = (nr, titel, tekst) => `
-    <tr>
-      <td style="width:34px;vertical-align:top;padding:0 12px 18px 0;">
-        <div style="width:26px;height:26px;border-radius:6px;background:#ff6b1a;color:#ffffff;font-weight:800;font-size:14px;text-align:center;line-height:26px;">${nr}</div>
-      </td>
-      <td style="vertical-align:top;padding:0 0 18px;">
-        <p style="font-size:15px;font-weight:800;margin:0 0 4px;color:#1a1a1a;">${titel}</p>
-        <p style="font-size:14px;margin:0;color:#555;">${tekst}</p>
-      </td>
-    </tr>`;
-
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
     <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
-    <p style="font-size:15px;margin:0 0 18px;">Je proeftraining staat klaar. Twee dingen, en de eerste kun je nu meteen doen.</p>
+    <p style="font-size:15px;margin:0 0 18px;">Je Startprotocol staat klaar. Daarin staat de test waarmee je je eigen ${waarde} bepaalt, en de zones die daarbij horen. Geen account nodig, geen koppeling: gewoon een stuk weg en twaalf minuten.</p>
 
-    <table style="border-collapse:collapse;width:100%;">
-      ${stap(1, 'Download het Startprotocol', `Daarin staat de nulmeting waarmee je je eigen ${waarde} bepaalt, je zones met hoe hard ze horen te voelen, en de proeftraining helemaal uitgeschreven. Je kunt dus vandaag al rijden.`)}
-      ${stap(2, 'Koppel je TrainingPeaks', 'Klik op de tweede knop hieronder. Je logt in of maakt een gratis account aan, en daarmee hang je aan mijn coachaccount. Kost je een minuut. Zodra je gekoppeld bent zet ik de proeftraining in je kalender, en met je Garmin, Wahoo of Zwift eraan verschijnt hij vanzelf op je stuur, met de blokken en de tijden er al in.')}
-    </table>
-
-    <p style="margin:4px 0 12px;">
+    <p style="margin:4px 0 22px;">
       <a href="${escHtml(pdfUrl)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Download het Startprotocol</a>
     </p>
-    <p style="margin:0 0 18px;">
-      <a href="${TP_COACH_LINK}" style="display:inline-block;border:2px solid #ff6b1a;color:#ff6b1a;text-decoration:none;font-weight:800;font-size:16px;padding:12px 28px;border-radius:8px;">Koppel mijn TrainingPeaks</a>
-    </p>
-
-    <div style="border-top:1px solid #eee;padding-top:16px;margin:0 0 4px;">
-      <p style="font-size:14px;margin:0 0 8px;color:#444;"><strong>Nog geen TrainingPeaks?</strong> Dan maak je er via diezelfde knop meteen een aan. Je vult je mailadres en een wachtwoord in, en klaar. <strong>Een gratis account is genoeg</strong> voor alles wat je hier nodig hebt, je hoeft nergens je pas voor te trekken.</p>
-      <p style="font-size:14px;margin:0 0 8px;color:#444;">Heb je al een account? Log dan gewoon in via de knop, dan koppelt hij vanzelf.</p>
-      <p style="font-size:13px;margin:0;color:#888;">Handig voor onderweg: de app voor <a href="${TP_APPLE}" style="color:#ff6b1a;font-weight:700;">iPhone</a> of <a href="${TP_ANDROID}" style="color:#ff6b1a;font-weight:700;">Android</a>.</p>
-    </div>
 
     <div style="margin:22px 0;padding:22px;background:#0d0d0d;border-radius:12px;">
       <p style="font-size:12px;font-weight:800;color:#ff6b1a;letter-spacing:1.5px;margin:0 0 10px;text-transform:uppercase;">Nog één ding</p>
       <p style="font-size:18px;line-height:1.4;color:#ffffff;margin:0 0 8px;font-weight:800;">Rijd hem op een dag dat je fris bent.</p>
-      <p style="font-size:14px;color:#c8c8c8;margin:0;">Niet als afsluiter van een drukke week en niet de dag na een zware rit. Deze training is kort maar fel, dus je haalt er alleen iets uit als je benen er zin in hebben. Twijfel je tussen vandaag en overmorgen, kies dan overmorgen.</p>
+      <p style="font-size:14px;color:#c8c8c8;margin:0;">Niet als afsluiter van een drukke week en niet de dag na een zware rit. De test is kort maar fel, dus je haalt er alleen iets uit als je benen er zin in hebben. Twijfel je tussen vandaag en overmorgen, kies dan overmorgen.</p>
     </div>
 
     <p style="font-size:15px;margin:0 0 14px;">Kom je er niet uit? Reageer gewoon op deze mail, ik help je op weg.</p>
@@ -542,15 +488,9 @@ export default async function handler(req, res) {
         subject: 'Je proeftraining staat klaar',
         html: proeftrainingHtml(b.naam, gtDownloadUrl, gtMeetmethode),
       });
-      // Notificatie naar Michel, zodat hij in één oogopslag ziet wie er is
-      // binnengekomen en wie hij moet uitnodigen in TrainingPeaks. Reply-to
-      // staat op de lead, dus antwoorden gaat rechtstreeks naar de renner.
-      await stuurMail({
-        from: AFZENDER, to: INTERNE_MAIL,
-        reply_to: email,
-        subject: `🚴 Proeftraining: ${String(b.naam || email)} · ${gtMeetmethode === 'hartslag' ? 'hartslag' : 'vermogen'}`,
-        html: interneProeftrainingHtml({ naam: b.naam, email, meetmethode: gtMeetmethode }),
-      });
+      // Geen interne notificatie meer: sinds de knip (proeftraining = alleen de
+      // test, geen TrainingPeaks-koppeling) is er geen handmatige stap voor
+      // Michel meer bij een gratis-training-lead.
       console.log('Proeftraining OK:', email, '| meetmethode:', gtMeetmethode);
       // downloadUrl en pdfUrl wijzen allebei naar het Startprotocol, zodat de
       // huidige pagina blijft werken zolang die nog niet opnieuw geplakt is.
