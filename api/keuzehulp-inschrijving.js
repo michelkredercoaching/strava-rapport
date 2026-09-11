@@ -24,6 +24,14 @@
 //     zones + duw naar de Strava-analyse) en geeft de downloadUrl terug zodat
 //     de pagina 'm ook meteen kan tonen. Geen aparte meetmethode-variant nodig
 //     (het schema zelf is generiek, alleen het invulblad heeft twee kolommen).
+//   - 'analyse-advies' / 'startpakket-advies': de binaire uitkomst van de
+//     9-vragen-keuzehulp (trainingsschema-keuzehulp-v2.html), sinds 11-09-2026
+//     niet meer schema-first. Wie al ritdata heeft (Strava/Garmin) krijgt het
+//     advies om eerst de Strava-analyse te doen; wie nog niets vastlegt krijgt
+//     Het Startpakket. Zet alleen de bijbehorende tag; 'startpakket-advies'
+//     mint daarnaast een sp19-token (1 uur geldig, zie maakStartpakketKorting)
+//     zodat de uitkomstpagina zelf een aftelklok en €14,95 kan tonen. Geen
+//     mail nodig, de pagina linkt zelf door naar analyse of checkout.
 //
 // Vereist in Vercel (staan er al voor de betaling-webhook):
 //   MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID, PP_TOKEN_SECRET, RESEND_API_KEY
@@ -38,6 +46,11 @@ const TAG_COACHING    = 'keuzehulp-coaching';
 const TAG_GRATIS      = 'gratis-training';
 const TAG_BEGELEIDING = 'begeleiding-aanvraag';
 const TAG_ZESUUR      = 'zesuur-pdf';
+// Binaire keuzehulp-uitkomst (11-09-2026): schema is geen directe uitkomst
+// meer, zie [[het-startpakket]] in memory. Eigen tags zodat Michel de twee
+// paden apart kan zien/bewerken in Mailchimp, los van de oude schema-journey.
+const TAG_KEUZEHULP_ANALYSE     = 'keuzehulp-analyse-advies';
+const TAG_KEUZEHULP_STARTPAKKET = 'keuzehulp-startpakket-advies';
 
 // ===== Gratis-training lead magnet (route 'gratis-training') =====
 // Woont bewust in dit endpoint en niet in een eigen /api/gratis-training.js:
@@ -401,11 +414,13 @@ export default async function handler(req, res) {
     return res.status(400).json({ ok: false, fout: 'ongeldig e-mailadres' });
   }
 
-  const route = b.route === 'coaching'        ? 'coaching'
-              : b.route === 'begeleiding'     ? 'begeleiding'
-              : b.route === 'gratis-training' ? 'gratis-training'
-              : b.route === 'zesuur'          ? 'zesuur'
-              :                                 'schema';
+  const route = b.route === 'coaching'            ? 'coaching'
+              : b.route === 'begeleiding'         ? 'begeleiding'
+              : b.route === 'gratis-training'     ? 'gratis-training'
+              : b.route === 'zesuur'              ? 'zesuur'
+              : b.route === 'analyse-advies'      ? 'analyse-advies'
+              : b.route === 'startpakket-advies'  ? 'startpakket-advies'
+              :                                     'schema';
 
   // Proeftraining: bepaal meteen welke variant van het Startprotocol deze bezoeker
   // krijgt, zodat we niet eerst een contact aanmaken en daarna alsnog stuklopen
@@ -489,11 +504,13 @@ export default async function handler(req, res) {
     }
 
     // 2) Journey-tag per route.
-    const tag = route === 'coaching'        ? TAG_COACHING
-              : route === 'begeleiding'     ? TAG_BEGELEIDING
-              : route === 'gratis-training' ? TAG_GRATIS
-              : route === 'zesuur'          ? TAG_ZESUUR
-              :                               TAG_SCHEMA;
+    const tag = route === 'coaching'           ? TAG_COACHING
+              : route === 'begeleiding'        ? TAG_BEGELEIDING
+              : route === 'gratis-training'    ? TAG_GRATIS
+              : route === 'zesuur'             ? TAG_ZESUUR
+              : route === 'analyse-advies'     ? TAG_KEUZEHULP_ANALYSE
+              : route === 'startpakket-advies' ? TAG_KEUZEHULP_STARTPAKKET
+              :                                  TAG_SCHEMA;
     await hertag(base, headers, hash, tag);
 
     // 2b) Proeftraining: het juiste Startprotocol meteen mailen (bevestigt het adres)
@@ -536,6 +553,26 @@ export default async function handler(req, res) {
       });
       console.log('Zesuur OK:', email);
       return res.status(200).json({ ok: true, downloadUrl: ZESUUR_PDF });
+    }
+
+    // 2d) Keuzehulp-uitkomst 'analyse': geen mail nodig, de pagina linkt zelf
+    //     door naar de externe Strava-analyse. Alleen tag + contact vastleggen.
+    if (route === 'analyse-advies') {
+      console.log('Keuzehulp-analyse OK:', email);
+      return res.status(200).json({ ok: true, analyseUrl: ANALYSE_URL });
+    }
+
+    // 2e) Keuzehulp-uitkomst 'startpakket': zelfde sp19-uur-korting als de
+    //     gratis-training-route, zodat de uitkomstpagina meteen een aftelklok
+    //     en €14,95 kan tonen. Geen mail nodig, de pagina linkt zelf door.
+    if (route === 'startpakket-advies') {
+      const spKorting = maakStartpakketKorting(email);
+      console.log('Keuzehulp-startpakket OK:', email);
+      return res.status(200).json({
+        ok: true,
+        spToken: spKorting.token,
+        spVerlooptOm: spKorting.verlooptOm,
+      });
     }
 
     // 3) Coaching-inschrijving: notificatie naar Michel + bevestiging naar de lead.
