@@ -94,6 +94,22 @@ function maakKeuzehulpKorting(email) {
   return { token, deadlineNL };
 }
 
+// ===== Kortingstoken voor Het Startpakket (€19,95 -> €14,95, 1 uur geldig) =====
+// Zelfde HMAC-aanpak, maar type 'sp19' zodat dit token niet door het kh10-
+// snippet (schema-korting) of het Power Profile-tegoed wordt geaccepteerd.
+// Opbouw: base64url("sp19|email|exp|sig"), sig = eerste 16 hex tekens van
+// HMAC-SHA256(PP_TOKEN_SECRET, "sp19|email|exp"). Wordt gemint zodra iemand
+// de gratis proeftraining (het Startprotocol) aanvraagt, zodat de pagina
+// zelf meteen een aftellende korting naar Het Startpakket kan tonen.
+function maakStartpakketKorting(email) {
+  if (!PP_SECRET || !email) return { token: '', verlooptOm: 0 };
+  const exp = Date.now() + 60 * 60 * 1000; // 1 uur
+  const payload = `sp19|${String(email).toLowerCase()}|${exp}`;
+  const sig = crypto.createHmac('sha256', PP_SECRET).update(payload).digest('hex').slice(0, 16);
+  const token = Buffer.from(`${payload}|${sig}`).toString('base64url');
+  return { token, verlooptOm: exp };
+}
+
 // Alleen de eigen sites mogen dit endpoint vanuit de browser aanroepen.
 const TOEGESTANE_ORIGINS = [
   'https://michelkredercoaching.nl',
@@ -495,11 +511,16 @@ export default async function handler(req, res) {
       // downloadUrl en pdfUrl wijzen allebei naar het Startprotocol, zodat de
       // huidige pagina blijft werken zolang die nog niet opnieuw geplakt is.
       // fitUrl geven we bewust niet meer mee: het .fit-bestand is vervallen.
+      // sp19-token: eenmalige uur-korting op Het Startpakket, de pagina
+      // gebruikt spVerlooptOm om zelf een aftelklok te tonen.
+      const spKorting = maakStartpakketKorting(email);
       return res.status(200).json({
         ok: true,
         downloadUrl: gtDownloadUrl,
         pdfUrl: gtDownloadUrl,
         meetmethode: gtMeetmethode,
+        spToken: spKorting.token,
+        spVerlooptOm: spKorting.verlooptOm,
       });
     }
 
