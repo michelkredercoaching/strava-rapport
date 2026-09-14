@@ -580,6 +580,19 @@ export default async function handler(req, res) {
               :                                  TAG_SCHEMA;
     await hertag(base, headers, hash, tag);
 
+    // De Mailchimp-journey "Keuzehulp 9 vragen" (id 2208) triggert nog op
+    // de oude tag TAG_SCHEMA ('keuzehulp-gedaan'), maar sinds de binaire
+    // uitkomst (11-09-2026) krijgt 80-90% van de keuzehulp-afronders het
+    // Startpakket-advies en dus alleen TAG_KEUZEHULP_STARTPAKKET — die
+    // mensen kwamen de journey dus nooit meer in. Zet TAG_SCHEMA er bij
+    // elke keuzehulp-uitkomst altijd bovenop, zodat iedereen (schema,
+    // startpakket, analyse, coaching) dezelfde welkomstmail krijgt; de
+    // journey zelf splitst daarna verder op de specifieke tag.
+    const KEUZEHULP_JOURNEY_ROUTES = ['coaching', 'analyse-advies', 'startpakket-advies'];
+    if (KEUZEHULP_JOURNEY_ROUTES.includes(route)) {
+      await hertag(base, headers, hash, TAG_SCHEMA);
+    }
+
     // 2b) Proeftraining: het juiste Startprotocol meteen mailen (bevestigt het adres)
     //     en teruggeven aan de pagina voor een directe download.
     if (route === 'gratis-training') {
