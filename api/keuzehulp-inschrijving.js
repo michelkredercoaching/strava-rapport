@@ -580,14 +580,13 @@ export default async function handler(req, res) {
               :                                  TAG_SCHEMA;
     await hertag(base, headers, hash, tag);
 
-    // De Mailchimp-journey "Keuzehulp 9 vragen" (id 2208) triggert nog op
-    // de oude tag TAG_SCHEMA ('keuzehulp-gedaan'), maar sinds de binaire
-    // uitkomst (11-09-2026) krijgt 80-90% van de keuzehulp-afronders het
-    // Startpakket-advies en dus alleen TAG_KEUZEHULP_STARTPAKKET — die
-    // mensen kwamen de journey dus nooit meer in. Zet TAG_SCHEMA er bij
-    // elke keuzehulp-uitkomst altijd bovenop, zodat iedereen (schema,
-    // startpakket, analyse, coaching) dezelfde welkomstmail krijgt; de
-    // journey zelf splitst daarna verder op de specifieke tag.
+    // De Mailchimp-journey "Keuzehulp 9 vragen" (id 2208) trigt op de
+    // gedeelde tag TAG_SCHEMA ('keuzehulp-gedaan'). Mailchimp staat maar 3
+    // trigger-tags per journey toe, en we hebben inmiddels 4 uitkomsten
+    // (schema, startpakket, analyse, coaching) — dus geen losse trigger per
+    // uitkomst in de UI, maar hier één gedeelde tag die we bovenop de eigen
+    // uitkomst-tag zetten. Zo komt iedereen dezelfde journey in en kan die
+    // journey zelf verderop nog op de specifieke tag splitsen.
     const KEUZEHULP_JOURNEY_ROUTES = ['coaching', 'analyse-advies', 'startpakket-advies'];
     if (KEUZEHULP_JOURNEY_ROUTES.includes(route)) {
       await hertag(base, headers, hash, TAG_SCHEMA);
