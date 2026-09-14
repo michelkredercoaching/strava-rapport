@@ -51,6 +51,12 @@ const TAG_ZESUUR      = 'zesuur-pdf';
 // paden apart kan zien/bewerken in Mailchimp, los van de oude schema-journey.
 const TAG_KEUZEHULP_ANALYSE     = 'keuzehulp-analyse-advies';
 const TAG_KEUZEHULP_STARTPAKKET = 'keuzehulp-startpakket-advies';
+// Mail-vangst op de winterprogramma-landingspagina (i.p.v. via CreatorFlow,
+// dat alleen CSV-export biedt en geen webhook/API heeft — zie
+// [[creatorflow-mailchimp-webhook]]). WKTOKEN komt als merge-veld mee zodat
+// de Mailchimp-automation op deze tag de code direct in de mail kan zetten,
+// zelfde patroon als KHTOKEN bij de schema-route.
+const TAG_WINTER10 = 'winter-emailcapture';
 
 // ===== Gratis-training lead magnet (route 'gratis-training') =====
 // Woont bewust in dit endpoint en niet in een eigen /api/gratis-training.js:
@@ -121,6 +127,22 @@ function maakStartpakketKorting(email) {
   const sig = crypto.createHmac('sha256', PP_SECRET).update(payload).digest('hex').slice(0, 16);
   const token = Buffer.from(`${payload}|${sig}`).toString('base64url');
   return { token, verlooptOm: exp };
+}
+
+// ===== Kortingstoken voor het Indoor Winterprogramma (10%, 7 dagen geldig) =====
+// Zelfde HMAC-aanpak, type 'wk10'. Langere geldigheid dan sp19 (dit is geen
+// direct-op-de-pagina-impuls maar een terugkommail-korting): 7 dagen geeft
+// de Mailchimp-automation ruimte voor een paar opvolgmails voordat de code
+// verloopt. WKDEADLINE is voor in de mailtekst, net als bij KHDEADLINE.
+function maakWinterKorting(email) {
+  if (!PP_SECRET || !email) return { token: '', deadlineNL: '', verlooptOm: 0 };
+  const exp = Date.now() + 7 * 24 * 3600 * 1000;
+  const payload = `wk10|${String(email).toLowerCase()}|${exp}`;
+  const sig = crypto.createHmac('sha256', PP_SECRET).update(payload).digest('hex').slice(0, 16);
+  const token = Buffer.from(`${payload}|${sig}`).toString('base64url');
+  const deadlineNL = new Date(exp)
+    .toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Amsterdam' });
+  return { token, deadlineNL, verlooptOm: exp };
 }
 
 // Alleen de eigen sites mogen dit endpoint vanuit de browser aanroepen.
@@ -420,6 +442,7 @@ export default async function handler(req, res) {
               : b.route === 'zesuur'              ? 'zesuur'
               : b.route === 'analyse-advies'      ? 'analyse-advies'
               : b.route === 'startpakket-advies'  ? 'startpakket-advies'
+              : b.route === 'winter10'            ? 'winter10'
               :                                     'schema';
 
   // Proeftraining: bepaal meteen welke variant van het Startprotocol deze bezoeker
@@ -475,6 +498,17 @@ export default async function handler(req, res) {
     if (b.meetmethode) merge.MEETMETH = String(b.meetmethode);
   }
 
+  // Winterprogramma-mailvangst: token als merge-veld, zodat de Mailchimp-
+  // automation op TAG_WINTER10 'm direct in de kortingsmail kan zetten.
+  let winterKorting = { token: '', deadlineNL: '', verlooptOm: 0 };
+  if (route === 'winter10') {
+    winterKorting = maakWinterKorting(email);
+    if (winterKorting.token) {
+      merge.WKTOKEN    = winterKorting.token;
+      merge.WKDEADLINE = winterKorting.deadlineNL;
+    }
+  }
+
   try {
     // 1) Contact toevoegen of bijwerken (PUT = upsert).
     const upsert = (velden) => fetch(`${base}/members/${hash}`, {
@@ -488,13 +522,13 @@ export default async function handler(req, res) {
       signal: AbortSignal.timeout(10000),
     });
     let lid = await upsert(merge);
-    if (!lid.ok && (merge.KHPAKKET || merge.KHPURL)) {
-      // Vangnet: bestaan KHPAKKET/KHPURL (nog) niet als merge-veld in
-      // Mailchimp, dan weigert de API de hele upsert. Liever het contact
-      // binnen zonder die velden dan de lead kwijt.
+    if (!lid.ok && (merge.KHPAKKET || merge.KHPURL || merge.WKTOKEN || merge.WKDEADLINE)) {
+      // Vangnet: bestaan deze merge-velden (nog) niet in Mailchimp, dan
+      // weigert de API de hele upsert. Liever het contact binnen zonder
+      // die velden dan de lead kwijt.
       const detail = await lid.text().catch(() => '');
-      console.error('Keuzehulp: upsert met KH-velden faalde, retry zonder:', lid.status, detail);
-      const { KHPAKKET, KHPURL, ...rest } = merge;
+      console.error('Keuzehulp: upsert met extra velden faalde, retry zonder:', lid.status, detail);
+      const { KHPAKKET, KHPURL, WKTOKEN, WKDEADLINE, ...rest } = merge;
       lid = await upsert(rest);
     }
     if (!lid.ok) {
@@ -510,6 +544,7 @@ export default async function handler(req, res) {
               : route === 'zesuur'             ? TAG_ZESUUR
               : route === 'analyse-advies'     ? TAG_KEUZEHULP_ANALYSE
               : route === 'startpakket-advies' ? TAG_KEUZEHULP_STARTPAKKET
+              : route === 'winter10'           ? TAG_WINTER10
               :                                  TAG_SCHEMA;
     await hertag(base, headers, hash, tag);
 
@@ -572,6 +607,18 @@ export default async function handler(req, res) {
         ok: true,
         spToken: spKorting.token,
         spVerlooptOm: spKorting.verlooptOm,
+      });
+    }
+
+    // 2f) Winterprogramma-mailvangst: geen mail nodig, de landingspagina
+    //     toont zelf de code + vervaldatum, en de Mailchimp-automation op
+    //     TAG_WINTER10 herinnert er de dagen erna nog aan (*|WKTOKEN|*).
+    if (route === 'winter10') {
+      console.log('Winterprogramma-vangst OK:', email);
+      return res.status(200).json({
+        ok: true,
+        wkToken: winterKorting.token,
+        wkVerlooptOm: winterKorting.verlooptOm,
       });
     }
 
