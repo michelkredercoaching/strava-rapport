@@ -716,31 +716,38 @@ export default async function handler(req, res) {
       const verloopTijdNL = spKorting.verlooptOm
         ? new Date(spKorting.verlooptOm).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' }) + ' uur'
         : '';
+      // Eerst antwoorden, dan pas de mail sturen: de pagina heeft een vangnet
+      // van 3,5 seconden en toont zonder token geen aftelklok/korting. De
+      // extra hertag-call en de Resend-aanroep samen kunnen dat ruim
+      // overschrijden, dus die mogen de reveal niet meer blokkeren.
+      res.status(200).json({
+        ok: true,
+        spToken: spKorting.token,
+        spVerlooptOm: spKorting.verlooptOm,
+      });
       await stuurMail({
         from: AFZENDER, to: email, reply_to: REPLY_TO,
         subject: 'Je advies: Het Startpakket (+ eenmalige korting)',
         html: startpakketAdviesHtml(b.naam, checkoutUrl, verloopTijdNL),
       });
       console.log('Keuzehulp-startpakket OK:', email);
-      return res.status(200).json({
-        ok: true,
-        spToken: spKorting.token,
-        spVerlooptOm: spKorting.verlooptOm,
-      });
+      return;
     }
 
     // 2e-2) Keuzehulp-uitkomst 'schema' (default route, en expliciet vanuit
     //     adviestool.html): het schema-advies direct mailen, alleen als er
     //     ook echt een schema is meegegeven — andere/oudere aanroepen zonder
-    //     route vallen anders óók in deze tak en hebben geen b.schema.
+    //     route vallen anders óók in deze tak en hebben geen b.schema. Ook
+    //     hier eerst antwoorden, dan pas mailen (zelfde reden als hierboven).
     if (route === 'schema' && b.schema) {
+      res.status(200).json({ ok: true });
       await stuurMail({
         from: AFZENDER, to: email, reply_to: REPLY_TO,
         subject: `Je trainingsschema-advies: ${b.schema}`,
         html: schemaAdviesHtml(b.naam, b.schema, b.schemaUrl || ''),
       });
       console.log('Keuzehulp-schema OK:', email);
-      return res.status(200).json({ ok: true });
+      return;
     }
 
     // 2f) Winterprogramma-mailvangst: geen mail nodig, de landingspagina
