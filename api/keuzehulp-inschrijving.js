@@ -470,14 +470,19 @@ function startpakketAdviesHtml(naam, checkoutUrl, verloopTijdNL) {
   return naarHtmlEntities(html);
 }
 
-// Zelfde checkout-URL-opbouw als de keuzehulp-pagina zelf (trainingsschema-
-// keuzehulp-v2.html): variatie op meetmethode, sp19-token + utm erachter.
+// Linkt naar het-startpakket.html i.p.v. rechtstreeks naar /checkout/: een
+// koude klik vanuit een mail-client (geen site-sessie/referrer) op een kant-
+// en-klare add-to-cart-link bleek terug te bouncen naar de Startpakket-
+// pagina in plaats van door te zetten naar de checkout (getest 14-09-2026).
+// Via de landingspagina zelf werkt de add-to-cart-link wel altijd; het-
+// startpakket.html stuurt zichzelf meteen door naar de juiste checkout-link
+// zodra 'm ?meetmethode= ziet, dus het voelt voor de klant nog steeds als
+// één klik.
 function bouwStartpakketCheckoutUrl(meetmethode, spToken) {
-  let url = meetmethode === 'vermogen'
-    ? 'https://michelkredercoaching.nl/checkout/?add-to-cart=12690&variation_id=12692'
-    : meetmethode === 'hartslag'
-    ? 'https://michelkredercoaching.nl/checkout/?add-to-cart=12690&variation_id=12691'
-    : 'https://michelkredercoaching.nl/het-startpakket/';
+  let url = 'https://michelkredercoaching.nl/het-startpakket/';
+  if (meetmethode === 'vermogen' || meetmethode === 'hartslag') {
+    url += '?meetmethode=' + meetmethode;
+  }
   if (spToken) url += (url.indexOf('?') > -1 ? '&' : '?') + 'sp=' + encodeURIComponent(spToken);
   url += (url.indexOf('?') > -1 ? '&' : '?') + 'utm_source=keuzehulp&utm_medium=email&utm_campaign=uitkomst';
   return url;
