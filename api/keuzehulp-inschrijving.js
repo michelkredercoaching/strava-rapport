@@ -57,6 +57,10 @@ const TAG_KEUZEHULP_STARTPAKKET = 'keuzehulp-startpakket-advies';
 // de Mailchimp-automation op deze tag de code direct in de mail kan zetten,
 // zelfde patroon als KHTOKEN bij de schema-route.
 const TAG_WINTER10 = 'winter-emailcapture';
+// Zelfde mailvangst-patroon, nu op het-startpakket.html zelf (naast de
+// bestaande sp19-uur-korting die alleen binnenkomt via de proeftraining/
+// keuzehulp-bruggetjes). SKTOKEN i.p.v. SPTOKEN zodat dit los staat van sp19.
+const TAG_STARTPAKKET_POPUP = 'startpakket-emailcapture';
 
 // ===== Gratis-training lead magnet (route 'gratis-training') =====
 // Woont bewust in dit endpoint en niet in een eigen /api/gratis-training.js:
@@ -138,6 +142,22 @@ function maakWinterKorting(email) {
   if (!PP_SECRET || !email) return { token: '', deadlineNL: '', verlooptOm: 0 };
   const exp = Date.now() + 7 * 24 * 3600 * 1000;
   const payload = `wk10|${String(email).toLowerCase()}|${exp}`;
+  const sig = crypto.createHmac('sha256', PP_SECRET).update(payload).digest('hex').slice(0, 16);
+  const token = Buffer.from(`${payload}|${sig}`).toString('base64url');
+  const deadlineNL = new Date(exp)
+    .toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Amsterdam' });
+  return { token, deadlineNL, verlooptOm: exp };
+}
+
+// ===== Kortingstoken voor Het Startpakket via de popup op de eigen pagina =====
+// Zelfde €5 als de bestaande sp19-uur-korting (consistente belofte, welke
+// route iemand ook neemt), maar type 'sk05' en 7 dagen geldig i.p.v. 1 uur:
+// dit is een terugkommail-korting voor koude bezoekers, geen direct-op-de-
+// pagina-impuls vanuit de proeftraining/keuzehulp.
+function maakStartpakketPopupKorting(email) {
+  if (!PP_SECRET || !email) return { token: '', deadlineNL: '', verlooptOm: 0 };
+  const exp = Date.now() + 7 * 24 * 3600 * 1000;
+  const payload = `sk05|${String(email).toLowerCase()}|${exp}`;
   const sig = crypto.createHmac('sha256', PP_SECRET).update(payload).digest('hex').slice(0, 16);
   const token = Buffer.from(`${payload}|${sig}`).toString('base64url');
   const deadlineNL = new Date(exp)
@@ -443,6 +463,7 @@ export default async function handler(req, res) {
               : b.route === 'analyse-advies'      ? 'analyse-advies'
               : b.route === 'startpakket-advies'  ? 'startpakket-advies'
               : b.route === 'winter10'            ? 'winter10'
+              : b.route === 'startpakket-popup'   ? 'startpakket-popup'
               :                                     'schema';
 
   // Proeftraining: bepaal meteen welke variant van het Startprotocol deze bezoeker
@@ -509,6 +530,16 @@ export default async function handler(req, res) {
     }
   }
 
+  // Startpakket-popup-mailvangst: zelfde opzet, eigen merge-velden.
+  let startpakketPopupKorting = { token: '', deadlineNL: '', verlooptOm: 0 };
+  if (route === 'startpakket-popup') {
+    startpakketPopupKorting = maakStartpakketPopupKorting(email);
+    if (startpakketPopupKorting.token) {
+      merge.SKTOKEN    = startpakketPopupKorting.token;
+      merge.SKDEADLINE = startpakketPopupKorting.deadlineNL;
+    }
+  }
+
   try {
     // 1) Contact toevoegen of bijwerken (PUT = upsert).
     const upsert = (velden) => fetch(`${base}/members/${hash}`, {
@@ -522,13 +553,13 @@ export default async function handler(req, res) {
       signal: AbortSignal.timeout(10000),
     });
     let lid = await upsert(merge);
-    if (!lid.ok && (merge.KHPAKKET || merge.KHPURL || merge.WKTOKEN || merge.WKDEADLINE)) {
+    if (!lid.ok && (merge.KHPAKKET || merge.KHPURL || merge.WKTOKEN || merge.WKDEADLINE || merge.SKTOKEN || merge.SKDEADLINE)) {
       // Vangnet: bestaan deze merge-velden (nog) niet in Mailchimp, dan
       // weigert de API de hele upsert. Liever het contact binnen zonder
       // die velden dan de lead kwijt.
       const detail = await lid.text().catch(() => '');
       console.error('Keuzehulp: upsert met extra velden faalde, retry zonder:', lid.status, detail);
-      const { KHPAKKET, KHPURL, WKTOKEN, WKDEADLINE, ...rest } = merge;
+      const { KHPAKKET, KHPURL, WKTOKEN, WKDEADLINE, SKTOKEN, SKDEADLINE, ...rest } = merge;
       lid = await upsert(rest);
     }
     if (!lid.ok) {
@@ -545,6 +576,7 @@ export default async function handler(req, res) {
               : route === 'analyse-advies'     ? TAG_KEUZEHULP_ANALYSE
               : route === 'startpakket-advies' ? TAG_KEUZEHULP_STARTPAKKET
               : route === 'winter10'           ? TAG_WINTER10
+              : route === 'startpakket-popup'  ? TAG_STARTPAKKET_POPUP
               :                                  TAG_SCHEMA;
     await hertag(base, headers, hash, tag);
 
@@ -619,6 +651,17 @@ export default async function handler(req, res) {
         ok: true,
         wkToken: winterKorting.token,
         wkVerlooptOm: winterKorting.verlooptOm,
+      });
+    }
+
+    // 2g) Startpakket-popup-mailvangst: zelfde opzet als winter10, geen mail,
+    //     de pagina en straks de Mailchimp-automation doen de rest.
+    if (route === 'startpakket-popup') {
+      console.log('Startpakket-popup-vangst OK:', email);
+      return res.status(200).json({
+        ok: true,
+        skToken: startpakketPopupKorting.token,
+        skVerlooptOm: startpakketPopupKorting.verlooptOm,
       });
     }
 
