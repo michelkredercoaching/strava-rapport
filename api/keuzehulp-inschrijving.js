@@ -424,6 +424,65 @@ function zesuurHtml(naam, pdfUrl) {
   return naarHtmlEntities(html);
 }
 
+// Afleveringsmail van de schema-uitkomst (route 'schema': het Piek-advies uit
+// de 9-vragen-keuzehulp, en het schema-advies uit de adviestool). Direct
+// verstuurd in plaats van via de Mailchimp-journey, zodat het advies altijd
+// in de mailbox staat, ook als iemand de pagina sluit of de keuzehulp/
+// adviestool later nog een keer doet (elke poging krijgt zijn eigen mail,
+// zie [[keuzehulp-directe-mail]]). Geen korting hier: de kh10-code komt nog
+// via mail 5 in de bestaande nurture-journey, dat blijft ongewijzigd.
+function schemaAdviesHtml(naam, schemaName, schemaUrl) {
+  const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 18px;">Op basis van je antwoorden past dit schema het beste bij jou:</p>
+    <p style="font-size:20px;font-weight:800;margin:0 0 18px;">${escHtml(schemaName)}</p>
+    <p style="margin:4px 0 22px;">
+      <a href="${escHtml(schemaUrl)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Bekijk je schema</a>
+    </p>
+    <p style="font-size:15px;margin:0 0 14px;">Vraag over je advies? Reageer gewoon op deze mail, ik lees alles zelf.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
+// Afleveringsmail van de Startpakket-uitkomst. Zelfde sp19-uur-korting die de
+// uitkomstpagina zelf ook toont, nu ook direct in de mail zodat het advies +
+// de korting altijd binnenkomen, ongeacht hoe vaak iemand de keuzehulp doet.
+function startpakketAdviesHtml(naam, checkoutUrl, verloopTijdNL) {
+  const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 18px;">Op basis van je antwoorden past Het Startpakket het beste bij jou: een test in week 1 zodat je precies weet waar je staat, en vier weken opbouw daarna.</p>
+    <div style="margin:0 0 20px;padding:18px 20px;background:#f6f6f6;border-radius:10px;">
+      <p style="margin:0 0 4px;font-size:14px;color:#777;">Eenmalige korting voor jou</p>
+      <p style="margin:0;font-size:22px;font-weight:800;">€14,95 <span style="font-size:15px;font-weight:600;color:#999;text-decoration:line-through;">€19,95</span></p>
+      <p style="margin:6px 0 0;font-size:13px;color:#999;">Geldig tot ${escHtml(verloopTijdNL)}</p>
+    </div>
+    <p style="margin:4px 0 22px;">
+      <a href="${escHtml(checkoutUrl)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Start nu voor €14,95</a>
+    </p>
+    <p style="font-size:15px;margin:0 0 14px;">Vraag over je advies? Reageer gewoon op deze mail, ik lees alles zelf.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
+// Zelfde checkout-URL-opbouw als de keuzehulp-pagina zelf (trainingsschema-
+// keuzehulp-v2.html): variatie op meetmethode, sp19-token + utm erachter.
+function bouwStartpakketCheckoutUrl(meetmethode, spToken) {
+  let url = meetmethode === 'vermogen'
+    ? 'https://michelkredercoaching.nl/checkout/?add-to-cart=12690&variation_id=12692'
+    : meetmethode === 'hartslag'
+    ? 'https://michelkredercoaching.nl/checkout/?add-to-cart=12690&variation_id=12691'
+    : 'https://michelkredercoaching.nl/het-startpakket/';
+  if (spToken) url += (url.indexOf('?') > -1 ? '&' : '?') + 'sp=' + encodeURIComponent(spToken);
+  url += (url.indexOf('?') > -1 ? '&' : '?') + 'utm_source=keuzehulp&utm_medium=email&utm_campaign=uitkomst';
+  return url;
+}
+
 // Tag eerst weghalen en dan opnieuw zetten: alleen een NIEUW geplaatste tag
 // triggert een journey, ook bij contacten die de keuzehulp eerder deden.
 async function hertag(base, headers, hash, tag) {
@@ -643,15 +702,40 @@ export default async function handler(req, res) {
 
     // 2e) Keuzehulp-uitkomst 'startpakket': zelfde sp19-uur-korting als de
     //     gratis-training-route, zodat de uitkomstpagina meteen een aftelklok
-    //     en €14,95 kan tonen. Geen mail nodig, de pagina linkt zelf door.
+    //     en €14,95 kan tonen. Sinds de directe-mail-aanpak (zie
+    //     [[keuzehulp-directe-mail]]) sturen we het advies + de korting ook
+    //     meteen naar de mailbox, onafhankelijk van de Mailchimp-journey.
     if (route === 'startpakket-advies') {
       const spKorting = maakStartpakketKorting(email);
+      const checkoutUrl = bouwStartpakketCheckoutUrl(b.meetmethode, spKorting.token);
+      const verloopTijdNL = spKorting.verlooptOm
+        ? new Date(spKorting.verlooptOm).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' }) + ' uur'
+        : '';
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: 'Je advies: Het Startpakket (+ eenmalige korting)',
+        html: startpakketAdviesHtml(b.naam, checkoutUrl, verloopTijdNL),
+      });
       console.log('Keuzehulp-startpakket OK:', email);
       return res.status(200).json({
         ok: true,
         spToken: spKorting.token,
         spVerlooptOm: spKorting.verlooptOm,
       });
+    }
+
+    // 2e-2) Keuzehulp-uitkomst 'schema' (default route, en expliciet vanuit
+    //     adviestool.html): het schema-advies direct mailen, alleen als er
+    //     ook echt een schema is meegegeven — andere/oudere aanroepen zonder
+    //     route vallen anders óók in deze tak en hebben geen b.schema.
+    if (route === 'schema' && b.schema) {
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: `Je trainingsschema-advies: ${b.schema}`,
+        html: schemaAdviesHtml(b.naam, b.schema, b.schemaUrl || ''),
+      });
+      console.log('Keuzehulp-schema OK:', email);
+      return res.status(200).json({ ok: true });
     }
 
     // 2f) Winterprogramma-mailvangst: geen mail nodig, de landingspagina
