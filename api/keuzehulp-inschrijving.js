@@ -604,6 +604,34 @@ export default async function handler(req, res) {
     }
   }
 
+  // ===== Kritieke stap: keuzehulp-advies + korting direct mailen, vóór alle
+  // Mailchimp-calls. De mail heeft geen Mailchimp-data nodig (schema/token
+  // zijn puur lokaal berekend, geen netwerkcall), dus door 'm hier al te
+  // versturen hangt de bezorging niet af van hoe traag Mailchimp is. Eerder
+  // stond dit ná de upsert + 2x hertag (5 sequentiële Mailchimp-calls); die
+  // opeenstapeling at kennelijk genoeg tijd op dat de Resend-aanroep erna
+  // steevast timede (Vercel-logs 15-09-2026, drie keer op rij "Resend
+  // exception: TimeoutError"). Zie [[keuzehulp-directe-mail]] in memory.
+  let spKorting = { token: '', verlooptOm: 0 };
+  if (route === 'startpakket-advies') {
+    spKorting = maakStartpakketKorting(email);
+    const checkoutUrl = bouwStartpakketCheckoutUrl(b.meetmethode, spKorting.token);
+    const verloopTijdNL = spKorting.verlooptOm
+      ? new Date(spKorting.verlooptOm).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' }) + ' uur'
+      : '';
+    await stuurMail({
+      from: AFZENDER, to: email, reply_to: REPLY_TO,
+      subject: 'Je advies: Het Startpakket (+ eenmalige korting)',
+      html: startpakketAdviesHtml(b.naam, checkoutUrl, verloopTijdNL),
+    });
+  } else if (route === 'schema' && b.schema) {
+    await stuurMail({
+      from: AFZENDER, to: email, reply_to: REPLY_TO,
+      subject: `Je trainingsschema-advies: ${b.schema}`,
+      html: schemaAdviesHtml(b.naam, b.schema, b.schemaUrl || ''),
+    });
+  }
+
   try {
     // 1) Contact toevoegen of bijwerken (PUT = upsert).
     const upsert = (velden) => fetch(`${base}/members/${hash}`, {
@@ -711,43 +739,24 @@ export default async function handler(req, res) {
     //     [[keuzehulp-directe-mail]]) sturen we het advies + de korting ook
     //     meteen naar de mailbox, onafhankelijk van de Mailchimp-journey.
     if (route === 'startpakket-advies') {
-      const spKorting = maakStartpakketKorting(email);
-      const checkoutUrl = bouwStartpakketCheckoutUrl(b.meetmethode, spKorting.token);
-      const verloopTijdNL = spKorting.verlooptOm
-        ? new Date(spKorting.verlooptOm).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' }) + ' uur'
-        : '';
-      // Eerst antwoorden, dan pas de mail sturen: de pagina heeft een vangnet
-      // van 3,5 seconden en toont zonder token geen aftelklok/korting. De
-      // extra hertag-call en de Resend-aanroep samen kunnen dat ruim
-      // overschrijden, dus die mogen de reveal niet meer blokkeren.
-      res.status(200).json({
+      // De mail is al verstuurd (zie hierboven, vóór de Mailchimp-calls) met
+      // ditzelfde token, dus hier alleen nog de tags/response afhandelen.
+      console.log('Keuzehulp-startpakket OK:', email);
+      return res.status(200).json({
         ok: true,
         spToken: spKorting.token,
         spVerlooptOm: spKorting.verlooptOm,
       });
-      await stuurMail({
-        from: AFZENDER, to: email, reply_to: REPLY_TO,
-        subject: 'Je advies: Het Startpakket (+ eenmalige korting)',
-        html: startpakketAdviesHtml(b.naam, checkoutUrl, verloopTijdNL),
-      });
-      console.log('Keuzehulp-startpakket OK:', email);
-      return;
     }
 
     // 2e-2) Keuzehulp-uitkomst 'schema' (default route, en expliciet vanuit
-    //     adviestool.html): het schema-advies direct mailen, alleen als er
-    //     ook echt een schema is meegegeven — andere/oudere aanroepen zonder
-    //     route vallen anders óók in deze tak en hebben geen b.schema. Ook
-    //     hier eerst antwoorden, dan pas mailen (zelfde reden als hierboven).
+    //     adviestool.html): het schema-advies is al direct gemaild (zie
+    //     hierboven, vóór de Mailchimp-calls), alleen als er ook echt een
+    //     schema was meegegeven — andere/oudere aanroepen zonder route vallen
+    //     anders óók in deze tak en hebben geen b.schema.
     if (route === 'schema' && b.schema) {
-      res.status(200).json({ ok: true });
-      await stuurMail({
-        from: AFZENDER, to: email, reply_to: REPLY_TO,
-        subject: `Je trainingsschema-advies: ${b.schema}`,
-        html: schemaAdviesHtml(b.naam, b.schema, b.schemaUrl || ''),
-      });
       console.log('Keuzehulp-schema OK:', email);
-      return;
+      return res.status(200).json({ ok: true });
     }
 
     // 2f) Winterprogramma-mailvangst: geen mail nodig, de landingspagina
