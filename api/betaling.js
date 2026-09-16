@@ -9,7 +9,12 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { blob, email, gewicht, land, postcode, huisnummer, straat, plaats, korting: kortingToken } = req.body || {};
+  const { blob, email, gewicht, land, postcode, huisnummer, straat, plaats, korting: kortingToken, bron } = req.body || {};
+
+  // Waar kwam deze bezoeker vandaan? Vastgelegd door de funnel vóór de Strava-
+  // koppeling (localStorage 'pp_bron'), want na die omweg is fbclid/referrer
+  // allang weg. Alleen bekende, onschuldige waarden overnemen (client-input).
+  const bronSchoon = /^[a-z0-9_]{1,20}$/.test(String(bron || '')) ? String(bron) : 'onbekend';
 
   // De volledige analyse zit versleuteld in 'blob' (door strava-callback gemaakt).
   // We ontsleutelen 'm hier server-side om de Mollie-metadata + PDF te kunnen bouwen.
@@ -120,6 +125,8 @@ export default async function handler(req, res) {
     // ===== SERVICEKORTING =====
     // De webhook markeert dit ID als verzilverd zodra de betaling 'paid' is.
     kortingId: korting ? korting.id : '',
+    // ===== ATTRIBUTIE ===== instagram/facebook/google(_ads)/organisch/direct.
+    bron: bronSchoon,
     // ===== FACTUURADRES =====
     // NL: postcode + huisnummer; de factuurcode zoekt straat + plaats erbij via
     // PDOK. BE (en overig): straat + postcode + plaats komen rechtstreeks mee,
