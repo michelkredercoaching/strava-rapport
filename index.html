@@ -1529,7 +1529,7 @@ async function startBetaling() {
     const res = await fetch('/api/betaling', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ blob: window._blob || '', email, gewicht, land, postcode, huisnummer, straat, plaats, korting: kortingActief ? kortingActief.token : undefined })
+      body: JSON.stringify({ blob: window._blob || '', email, gewicht, land, postcode, huisnummer, straat, plaats, korting: kortingActief ? kortingActief.token : undefined, bron: (function(){ try { return localStorage.getItem('pp_bron') || ''; } catch(e) { return ''; } })() })
     });
     const data = await res.json();
     if (data.checkoutUrl) {
@@ -1549,7 +1549,7 @@ async function startBetaling() {
       try {
         localStorage.removeItem('pp_blob'); localStorage.removeItem('pp_pid');
         localStorage.removeItem('pp_pv'); localStorage.removeItem('pp_email');
-        localStorage.removeItem('pp_korting');
+        localStorage.removeItem('pp_korting'); localStorage.removeItem('pp_bron');
       } catch(e) {}
       // S7 zegt standaard "Betaling geslaagd" — bij een gratis link kloppen die
       // woorden niet, dus even omzetten naar toegang-taal.
@@ -2731,6 +2731,27 @@ window.addEventListener('DOMContentLoaded', function() {
   if (kortingParam) { try { localStorage.setItem('pp_korting', kortingParam); } catch(e) {} }
   toonKortingPrijzen();
 
+  // ===== BRON: waar komt deze bezoeker vandaan? =====
+  // Vastleggen VOORDAT Strava koppelt: na die OAuth-omweg zijn fbclid/gclid en
+  // de originele referrer allang weg. Alleen bepalen bij een echte nieuwe
+  // landing — niet bij terugkeer uit Strava (ready), Mollie (betaald) of een
+  // hervat-link, anders overschrijft de terugkeerpagina de echte bron.
+  if (!ready && !betaald && !params.get('hervat')) {
+    try {
+      var pRef = (document.referrer || '').toLowerCase();
+      var pNaam;
+      if (params.has('fbclid')) pNaam = 'meta_ads';
+      else if (params.has('gclid')) pNaam = 'google_ads';
+      else if (params.get('utm_source')) pNaam = (params.get('utm_source') + '_ads').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20);
+      else if (pRef.indexOf('instagram.com') !== -1) pNaam = 'instagram';
+      else if (pRef.indexOf('facebook.com') !== -1 || pRef.indexOf('fb.me') !== -1) pNaam = 'facebook';
+      else if (pRef.indexOf('google.') !== -1) pNaam = 'google_organisch';
+      else if (pRef) pNaam = 'organisch';
+      else pNaam = 'direct';
+      localStorage.setItem('pp_bron', pNaam);
+    } catch (e) {}
+  }
+
   // ===== HERVAT-LINK uit de verlaten-mails: bewaarde analyse terughalen =====
   // Lukt het ophalen niet (verlopen, ongeldig, lege mergetag), dan blijft
   // gewoon het startscherm staan en kan de bezoeker opnieuw beginnen.
@@ -2831,7 +2852,7 @@ window.addEventListener('DOMContentLoaded', function() {
       .then(function(analyse){
         if(aiProgVul) aiProgVul.style.width = '100%';
         window._claudeAnalyse = analyse;
-        try { localStorage.removeItem('pp_blob'); localStorage.removeItem('pp_pid'); localStorage.removeItem('pp_pv'); localStorage.removeItem('pp_email'); localStorage.removeItem('pp_korting'); } catch(e) {}
+        try { localStorage.removeItem('pp_blob'); localStorage.removeItem('pp_pid'); localStorage.removeItem('pp_pv'); localStorage.removeItem('pp_email'); localStorage.removeItem('pp_korting'); localStorage.removeItem('pp_bron'); } catch(e) {}
         setTimeout(function(){ toonRapport(data, analyse); }, 400);
       });
     })
