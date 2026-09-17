@@ -1250,8 +1250,26 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   // FTP-detectie (piek[sec]). We geven ze nu mee in W, zodat de frontend ze deelt
   // door het gewicht → W/kg-power-curve, en de interne verkoopmail de FTP kan
   // herrekenen. Null als er geen (bruikbare) stream-data was.
-  const piek1min  = piek[60]   ? Math.round(piek[60])   : null;
-  const piek5min  = piek[300]  ? Math.round(piek[300])  : null;
+  //
+  // ===== EXTRA WEERGAVE-PLAFOND (John-case, 17 september 2026) =====
+  // maxWattPerKgVenster hierboven is bewust ruim (12,0 / 9,0 W/kg op 1/5 min)
+  // zodat een échte topdag nooit onterecht uit de FTP-berekening valt. Diezelfde
+  // ruime piek ging tot nu toe ook ongefilterd het rapport in (WATT PER KILO-kaart,
+  // power curve, rennerstype) — daar is de afweging omgekeerd: een onmogelijk hoog
+  // getal (939W/11,1 W/kg op 1 min bij 84,5kg) beschadigt het vertrouwen in de rest
+  // van het rapport, terwijl een strengere grens hooguit een uitzonderlijke topdag
+  // verbergt. Raakt de FTP niet aan (die blijft op het ruimere plafond hierboven),
+  // alleen wat er zichtbaar wordt. Alleen 1 en 5 min: 12/20 min hebben al een eigen
+  // strenger plafond (7,0 / 6,5 W/kg) én de HR-check.
+  const WEERGAVE_PLAFOND_PER_KG = { 60: 8.5, 300: 6.5 };
+  const magTonen = (sec, watt) => {
+    const plafond = WEERGAVE_PLAFOND_PER_KG[sec];
+    if (!plafond || !weight) return true;
+    return (watt / weight) <= plafond;
+  };
+
+  const piek1min  = (piek[60]  && magTonen(60,  piek[60]))  ? Math.round(piek[60])  : null;
+  const piek5min  = (piek[300] && magTonen(300, piek[300])) ? Math.round(piek[300]) : null;
   const piek12min = piek[720]  ? Math.round(piek[720])  : null;
   const piek20min = piek[1200] ? Math.round(piek[1200]) : null;
   // ===== HR-PIEKEN ===== beste 12- en 20-min hartslag (bpm) uit je streams,
