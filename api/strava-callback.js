@@ -378,9 +378,11 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       decoupling: null,        // ===== HARTSLAG-DECOUPLING =====
       decouplingMinuten: null,
       decouplingBetrouwbaarheid: null,
+      decouplingDatum: null,
       decouplingHr: null,      // ===== HARTSLAG-SPOOR DECOUPLING (Pa:HR) =====
       decouplingHrMinuten: null,
       decouplingHrBetrouwbaarheid: null,
+      decouplingHrDatum: null,
     };
   }
 
@@ -930,7 +932,18 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     return { pct: Math.round(pct * 10) / 10, vi: Math.round(vi * 100) / 100, minuten: Math.round(lengte / 60) };
   }
 
-  let decoupling = null, decouplingRitId = null;
+  // ===== DATUM VAN DE GEBRUIKTE DECOUPLING-RIT =====
+  // Voor de klantweergave ("over je rit van 12 augustus"): geeft een concreet
+  // aanknopingspunt i.p.v. een anoniem percentage. Puur de datum (YYYY-MM-DD,
+  // uit start_date_local) — de PDF-bouwers doen zelf de Nederlandse opmaak,
+  // net als bij de rapportdatum bovenaan.
+  const datumVanRit = (ritId) => {
+    const rit = fietsritten90.find(r => r.id === ritId);
+    const iso = rit?.start_date_local || rit?.start_date;
+    return (typeof iso === 'string' && iso.length >= 10) ? iso.slice(0, 10) : null;
+  };
+
+  let decoupling = null, decouplingRitId = null, decouplingDatum = null;
   if (gebruikVermogen) {
     const kandidatenDecoupling = fietsritten90
       .filter(r => (streamMap[r.id]?.watts?.data?.length || 0) >= DECOUPLING_MIN_SEC && (streamMap[r.id]?.heartrate?.data?.length || 0) >= DECOUPLING_MIN_SEC)
@@ -939,8 +952,10 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       const res = bepaalDecoupling(streamMap[rit.id].watts.data, streamMap[rit.id].heartrate.data);
       if (res) { decoupling = res; decouplingRitId = rit.id; break; }
     }
-    if (decoupling) console.log(`Decoupling: ${decoupling.pct}% (VI ${decoupling.vi}, ${decoupling.minuten} min, rit ${decouplingRitId})`);
-    else console.log('Decoupling: geen kwalificerende duurrit (≥2u, steady) gevonden');
+    if (decoupling) {
+      decouplingDatum = datumVanRit(decouplingRitId);
+      console.log(`Decoupling: ${decoupling.pct}% (VI ${decoupling.vi}, ${decoupling.minuten} min, rit ${decouplingRitId}, ${decouplingDatum})`);
+    } else console.log('Decoupling: geen kwalificerende duurrit (≥2u, steady) gevonden');
   }
 
   // ===================================================================
@@ -1055,7 +1070,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     };
   }
 
-  let decouplingHr = null, decouplingHrRitId = null;
+  let decouplingHr = null, decouplingHrRitId = null, decouplingHrDatum = null;
   if (!gebruikVermogen) {
     const kandidatenDecouplingHr = fietsritten90
       .filter(r => (streamMap[r.id]?.velocity_smooth?.data?.length || 0) >= DECOUPLING_MIN_SEC && (streamMap[r.id]?.heartrate?.data?.length || 0) >= DECOUPLING_MIN_SEC)
@@ -1064,8 +1079,10 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       const res = bepaalDecouplingHr(streamMap[rit.id].velocity_smooth.data, streamMap[rit.id].heartrate.data, streamMap[rit.id]?.altitude?.data, rit);
       if (res) { decouplingHr = res; decouplingHrRitId = rit.id; break; }
     }
-    if (decouplingHr) console.log(`Decoupling-HR: ${decouplingHr.pct}% (CV ${decouplingHr.cv}, ${decouplingHr.hoogtePerKm} hm/km, ${decouplingHr.minuten} min, betr. ${decouplingHr.betrouwbaarheid}, rit ${decouplingHrRitId})`);
-    else console.log('Decoupling-HR: geen kwalificerende vlakke/rustige duurrit (≥2u) gevonden');
+    if (decouplingHr) {
+      decouplingHrDatum = datumVanRit(decouplingHrRitId);
+      console.log(`Decoupling-HR: ${decouplingHr.pct}% (CV ${decouplingHr.cv}, ${decouplingHr.hoogtePerKm} hm/km, ${decouplingHr.minuten} min, betr. ${decouplingHr.betrouwbaarheid}, rit ${decouplingHrRitId}, ${decouplingHrDatum})`);
+    } else console.log('Decoupling-HR: geen kwalificerende vlakke/rustige duurrit (≥2u) gevonden');
   }
 
   // ===== HARDE STOP: IS ER UBERHAUPT MEETDATA? =====
@@ -1330,10 +1347,12 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     decoupling: decoupling ? decoupling.pct : null,               // ===== HARTSLAG-DECOUPLING ===== Pw:HR-drift in % (of null)
     decouplingMinuten: decoupling ? decoupling.minuten : null,
     decouplingBetrouwbaarheid: decoupling ? 'hoog' : null,        // alleen gezet als er een kwalificerende rit was
+    decouplingDatum,        // ===== DATUM ===== YYYY-MM-DD van de gebruikte rit (of null)
     // ===== HARTSLAG-SPOOR DECOUPLING (Pa:HR) ===== snelheid:HR-drift in % (of
     // null); nooit 'hoog' (zie bepaalDecouplingHr hierboven) — max 'gemiddeld'.
     decouplingHr: decouplingHr ? decouplingHr.pct : null,
     decouplingHrMinuten: decouplingHr ? decouplingHr.minuten : null,
     decouplingHrBetrouwbaarheid: decouplingHr ? decouplingHr.betrouwbaarheid : null,
+    decouplingHrDatum,      // ===== DATUM ===== YYYY-MM-DD van de gebruikte rit (of null)
   };
 }
