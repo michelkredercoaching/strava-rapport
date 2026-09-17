@@ -104,12 +104,16 @@ export default async function handler(req, res) {
     // gezet als strava-callback een kwalificerende rit vond, anders leeg).
     decoupling: stravaData?.decoupling ?? '',
     decouplingMinuten: stravaData?.decouplingMinuten || '',
+    // Datum (YYYY-MM-DD) van de rit waarop de decoupling gemeten is, zodat de
+    // klant "over je rit van 12 augustus" leest i.p.v. een anoniem percentage.
+    decouplingDatum: stravaData?.decouplingDatum || '',
     // ===== HARTSLAG-SPOOR DECOUPLING (Pa:HR) ===== snelheid:HR-drift, alleen
     // gezet op het hartslag-spoor. Korte veldnamen i.v.m. de Mollie-
     // metadata-limiet (~1kB in totaal over alle velden samen).
     decouplingHr: stravaData?.decouplingHr ?? '',
     decouplingHrMin: stravaData?.decouplingHrMinuten || '',
     decouplingHrBetr: stravaData?.decouplingHrBetrouwbaarheid || '',
+    decouplingHrDatum: stravaData?.decouplingHrDatum || '',
     // ===== HR-SPOOR =====
     // Zonder deze velden kan de webhook alleen een vermogens-rapport bouwen.
     // 'meetmethode' vertelt de webhook welk rapport hij moet maken; het
