@@ -17,6 +17,7 @@
 //   eigenaar; de blob is bovendien versleuteld (seal), dus hier lekt geen
 //   leesbare trainingsdata.
 import crypto from 'node:crypto';
+import { bepaalPijn, bepaalDecouplingSignaal } from '../lib/pijn-signalen.js';
 
 const MC_KEY  = process.env.MAILCHIMP_API_KEY;      // ...-usXX
 const MC_LIST = process.env.MAILCHIMP_LIST_ID;
@@ -132,7 +133,13 @@ export default async function handler(req, res) {
   // Alleen bekende, onschuldige preview-velden overnemen (client-input).
   const preview = {};
   if (pv && typeof pv === 'object') {
-    for (const k of ['naam', 'aantalActiviteiten', 'urenPerWeek', 'prestatiescore', 'vo2maxSessies', 'ftpBetrouwbaarheid', 'heeftVermogensmeter']) {
+    for (const k of [
+      'naam', 'aantalActiviteiten', 'urenPerWeek', 'prestatiescore', 'vo2maxSessies', 'ftpBetrouwbaarheid', 'heeftVermogensmeter',
+      // Zelfde diagnose als de koper-journey (zie lib/pijn-signalen.js), zodat
+      // de verlaten-mails ook een droomuitkomst + decoupling-signaal kunnen
+      // tonen voor wie al zo ver kwam dat de analyse daadwerkelijk draaide.
+      'zones', 'ftp', 'omslagpunt', 'decoupling', 'decouplingHr',
+    ]) {
       if (pv[k] !== undefined) preview[k] = pv[k];
     }
   }
@@ -162,7 +169,26 @@ export default async function handler(req, res) {
     if (hervatId) merge.PPHERVAT = hervatId;
     // MEETMETH zodat de verlaten-mails de juiste spoor-tekst tonen (omslagpunt
     // vs FTP). heeftVermogensmeter is in de preview het effectieve spoor.
-    if (preview.heeftVermogensmeter !== undefined) merge.MEETMETH = preview.heeftVermogensmeter ? 'vermogen' : 'hartslag';
+    const meetmethode = preview.heeftVermogensmeter !== undefined ? (preview.heeftVermogensmeter ? 'vermogen' : 'hartslag') : undefined;
+    if (meetmethode) merge.MEETMETH = meetmethode;
+    if (preview.ftp != null) merge.FTP = String(preview.ftp);
+    if (preview.omslagpunt != null && preview.omslagpunt !== '') merge.OMSLAG = String(preview.omslagpunt);
+    // PIJN/BIJPIJN alleen zetten als de analyse ook echt draaide (zones
+    // bekend), anders is dit een lead die nog vóór dat punt afhaakte.
+    if (Array.isArray(preview.zones) && preview.zones.length) {
+      const pijnInput = {
+        zones: preview.zones.join('-'),
+        vo2max: preview.vo2maxSessies,
+        meetmethode,
+        decoupling: preview.decoupling,
+        decouplingHr: preview.decouplingHr,
+      };
+      const { pijn } = bepaalPijn(pijnInput);
+      const { bijpijn, decouplTxt } = bepaalDecouplingSignaal(pijnInput);
+      merge.PIJN = pijn;
+      merge.BIJPIJN = bijpijn;
+      merge.DECOUPLTXT = decouplTxt;
+    }
     try {
       await fetch(`${base}/members/${hash}`, {
         method: 'PUT',
