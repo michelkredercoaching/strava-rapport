@@ -17,7 +17,8 @@
 //   eigenaar; de blob is bovendien versleuteld (seal), dus hier lekt geen
 //   leesbare trainingsdata.
 import crypto from 'node:crypto';
-import { bepaalPijn, bepaalDecouplingSignaal } from '../lib/pijn-signalen.js';
+import { bepaalPijn, bepaalDecouplingSignaal, bepaalRennerstype } from '../lib/pijn-signalen.js';
+import { unseal } from '../lib/gate.js';
 
 const MC_KEY  = process.env.MAILCHIMP_API_KEY;      // ...-usXX
 const MC_LIST = process.env.MAILCHIMP_LIST_ID;
@@ -162,32 +163,53 @@ export default async function handler(req, res) {
     const hash = crypto.createHash('md5').update(adres).digest('hex');
     const base = `https://${MC_DC}.api.mailchimp.com/3.0/lists/${MC_LIST}`;
     const auth = 'Basic ' + Buffer.from('any:' + MC_KEY).toString('base64');
+    // ===== ECHTE CIJFERS SERVER-SIDE, NOOIT VIA DE BROWSER =====
+    // De preview die de browser meestuurt is met opzet kaal (geen FTP/zones,
+    // zie strava-callback.js), dus PIJN/BIJPIJN/RENTYPE kwamen hier tot
+    // 21-09-2026 feitelijk nooit binnen. De volledige analyse staat wél al
+    // versleuteld in 'verzegeld' (dezelfde blob die /api/betaling na Mollie
+    // ontsleutelt) — die maken we hier server-side even open, puur om de
+    // categorie-signalen te berekenen. De ontsleutelde cijfers verlaten deze
+    // functie nooit richting de browser, alleen de afgeleide merge-fields
+    // gaan naar Mailchimp (Michel, 21-09-2026).
+    let stats = null;
+    if (verzegeld) {
+      try { stats = unseal(verzegeld); } catch (e) { console.error('Blob ontsleutelen mislukte (blokkeert niet):', e.message); }
+    }
+    const bron = stats || preview;
     // FNAME en PPHERVAT alleen meesturen als we iets hebben, zodat we een
     // eerder bekende naam of werkende hervat-link nooit leegmaken.
     const merge = {};
-    if (preview.naam) merge.FNAME = String(preview.naam).trim().replace(/\b\p{L}/gu, c => c.toUpperCase());
+    if (bron.naam) merge.FNAME = String(bron.naam).trim().replace(/\b\p{L}/gu, c => c.toUpperCase());
     if (hervatId) merge.PPHERVAT = hervatId;
     // MEETMETH zodat de verlaten-mails de juiste spoor-tekst tonen (omslagpunt
-    // vs FTP). heeftVermogensmeter is in de preview het effectieve spoor.
-    const meetmethode = preview.heeftVermogensmeter !== undefined ? (preview.heeftVermogensmeter ? 'vermogen' : 'hartslag') : undefined;
+    // vs FTP). heeftVermogensmeter is het effectieve spoor.
+    const meetmethode = bron.heeftVermogensmeter !== undefined ? (bron.heeftVermogensmeter ? 'vermogen' : 'hartslag') : undefined;
     if (meetmethode) merge.MEETMETH = meetmethode;
-    if (preview.ftp != null) merge.FTP = String(preview.ftp);
-    if (preview.omslagpunt != null && preview.omslagpunt !== '') merge.OMSLAG = String(preview.omslagpunt);
+    if (bron.ftp != null) merge.FTP = String(bron.ftp);
+    if (bron.omslagpunt != null && bron.omslagpunt !== '') merge.OMSLAG = String(bron.omslagpunt);
     // PIJN/BIJPIJN alleen zetten als de analyse ook echt draaide (zones
     // bekend), anders is dit een lead die nog vóór dat punt afhaakte.
-    if (Array.isArray(preview.zones) && preview.zones.length) {
+    if (Array.isArray(bron.zones) && bron.zones.length) {
       const pijnInput = {
-        zones: preview.zones.join('-'),
-        vo2max: preview.vo2maxSessies,
+        zones: bron.zones.join('-'),
+        vo2max: bron.vo2maxSessies,
         meetmethode,
-        decoupling: preview.decoupling,
-        decouplingHr: preview.decouplingHr,
+        decoupling: bron.decoupling,
+        decouplingHr: bron.decouplingHr,
       };
       const { pijn } = bepaalPijn(pijnInput);
       const { bijpijn, decouplTxt } = bepaalDecouplingSignaal(pijnInput);
       merge.PIJN = pijn;
       merge.BIJPIJN = bijpijn;
       merge.DECOUPLTXT = decouplTxt;
+    }
+    // RENTYPE — zelfde rennerstype-diagnose als het rapport en de koper-mail,
+    // nu ook al bruikbaar in de verlaten-journey voor wie op vermogen zit.
+    if (meetmethode === 'vermogen' && bron.ftp && bron.piek1min) {
+      const wGewVoorType = (bron.weight >= 35 && bron.weight <= 200) ? bron.weight : null;
+      const rennerstype = bepaalRennerstype(bron.ftp, bron.piek1min, wGewVoorType);
+      if (rennerstype) merge.RENTYPE = rennerstype.type;
     }
     try {
       await fetch(`${base}/members/${hash}`, {
