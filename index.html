@@ -73,6 +73,17 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 /* Hero layout */
 .hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:32px 24px 80px;text-align:center;position:relative;z-index:1;min-height:min-content;touch-action:pan-y;}
 
+/* Foto boven de hero, kop erover heen, vervaagt naar zwart en loopt door in de rest */
+.hero-foto-boven{position:relative;overflow:hidden;width:calc(100% + 48px);margin:-32px -24px 26px;flex-shrink:0;}
+.hero-foto-boven img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 25%;display:block;z-index:0;}
+.hero-foto-boven::after{
+  content:'';position:absolute;inset:0;z-index:1;
+  background:linear-gradient(to bottom, rgba(10,10,10,0.35) 0%, rgba(10,10,10,0.15) 26%, rgba(10,10,10,0.6) 68%, var(--zwart) 96%);
+}
+.hero-foto-tekst{position:relative;z-index:2;padding:84px 24px 220px;}
+.hero-foto-tekst .hero-eyebrow{margin-bottom:14px;}
+.hero-foto-tekst .hero-titel{margin-bottom:0;}
+
 /* Eyebrow met lijn */
 .hero-eyebrow{
   display:inline-flex;align-items:center;gap:10px;
@@ -508,16 +519,24 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
   </header>
   <div class="hero">
 
-    <!-- HOOK -->
-    <div class="hero-eyebrow">Voor wielrenners met vermogensmeter of hartslagmeter</div>
+    <!-- FOTO + HOOK, kop bovenin de foto -->
+    <div class="hero-foto-boven">
+      <img src="https://michelkredercoaching.nl/wp-content/uploads/2026/09/ChatGPT-Image-22-sep-2026-10_33_23.png" alt="Wielrenner op de fiets">
+      <div class="hero-foto-tekst">
+        <div class="hero-eyebrow">Voor wielrenners met vermogensmeter of hartslagmeter</div>
+        <h1 class="hero-titel">Ontdek waar<br>jij <em>snelheid</em><br>laat liggen.</h1>
+      </div>
+    </div>
 
-    <h1 class="hero-titel">Ontdek waar<br>jij <em>snelheid</em><br>laat liggen.</h1>
+    <!-- VROEGE CTA: meteen na de kop, nog vóór de uitleg -->
+    <button class="hero-cta" onclick="gaNaar('s2')">Toon mijn FTP of omslagpunt →</button>
+    <p style="text-align:center;margin-top:-6px;margin-bottom:20px;font-size:11px;color:rgba(255,255,255,0.4);">Gratis starten, geen betaling nodig. Je koppelt je Strava en ziet je eigen cijfers in 60 seconden.</p>
 
     <!-- MECHANISM -->
     <p class="hero-sub">Koppel je Strava. Wij bepalen jouw FTP of omslagpunt uit je eigen ritten, <strong>zonder testrit</strong>, en laten je in 60 seconden precies zien welke trainingen je tijd verspillen.</p>
     <p style="width:100%;max-width:340px;margin:-8px auto 20px;padding:10px 13px;background:rgba(255,107,26,0.07);border:1px solid rgba(255,107,26,0.22);border-radius:6px;font-size:11.5px;line-height:1.55;color:rgba(255,255,255,0.7);text-align:left;">Een <strong style="color:var(--oranje);font-weight:700;">gratis Strava-account is genoeg</strong>. Geen vermogensmeter? Dan werkt de analyse op je hartslag.</p>
 
-    <!-- VERTROUWEN, direct vóór de vroege CTA -->
+    <!-- VERTROUWEN -->
     <div class="trust-row" style="margin-bottom:16px;">
       <div class="tr-item" style="color:#fff;font-weight:700;">★ 4,9 gemiddeld op Google</div>
       <span class="tr-dot" style="background:rgba(255,255,255,0.4);"></span>
@@ -525,10 +544,6 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <span class="tr-dot" style="background:rgba(255,255,255,0.4);"></span>
       <div class="tr-item" style="color:#fff;font-weight:700;">14 dagen geld terug</div>
     </div>
-
-    <!-- VROEGE CTA: voor wie al overtuigd is door de kop, zonder te hoeven scrollen langs bewijs -->
-    <button class="hero-cta" onclick="gaNaar('s2')">Toon mijn FTP of omslagpunt →</button>
-    <p style="text-align:center;margin-top:-6px;margin-bottom:20px;font-size:11px;color:rgba(255,255,255,0.4);">Gratis starten, geen betaling nodig. Je koppelt je Strava en ziet je eigen cijfers in 60 seconden.</p>
 
     <!-- WAT JE KRIJGT -->
     <div class="hero-wat-krijg-je">
@@ -546,26 +561,10 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       </div>
     </div>
 
-    <!-- VOORBEELDEN: echte kaarten uit het rapport -->
+    <!-- VOORBEELD: rapport-mockup met echte cijfers -->
     <div style="width:100%;max-width:340px;margin:0 auto 18px;text-align:left;">
-      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;color:rgba(255,255,255,0.45);margin-bottom:8px;">Voorbeelden uit een echt rapport</div>
-      <div style="display:flex;flex-wrap:wrap;gap:8px;">
-        <div style="flex:1 1 100px;border:1px solid rgba(255,255,255,0.09);border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-          <img src="https://michelkredercoaching.nl/wp-content/uploads/2026/09/FTP-detector.png" alt="Voorbeeld van de FTP Detector" style="width:100%;display:block;">
-        </div>
-        <div style="flex:1 1 100px;border:1px solid rgba(255,255,255,0.09);border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-          <img src="https://michelkredercoaching.nl/wp-content/uploads/2026/09/Omslagpunt-detector.png" alt="Voorbeeld van de omslagpunt-detector" style="width:100%;display:block;">
-        </div>
-        <div style="flex:1 1 100px;border:1px solid rgba(255,255,255,0.09);border-radius:8px;overflow:hidden;">
-          <img src="https://michelkredercoaching.nl/wp-content/uploads/2026/09/Zones.png" alt="Voorbeeld van de zoneverdeling" style="width:100%;display:block;">
-        </div>
-        <div style="flex:1 1 100px;border:1px solid rgba(255,255,255,0.09);border-radius:8px;overflow:hidden;">
-          <img src="https://michelkredercoaching.nl/wp-content/uploads/2026/09/Decoupling-fout.png" alt="Voorbeeld decoupling-kaart: zwakke aerobe basis, 15,4%" style="width:100%;display:block;">
-        </div>
-        <div style="flex:1 1 100px;border:1px solid rgba(255,255,255,0.09);border-radius:8px;overflow:hidden;">
-          <img src="https://michelkredercoaching.nl/wp-content/uploads/2026/09/Decoupling-goed.png" alt="Voorbeeld decoupling-kaart: sterke aerobe basis, 3,2%" style="width:100%;display:block;">
-        </div>
-      </div>
+      <div style="font-size:11px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;color:rgba(255,255,255,0.45);margin-bottom:8px;">Voorbeeld uit een echt rapport</div>
+      <img src="https://michelkredercoaching.nl/wp-content/uploads/2026/09/ChatGPT-Image-22-sep-2026-11_28_20.png" alt="Voorbeeld van het Power Profile-rapport op een telefoon, met FTP, watt per kilo, zoneverdeling en aerobe decoupling" style="width:100%;display:block;border-radius:12px;">
     </div>
 
     <!-- VOORBEELDRAPPORT: laat zien wat je krijgt vóór we om de Strava-koppeling vragen -->
@@ -1004,38 +1003,17 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
           style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
         <div id="emailFout" style="display:none;font-size:11px;color:#ff6b5e;margin-top:6px;line-height:1.4;"></div>
       </div>
-      <!-- Factuuradres. NL: postcode + huisnummer, straat + woonplaats zoeken we
-           automatisch op (PDOK). BE (en overig): straat, postcode en gemeente
-           zelf invullen, want daar bestaat geen gratis postcode-API. -->
+      <!-- Land, voor de factuur (BTW/land-code). Geen straat/postcode meer:
+           lib/mollie-factuur.js valt dan terug op de al bestaande placeholder
+           ("Particulier, geen adres opgegeven"), wat voor een bon onder €100
+           juridisch prima is — zelfde keuze als bij de WooCommerce-checkout. -->
       <div style="margin-bottom:14px;">
-        <label for="klantLand" style="display:block;font-size:11px;color:rgba(255,255,255,0.55);font-weight:600;letter-spacing:.3px;margin-bottom:7px;">Voor je factuur: adres</label>
-        <select id="klantLand" onchange="wisselLand()"
-          style="width:100%;margin-bottom:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
+        <label for="klantLand" style="display:block;font-size:11px;color:rgba(255,255,255,0.55);font-weight:600;letter-spacing:.3px;margin-bottom:7px;">Land</label>
+        <select id="klantLand"
+          style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
           <option value="NL">Nederland</option>
           <option value="BE">België</option>
         </select>
-        <!-- NL: postcode + huisnummer -->
-        <div id="nlAdres">
-          <div style="display:flex;gap:8px;">
-            <input id="klantPostcode" type="text" inputmode="text" autocomplete="postal-code" placeholder="1234 AB" maxlength="7" oninput="checkFactuurAdres()"
-              style="flex:1;min-width:0;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
-            <input id="klantHuisnr" type="text" inputmode="numeric" autocomplete="off" placeholder="12" maxlength="12" oninput="checkFactuurAdres()"
-              style="width:96px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
-          </div>
-          <div id="adresPreview" style="display:none;font-size:11px;color:#4caf80;margin-top:6px;line-height:1.4;"></div>
-        </div>
-        <!-- BE (en overig): straat + huisnummer, postcode, gemeente -->
-        <div id="beAdres" style="display:none;">
-          <input id="klantStraat" type="text" autocomplete="street-address" placeholder="Straat + huisnummer (bv. Kerkstraat 12)" maxlength="80"
-            style="width:100%;box-sizing:border-box;margin-bottom:8px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
-          <div style="display:flex;gap:8px;">
-            <input id="klantPostcodeBE" type="text" inputmode="numeric" autocomplete="postal-code" placeholder="Postcode" maxlength="10"
-              style="width:120px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
-            <input id="klantPlaats" type="text" autocomplete="address-level2" placeholder="Gemeente" maxlength="60"
-              style="flex:1;min-width:0;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:13px 14px;font-size:16px;color:var(--wit);font-family:'DM Sans',sans-serif;outline:none;">
-          </div>
-        </div>
-        <div id="adresFout" style="display:none;font-size:11px;color:#ff6b5e;margin-top:6px;line-height:1.4;"></div>
       </div>
       <!-- Gewicht (optioneel) — alleen getoond als Strava geen gewicht gaf. Zo
            staat W/kg straks óók in de PDF, niet alleen op de webpagina. -->
@@ -1419,48 +1397,6 @@ function toonKortingPrijzen() {
   }
 }
 
-// Live adres-preview: zodra postcode + huisnummer geldig zijn, zoeken we straat
-// + woonplaats op via PDOK en tonen we die ter bevestiging. Best-effort: lukt de
-// lookup niet (of blokkeert de browser 'm), dan gebeurt er niks zichtbaars en
-// zoekt de server het adres later alsnog op.
-// Wisselt tussen het NL-adresblok (postcode + huisnummer + PDOK) en het BE-blok
-// (straat, postcode, gemeente zelf invullen).
-function wisselLand() {
-  const land = (document.getElementById('klantLand') || {}).value || 'NL';
-  const nl = document.getElementById('nlAdres');
-  const be = document.getElementById('beAdres');
-  const fout = document.getElementById('adresFout');
-  if (nl) nl.style.display = land === 'BE' ? 'none' : 'block';
-  if (be) be.style.display = land === 'BE' ? 'block' : 'none';
-  if (fout) fout.style.display = 'none';
-}
-
-let _adresTimer = null;
-function checkFactuurAdres() {
-  const pcEl = document.getElementById('klantPostcode');
-  const hnrEl = document.getElementById('klantHuisnr');
-  const prev = document.getElementById('adresPreview');
-  const fout = document.getElementById('adresFout');
-  if (fout) fout.style.display = 'none';
-  if (pcEl) pcEl.style.borderColor = 'rgba(255,255,255,0.15)';
-  if (hnrEl) hnrEl.style.borderColor = 'rgba(255,255,255,0.15)';
-  const pc = pcEl ? pcEl.value.trim().toUpperCase().replace(/\s+/g, '') : '';
-  const hnr = hnrEl ? hnrEl.value.trim() : '';
-  if (prev) { prev.style.display = 'none'; prev.textContent = ''; }
-  if (!/^[1-9][0-9]{3}[A-Z]{2}$/.test(pc) || !hnr) return;
-  clearTimeout(_adresTimer);
-  _adresTimer = setTimeout(function() {
-    const url = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q='
-      + encodeURIComponent(pc + ' ' + hnr) + '&fq=type:adres&rows=1&fl=straatnaam,huis_nlt,postcode,woonplaatsnaam';
-    fetch(url).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
-      const d = j && j.response && j.response.docs && j.response.docs[0];
-      if (d && d.straatnaam && d.woonplaatsnaam && String(d.postcode||'').toUpperCase().replace(/\s+/g,'') === pc) {
-        if (prev) { prev.textContent = '✓ ' + d.straatnaam + ' ' + (d.huis_nlt || hnr) + ', ' + d.woonplaatsnaam; prev.style.display = 'block'; }
-      }
-    }).catch(function(){});
-  }, 400);
-}
-
 async function startBetaling() {
   const emailEl = document.getElementById('klantEmail');
   const foutEl = document.getElementById('emailFout');
@@ -1473,42 +1409,11 @@ async function startBetaling() {
   }
   if (foutEl) foutEl.style.display = 'none';
   if (emailEl) emailEl.style.borderColor = 'rgba(255,255,255,0.15)';
-  // Factuuradres verplicht (Mollie eist een adres op de factuur). NL: postcode +
-  // huisnummer (server zoekt straat + plaats erbij via PDOK). BE: straat +
-  // postcode + gemeente zelf.
+  // Geen straat/postcode meer nodig: de server valt zonder adres terug op de
+  // bestaande placeholder in lib/mollie-factuur.js. Land sturen we nog wel mee
+  // voor de landcode op de factuur.
   const land = (document.getElementById('klantLand') || {}).value || 'NL';
-  const adresFoutEl = document.getElementById('adresFout');
-  let postcode = '', huisnummer = '', straat = '', plaats = '';
-  if (land === 'BE') {
-    const sEl = document.getElementById('klantStraat');
-    const pcbEl = document.getElementById('klantPostcodeBE');
-    const plEl = document.getElementById('klantPlaats');
-    straat = sEl ? sEl.value.trim() : '';
-    postcode = pcbEl ? pcbEl.value.trim() : '';
-    plaats = plEl ? plEl.value.trim() : '';
-    if (!straat || !postcode || !plaats) {
-      if (adresFoutEl) { adresFoutEl.textContent = 'Vul je straat + huisnummer, postcode en gemeente in — die staan op je factuur.'; adresFoutEl.style.display = 'block'; }
-      [sEl, pcbEl, plEl].forEach(el => { if (el) el.style.borderColor = el.value.trim() ? 'rgba(255,255,255,0.15)' : '#ff6b5e'; });
-      const eerste = [sEl, pcbEl, plEl].find(el => el && !el.value.trim());
-      if (eerste) eerste.focus();
-      return;
-    }
-    [sEl, pcbEl, plEl].forEach(el => { if (el) el.style.borderColor = 'rgba(255,255,255,0.15)'; });
-  } else {
-    const pcEl = document.getElementById('klantPostcode');
-    const hnrEl = document.getElementById('klantHuisnr');
-    postcode = pcEl ? pcEl.value.trim().toUpperCase().replace(/\s+/g, '') : '';
-    huisnummer = hnrEl ? hnrEl.value.trim() : '';
-    if (!/^[1-9][0-9]{3}[A-Z]{2}$/.test(postcode) || !huisnummer) {
-      if (adresFoutEl) { adresFoutEl.textContent = 'Vul je postcode (1234 AB) en huisnummer in — die staan op je factuur.'; adresFoutEl.style.display = 'block'; }
-      if (pcEl && !/^[1-9][0-9]{3}[A-Z]{2}$/.test(postcode)) { pcEl.style.borderColor = '#ff6b5e'; pcEl.focus(); }
-      else if (hnrEl) { hnrEl.style.borderColor = '#ff6b5e'; hnrEl.focus(); }
-      return;
-    }
-    if (pcEl) pcEl.style.borderColor = 'rgba(255,255,255,0.15)';
-    if (hnrEl) hnrEl.style.borderColor = 'rgba(255,255,255,0.15)';
-  }
-  if (adresFoutEl) adresFoutEl.style.display = 'none';
+  const postcode = '', huisnummer = '', straat = '', plaats = '';
   // Optioneel gewicht (alleen aanwezig als Strava geen gewicht gaf). Meesturen
   // zodat W/kg ook in de PDF komt; lokaal bewaren zodat het rapport 'm overneemt.
   let gewicht = null;
