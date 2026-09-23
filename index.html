@@ -1686,7 +1686,7 @@ function toonZonesScherm(data) {
       // koper op het verkeerde been (Erwin, 23-09-2026). Zie lib/lever-rapport.js.
       const alleenKortePieken = heeftVermogen && !data.piek12min && !data.piek20min;
       ondergrensTekst.textContent = alleenKortePieken
-        ? 'In je recente ritten zien we geen volle lange inspanning. Je FTP wordt daarom geschat uit je korte pieken, en die schatting kan beide kanten op. Je krijgt precies welke test je échte drempel vastlegt.'
+        ? 'In je laatste 90 dagen zien we geen inspanning van 12 of 20 minuten voluit. Je FTP wordt daarom geschat uit je 1- en 5-minuten pieken, en die schatting kan beide kanten op. Je krijgt precies welke test je échte drempel vastlegt.'
         : heeftVermogen
         ? 'In je recente ritten zien we geen volle inspanning. Je krijgt daarom een voorzichtige ondergrens voor je FTP, plus precies welke test je échte top laat zien.'
         : 'In je recente ritten zien we geen volle inspanning. Je krijgt daarom een voorzichtige ondergrens voor je omslagpunt, plus precies wat je moet rijden om je échte top te zien.';
