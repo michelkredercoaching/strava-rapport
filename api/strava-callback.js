@@ -526,6 +526,8 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   //   4) VORM/W-kg  – te vlakke curve of onmogelijke W/kg → betrouwbaarheid laag.
   let ftp = null;
   let ftpBronnen = [];
+  let ftpAlleenKort = false;    // geen 12/20-min venster → schatting leunt op korte pieken
+  let ftpGeplafonneerd = false; // korte-piek-schatting teruggebracht naar een plausibel plafond
 
   const ftpWindows = [
     { naam: '1min',  sec: 60,   factor: 0.72, gewicht: 1 },
@@ -702,6 +704,52 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     if (gewogenTotaal > 0) {
       ftp = Math.round(gewogenSom / gewogenTotaal);
       console.log(`FTP (stream, gewogen 1/5/12/20): ${ftp}W uit ${ftpBronnen.length} vensters`);
+    }
+
+    // (3b) PLAFOND BIJ EEN KORTE-PIEK-ONLY SCHATTING (Erwin-case, 23-09-2026).
+    // Vallen 12 en 20 min allebei weg (geen kandidaat, of alle kandidaten op HR
+    // afgekeurd), dan herverdeelt het gewogen gemiddelde zich volledig naar 1 en
+    // 5 min. Juist die twee vensters hangen het sterkst af van het type renner:
+    // de factoren 0,72/0,88 horen bij een gemiddeld profiel, en een zware puncheur
+    // piekt daar ver boven zijn drempel. Erwin kwam zo op 272W terwijl een 20-min
+    // test 240W gaf: zijn 5 min (307W) was 128% van zijn FTP waar de formule 114%
+    // aanneemt. Zonder lang venster is de schatting dus niet conservatief maar
+    // juist optimistisch, precies andersom dan het rapport de klant vertelt.
+    //
+    // Correctie zonder te gokken: de lange vensters die we voor de FTP afkeurden
+    // zijn nog steeds ECHT GEREDEN vermogen. Reed hij 20 min op 230W bij herstel-
+    // hartslag, dan is dat geen drempelbewijs, maar het begrenst wel hoe hoog zijn
+    // drempel plausibel kan liggen. Een 20-min MAX ligt bij wie geregeld traint
+    // zelden meer dan ~15% boven de beste sub-maximale 20 min uit 90 dagen, en FTP
+    // is ~95% van die max, dus plafond = 1,10 x beste 20-min kandidaat. Ruim genoeg
+    // dat een echte diesel er niet door geknepen wordt, streng genoeg dat een
+    // puncheur niet wegloopt op zijn sprintjes.
+    const langInFtp = !!(piek[720] || piek[1200]);
+    if (ftp && !langInFtp) {
+      ftpAlleenKort = true;
+      // Een rit die op dominantie is uitgesloten mag ook het plafond niet zetten,
+      // anders bepaalt juist de verdachte rit hoeveel ruimte de schatting krijgt.
+      const uitgesloten = dominantieVerdacht && dom ? dom.id : null;
+      const besteLang = (sec) => {
+        const lijst = (kandidaten[sec] || []).filter(k => k.id !== uitgesloten);
+        return lijst.length ? Math.max(...lijst.map(k => k.peak)) : null;
+      };
+      const kand20 = besteLang(1200), kand12 = besteLang(720);
+      // 20 min is het betere anker; alleen 12 min beschikbaar → iets krapper, want
+      // een 12-min inspanning ligt per definitie boven een 20-min inspanning.
+      const plafond = kand20 ? kand20 * 1.10 : (kand12 ? kand12 * 1.05 : null);
+      if (plafond && ftp > plafond) {
+        const ftpVoor = ftp;
+        ftp = Math.round(plafond);
+        ftpGeplafonneerd = true;
+        piekFilterNotities.push(
+          `alleen 1/5-min vensters: ${ftpVoor}W leunt op korte pieken, geplafonneerd op ${ftp}W ` +
+          `(beste ${kand20 ? '20' : '12'}-min kandidaat ${Math.round(kand20 || kand12)}W, niet HR-geverifieerd)`
+        );
+        console.log(`FTP geplafonneerd: ${ftpVoor}W -> ${ftp}W (korte-piek-only)`);
+      } else {
+        piekFilterNotities.push('alleen 1/5-min vensters → FTP leunt op korte pieken, type-afhankelijk');
+      }
     }
   }
 
@@ -1345,6 +1393,8 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     bonusFtp: (!gebruikVermogen && ftp) ? ftp : null,                       // wel gedetecteerd? toon als bonus
     bonusFtpBetrouwbaarheid: (!gebruikVermogen && ftp) ? ftpBetrouwbaarheid : null,
     ftpBronnen,
+    ftpAlleenKort,      // FTP leunt alleen op 1/5 min → type-afhankelijk, kan beide kanten op
+    ftpGeplafonneerd,   // korte-piek-schatting teruggebracht naar een plausibel plafond
     ftpUitStream: heeftPowerStream,
     aantalRittenMetStream,
     maxHf,
