@@ -208,7 +208,11 @@ export default async function handler(req, res) {
     // nu ook al bruikbaar in de verlaten-journey voor wie op vermogen zit.
     if (meetmethode === 'vermogen' && bron.ftp && bron.piek1min) {
       const wGewVoorType = (bron.weight >= 35 && bron.weight <= 200) ? bron.weight : null;
-      const rennerstype = bepaalRennerstype(bron.ftp, bron.piek1min, wGewVoorType);
+      // Vierde argument = de 12/20-min piek. Zonder die is de FTP zelf uit de
+      // korte pieken afgeleid en zou het type circulair zijn, dus geeft
+      // bepaalRennerstype dan null (zie lib/pijn-signalen.js, 23-09-2026).
+      const langePiekVoorType = parseInt(bron.piek20min) || parseInt(bron.piek12min) || null;
+      const rennerstype = bepaalRennerstype(bron.ftp, bron.piek1min, wGewVoorType, langePiekVoorType);
       if (rennerstype) merge.RENTYPE = rennerstype.type;
     }
     try {
