@@ -24,6 +24,12 @@
 //     zones + duw naar de Strava-analyse) en geeft de downloadUrl terug zodat
 //     de pagina 'm ook meteen kan tonen. Geen aparte meetmethode-variant nodig
 //     (het schema zelf is generiek, alleen het invulblad heeft twee kolommen).
+//   - 'bandenspanning': de lead magnet op /bandenspanning/. Zet de tag
+//     'bandenspanning-pdf', mailt de bandenspanning-kaart en geeft de
+//     downloadUrl terug zodat de pagina 'm meteen kan tonen. Zelfde patroon
+//     als 'zesuur'. De kaart zelf linkt door naar de Power Profile-analyse op
+//     WORDPRESS (niet het strava-analyse-subdomein), omdat alleen daar de
+//     Meta-pixel staat en het klikverkeer dus meetbaar is.
 //   - 'analyse-advies' / 'startpakket-advies': de binaire uitkomst van de
 //     9-vragen-keuzehulp (trainingsschema-keuzehulp-v2.html), sinds 11-09-2026
 //     niet meer schema-first. Wie al ritdata heeft (Strava/Garmin) krijgt het
@@ -46,6 +52,7 @@ const TAG_COACHING    = 'keuzehulp-coaching';
 const TAG_GRATIS      = 'gratis-training';
 const TAG_BEGELEIDING = 'begeleiding-aanvraag';
 const TAG_ZESUUR      = 'zesuur-pdf';
+const TAG_BANDEN      = 'bandenspanning-pdf';
 // Binaire keuzehulp-uitkomst (11-09-2026): schema is geen directe uitkomst
 // meer, zie [[het-startpakket]] in memory. Eigen tags zodat Michel de twee
 // paden apart kan zien/bewerken in Mailchimp, los van de oude schema-journey.
@@ -82,6 +89,11 @@ const ANALYSE_URL     = 'https://strava-analyse.michelkredercoaching.nl/';
 // Strava-analyse. Eén generieke pdf, geen vermogen/hartslag-variant nodig.
 const ZESUUR_PDF = process.env.ZESUUR_PDF
   || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/zesuur-schema.pdf';
+
+// Bandenspanning-kaart: 2 A4'tjes met voor- en achterdruk per gewicht en
+// bandbreedte, plus de correcties voor wegdek, tubeless en hookless.
+const BANDEN_PDF = process.env.BANDENSPANNING_PDF
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/Bandenspanning-kaart.pdf';
 
 const AFZENDER     = 'Michel Kreder Coaching <rapport@michelkredercoaching.nl>';
 const REPLY_TO     = 'info@michelkredercoaching.nl';
@@ -424,6 +436,25 @@ function zesuurHtml(naam, pdfUrl) {
   return naarHtmlEntities(html);
 }
 
+// Afleveringsmail van de bandenspanning-kaart. Kort houden: de kaart doet zelf
+// het werk en linkt onderaan door naar de analyse. Geen pitch in de mail, die
+// zit in de Mailchimp-journey op de tag 'bandenspanning-pdf'.
+function bandenspanningHtml(naam, pdfUrl) {
+  const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 18px;">Hier is je bandenspanning-kaart. Op de eerste bladzijde zoek je je gewicht en je bandbreedte op en lees je je druk af voor voor en achter, in bar en in psi. Op de tweede staan de correcties voor nat wegdek, ruw asfalt en tubeless, plus de grenzen die je nooit moet overschrijden.</p>
+    <p style="margin:4px 0 18px;">
+      <a href="${escHtml(pdfUrl)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Download je kaart</a>
+    </p>
+    <p style="font-size:15px;margin:0 0 14px;">Print 'm uit en hang 'm bij je pomp, dan hoef je nooit meer te gokken. Begin bij de waarde uit de tabel en verander daarna met stapjes van 0,2 bar tegelijk, telkens op dezelfde route.</p>
+    <p style="font-size:14px;margin:0 0 4px;">Vragen? Reageer gewoon op deze mail, ik lees alles zelf.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
 // Afleveringsmail van de schema-uitkomst (route 'schema': het Piek-advies uit
 // de 9-vragen-keuzehulp, en het schema-advies uit de adviestool). Direct
 // verstuurd in plaats van via de Mailchimp-journey, zodat het advies altijd
@@ -524,6 +555,7 @@ export default async function handler(req, res) {
               : b.route === 'begeleiding'         ? 'begeleiding'
               : b.route === 'gratis-training'     ? 'gratis-training'
               : b.route === 'zesuur'              ? 'zesuur'
+              : b.route === 'bandenspanning'     ? 'bandenspanning'
               : b.route === 'analyse-advies'      ? 'analyse-advies'
               : b.route === 'startpakket-advies'  ? 'startpakket-advies'
               : b.route === 'winter10'            ? 'winter10'
@@ -665,6 +697,7 @@ export default async function handler(req, res) {
               : route === 'begeleiding'        ? TAG_BEGELEIDING
               : route === 'gratis-training'    ? TAG_GRATIS
               : route === 'zesuur'             ? TAG_ZESUUR
+              : route === 'bandenspanning'    ? TAG_BANDEN
               : route === 'analyse-advies'     ? TAG_KEUZEHULP_ANALYSE
               : route === 'startpakket-advies' ? TAG_KEUZEHULP_STARTPAKKET
               : route === 'winter10'           ? TAG_WINTER10
@@ -724,6 +757,18 @@ export default async function handler(req, res) {
       });
       console.log('Zesuur OK:', email);
       return res.status(200).json({ ok: true, downloadUrl: ZESUUR_PDF });
+    }
+
+    // 2c-2) Bandenspanning: kaart mailen (bevestigt het adres) en de
+    //     downloadUrl teruggeven zodat de pagina 'm meteen kan tonen.
+    if (route === 'bandenspanning') {
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: 'Je bandenspanning-kaart staat klaar',
+        html: bandenspanningHtml(b.naam, BANDEN_PDF),
+      });
+      console.log('Bandenspanning OK:', email);
+      return res.status(200).json({ ok: true, downloadUrl: BANDEN_PDF });
     }
 
     // 2d) Keuzehulp-uitkomst 'analyse': geen mail nodig, de pagina linkt zelf
