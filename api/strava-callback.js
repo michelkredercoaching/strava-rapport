@@ -552,6 +552,15 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     maxWattPerKgVenster: { 60: 12.0, 300: 9.0, 720: 7.0, 1200: 6.5 },
   };
 
+  // ===== STRENGERE GRENS VOOR DE KORTE VENSTERS (1 en 5 min) =====
+  // maxWattPerKgVenster hierboven is bewust ruim, zodat een échte topdag nooit
+  // uit de piekselectie valt. Zodra zo'n korte piek ergens een cijfer gaat
+  // DRAGEN — in het rapport of in de FTP-schatting — is de afweging omgekeerd:
+  // een onmogelijk hoog getal beschadigt de rest. Deze grenzen gelden daarom op
+  // twee plekken: de weergave (John-case, 17-09-2026, zie WATT PER KILO verderop)
+  // en de FTP-input zodra er een lang venster meedoet (Bram-case, 28-09-2026).
+  const KORT_PLAFOND_PER_KG = { 60: 8.5, 300: 6.5 };
+
   let heeftPowerStream = false;
   let aantalRittenMetStream = 0;
   let piekFilterNotities = [];
@@ -688,10 +697,53 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
 
   const schatFactor = 1.0;
 
+  // ===== (3a) KORTE VENSTERS WEGEN NIET MEE ZODRA ER EEN LANGE LIGT =====
+  // (Bram-case, 28-09-2026.) Zijn 12 en 20 min waren allebei HR-geverifieerd
+  // (293W bij 189bpm, 285W bij 188bpm, omslagpunt 183), maar zijn sprint van
+  // 541W tilde het gewogen gemiddelde naar 291W — bóven zijn beste 20 minuten,
+  // terwijl die 20 minuten juist bewezen op zijn drempel lagen. Zo werden zijn
+  // drempelintervallen 94-100% van zijn echte FTP i.p.v. comfortabel zwaar.
+  //
+  // Een 1-minuutpiek zegt niets over een drempel zodra er een échte lange
+  // inspanning ligt: de factor 0,72 hoort bij een gemiddeld profiel en heeft
+  // van alle vier de vensters veruit de grootste spreiding tussen rennerstypes.
+  // Dat is dezelfde scheefheid die Erwin de verkeerde kant op duwde. Met een
+  // lang venster is die term dus geen extra bewijs maar ruis omhoog → eruit.
+  //
+  // Bewust GEEN plafond op de 20-min piek: dat 16 van de 19 teruggelezen
+  // rapporten een FTP op of boven hun beste 20 minuten tonen is grotendeels
+  // terecht (wie nooit voluit gaat, heeft een sub-maximale 20 min), en een
+  // plafond straft precies die groep. Gemeten effect van deze aanpak over die
+  // 19: gemiddeld -2,8%, grootste daling -7,5%, geen enkel rapport dat instort.
+  //
+  // Valt 12 én 20 min weg, dan verandert er hier niets: dan telt 1 min gewoon
+  // mee en vangt het korte-piek-plafond (3b) hieronder de scheefheid op.
+  const langVensterAanwezig = !!(piek[720] || piek[1200]);
+
   if (heeftPowerStream) {
     let gewogenSom = 0, gewogenTotaal = 0;
     ftpWindows.forEach(w => {
       if (piek[w.sec]) {
+        // 1 min draagt niet mee zolang er een lang venster is.
+        if (w.sec === 60 && langVensterAanwezig) {
+          piekFilterNotities.push(
+            `1-min piek ${Math.round(piek[60])}W telt niet mee in de FTP (er is een ${piek[1200] ? '20' : '12'}-min venster)`
+          );
+          console.log(`FTP 1min: overgeslagen, lang venster aanwezig (piek ${Math.round(piek[60])}W)`);
+          return;
+        }
+        // Het gewicht verschuift daarmee naar 5 min, en dát is óók een kort,
+        // glitchgevoelig venster (John: 8,4 W/kg over 5 min). Het ruime
+        // maxWattPerKgVenster liet zo'n waarde door omdat 'ie de piekselectie
+        // niet mocht breken; als dragende FTP-bron geldt de strengere grens.
+        if (w.sec === 300 && langVensterAanwezig && weight
+            && (piek[300] / weight) > KORT_PLAFOND_PER_KG[300]) {
+          piekFilterNotities.push(
+            `5-min piek ${Math.round(piek[300])}W (${(piek[300] / weight).toFixed(1)} W/kg > ${KORT_PLAFOND_PER_KG[300]}) telt niet mee in de FTP`
+          );
+          console.log(`FTP 5min: overgeslagen, boven plafond ${KORT_PLAFOND_PER_KG[300]} W/kg`);
+          return;
+        }
         const schatting = Math.round(piek[w.sec] * w.factor * schatFactor);
         if (schatting >= 80 && schatting <= 600) {
           gewogenSom += schatting * w.gewicht;
@@ -703,7 +755,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     });
     if (gewogenTotaal > 0) {
       ftp = Math.round(gewogenSom / gewogenTotaal);
-      console.log(`FTP (stream, gewogen 1/5/12/20): ${ftp}W uit ${ftpBronnen.length} vensters`);
+      console.log(`FTP (stream, gewogen ${ftpBronnen.map(b => b.naam).join('/') || '-'}): ${ftp}W uit ${ftpBronnen.length} vensters`);
     }
 
     // (3b) PLAFOND BIJ EEN KORTE-PIEK-ONLY SCHATTING (Erwin-case, 23-09-2026).
@@ -724,8 +776,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     // is ~95% van die max, dus plafond = 1,10 x beste 20-min kandidaat. Ruim genoeg
     // dat een echte diesel er niet door geknepen wordt, streng genoeg dat een
     // puncheur niet wegloopt op zijn sprintjes.
-    const langInFtp = !!(piek[720] || piek[1200]);
-    if (ftp && !langInFtp) {
+    if (ftp && !langVensterAanwezig) {
       ftpAlleenKort = true;
       // Een rit die op dominantie is uitgesloten mag ook het plafond niet zetten,
       // anders bepaalt juist de verdachte rit hoeveel ruimte de schatting krijgt.
@@ -1347,12 +1398,15 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   // power curve, rennerstype) — daar is de afweging omgekeerd: een onmogelijk hoog
   // getal (939W/11,1 W/kg op 1 min bij 84,5kg) beschadigt het vertrouwen in de rest
   // van het rapport, terwijl een strengere grens hooguit een uitzonderlijke topdag
-  // verbergt. Raakt de FTP niet aan (die blijft op het ruimere plafond hierboven),
-  // alleen wat er zichtbaar wordt. Alleen 1 en 5 min: 12/20 min hebben al een eigen
-  // strenger plafond (7,0 / 6,5 W/kg) én de HR-check.
-  const WEERGAVE_PLAFOND_PER_KG = { 60: 8.5, 300: 6.5 };
+  // verbergt. Alleen 1 en 5 min: 12/20 min hebben al een eigen strenger plafond
+  // (7,0 / 6,5 W/kg) én de HR-check.
+  //
+  // Zelfde grenzen (KORT_PLAFOND_PER_KG, bovenin) gelden sinds 28-09-2026 ook
+  // voor de 5-min FTP-input zodra er een lang venster meedoet: daar draagt die
+  // piek dan het zwaarste gewicht na 12/20 min. Zonder lang venster blijft de
+  // FTP op het ruimere maxWattPerKgVenster staan, want dan is het alles wat er is.
   const magTonen = (sec, watt) => {
-    const plafond = WEERGAVE_PLAFOND_PER_KG[sec];
+    const plafond = KORT_PLAFOND_PER_KG[sec];
     if (!plafond || !weight) return true;
     return (watt / weight) <= plafond;
   };
