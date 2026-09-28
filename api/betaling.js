@@ -4,12 +4,75 @@ import { unseal } from '../lib/gate.js';
 import { controleerKortingToken, kortingAlGebruikt, markeerKortingGebruikt } from '../lib/korting.js';
 import { leverRapport } from '../lib/lever-rapport.js';
 
+// ===== META-BROWSERCONTEXT (voor de Conversions API) =====
+// Het Purchase-event naar Meta gaat de deur uit vanuit /api/betaling-webhook.js,
+// en die draait op een aanroep van Mollie's server. Daar is geen browser: geen
+// cookies, geen IP, geen user agent. Juist die velden bepalen of Meta de aankoop
+// aan een echt profiel kan koppelen; zonder ze kwam de Event Match Quality op
+// dit account eerder op 0,0 uit en telde Meta de aankopen niet mee.
+//
+// Hier, bij het aanmaken van de betaling, zit de bezoeker er nog wél achter. We
+// leggen zijn browsercontext daarom nu vast in Redis onder het Mollie-betaal-ID,
+// zodat de webhook 'm straks kan ophalen. Bewust NIET in de Mollie-metadata:
+// die zit al tegen de limiet van ~1 kB aan.
+//
+// De _fbp/_fbc-cookies zijn hier leesbaar omdat de Meta-pixel ze op het hele
+// domein .michelkredercoaching.nl zet, dus ook op dit subdomein.
+const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || process.env.KV_REST_API_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+
+async function redis(cmd) {
+  if (!REDIS_URL || !REDIS_TOKEN) return { ok: false };
+  try {
+    const r = await fetch(REDIS_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(cmd),
+      signal: AbortSignal.timeout(5000)
+    });
+    if (!r.ok) { console.error('Redis fout:', r.status); return { ok: false }; }
+    return { ok: true, result: (await r.json()).result };
+  } catch (e) { console.error('Redis exception:', e); return { ok: false }; }
+}
+
+function leesCookie(kop, naam) {
+  const m = String(kop || '').match(new RegExp('(?:^|;\\s*)' + naam + '=([^;]+)'));
+  return m ? decodeURIComponent(m[1]) : '';
+}
+
+// Fail-safe: lukt het opslaan niet, dan valt de webhook gewoon terug op alleen
+// de gehashte NAW-velden. Een betaling mag hier nooit op stuklopen.
+async function bewaarBrowserContext(req, betaalId, fbclid) {
+  try {
+    const cookies = req.headers?.cookie || '';
+    let fbc = leesCookie(cookies, '_fbc');
+    // Geen _fbc-cookie maar wel een fbclid uit de advertentielink? Dan bouwen we
+    // 'm zelf, in het formaat dat Meta verwacht: fb.1.<milliseconden>.<fbclid>.
+    if (!fbc && fbclid) fbc = `fb.1.${Date.now()}.${fbclid}`;
+
+    const ctx = {
+      fbp: leesCookie(cookies, '_fbp'),
+      fbc,
+      ip:  String(req.headers?.['x-forwarded-for'] || '').split(',')[0].trim(),
+      ua:  String(req.headers?.['user-agent'] || '').slice(0, 400)
+    };
+    if (!ctx.fbp && !ctx.fbc && !ctx.ip && !ctx.ua) return;
+    await redis(['SET', `pp:meta:${betaalId}`, JSON.stringify(ctx), 'EX', '2592000']); // 30 dagen
+  } catch (e) {
+    console.error('Browsercontext bewaren mislukt (genegeerd):', e);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { blob, email, gewicht, land, postcode, huisnummer, straat, plaats, korting: kortingToken, bron } = req.body || {};
+  const { blob, email, gewicht, land, postcode, huisnummer, straat, plaats, korting: kortingToken, bron, fbclid } = req.body || {};
+
+  // Klik-ID uit een advertentielink. Client-input die in een Meta-event belandt,
+  // dus alleen het tekenbereik toelaten dat Meta zelf gebruikt.
+  const fbclidSchoon = /^[A-Za-z0-9_.-]{1,255}$/.test(String(fbclid || '')) ? String(fbclid) : '';
 
   // Waar kwam deze bezoeker vandaan? Vastgelegd door de funnel vóór de Strava-
   // koppeling (localStorage 'pp_bron'), want na die omweg is fbclid/referrer
@@ -200,6 +263,10 @@ export default async function handler(req, res) {
     console.log('Mollie response:', JSON.stringify(betaling).substring(0, 200));
 
     if (betaling._links?.checkout?.href && betaling.id) {
+      // Browsercontext vastleggen zolang de bezoeker er nog achter zit; de
+      // webhook heeft 'm straks nodig voor een bruikbaar Meta-event.
+      await bewaarBrowserContext(req, betaling.id, fbclidSchoon);
+
       // prijs + isDeal + korting teruggeven zodat de frontend hetzelfde kan tonen.
       return res.status(200).json({
         checkoutUrl: betaling._links.checkout.href,
