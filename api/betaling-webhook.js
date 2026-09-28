@@ -78,6 +78,15 @@ function metaHash(v) {
   return s ? crypto.createHash('sha256').update(s).digest('hex') : undefined;
 }
 
+// De browsercontext die /api/betaling.js bij de checkout heeft weggeschreven:
+// fbp, fbc, IP en user agent. Ontbreekt 'ie (oude betaling, Redis uit, of een
+// bezoeker zonder pixelcookie), dan gaat het event gewoon zonder die velden weg.
+async function haalBrowserContext(id) {
+  const r = await redis(['GET', `pp:meta:${id}`]);
+  if (!r.ok || !r.result) return {};
+  try { return JSON.parse(r.result) || {}; } catch { return {}; }
+}
+
 async function stuurMetaPurchase(m, betaling, id) {
   const token = process.env.META_CAPI_TOKEN;
   if (!token) return; // geen token = tracking uit
@@ -94,12 +103,29 @@ async function stuurMetaPurchase(m, betaling, id) {
   const ct  = metaHash(m.plaats);   if (ct)  userData.ct = ct;
   const zp  = metaHash(m.postcode); if (zp)  userData.zp = zp;
   const co  = metaHash(land);       if (co)  userData.country = co;
+  // external_id: een stabiel eigen klant-ID. Gehasht mailadres, dus dezelfde
+  // waarde als de shop-snippet gebruikt -> Meta ziet één persoon, geen twee.
+  if (em) userData.external_id = em;
+
+  // ===== BROWSERVELDEN =====
+  // Hier zat het gat: zonder fbp/fbc/IP/user agent kan Meta het event nauwelijks
+  // aan een profiel koppelen (Event Match Quality 0,0) en telt de aankoop dus
+  // niet mee voor optimalisatie. fbc is bovendien het klik-ID waarmee Meta een
+  // aankoop aan een advertentie koppelt.
+  const ctx = await haalBrowserContext(id);
+  if (ctx.fbp) userData.fbp = ctx.fbp;
+  if (ctx.fbc) userData.fbc = ctx.fbc;
+  if (ctx.ip)  userData.client_ip_address = ctx.ip;
+  if (ctx.ua)  userData.client_user_agent = ctx.ua;
 
   const event = {
     event_name:       'Purchase',
     event_time:       Math.floor(Date.now() / 1000),
     event_id:         id,
-    event_source_url: 'https://strava-rapport.michelkredercoaching.nl/',
+    // Het echte adres van de funnel. Stond hier nog op het oude domein
+    // strava-rapport, waardoor Meta het event aan een pagina koppelde die niet
+    // bestaat.
+    event_source_url: 'https://strava-analyse.michelkredercoaching.nl/',
     action_source:    'website',
     user_data:        userData,
     custom_data: {
@@ -121,7 +147,12 @@ async function stuurMetaPurchase(m, betaling, id) {
   );
   const j = await r.json().catch(() => ({}));
   if (r.ok && j.events_received) {
-    console.log('Meta CAPI Purchase OK:', id, '| received:', j.events_received);
+    // Aantal matchvelden meeloggen, net als de shop-snippet in zijn ordernotitie.
+    // Zo zie je in de Vercel-logs meteen of fbp/fbc echt meegingen: zonder
+    // browsercontext blijft dit rond de 7, met een advertentieklik loopt het op.
+    console.log('Meta CAPI Purchase OK:', id, '| received:', j.events_received,
+      '| matchvelden:', Object.keys(userData).length,
+      ctx.fbc ? '(met klik-ID)' : '(zonder klik-ID)');
   } else {
     console.error('Meta CAPI Purchase fout:', id, r.status, JSON.stringify(j));
   }
