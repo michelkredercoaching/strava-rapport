@@ -250,6 +250,10 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 .strava-sub{font-size:14px;color:rgba(255,255,255,0.5);line-height:1.6;max-width:320px;margin-bottom:36px;}
 .strava-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;max-width:320px;padding:16px 24px;background:var(--oranje);color:#fff;font-size:14px;font-weight:700;border:none;border-radius:3px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;margin-bottom:20px;}
 .strava-btn:hover{background:#e85a0d;}
+.strava-vinkje{display:flex;align-items:flex-start;gap:10px;width:100%;max-width:320px;margin:0 auto 18px;padding:13px 15px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.16);border-left:3px solid var(--oranje);border-radius:6px;text-align:left;}
+.strava-vinkje-icon{font-size:14px;color:var(--oranje);flex-shrink:0;line-height:1.55;font-weight:700;}
+.strava-vinkje-txt{font-size:12.5px;color:rgba(255,255,255,0.78);line-height:1.55;}
+.strava-vinkje-txt strong{color:#fff;font-weight:700;}
 .strava-vereiste{display:flex;align-items:flex-start;gap:10px;width:100%;max-width:320px;margin-bottom:24px;padding:13px 15px;background:rgba(255,107,26,0.08);border:1px solid rgba(255,107,26,0.3);border-radius:6px;text-align:left;}
 .strava-vereiste-icon{font-size:16px;flex-shrink:0;line-height:1.4;}
 .strava-vereiste-txt{font-size:12px;color:rgba(255,255,255,0.7);line-height:1.5;}
@@ -772,6 +776,15 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
     </div>
     <h2 class="strava-titel">Nog één klik<br>tot je analyse</h2>
     <p class="strava-sub">We vinden jouw FTP of omslagpunt in je eigen ritten van de laatste 90 dagen. Alleen-lezen, eenmalig, daarna koppelen we weer los. Je data blijft van jou.</p>
+    <!-- Boven de knop, want het vinkje voor privé-activiteiten is de grootste
+         uitvalsoorzaak: 30% haakt af tussen de koppelklik en de analyse
+         (188 -> 131 over 26 dagen). De uitleg stond alleen in een dichtgeklapt
+         FAQ-item op de landingspagina en in het foutscherm achteraf, dus
+         precies te laat om iemand te redden. -->
+    <div class="strava-vinkje">
+      <span class="strava-vinkje-icon">&#10003;</span>
+      <span class="strava-vinkje-txt">Strava vraagt zo om toestemming. <strong>Laat alle vinkjes aan staan</strong>, ook die voor je privé-activiteiten. Zet je die uit, dan zien we je ritten niet en kunnen we je zones niet berekenen.</span>
+    </div>
     <!-- Officiële "Connect with Strava" knop (Strava brand guidelines: niet aanpassen, hoogte 48px) -->
     <a href="#" onclick="verbindStrava();return false;" style="display:block;margin:0 auto 16px;line-height:0;" aria-label="Connect with Strava">
       <img src="/assets/btn_strava_connectwith_orange.svg" alt="Connect with Strava" style="height:48px;width:auto;display:block;margin:0 auto;">
@@ -2714,6 +2727,13 @@ window.addEventListener('DOMContentLoaded', function() {
       if (t) t.textContent = ft.titel;
       if (s) s.innerHTML = ft.sub;
     }
+    // Tel de foutreden apart. s8 blijft het totaal, maar zonder deze uitsplitsing
+    // weet je alleen dát er fouten zijn en niet welke. Juist hier zit de grootste
+    // uitval van de hele funnel (30% tussen de koppelklik en de analyse), dus de
+    // verdeling bepaalt waar een fix iets oplevert. meldStap ontdubbelt per
+    // sessie, dus dit telt bezoekers en geen herhaalde pogingen.
+    var redenSchoon = String(error).toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 24);
+    if (redenSchoon) meldStap('s8_' + redenSchoon);
     gaNaar('s8');
     return;
   }
