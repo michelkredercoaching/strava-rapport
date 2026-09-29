@@ -284,6 +284,9 @@ export default async function handler(req, res) {
     // rit kwalificeerde). Samen personaliseren ze de "kon niet worden
     // gedetecteerd"-kaart i.p.v. een generieke tekst (Leon, 23-09-2026).
     decouplingReden: stravaData?.decouplingReden || '',
+    // De beste drie duurritten, compact: "pct|minuten|MM-DD;...". Eén veld,
+    // want de metadata zit rond de 770 van de ~1024 bytes die Mollie toestaat.
+    decouplingTop: stravaData?.decouplingTop || '',
     langsteRitMinuten: stravaData?.langsteRitMinuten || '',
     // ===== HARTSLAG-SPOOR DECOUPLING (Pa:HR) ===== snelheid:HR-drift, alleen
     // gezet op het hartslag-spoor. Korte veldnamen i.v.m. de Mollie-
