@@ -1051,17 +1051,45 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   };
 
   let decoupling = null, decouplingRitId = null, decouplingDatum = null, decouplingReden = null;
+  let decouplingTop = null, decouplingAantal = 0;
   if (gebruikVermogen) {
     const kandidatenDecoupling = fietsritten90
-      .filter(r => (streamMap[r.id]?.watts?.data?.length || 0) >= DECOUPLING_MIN_SEC && (streamMap[r.id]?.heartrate?.data?.length || 0) >= DECOUPLING_MIN_SEC)
-      .sort((a, b) => streamMap[b.id].watts.data.length - streamMap[a.id].watts.data.length);   // langste eerst
+      .filter(r => (streamMap[r.id]?.watts?.data?.length || 0) >= DECOUPLING_MIN_SEC && (streamMap[r.id]?.heartrate?.data?.length || 0) >= DECOUPLING_MIN_SEC);
+
+    // GEWIJZIGD 29-09-2026. Hiervoor pakten we de LANGSTE rit die de steady-
+    // toets haalde en stopten we daar. Dat is juist de slechtste keuze: op de
+    // zwaarste rit wegen honger, hitte en vermoeidheid het hardst mee, en die
+    // duwen de drift omhoog. Eric kreeg zo 13,9% over een rit van 294 minuten
+    // in augustus, en daar hing zijn hele actieplan aan.
+    //
+    // Nu rekenen we ALLE kwalificerende ritten door en kijken we naar de beste
+    // drie. Dat mag, want de ruis is eenzijdig: slecht eten, hitte, een zware
+    // dag in de benen en een heuvelachtig parcours maken de drift alleen maar
+    // hoger, nooit lager. Een lage waarde kun je dus niet per ongeluk halen.
+    //
+    // We nemen bewust NIET de allerlaagste. Die zakt vanzelf naarmate iemand
+    // meer ritten heeft, en dan meet je deels het aantal ritten. We nemen de
+    // TWEEDE van de beste drie (bij drie ritten is dat de mediaan), en als er
+    // maar één rit is die ene. Altijd een echte rit, dus datum en duur blijven
+    // kloppen bij het percentage.
+    const gemeten = [];
     for (const rit of kandidatenDecoupling) {
       const res = bepaalDecoupling(streamMap[rit.id].watts.data, streamMap[rit.id].heartrate.data);
-      if (res) { decoupling = res; decouplingRitId = rit.id; break; }
+      if (res) gemeten.push({ ...res, ritId: rit.id, datum: datumVanRit(rit.id) });
     }
-    if (decoupling) {
-      decouplingDatum = datumVanRit(decouplingRitId);
-      console.log(`Decoupling: ${decoupling.pct}% (VI ${decoupling.vi}, ${decoupling.minuten} min, rit ${decouplingRitId}, ${decouplingDatum})`);
+    gemeten.sort((a, b) => a.pct - b.pct);          // laagste drift eerst
+    const beste3 = gemeten.slice(0, 3);
+    decouplingAantal = beste3.length;
+
+    if (beste3.length) {
+      const gekozen = beste3[1] || beste3[0];
+      decoupling      = gekozen;
+      decouplingRitId = gekozen.ritId;
+      decouplingDatum = gekozen.datum;
+      // Compact veld voor de Mollie-metadata (limiet ~1 kB, er was 254 byte
+      // over): pct|minuten|MM-DD, beste eerst, puntkomma ertussen.
+      decouplingTop = beste3.map(x => `${x.pct}|${x.minuten}|${String(x.datum || '').slice(5)}`).join(';');
+      console.log(`Decoupling: ${decoupling.pct}% gekozen uit ${gemeten.length} kwalificerende ritten | beste drie: ${decouplingTop}`);
     } else {
       // Onderscheid voor de PDF-tekst: had de sporter al een rit van ≥2u
       // (met bruikbare streams) die alsnog afviel (te grillig/te weinig rust
@@ -1475,7 +1503,13 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     piek20minHr,     // ===== HR ===== beste 20-min hartslag in bpm (of null)
     decoupling: decoupling ? decoupling.pct : null,               // ===== HARTSLAG-DECOUPLING ===== Pw:HR-drift in % (of null)
     decouplingMinuten: decoupling ? decoupling.minuten : null,
-    decouplingBetrouwbaarheid: decoupling ? 'hoog' : null,        // alleen gezet als er een kwalificerende rit was
+    // Betrouwbaarheid hangt nu aan het AANTAL ritten waarop gemeten is, net
+    // zoals bij de FTP: drie kwalificerende duurritten is een stevig oordeel,
+    // één rit is een momentopname.
+    decouplingBetrouwbaarheid: !decoupling ? null : (decouplingAantal >= 3 ? 'hoog' : decouplingAantal === 2 ? 'gemiddeld' : 'laag'),
+    // De beste drie, compact: "pct|minuten|MM-DD;..." (beste eerst).
+    decouplingTop,
+    decouplingAantal,
     decouplingDatum,        // ===== DATUM ===== YYYY-MM-DD van de gebruikte rit (of null)
     // 'te_kort' | 'te_onregelmatig' | null (null = decoupling wél gemeten, of
     // niet van toepassing op dit spoor) — stuurt de personalisatie van de
