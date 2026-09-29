@@ -49,6 +49,96 @@ async function redis(cmd) {
 // 'wp' telt per instappunt, met velden in de vorm "schema_ads:checkout".
 const TRECHTERS = ['pp', 'schema', 'wp'];
 
+// ===== RECENTE KOPERS (social proof op de landingspagina) =====
+// De analyse wordt op twee manieren verkocht en geen van beide systemen ziet de
+// andere, dus we halen ze allebei op:
+//   - het subdomein rekent rechtstreeks bij Mollie af (herkenbaar aan het veld
+//     'nonce' in de metadata, want WooCommerce-betalingen hebben dat niet);
+//   - de landingspagina's verkopen via WooCommerce-product 12131.
+// Zie ook scripts/analyse-verkopen.mjs, dat dezelfde twee bronnen combineert.
+const ANALYSE_PRODUCT = '12131';
+const KOPERS_CACHE = 'pp:kopers:v1';
+
+const KOPERS_ORIGINS = [
+  'https://michelkredercoaching.nl',
+  'https://www.michelkredercoaching.nl'
+];
+
+function zetKopersCors(req, res) {
+  const origin = req.headers.origin || '';
+  if (KOPERS_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+}
+
+// "jeroen van der berg" -> "Jeroen". Alleen de voornaam, hoofdletter erop, en
+// iets wat niet op een naam lijkt laten we vallen.
+function voornaam(volledig) {
+  const eerste = String(volledig || '').trim().split(/\s+/)[0] || '';
+  if (eerste.length < 2 || eerste.length > 20) return '';
+  if (!/^[\p{L}][\p{L}'-]*$/u.test(eerste)) return '';
+  return eerste.charAt(0).toUpperCase() + eerste.slice(1).toLowerCase();
+}
+
+async function haalMollieKopers(vanaf) {
+  const key = process.env.MOLLIE_API_KEY;
+  if (!key) return [];
+  // Eén pagina is ruim genoeg: 250 betalingen dekken bij dit volume meer dan
+  // een kwartaal, en we kijken maar 30 dagen terug. Geen paginering dus, dat
+  // scheelt seconden in de functietimeout.
+  const r = await fetch('https://api.mollie.com/v2/payments?limit=250', {
+    headers: { Authorization: `Bearer ${key}` },
+    signal: AbortSignal.timeout(8000)
+  });
+  if (!r.ok) throw new Error('Mollie ' + r.status);
+  const j = await r.json();
+  return (j._embedded?.payments || [])
+    .filter(p => p.status === 'paid' && p.metadata && typeof p.metadata === 'object' && p.metadata.nonce)
+    .filter(p => new Date(p.createdAt) >= vanaf)
+    .map(p => ({ naam: voornaam(p.metadata.naam), datum: p.createdAt.slice(0, 10) }));
+}
+
+async function haalWooKopers(vanaf) {
+  const basis = (process.env.WC_URL || '').replace(/\/$/, '');
+  const ck = process.env.WC_CONSUMER_KEY;
+  const cs = process.env.WC_CONSUMER_SECRET;
+  if (!basis || !ck || !cs) return [];
+  const auth = 'Basic ' + Buffer.from(ck + ':' + cs).toString('base64');
+  const u = `${basis}/wp-json/wc/v3/orders?per_page=50&after=${vanaf.toISOString().slice(0, 19)}`
+          + `&status=processing,completed&orderby=date&order=desc`;
+  const r = await fetch(u, { headers: { Authorization: auth }, signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error('WooCommerce ' + r.status);
+  const j = await r.json();
+  return (Array.isArray(j) ? j : [])
+    .filter(o => (o.line_items || []).some(li => String(li.product_id) === ANALYSE_PRODUCT))
+    .map(o => ({ naam: voornaam(o.billing?.first_name), datum: String(o.date_created || '').slice(0, 10) }));
+}
+
+async function haalRecenteKopers() {
+  const c = await redis(['GET', KOPERS_CACHE]);
+  if (c.ok && c.result) {
+    try { return JSON.parse(c.result); } catch { /* kapotte cache: opnieuw ophalen */ }
+  }
+
+  const vanaf = new Date(Date.now() - 30 * 86400000);
+  // Valt één bron weg, dan tonen we gewoon de andere in plaats van niets.
+  const [mollie, woo] = await Promise.all([
+    haalMollieKopers(vanaf).catch(e => { console.error('Mollie-kopers:', e.message); return []; }),
+    haalWooKopers(vanaf).catch(e => { console.error('Woo-kopers:', e.message); return []; })
+  ]);
+
+  const uit = [...mollie, ...woo]
+    .filter(k => k.naam && k.datum)
+    .sort((a, b) => (a.datum < b.datum ? 1 : -1))
+    .slice(0, 25);
+
+  // Alleen wegschrijven als er echt iets in zit, anders cachen we een storing
+  // een uur lang vast.
+  if (uit.length) await redis(['SET', KOPERS_CACHE, JSON.stringify(uit), 'EX', '3600']);
+  return uit;
+}
+
 export default async function handler(req, res) {
   // ===== TRECHTERRAPPORT: dagcijfers per scherm uitlezen =====
   // Afgeschermd met TRECHTER_SLEUTEL (Vercel-omgevingsvariabele). Zonder die
@@ -75,6 +165,31 @@ export default async function handler(req, res) {
       }
     }
     return res.status(200).json(uit);
+  }
+
+  // ===== RECENTE KOPERS: voor het social-proof-blokje op de landingspagina =====
+  // Stond daar als vaste lijst van twintig namen met bevroren teksten ("2 dagen
+  // geleden"). Die tekst klopte op de dag dat de lijst geschreven werd en daarna
+  // nooit meer. Nu komt hij uit de echte bestellingen en rekent de pagina zelf
+  // uit hoe lang geleden het was.
+  //
+  // PRIVACY: alleen de VOORNAAM en de DATUM, geen achternaam, geen plaats, geen
+  // tijdstip. Met opzet dag-nauwkeurig; wie precies om 09:57 kocht hoeft niet
+  // herleidbaar te zijn. Zie ook het privacybeleid.
+  if (req.method === 'GET' && req.query && req.query.kopers) {
+    zetKopersCors(req, res);
+    try {
+      const uit = await haalRecenteKopers();
+      // Een uur cachen aan de rand: de lijst verandert hooguit een paar keer per
+      // dag en zo hoeft niet elke bezoeker op Mollie en WooCommerce te wachten.
+      res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=3600, stale-while-revalidate=86400');
+      return res.status(200).json({ kopers: uit });
+    } catch (e) {
+      console.error('Recente kopers ophalen mislukt:', e);
+      // Leeg teruggeven in plaats van een fout: de pagina valt dan terug op
+      // haar eigen noodlijstje en de bezoeker merkt niets.
+      return res.status(200).json({ kopers: [] });
+    }
   }
 
   // ===== HERVAT: bewaarde analyse terughalen =====
