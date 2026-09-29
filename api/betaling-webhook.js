@@ -79,8 +79,9 @@ function metaHash(v) {
 }
 
 // De browsercontext die /api/betaling.js bij de checkout heeft weggeschreven:
-// fbp, fbc, IP en user agent. Ontbreekt 'ie (oude betaling, Redis uit, of een
-// bezoeker zonder pixelcookie), dan gaat het event gewoon zonder die velden weg.
+// de toestemming plus, als die 'ja' was, fbp, fbc, IP en user agent. Ontbreekt
+// het hele blokje (oude betaling of Redis eruit), dan komt er een leeg object
+// terug en gaat er hierboven niets naar Meta.
 async function haalBrowserContext(id) {
   const r = await redis(['GET', `pp:meta:${id}`]);
   if (!r.ok || !r.result) return {};
@@ -89,7 +90,30 @@ async function haalBrowserContext(id) {
 
 async function stuurMetaPurchase(m, betaling, id) {
   const token = process.env.META_CAPI_TOKEN;
-  if (!token) return; // geen token = tracking uit
+  if (!token) {
+    console.log('Meta CAPI overgeslagen:', id, '| reden: geen META_CAPI_TOKEN in Vercel');
+    return;
+  }
+
+  // ===== TOESTEMMING EERST =====
+  // /api/betaling.js heeft bij de checkout de cookiebanner-keuze vastgelegd.
+  // Alleen bij een expliciete 'ja' gaat er iets naar Meta. Dit event bevat een
+  // gehasht mailadres, postcode en woonplaats, dus dit is dezelfde regel als
+  // die op de hoofdsite geldt sinds wordpress-snippets/meta-consent-koppeling.php.
+  //
+  // Staat er niets vast (oude betaling, Redis lag eruit, of iemand die
+  // rechtstreeks op dit subdomein binnenkwam en dus nooit een banner zag), dan
+  // sturen we ook niets. Zwijgen is geen toestemming. De logregel zegt welke
+  // van de twee het was, zodat je in de Vercel-logs ziet of je een privacy-
+  // keuze respecteert of een storing kijkt.
+  const ctx = await haalBrowserContext(id);
+  if (ctx.toestemming !== true) {
+    console.log('Meta CAPI overgeslagen:', id,
+      ctx.toestemming === false
+        ? '| reden: bezoeker heeft marketingcookies geweigerd'
+        : '| reden: geen toestemming vastgelegd (oude betaling, Redis uit, of nooit een banner gezien)');
+    return;
+  }
 
   const naamDelen = String(m.naam || '').trim().split(/\s+/).filter(Boolean);
   const fn   = naamDelen[0];
@@ -112,7 +136,7 @@ async function stuurMetaPurchase(m, betaling, id) {
   // aan een profiel koppelen (Event Match Quality 0,0) en telt de aankoop dus
   // niet mee voor optimalisatie. fbc is bovendien het klik-ID waarmee Meta een
   // aankoop aan een advertentie koppelt.
-  const ctx = await haalBrowserContext(id);
+  // 'ctx' is hierboven al opgehaald voor de toestemmingscheck.
   if (ctx.fbp) userData.fbp = ctx.fbp;
   if (ctx.fbc) userData.fbc = ctx.fbc;
   if (ctx.ip)  userData.client_ip_address = ctx.ip;
