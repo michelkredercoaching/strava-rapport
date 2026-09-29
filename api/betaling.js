@@ -40,23 +40,60 @@ function leesCookie(kop, naam) {
   return m ? decodeURIComponent(m[1]) : '';
 }
 
+// ===== COOKIETOESTEMMING =====
+// Exact dezelfde beoordeling als wordpress-snippets/meta-consent-koppeling.php,
+// die op de hoofdsite de Meta-pixel stilzet bij een geweigerde banner. Zonder
+// deze check zou het subdomein datzelfde lek terugbrengen: de webhook stuurt
+// een gehasht mailadres, postcode en woonplaats naar Meta, ook van iemand die
+// op de cookiebanner nee heeft gezegd.
+//
+// De cookies zijn hier leesbaar omdat CookieYes ze op .michelkredercoaching.nl
+// zet, dus ook op dit subdomein.
+//
+// Eerste bron is wp_consent_marketing (WP Consent API), met cookieyes-consent
+// als terugval. GEEN keuze = GEEN toestemming: zwijgen is geen toestemming.
+// Let op wat dat betekent voor bezoekers die rechtstreeks op dit subdomein
+// binnenkomen zonder ooit de hoofdsite te hebben gezien: die hebben geen
+// cookie, dus voor hen gaat er niets naar Meta. Dat is bewust. Wil je ze wel
+// meetellen, dan hoort daar een eigen cookiebanner op dit subdomein bij, geen
+// soepelere regel hier.
+function magMarketing(cookies) {
+  const wp = leesCookie(cookies, 'wp_consent_marketing');
+  if (wp) return wp === 'allow';
+
+  const cy = leesCookie(cookies, 'cookieyes-consent');
+  if (cy) return cy.indexOf('advertisement:yes') !== -1;
+
+  return false;
+}
+
 // Fail-safe: lukt het opslaan niet, dan valt de webhook gewoon terug op alleen
 // de gehashte NAW-velden. Een betaling mag hier nooit op stuklopen.
 async function bewaarBrowserContext(req, betaalId, fbclid) {
   try {
     const cookies = req.headers?.cookie || '';
+
+    // Geweigerd of nooit gevraagd? Dan leggen we alleen die uitkomst vast en
+    // verder niets. De webhook ziet 'toestemming: false' en slaat het hele
+    // Purchase-event over. Bewust wél opslaan in plaats van niets: anders kan
+    // de webhook 'geweigerd' niet onderscheiden van 'Redis lag er even uit'.
+    if (!magMarketing(cookies)) {
+      await redis(['SET', `pp:meta:${betaalId}`, JSON.stringify({ toestemming: false }), 'EX', '2592000']);
+      return;
+    }
+
     let fbc = leesCookie(cookies, '_fbc');
     // Geen _fbc-cookie maar wel een fbclid uit de advertentielink? Dan bouwen we
     // 'm zelf, in het formaat dat Meta verwacht: fb.1.<milliseconden>.<fbclid>.
     if (!fbc && fbclid) fbc = `fb.1.${Date.now()}.${fbclid}`;
 
     const ctx = {
+      toestemming: true,
       fbp: leesCookie(cookies, '_fbp'),
       fbc,
       ip:  String(req.headers?.['x-forwarded-for'] || '').split(',')[0].trim(),
       ua:  String(req.headers?.['user-agent'] || '').slice(0, 400)
     };
-    if (!ctx.fbp && !ctx.fbc && !ctx.ip && !ctx.ua) return;
     await redis(['SET', `pp:meta:${betaalId}`, JSON.stringify(ctx), 'EX', '2592000']); // 30 dagen
   } catch (e) {
     console.error('Browsercontext bewaren mislukt (genegeerd):', e);
