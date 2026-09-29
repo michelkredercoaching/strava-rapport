@@ -1446,7 +1446,7 @@ async function startBetaling() {
     const res = await fetch('/api/betaling', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ blob: window._blob || '', email, gewicht, land, postcode, huisnummer, straat, plaats, korting: kortingActief ? kortingActief.token : undefined, bron: (function(){ try { return localStorage.getItem('pp_bron') || ''; } catch(e) { return ''; } })() })
+      body: JSON.stringify({ blob: window._blob || '', email, gewicht, land, postcode, huisnummer, straat, plaats, korting: kortingActief ? kortingActief.token : undefined, bron: (function(){ try { return localStorage.getItem('pp_bron') || ''; } catch(e) { return ''; } })(), fbclid: (function(){ try { return localStorage.getItem('pp_fbclid') || ''; } catch(e) { return ''; } })() })
     });
     const data = await res.json();
     if (data.checkoutUrl) {
@@ -1467,6 +1467,7 @@ async function startBetaling() {
         localStorage.removeItem('pp_blob'); localStorage.removeItem('pp_pid');
         localStorage.removeItem('pp_pv'); localStorage.removeItem('pp_email');
         localStorage.removeItem('pp_korting'); localStorage.removeItem('pp_bron');
+        localStorage.removeItem('pp_fbclid');
       } catch(e) {}
       // S7 zegt standaard "Betaling geslaagd" — bij een gratis link kloppen die
       // woorden niet, dus even omzetten naar toegang-taal.
@@ -2664,7 +2665,16 @@ window.addEventListener('DOMContentLoaded', function() {
     try {
       var pRef = (document.referrer || '').toLowerCase();
       var pNaam;
-      if (params.has('fbclid')) pNaam = 'meta_ads';
+      // ?bron= wint van alles. De hoofdsite hangt die er zelf aan (zie
+      // wordpress-snippets/trechter-bronmeting.php): daar weet men allang op
+      // welke pagina de sessie begon en of het advertentie-, DM- of organisch
+      // verkeer was. Zonder dit zou elke doorklik vanaf de hoofdsite hier als
+      // 'organisch' eindigen, want het enige wat we anders zien is de referrer
+      // michelkredercoaching.nl. Dan staan advertentie- en CreatorFlow-verkeer
+      // op één hoop.
+      var pDoor = (params.get('bron') || '').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20);
+      if (pDoor) pNaam = pDoor;
+      else if (params.has('fbclid')) pNaam = 'meta_ads';
       else if (params.has('gclid')) pNaam = 'google_ads';
       else if (params.get('utm_source')) pNaam = (params.get('utm_source') + '_ads').toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20);
       else if (pRef.indexOf('instagram.com') !== -1) pNaam = 'instagram';
@@ -2673,6 +2683,13 @@ window.addEventListener('DOMContentLoaded', function() {
       else if (pRef) pNaam = 'organisch';
       else pNaam = 'direct';
       localStorage.setItem('pp_bron', pNaam);
+
+      // Klik-ID van Meta apart bewaren. /api/betaling maakt hier een _fbc van
+      // als de cookie ontbreekt, en dat is het veld waarmee Meta een aankoop
+      // aan een advertentie koppelt. Ook dit moet NU vast, want na de omweg
+      // langs Strava staat het niet meer in de URL.
+      var pKlik = params.get('fbclid') || '';
+      if (pKlik && /^[A-Za-z0-9_.-]{1,255}$/.test(pKlik)) localStorage.setItem('pp_fbclid', pKlik);
     } catch (e) {}
   }
 
@@ -2783,7 +2800,7 @@ window.addEventListener('DOMContentLoaded', function() {
       .then(function(analyse){
         if(aiProgVul) aiProgVul.style.width = '100%';
         window._claudeAnalyse = analyse;
-        try { localStorage.removeItem('pp_blob'); localStorage.removeItem('pp_pid'); localStorage.removeItem('pp_pv'); localStorage.removeItem('pp_email'); localStorage.removeItem('pp_korting'); localStorage.removeItem('pp_bron'); } catch(e) {}
+        try { localStorage.removeItem('pp_blob'); localStorage.removeItem('pp_pid'); localStorage.removeItem('pp_pv'); localStorage.removeItem('pp_email'); localStorage.removeItem('pp_korting'); localStorage.removeItem('pp_bron'); localStorage.removeItem('pp_fbclid'); } catch(e) {}
         setTimeout(function(){ toonRapport(data, analyse); }, 400);
       });
     })
