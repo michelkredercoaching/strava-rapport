@@ -2914,7 +2914,20 @@ window.addEventListener('DOMContentLoaded', function() {
     return m ? decodeURIComponent(m[1]) : '';
   }
   // Al een keuze gemaakt, hier of op de hoofdsite? Dan niets tonen.
-  if (lees('wp_consent_marketing') || lees('cookieyes-consent')) return;
+  //
+  // LET OP: het BESTAAN van cookieyes-consent bewijst niets. CookieYes zet die
+  // cookie al bij het laden van de hoofdsite, met een consentid erin en
+  // 'action:' nog leeg. Geverifieerd op 29-09-2026:
+  //   vóór een keuze : consent:no, action:        (en geen wp_consent_marketing)
+  //   ná een keuze   : consent:no, action:yes     (en wp_consent_marketing=deny)
+  // Testen op alleen het bestaan betekende dus dat iedereen die ooit de
+  // hoofdsite had geopend zonder te kiezen, deze balk nooit te zien kreeg en
+  // daar dus ook nooit ja kon zeggen. Precies de groep waarvoor hij bedoeld is.
+  // Daarom nu op 'action:yes', de markering die CookieYes zet zodra er echt
+  // geklikt is.
+  if (lees('wp_consent_marketing')) return;
+  var alGekozen = lees('cookieyes-consent');
+  if (alGekozen && alGekozen.indexOf('action:yes') !== -1) return;
 
   var balk = document.getElementById('mkcToestemming');
   if (balk) balk.style.display = 'block';
