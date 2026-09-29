@@ -93,7 +93,7 @@ const ZESUUR_PDF = process.env.ZESUUR_PDF
 // Bandenspanning-kaart: 2 A4'tjes met voor- en achterdruk per gewicht en
 // bandbreedte, plus de correcties voor wegdek, tubeless en hookless.
 const BANDEN_PDF = process.env.BANDENSPANNING_PDF
-  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/Bandenspanning-kaart.pdf';
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/Bandenspanning.pdf';
 
 const AFZENDER     = 'Michel Kreder Coaching <rapport@michelkredercoaching.nl>';
 const REPLY_TO     = 'info@michelkredercoaching.nl';
@@ -191,6 +191,116 @@ function zetCors(req, res) {
   }
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+}
+
+// ===== META CONVERSION API — server-side Lead =====
+// AANLEIDING (29-09-2026). In Events Manager stond het Lead-event op 4 events
+// met match quality 0,0, terwijl de Startpakket-popup, de keuzehulp, de
+// 6-uur-pdf en de bandenspanningskaart wel degelijk leads binnenhalen. De
+// oorzaak was simpel: in de hele codebase stond precies één fbq('track','Lead'),
+// op bandenspanning.html, en die stuurde geen enkel matchveld mee.
+//
+// Dat is niet alleen een meetprobleem. De advertentieset krijgt 8 tot 14
+// conversies per week tegen de 50 die Meta wil zien en blijft daardoor in de
+// leerfase hangen. Een werkend Lead-event is het enige signaal met genoeg
+// volume om daar ooit uit te komen.
+//
+// EÉN ZENDER, net als bij de Purchase op het subdomein. Bewust géén browser-
+// pixel-event ernaast: twee zenders met verschillende event-ID's ontdubbelen
+// niet, en dat kostte eerder al een maand aan opgeblazen Purchase-cijfers.
+// Daarom is de losse fbq-regel op bandenspanning.html verwijderd.
+//
+// Dit endpoint wordt rechtstreeks vanuit de browser aangeroepen, dus IP en
+// user agent staan gewoon in de request. De cookies niet: dit is een
+// cross-origin verzoek zonder credentials. Daarom stuurt de hoofdsite
+// _fbp, _fbc en de bannerkeuze zelf mee in de body; dat gebeurt in
+// wordpress-snippets/trechter-bronmeting.php, dat op elke pagina draait.
+const META_PIXEL_ID = process.env.META_PIXEL_ID || '928014910335428';
+
+function metaHash(v) {
+  if (!v) return undefined;
+  const s = String(v).trim().toLowerCase();
+  return s ? crypto.createHash('sha256').update(s).digest('hex') : undefined;
+}
+
+async function stuurMetaLead(req, b, email, route) {
+  const token = process.env.META_CAPI_TOKEN;
+  if (!token) {
+    console.log('Meta Lead overgeslagen | reden: geen META_CAPI_TOKEN in Vercel');
+    return;
+  }
+
+  // Zonder expliciete toestemming gaat er niets naar Meta. Zelfde regel als in
+  // api/betaling-webhook.js en in het WordPress-snippet dat de pixel stilzet:
+  // zwijgen is geen toestemming. Ontbreekt het veld, dan draait het snippet op
+  // de hoofdsite niet (of is deze pagina nieuw en nog niet gedekt).
+  if (b._toestemming !== true) {
+    console.log('Meta Lead overgeslagen |', route, '| reden:',
+      b._toestemming === false
+        ? 'bezoeker heeft marketingcookies geweigerd'
+        : 'geen toestemming meegestuurd (draait het WP-snippet op deze pagina?)');
+    return;
+  }
+
+  const em = metaHash(email);
+  const userData = {};
+  if (em) { userData.em = em; userData.external_id = em; }
+
+  const voornaam = String(b.naam || '').trim().split(/\s+/)[0];
+  const fn = metaHash(voornaam);
+  if (fn) userData.fn = fn;
+
+  if (typeof b._fbp === 'string' && b._fbp) userData.fbp = b._fbp.slice(0, 120);
+  if (typeof b._fbc === 'string' && b._fbc) userData.fbc = b._fbc.slice(0, 300);
+
+  const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  if (ip) userData.client_ip_address = ip;
+  const ua = String(req.headers['user-agent'] || '').slice(0, 400);
+  if (ua) userData.client_user_agent = ua;
+
+  // De pagina waar het formulier stond. Alleen overnemen als het echt de
+  // hoofdsite is; anders zou een willekeurige waarde uit de body in het event
+  // belanden.
+  let bronUrl = 'https://michelkredercoaching.nl/';
+  if (typeof b._pagina === 'string' && /^https:\/\/(www\.)?michelkredercoaching\.nl\//.test(b._pagina)) {
+    bronUrl = b._pagina.slice(0, 500);
+  }
+
+  // Eén lead per mailadres per route per dag. Vult iemand het formulier twee
+  // keer in, dan ontdubbelt Meta dat op dit ID in plaats van er twee leads van
+  // te maken.
+  const dag = new Date().toISOString().slice(0, 10);
+  const eventId = 'lead_' + crypto.createHash('sha256')
+    .update(email + '|' + route + '|' + dag).digest('hex').slice(0, 24);
+
+  const event = {
+    event_name:       'Lead',
+    event_time:       Math.floor(Date.now() / 1000),
+    event_id:         eventId,
+    event_source_url: bronUrl,
+    action_source:    'website',
+    user_data:        userData,
+    // De route erbij, zodat je in Events Manager een aangepaste conversie per
+    // weggever kunt maken (bandenspanning apart van de keuzehulp, enzovoort).
+    custom_data: { content_name: route, content_category: 'lead' }
+  };
+
+  const r = await fetch(
+    `https://graph.facebook.com/v21.0/${META_PIXEL_ID}/events?access_token=${encodeURIComponent(token)}`,
+    {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ data: [event] }),
+      signal:  AbortSignal.timeout(8000)
+    }
+  );
+  const j = await r.json().catch(() => ({}));
+  if (r.ok && j.events_received) {
+    console.log('Meta Lead OK |', route, '| matchvelden:', Object.keys(userData).length,
+      userData.fbc ? '(met klik-ID)' : '(zonder klik-ID)');
+  } else {
+    console.error('Meta Lead fout |', route, '|', r.status, JSON.stringify(j).slice(0, 300));
+  }
 }
 
 // ===== Mail-helpers (zelfde patroon als de betaling-webhook) =====
@@ -561,6 +671,13 @@ export default async function handler(req, res) {
               : b.route === 'winter10'            ? 'winter10'
               : b.route === 'startpakket-popup'   ? 'startpakket-popup'
               :                                     'schema';
+
+  // Meta melden dat hier een lead binnenkwam. Hier en niet bij elk van de tien
+  // return-punten verderop: het mailadres is geldig en de route staat vast, dus
+  // dit ís de lead. Fail-safe, want een Meta-storing mag een inschrijving nooit
+  // tegenhouden.
+  try { await stuurMetaLead(req, b, email, route); }
+  catch (e) { console.error('Meta Lead wierp een fout (genegeerd):', e); }
 
   // Proeftraining: bepaal meteen welke variant van het Startprotocol deze bezoeker
   // krijgt, zodat we niet eerst een contact aanmaken en daarna alsnog stuklopen
