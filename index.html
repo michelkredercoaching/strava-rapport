@@ -2867,5 +2867,72 @@ window.addEventListener('DOMContentLoaded', function() {
     <button onclick="sluitPrivacy()" style="background:#ff6b1a;color:#fff;border:none;border-radius:8px;padding:11px 22px;font-size:14px;font-weight:600;cursor:pointer;">Sluiten</button>
   </div>
 </div>
+
+<!-- ===== COOKIETOESTEMMING (alleen op dit subdomein) =====
+     De hoofdsite heeft CookieYes, maar dat is de WordPress-plugin en die
+     rendert lokaal; er is geen script om hier in te laden. Zonder banner kon
+     niemand die RECHTSTREEKS op dit subdomein binnenkomt ooit toestemming
+     geven, en sinds api/betaling.js zonder toestemming niets naar Meta stuurt
+     bleef die hele groep dus donker.
+
+     De cookie staat op .michelkredercoaching.nl en geldt dus voor allebei:
+     wie op de hoofdsite al gekozen heeft, krijgt hieronder niets te zien.
+     Alleen echt nieuwe bezoekers zien deze balk.
+
+     We schrijven bewust alleen de wp_consent_*-cookies (de WP Consent API,
+     die CookieYes ook vult) en niet cookieyes-consent zelf, want daar zit een
+     eigen consent-id in dat wij niet horen te verzinnen. Gevolg: wie hier
+     kiest en daarna naar de hoofdsite gaat, krijgt daar nog eenmalig de
+     CookieYes-banner. Vervelend maar eerlijk, en beter dan hun administratie
+     vervuilen. -->
+<div id="mkcToestemming" style="display:none;position:fixed;left:16px;right:16px;bottom:16px;z-index:9998;max-width:520px;margin:0 auto;background:#161616;border:1px solid #2a2a2a;border-radius:10px;padding:18px 20px;box-shadow:0 8px 30px rgba(0,0,0,.5);font-family:inherit;">
+  <!-- Tekst bewust GELIJK aan de cookiebanner op michelkredercoaching.nl.
+       Reden: op 'Prima' klikken schrijft wp_consent_marketing=allow op
+       .michelkredercoaching.nl, en dat geldt dus ook voor de hoofdsite. Daar
+       ontgrendelt het de volledige Meta-pixel inclusief advanced matching, niet
+       alleen het aankoop-event van dit subdomein. Vraag je toestemming met een
+       smalle omschrijving en gebruik je hem breed, dan is die toestemming niet
+       geïnformeerd. Dus dekt de vraag hier dezelfde lading als daar. -->
+  <p style="margin:0 0 6px;font-size:15px;font-weight:700;color:#ff6b1a;">Even over cookies</p>
+  <p style="margin:0 0 14px;font-size:14px;line-height:1.55;color:#cfccc5;">
+    Ik gebruik cookies om te zien hoe deze site gebruikt wordt en om advertenties te tonen die passen bij hoe jij traint. Daar maak ik mijn artikelen en schema's beter mee. Wijs je ze af, dan werkt alles gewoon. Ik zie alleen minder.
+    <a href="#" onclick="toonPrivacy();return false;" style="color:#ff6b1a;">Lees wat ik bewaar</a>
+  </p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <button type="button" onclick="mkcToestemmingKies(false)" style="flex:1 1 140px;background:transparent;color:#f5f3ef;border:1px solid #444;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;">Liever niet</button>
+    <button type="button" onclick="mkcToestemmingKies(true)" style="flex:1 1 140px;background:#ff6b1a;color:#0a0a0a;border:none;border-radius:8px;padding:11px 18px;font-size:14px;font-weight:700;cursor:pointer;">Prima</button>
+  </div>
+</div>
+<script>
+(function () {
+  function lees(naam) {
+    // LET OP de dubbele backslash. Met één backslash is '\s' in een JS-string
+    // gewoon 's', wordt het patroon (?:^|;s*) en vindt hij de cookie alleen als
+    // die toevallig vooraan staat. Dan krijgt vrijwel iedereen deze balk bij
+    // elk bezoek opnieuw. Zelfde schrijfwijze als in api/betaling.js.
+    var m = document.cookie.match(new RegExp('(?:^|;\\s*)' + naam + '=([^;]+)'));
+    return m ? decodeURIComponent(m[1]) : '';
+  }
+  // Al een keuze gemaakt, hier of op de hoofdsite? Dan niets tonen.
+  if (lees('wp_consent_marketing') || lees('cookieyes-consent')) return;
+
+  var balk = document.getElementById('mkcToestemming');
+  if (balk) balk.style.display = 'block';
+
+  window.mkcToestemmingKies = function (ja) {
+    var eenJaar = 365 * 24 * 60 * 60;
+    var waarde  = ja ? 'allow' : 'deny';
+    // Dezelfde vier categorieen die de WP Consent API kent. Alleen marketing
+    // wordt door api/betaling.js gelezen; de rest zetten we mee zodat de
+    // administratie compleet is en niet half ingevuld achterblijft.
+    ['marketing', 'statistics', 'preferences', 'functional'].forEach(function (cat) {
+      document.cookie = 'wp_consent_' + cat + '=' + (cat === 'functional' ? 'allow' : waarde) +
+        ';path=/;domain=.michelkredercoaching.nl;max-age=' + eenJaar + ';SameSite=Lax' +
+        (location.protocol === 'https:' ? ';Secure' : '');
+    });
+    if (balk) balk.style.display = 'none';
+  };
+})();
+</script>
 </body>
 </html>
