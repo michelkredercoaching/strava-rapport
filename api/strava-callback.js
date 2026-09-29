@@ -995,34 +995,52 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   const DECOUPLING_MAX_VI = 1.15;        // boven dit punt is de rit te grillig (intervallen/wedstrijd)
   const DECOUPLING_WARMUP_SEC = 600;     // eerste 10 min negeren
 
-  function normalizedPower(wattsData) {
-    if (!wattsData || wattsData.length < 30) return null;
+  // 'venster' is het aantal MEETPUNTEN dat overeenkomt met 30 seconden. Dat is
+  // niet altijd 30: zie de uitleg bij bepaalDecoupling.
+  function normalizedPower(wattsData, venster = 30) {
+    if (!wattsData || wattsData.length < venster) return null;
     let som = 0;
-    for (let i = 0; i < 30; i++) som += (wattsData[i] || 0);
-    const rollend = [som / 30];
-    for (let i = 30; i < wattsData.length; i++) {
-      som += (wattsData[i] || 0) - (wattsData[i - 30] || 0);
-      rollend.push(som / 30);
+    for (let i = 0; i < venster; i++) som += (wattsData[i] || 0);
+    const rollend = [som / venster];
+    for (let i = venster; i < wattsData.length; i++) {
+      som += (wattsData[i] || 0) - (wattsData[i - venster] || 0);
+      rollend.push(som / venster);
     }
     const gemVierdeMacht = rollend.reduce((s, v) => s + Math.pow(v, 4), 0) / rollend.length;
     return Math.pow(gemVierdeMacht, 0.25);
   }
 
-  function bepaalDecoupling(wattsData, hrData) {
+  // GEWIJZIGD 29-09-2026. Hiervoor werd de LENGTE van de stream met een drempel
+  // in SECONDEN vergeleken, en werden 600 en 30 als index gebruikt alsof er
+  // precies één meetpunt per seconde is. Dat klopt niet: bij slimme opname of
+  // een gedecimeerde stream levert Strava veel minder punten. Nele's rit van
+  // 238 minuten had daardoor te weinig punten, viel buiten de kandidaten, en
+  // haar rapport zei "rijd een keer langer dan die rit van 3 uur en 58".
+  //
+  // De echte duur komt nu uit moving_time van de activiteit. De meetsnelheid
+  // (punten per seconde) leiden we daaruit af en schalen daar de warming-up en
+  // het normalized-power-venster mee.
+  function bepaalDecoupling(wattsData, hrData, rit) {
     if (!wattsData || !hrData) return null;
     const lengte = Math.min(wattsData.length, hrData.length);
-    if (lengte < DECOUPLING_MIN_SEC) return null;
+    const duurSec = (rit && rit.moving_time) || 0;
+    if (duurSec < DECOUPLING_MIN_SEC) return null;   // te kort gereden
+    if (lengte < 300) return null;                   // te weinig meetpunten om iets te zeggen
+
+    const hz = lengte / duurSec;                     // meetpunten per seconde
+    const perSec = n => Math.max(1, Math.round(n * hz));
 
     const gemVermogen = wattsData.slice(0, lengte).reduce((s, w) => s + (w || 0), 0) / lengte;
     if (gemVermogen <= 0) return null;
-    const np = normalizedPower(wattsData.slice(0, lengte));
+    const np = normalizedPower(wattsData.slice(0, lengte), perSec(30));
     if (!np) return null;
     const vi = np / gemVermogen;
     if (vi > DECOUPLING_MAX_VI) return null;   // te grillig, geen steady duurrit
 
-    const start = DECOUPLING_WARMUP_SEC < lengte * 0.4 ? DECOUPLING_WARMUP_SEC : 0;
+    const warmup = perSec(DECOUPLING_WARMUP_SEC);
+    const start = warmup < lengte * 0.4 ? warmup : 0;
     const rest = lengte - start;
-    if (rest < 3600) return null;              // na de warming-up nog minstens 1 uur nodig
+    if (rest < perSec(3600)) return null;      // na de warming-up nog minstens 1 uur nodig
     const midden = start + Math.floor(rest / 2);
 
     const gemVanaf = (data, van, tot) => {
@@ -1036,7 +1054,9 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
 
     const ratio1 = p1 / h1, ratio2 = p2 / h2;
     const pct = ((ratio1 - ratio2) / ratio1) * 100;
-    return { pct: Math.round(pct * 10) / 10, vi: Math.round(vi * 100) / 100, minuten: Math.round(lengte / 60) };
+    // Duur uit moving_time, niet uit het aantal meetpunten: anders staat er
+    // "142 min" bij een rit die vier uur duurde.
+    return { pct: Math.round(pct * 10) / 10, vi: Math.round(vi * 100) / 100, minuten: Math.round(duurSec / 60) };
   }
 
   // ===== DATUM VAN DE GEBRUIKTE DECOUPLING-RIT =====
@@ -1054,7 +1074,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   let decouplingTop = null, decouplingAantal = 0;
   if (gebruikVermogen) {
     const kandidatenDecoupling = fietsritten90
-      .filter(r => (streamMap[r.id]?.watts?.data?.length || 0) >= DECOUPLING_MIN_SEC && (streamMap[r.id]?.heartrate?.data?.length || 0) >= DECOUPLING_MIN_SEC);
+      .filter(r => (r.moving_time || 0) >= DECOUPLING_MIN_SEC && (streamMap[r.id]?.watts?.data?.length || 0) >= 300 && (streamMap[r.id]?.heartrate?.data?.length || 0) >= 300);
 
     // GEWIJZIGD 29-09-2026. Hiervoor pakten we de LANGSTE rit die de steady-
     // toets haalde en stopten we daar. Dat is juist de slechtste keuze: op de
@@ -1074,7 +1094,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     // kloppen bij het percentage.
     const gemeten = [];
     for (const rit of kandidatenDecoupling) {
-      const res = bepaalDecoupling(streamMap[rit.id].watts.data, streamMap[rit.id].heartrate.data);
+      const res = bepaalDecoupling(streamMap[rit.id].watts.data, streamMap[rit.id].heartrate.data, rit);
       if (res) gemeten.push({ ...res, ritId: rit.id, datum: datumVanRit(rit.id) });
     }
     gemeten.sort((a, b) => a.pct - b.pct);          // laagste drift eerst
@@ -1151,11 +1171,24 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   function bepaalDecouplingHr(velData, hrData, altData, rit) {
     if (!velData || !hrData) return null;
     const lengte = Math.min(velData.length, hrData.length);
-    if (lengte < DECOUPLING_MIN_SEC) return null;
+    // Zelfde correctie als bij bepaalDecoupling (29-09-2026): duur uit
+    // moving_time, niet uit het aantal meetpunten, en alles wat in seconden
+    // is gedacht omrekenen naar meetpunten.
+    const duurSec = (rit && rit.moving_time) || 0;
+    if (duurSec < DECOUPLING_MIN_SEC) return null;
+    if (lengte < 300) return null;
 
-    // Afstand van het gebruikte venster (voor m/km en als ondergrens-check).
-    let afstandM = 0;
-    for (let i = 0; i < lengte; i++) afstandM += (velData[i] || 0);
+    const hz = lengte / duurSec;
+    const perSec = n => Math.max(1, Math.round(n * hz));
+
+    // Gemiddelde snelheid is het gemiddelde van de metingen, dus onafhankelijk
+    // van de meetsnelheid. De AFSTAND volgt uit snelheid maal echte duur; die
+    // stond hiervoor gelijk aan de som van de metingen, en dat klopt alleen bij
+    // precies één meting per seconde.
+    let somSnelheid = 0;
+    for (let i = 0; i < lengte; i++) somSnelheid += (velData[i] || 0);
+    const gemSnelheidRuw = somSnelheid / lengte;
+    const afstandM = gemSnelheidRuw * duurSec;
     const afstandKm = afstandM / 1000;
     if (afstandKm < 1) return null;
 
@@ -1178,16 +1211,17 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     if (hoogtePerKm > DECOUPLING_HR_MAX_M_PER_KM) return null;   // te heuvelachtig, geen betrouwbaar vlak signaal
 
     // Rustige-inspanning-filter: variatiecoëfficiënt van de snelheid.
-    const gemSnelheid = afstandM / lengte;
+    const gemSnelheid = gemSnelheidRuw;
     if (gemSnelheid <= 0) return null;
     let kwadSom = 0;
     for (let i = 0; i < lengte; i++) { const v = (velData[i] || 0) - gemSnelheid; kwadSom += v * v; }
     const cv = Math.sqrt(kwadSom / lengte) / gemSnelheid;
     if (cv > DECOUPLING_HR_MAX_CV) return null;   // te grillig, geen steady duurrit
 
-    const start = DECOUPLING_WARMUP_SEC < lengte * 0.4 ? DECOUPLING_WARMUP_SEC : 0;
+    const warmup = perSec(DECOUPLING_WARMUP_SEC);
+    const start = warmup < lengte * 0.4 ? warmup : 0;
     const rest = lengte - start;
-    if (rest < 3600) return null;                  // na de warming-up nog minstens 1 uur nodig
+    if (rest < perSec(3600)) return null;          // na de warming-up nog minstens 1 uur nodig
     const midden = start + Math.floor(rest / 2);
 
     const gemVanaf = (data, van, tot) => {
@@ -1208,7 +1242,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       pct: Math.round(pct * 10) / 10,
       cv: Math.round(cv * 100) / 100,
       hoogtePerKm: Math.round(hoogtePerKm * 10) / 10,
-      minuten: Math.round(lengte / 60),
+      minuten: Math.round(duurSec / 60),
       betrouwbaarheid,
     };
   }
@@ -1216,7 +1250,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   let decouplingHr = null, decouplingHrRitId = null, decouplingHrDatum = null, decouplingHrReden = null;
   if (!gebruikVermogen) {
     const kandidatenDecouplingHr = fietsritten90
-      .filter(r => (streamMap[r.id]?.velocity_smooth?.data?.length || 0) >= DECOUPLING_MIN_SEC && (streamMap[r.id]?.heartrate?.data?.length || 0) >= DECOUPLING_MIN_SEC)
+      .filter(r => (r.moving_time || 0) >= DECOUPLING_MIN_SEC && (streamMap[r.id]?.velocity_smooth?.data?.length || 0) >= 300 && (streamMap[r.id]?.heartrate?.data?.length || 0) >= 300)
       .sort((a, b) => streamMap[b.id].velocity_smooth.data.length - streamMap[a.id].velocity_smooth.data.length);   // langste eerst
     for (const rit of kandidatenDecouplingHr) {
       const res = bepaalDecouplingHr(streamMap[rit.id].velocity_smooth.data, streamMap[rit.id].heartrate.data, streamMap[rit.id]?.altitude?.data, rit);
