@@ -57,7 +57,7 @@ const TRECHTERS = ['pp', 'schema', 'wp'];
 //   - de landingspagina's verkopen via WooCommerce-product 12131.
 // Zie ook scripts/analyse-verkopen.mjs, dat dezelfde twee bronnen combineert.
 const ANALYSE_PRODUCT = '12131';
-const KOPERS_CACHE = 'pp:kopers:v1';
+const KOPERS_CACHE = 'pp:kopers:v2';   // v2: namen als 'Strava' eruit gefilterd
 
 const KOPERS_ORIGINS = [
   'https://michelkredercoaching.nl',
@@ -72,12 +72,19 @@ function zetKopersCors(req, res) {
   }
 }
 
+// Woorden die wél op een naam lijken maar het niet zijn. 'Sporter' is de
+// terugval in api/betaling.js als Strava geen naam teruggeeft, en er staat
+// minstens één bestelling op naam van 'Strava'. "Strava deed gisteren de
+// Strava-analyse" wil je niet op je landingspagina.
+const GEEN_NAAM = ['strava', 'sporter', 'onbekend', 'test', 'klant', 'analyse', 'rapport', 'admin', 'info'];
+
 // "jeroen van der berg" -> "Jeroen". Alleen de voornaam, hoofdletter erop, en
 // iets wat niet op een naam lijkt laten we vallen.
 function voornaam(volledig) {
   const eerste = String(volledig || '').trim().split(/\s+/)[0] || '';
   if (eerste.length < 2 || eerste.length > 20) return '';
   if (!/^[\p{L}][\p{L}'-]*$/u.test(eerste)) return '';
+  if (GEEN_NAAM.includes(eerste.toLowerCase())) return '';
   return eerste.charAt(0).toUpperCase() + eerste.slice(1).toLowerCase();
 }
 
