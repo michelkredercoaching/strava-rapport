@@ -1,4 +1,5 @@
 // /api/betaling.js
+import crypto from 'node:crypto';
 import { huidigePrijs } from '../lib/prijs.js';
 import { unseal } from '../lib/gate.js';
 import { controleerKortingToken, kortingAlGebruikt, markeerKortingGebruikt } from '../lib/korting.js';
@@ -33,6 +34,77 @@ async function redis(cmd) {
     if (!r.ok) { console.error('Redis fout:', r.status); return { ok: false }; }
     return { ok: true, result: (await r.json()).result };
   } catch (e) { console.error('Redis exception:', e); return { ok: false }; }
+}
+
+// ===== AL BETAALD IN DE WEBSHOP? =====
+// Wie het analyse-product (12131) in de webshop koopt, krijgt per mail een
+// persoonlijke link met ?korting= waarmee het rapport hier €0 is. Gebruikt hij
+// die link niet, maar komt hij zelf naar de funnel, dan zag de funnel een
+// gewone bezoeker en vroeg opnieuw €29. Dat overkwam order #280 op 29-09-2026:
+// betaald om 15:34, link gemaild om 15:34, en toch stond hij aan het eind
+// weer voor een betaalscherm.
+//
+// Dat gebeurt makkelijker dan je denkt. Het token wordt in localStorage
+// bewaard, en dat overleeft de Strava-omweg alleen binnen dezelfde browser.
+// Opent iemand de mail in de Gmail-app en start Strava daarna in Safari, dan
+// is het token weg.
+//
+// Deze controle kijkt daarom naar het E-MAILADRES in plaats van naar het
+// token. Bron is de Mailchimp-store 'pp-analyse', waar elke betaalde analyse
+// in staat. De WooCommerce-bestellingen hebben daar een id dat met 'woo-'
+// begint, en dat is precies de groep waarbij het rapport nog NIET is geleverd:
+// een Mollie-directe aankoop (tr_...) kreeg zijn rapport al bij het afrekenen.
+//
+// WooCommerce zelf kunnen we hier niet bevragen; Cloudflare blokkeert die API
+// vanaf Vercel. Mailchimp wel, en die sleutel staat er al voor de nurture.
+const MC_SLEUTEL = (process.env.MAILCHIMP_API_KEY || '').trim();
+const MC_DC      = MC_SLEUTEL.split('-')[1] || 'us3';
+const MC_STORE   = process.env.MAILCHIMP_PP_STORE || 'pp-analyse';
+// Hoe ver we terugkijken. Ruim genoeg voor iemand die zijn link pas weken
+// later opzoekt, kort genoeg om een aankoop van vorig jaar niet opnieuw te
+// laten gelden.
+const GRATIS_VENSTER_DAGEN = 90;
+
+function mailSleutel(email) {
+  return crypto.createHash('md5').update(String(email).trim().toLowerCase()).digest('hex');
+}
+
+// Hoeveel betaalde webshop-analyses staan er op dit adres binnen het venster?
+async function betaaldeWebshopAnalyses(email) {
+  if (!MC_SLEUTEL) return 0;
+  try {
+    const id = mailSleutel(email);
+    const r = await fetch(
+      `https://${MC_DC}.api.mailchimp.com/3.0/ecommerce/stores/${MC_STORE}/orders?customer_id=${id}&count=50`,
+      {
+        headers: { Authorization: 'Basic ' + Buffer.from('any:' + MC_SLEUTEL).toString('base64') },
+        signal: AbortSignal.timeout(8000)
+      }
+    );
+    if (!r.ok) return 0;
+    const j = await r.json();
+    const grens = Date.now() - GRATIS_VENSTER_DAGEN * 24 * 60 * 60 * 1000;
+    return (j.orders || []).filter(o => {
+      if (!String(o.id || '').startsWith('woo-')) return false; // Mollie-direct kreeg zijn rapport al
+      const d = Date.parse(o.processed_at_foreign || '');
+      return !d || d >= grens;
+    }).length;
+  } catch (e) {
+    console.error('Webshop-controle mislukt (genegeerd):', e);
+    return 0;
+  }
+}
+
+// Hoeveel gratis rapporten heeft dit adres al opgehaald?
+async function gratisAlOpgehaald(email) {
+  const r = await redis(['GET', `pp:gratis:${mailSleutel(email)}`]);
+  return r.ok && r.result ? parseInt(r.result, 10) || 0 : 0;
+}
+async function markeerGratisOpgehaald(email) {
+  // Teller met dezelfde houdbaarheid als het venster, plus wat marge.
+  const sleutel = `pp:gratis:${mailSleutel(email)}`;
+  await redis(['INCR', sleutel]);
+  await redis(['EXPIRE', sleutel, String((GRATIS_VENSTER_DAGEN + 30) * 24 * 60 * 60)]);
 }
 
 function leesCookie(kop, naam) {
@@ -268,11 +340,54 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Rapport mailen lukte niet. Controleer je e-mailadres en probeer opnieuw.' });
       }
       await markeerKortingGebruikt(korting.id);
+      // Ook hier de teller ophogen, anders zou iemand die zijn rapport netjes
+      // via de gemailde link ophaalt daarna nog een keer gratis kunnen leveren
+      // via het webshop-vangnet verderop. Eén betaling blijft één rapport.
+      if (email) await markeerGratisOpgehaald(email);
       // gratis:true → de funnel stuurt de bezoeker naar het 'check je mail'-scherm.
       return res.status(200).json({ gratis: true, prijs: 0 });
     } catch (err) {
       console.error('Gratis aflevering mislukt:', err);
       return res.status(500).json({ error: 'Er ging iets mis bij het maken van je rapport. Probeer het opnieuw.' });
+    }
+  }
+
+  // ===== AL BETAALD IN DE WEBSHOP, MAAR ZONDER PERSOONLIJKE LINK BINNEN =====
+  // Vangnet voor wie wel betaalde maar de ?korting=-link uit zijn mail niet
+  // gebruikte. Zie de uitleg bij betaaldeWebshopAnalyses() hierboven.
+  //
+  // Het recht hangt aan het AANTAL betaalde webshop-bestellingen, niet aan het
+  // adres. Eén betaling is dus één gratis rapport, en wie twee keer koopt
+  // krijgt er twee. Een harde "één per e-mailadres" zou terugkerende klanten
+  // opnieuw in dezelfde val laten lopen; Erik Snijders kocht in september
+  // bijvoorbeeld twee keer een analyse.
+  //
+  // Misbruik levert niets op: het rapport gaat naar het ingevulde adres, dus
+  // wie het adres van een ander invult stuurt diegene een rapport en zichzelf
+  // niets.
+  if (!korting && email) {
+    try {
+      const rechten  = await betaaldeWebshopAnalyses(email);
+      const gebruikt = rechten > 0 ? await gratisAlOpgehaald(email) : 0;
+
+      if (rechten > gebruikt) {
+        console.log('Gratis rapport op basis van webshop-aankoop:', email, '| betaald:', rechten, '| al opgehaald:', gebruikt);
+        const r = await leverRapport(metadata, { bedrag: '0.00', id: `gratis-webshop-${mailSleutel(email)}-${gebruikt + 1}` });
+        if (!r.pdfOk) {
+          return res.status(500).json({ error: 'Rapport genereren lukte niet. Probeer het zo nog eens.' });
+        }
+        if (!r.klantMailGelukt) {
+          return res.status(500).json({ error: 'Rapport mailen lukte niet. Controleer je e-mailadres en probeer opnieuw.' });
+        }
+        // Pas ophogen NA een geslaagde levering. Gaat het mis, dan houdt de
+        // klant zijn recht en kan hij het gewoon opnieuw proberen.
+        await markeerGratisOpgehaald(email);
+        return res.status(200).json({ gratis: true, prijs: 0, alBetaald: true });
+      }
+    } catch (err) {
+      // Nooit de verkoop blokkeren op dit vangnet. Gaat het mis, dan valt de
+      // bezoeker gewoon terug op de normale betaling.
+      console.error('Webshop-vangnet mislukt (genegeerd):', err);
     }
   }
 
