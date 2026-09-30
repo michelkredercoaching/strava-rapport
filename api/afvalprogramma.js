@@ -177,7 +177,10 @@ async function conceptAntwoord({ vraag, dossier }) {
       },
       body: JSON.stringify({
         model: 'claude-opus-5',
-        max_tokens: 400,
+        // 400 was te krap: een Nederlands antwoord werd halverwege een woord
+        // afgekapt. De instructie hieronder houdt het kort, dit is alleen een
+        // vangnet zodat het niet middenin stopt.
+        max_tokens: 800,
         system: systeem,
         messages: [{ role: 'user', content: `${context}\n\nVraag van de deelnemer:\n${vraag}` }]
       })
@@ -415,7 +418,14 @@ async function routeIntake(req, res) {
   d.niveau = niveau;              // staat in het dossier, niet in klantBeeld
   d.plan = plan;
   d.status = 'actief';
-  d.metingen = [{ week: 0, gewicht: invoer.gewicht, gevoel: 'goed', etenGelukt: 'ja', op: new Date().toISOString() }];
+  // De weging uit de intake hoort bij de week waarin de intake gebeurt, niet
+  // altijd bij week 0. Iemand die zijn intake pas in week 3 invult kreeg
+  // anders bij zijn eerste check-in onterecht "je was er twee weken uit",
+  // want dan zat er een gat tussen week 0 en week 3 dat er nooit was.
+  d.metingen = [{
+    week: huidigeWeek(d), gewicht: invoer.gewicht,
+    gevoel: 'goed', etenGelukt: 'ja', soort: 'checkin', op: new Date().toISOString()
+  }];
   await bewaarDossier(d);
 
   if (niveau.niveau === 'twijfel') await zetInRij(id, 'niveaukeuze: twijfelgeval');
