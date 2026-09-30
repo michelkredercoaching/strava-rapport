@@ -101,7 +101,7 @@ const BANDEN_PDF = process.env.BANDENSPANNING_PDF
 // per uur op de fiets, de drie regels en de ruiltabel. Wordt gegenereerd met
 // scripts/maak-afvalkaart.mjs, dus nooit met de hand bijwerken.
 const AFVALKAART_PDF = process.env.AFVALKAART_PDF
-  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/10/Afvalkaart.pdf';
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/afvalkaart.pdf';
 
 const AFZENDER     = 'Michel Kreder Coaching <rapport@michelkredercoaching.nl>';
 const REPLY_TO     = 'info@michelkredercoaching.nl';
