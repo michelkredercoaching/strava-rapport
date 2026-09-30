@@ -11,6 +11,8 @@
 //   POST ?actie=vraag        vraag aan de coach -> in de rij voor goedkeuring
 //   GET  ?actie=rij          intern: wat ligt er klaar voor een mens (beveiligd)
 //   POST ?actie=antwoord     intern: goedgekeurd antwoord versturen (beveiligd)
+//   POST ?actie=herinner     wekelijkse herinnering, via cron (beveiligd)
+//   POST ?actie=verwijder    intern: deelnemer en zijn dossier wissen (beveiligd)
 //
 // Nodig in Vercel:
 //   PP_TOKEN_SECRET            (bestaat al, zelfde geheim als de kortingslinks)
@@ -293,6 +295,7 @@ export default async function handler(req, res) {
       case 'rij':       return await routeRij(req, res);
       case 'antwoord':  return await routeAntwoord(req, res);
       case 'herinner':  return await routeHerinner(req, res);
+      case 'verwijder': return await routeVerwijder(req, res);
       default:          return res.status(400).json({ ok: false, fout: 'onbekende actie' });
     }
   } catch (e) {
@@ -305,7 +308,13 @@ export default async function handler(req, res) {
 async function routeNieuw(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const body = await leesBody(req);
-  if (WOO_SECRET && body.secret !== WOO_SECRET) return res.status(403).json({ ok: false });
+  // Normaal komt hier de Woo-webhook binnen met WOO_WEBHOOK_SECRET. De interne
+  // sleutel mag ook, zodat je met de hand een deelnemer kunt aanmaken zonder
+  // een echte bestelling te hoeven doen. Die sleutel geeft toch al toegang tot
+  // alles, dus dit zet geen extra deur open.
+  if (WOO_SECRET && body.secret !== WOO_SECRET && !magIntern(req)) {
+    return res.status(403).json({ ok: false, fout: 'geen geldige sleutel' });
+  }
 
   const email = String(body.email || '').trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ ok: false, fout: 'e-mail' });
@@ -688,6 +697,32 @@ async function routeAntwoord(req, res) {
     antwoordNaar: INTERN_NAAR
   });
   return res.status(200).json({ ok: true });
+}
+
+// --- Deelnemer verwijderen -------------------------------------------------
+// Voor testdossiers, en voor iemand die zijn gegevens gewist wil hebben. Haalt
+// het dossier weg, haalt hem uit de actieve lijst en maakt de ordersleutel
+// vrij zodat dezelfde bestelling opnieuw getest kan worden.
+async function routeVerwijder(req, res) {
+  if (!magIntern(req)) return res.status(403).json({ ok: false });
+  const body = await leesBody(req);
+  const id = String(body.id || '');
+  if (!/^[0-9a-f]{16}$/.test(id)) return res.status(400).json({ ok: false, fout: 'geen geldig id' });
+
+  const d = await haalDossier(id);
+  await redis(['DEL', `afval:d:${id}`]);
+  await redis(['SREM', 'afval:actief', id]);
+  if (d?.order) await redis(['DEL', `afval:order:${d.order}`]);
+
+  // Uit de wachtrij halen kan niet per sleutel, dus filteren we hem eruit.
+  const r = await redis(['LRANGE', 'afval:rij', '0', '499']);
+  const rij = (r.result || []).filter(x => {
+    try { return JSON.parse(x).id !== id; } catch { return true; }
+  });
+  await redis(['DEL', 'afval:rij']);
+  for (const post of rij.reverse()) await redis(['RPUSH', 'afval:rij', post]);
+
+  return res.status(200).json({ ok: true, verwijderd: id, naam: d?.naam || null, email: d?.email || null });
 }
 
 // --- Wekelijkse herinnering ------------------------------------------------
