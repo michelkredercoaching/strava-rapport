@@ -95,7 +95,12 @@ const ZESUUR_PDF = process.env.ZESUUR_PDF
 // Bandenspanning-kaart: 2 A4'tjes met voor- en achterdruk per gewicht en
 // bandbreedte, plus de correcties voor wegdek, tubeless en hookless.
 const BANDEN_PDF = process.env.BANDENSPANNING_PDF
-  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/Bandenspanning.pdf';
+  // Nieuwe bestandsnaam op 30-09-2026: de oude URL zat vast in de Cloudflare-
+  // cache nadat het bestand was vervangen, waardoor een deel van de bezoekers
+  // nog de vorige versie kreeg. Een URL die nog niet bestond, kan ook niet
+  // gecached zijn. Vervang je dit bestand later opnieuw, purge dan de cache
+  // of geef het weer een nieuwe naam.
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/Bandenspanning-kaart-1.pdf';
 
 // Afvalkaart: 3 A4'tjes met kcal per gewicht en trainingsuren, de koolhydraten
 // per uur op de fiets, de drie regels en de ruiltabel. Wordt gegenereerd met
