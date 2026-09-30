@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>Afvalprogramma — berichten</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+  :root { --black:#0A0A0A; --offblack:#111; --surface:#161616; --surface2:#1c1c1c;
+          --border:rgba(255,255,255,0.08); --white:#F5F3EF; --muted:rgba(245,243,239,0.6);
+          --accent:#FF6B1A; --accent-dim:rgba(255,107,26,0.12);
+          --rood:#F04438; --geel:#F5A524; --groen:#3FB950; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'DM Sans',sans-serif; background:var(--black); color:var(--white);
+         height:100vh; overflow:hidden; -webkit-font-smoothing:antialiased; font-size:14px; }
+  button, input, textarea, select { font-family:inherit; font-size:inherit; color:inherit; }
+
+  /* --- Inloggen --- */
+  #slot { display:flex; align-items:center; justify-content:center; height:100vh; }
+  #slot .kaart { background:var(--surface); border:1px solid var(--border); padding:36px; width:360px; }
+  #slot h1 { font-family:'Bebas Neue',sans-serif; font-size:30px; margin-bottom:8px; }
+  #slot p { color:var(--muted); margin-bottom:20px; line-height:1.6; }
+  #slot input { width:100%; background:var(--black); border:1px solid var(--border); padding:13px 15px; margin-bottom:12px; }
+  #slot input:focus { outline:none; border-color:var(--accent); }
+
+  /* --- Hoofdindeling --- */
+  #app { display:none; grid-template-columns:330px 1fr; height:100vh; }
+  #app.aan { display:grid; }
+
+  /* Lijst links */
+  .lijst { background:var(--offblack); border-right:1px solid var(--border); display:flex; flex-direction:column; min-height:0; }
+  .lijst-kop { padding:16px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .lijst-kop h2 { font-family:'Bebas Neue',sans-serif; font-size:21px; letter-spacing:0.02em; }
+  .lijst-kop .tel { font-size:12px; color:var(--muted); }
+  .filters { display:flex; gap:4px; padding:10px 14px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .filters button { background:transparent; border:1px solid var(--border); color:var(--muted); padding:5px 10px; font-size:11.5px; cursor:pointer; border-radius:3px; }
+  .filters button.aan { border-color:var(--accent); color:var(--accent); background:var(--accent-dim); }
+  .rijen { overflow-y:auto; flex:1; min-height:0; }
+  .rij { padding:13px 18px; border-bottom:1px solid var(--border); cursor:pointer; display:grid; grid-template-columns:1fr auto; gap:6px 10px; }
+  .rij:hover { background:var(--surface); }
+  .rij.actief { background:var(--surface); border-left:3px solid var(--accent); padding-left:15px; }
+  .rij .naam { font-weight:600; font-size:14px; }
+  .rij .tijd { font-size:11px; color:var(--muted); white-space:nowrap; }
+  .rij .voorbeeld { grid-column:1/-1; font-size:12.5px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rij .vlaggen { grid-column:1/-1; display:flex; gap:4px; flex-wrap:wrap; }
+  .vlag { font-size:10px; letter-spacing:0.06em; text-transform:uppercase; padding:2px 7px; border-radius:3px; font-weight:700; }
+  .vlag.medisch { background:var(--rood); color:#fff; }
+  .vlag.vraag { background:var(--accent); color:var(--black); }
+  .vlag.evaluatie { background:var(--geel); color:var(--black); }
+  .vlag.checkin, .vlag.niveau { background:rgba(245,243,239,0.15); color:var(--white); }
+  .vlag.niet-gewogen, .vlag.geen-intake { background:transparent; color:var(--muted); border:1px solid var(--border); }
+
+  /* Gesprek rechts */
+  .gesprek { display:flex; flex-direction:column; min-height:0; background:var(--black); }
+  .leeg { display:flex; align-items:center; justify-content:center; height:100%; color:var(--muted); }
+  .kop { padding:14px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; background:var(--offblack); }
+  .kop h3 { font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:0.02em; }
+  .kop .sub { font-size:12px; color:var(--muted); margin-top:2px; }
+  .cijfers { display:flex; gap:22px; flex-wrap:wrap; }
+  .cijfer span { display:block; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); }
+  .cijfer b { font-family:'Bebas Neue',sans-serif; font-size:20px; }
+  .cijfer b.op { color:var(--accent); }
+
+  .draad { flex:1; overflow-y:auto; padding:22px; display:flex; flex-direction:column; gap:14px; min-height:0; }
+  .bericht { max-width:70%; padding:12px 16px; border-radius:10px; line-height:1.6; white-space:pre-wrap; }
+  .bericht.klant { background:var(--surface); border:1px solid var(--border); align-self:flex-start; border-bottom-left-radius:2px; }
+  .bericht.michel { background:var(--accent-dim); border:1px solid rgba(255,107,26,0.3); align-self:flex-end; border-bottom-right-radius:2px; }
+  .bericht .meta { font-size:10.5px; color:var(--muted); margin-top:7px; letter-spacing:0.04em; }
+  .systeem { align-self:center; font-size:11.5px; color:var(--muted); background:var(--surface); border:1px solid var(--border); padding:5px 12px; border-radius:20px; }
+
+  .antwoordvak { border-top:1px solid var(--border); padding:14px 22px 18px; background:var(--offblack); }
+  .concept { background:var(--surface2); border:1px dashed rgba(255,107,26,0.4); padding:10px 14px; margin-bottom:10px; font-size:13px; line-height:1.6; color:var(--muted); }
+  .concept b { display:block; font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--accent); margin-bottom:5px; }
+  .concept button { float:right; background:transparent; border:1px solid var(--accent); color:var(--accent); font-size:11px; padding:3px 9px; cursor:pointer; border-radius:3px; margin-left:10px; }
+  textarea { width:100%; min-height:88px; background:var(--black); border:1px solid var(--border); padding:12px 14px; line-height:1.6; resize:vertical; }
+  textarea:focus { outline:none; border-color:var(--accent); }
+  .knoppenbalk { display:flex; align-items:center; gap:10px; margin-top:10px; flex-wrap:wrap; }
+  .knop { background:var(--accent); color:var(--black); border:none; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; font-size:12px; padding:12px 22px; cursor:pointer; }
+  .knop:hover { background:#fff; }
+  .knop.leeg { background:transparent; border:1px solid var(--border); color:var(--white); font-weight:600; }
+  .knop.leeg:hover { border-color:var(--accent); color:var(--accent); background:transparent; }
+  .knop:disabled { opacity:0.45; cursor:default; }
+  .melding { font-size:12.5px; color:var(--muted); }
+  .melding.goed { color:var(--groen); }
+  .melding.fout { color:var(--rood); }
+  .waarschuwing { background:rgba(240,68,56,0.12); border:1px solid rgba(240,68,56,0.4); color:#ffb4ae; padding:9px 14px; font-size:12.5px; margin-bottom:10px; }
+  details.detail { margin-top:10px; font-size:12.5px; color:var(--muted); }
+  details.detail summary { cursor:pointer; color:var(--accent); }
+  details.detail ul { margin:8px 0 0 18px; line-height:1.7; }
+</style>
+</head>
+<body>
+
+<div id="slot">
+  <div class="kaart">
+    <h1>Afvalprogramma</h1>
+    <p>Berichten en check-ins van je deelnemers.</p>
+    <input id="sleutel" type="password" placeholder="Interne sleutel" autocomplete="off">
+    <button class="knop" style="width:100%" onclick="inloggen()">Openen</button>
+    <p id="slotfout" class="melding fout" style="margin-top:12px"></p>
+  </div>
+</div>
+
+<div id="app">
+  <div class="lijst">
+    <div class="lijst-kop">
+      <h2>Deelnemers</h2>
+      <span class="tel" id="tel"></span>
+    </div>
+    <div class="filters">
+      <button data-f="open" class="aan" onclick="zetFilter('open')">Wacht op mij</button>
+      <button data-f="alles" onclick="zetFilter('alles')">Alles</button>
+      <button data-f="medisch" onclick="zetFilter('medisch')">Medisch</button>
+      <button data-f="evaluatie" onclick="zetFilter('evaluatie')">Evaluatie</button>
+    </div>
+    <div class="rijen" id="rijen"></div>
+  </div>
+
+  <div class="gesprek" id="gesprek">
+    <div class="leeg">Kies links een deelnemer.</div>
+  </div>
+</div>
+
+<script>
+const API = '/api/afvalprogramma';
+// Opslag kan geblokkeerd zijn (privévenster, strenge instellingen). Dan werkt
+// de pagina gewoon, je typt de sleutel alleen elke keer opnieuw.
+const bewaar = {
+  lees(k) { try { return localStorage.getItem(k) || ''; } catch { return ''; } },
+  zet(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  weg(k) { try { localStorage.removeItem(k); } catch {} }
+};
+let sleutel = bewaar.lees('afvalSleutel');
+let deelnemers = [];
+let gekozen = null;
+let filter = 'open';
+
+const VLAGTEKST = {
+  medisch: 'medisch', vraag: 'vraag open', evaluatie: 'evaluatie',
+  checkin: 'check-in', niveau: 'niveau?', 'niet-gewogen': 'niet gewogen',
+  'geen-intake': 'geen intake'
+};
+
+function inloggen() {
+  sleutel = document.getElementById('sleutel').value.trim();
+  if (!sleutel) return;
+  bewaar.zet('afvalSleutel', sleutel);
+  laden(true);
+}
+
+async function laden(eerste) {
+  try {
+    const r = await fetch(API + '?actie=rij', { headers: { 'x-afval-sleutel': sleutel } });
+    if (r.status === 403) {
+      document.getElementById('slotfout').textContent = 'Die sleutel klopt niet.';
+      bewaar.weg('afvalSleutel');
+      return;
+    }
+    const j = await r.json();
+    deelnemers = j.deelnemers || [];
+    document.getElementById('slot').style.display = 'none';
+    document.getElementById('app').classList.add('aan');
+    tekenLijst();
+    if (gekozen) {
+      const bij = deelnemers.find(d => d.id === gekozen.id);
+      if (bij) { gekozen = bij; tekenGesprek(); }
+    }
+  } catch (e) {
+    document.getElementById('slotfout').textContent = 'Verbinding mislukt.';
+  }
+}
+
+function zetFilter(f) {
+  filter = f;
+  document.querySelectorAll('.filters button').forEach(b =>
+    b.classList.toggle('aan', b.dataset.f === f));
+  tekenLijst();
+}
+
+function gefilterd() {
+  if (filter === 'alles') return deelnemers;
+  if (filter === 'medisch') return deelnemers.filter(d => d.vlaggen.includes('medisch'));
+  if (filter === 'evaluatie') return deelnemers.filter(d => d.vlaggen.includes('evaluatie'));
+  return deelnemers.filter(d => d.vlaggen.length > 0);
+}
+
+function tijdKort(iso) {
+  if (!iso) return '';
+  const d = new Date(iso), nu = new Date();
+  const zelfdeDag = d.toDateString() === nu.toDateString();
+  return zelfdeDag
+    ? d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit' });
+}
+
+function veilig(t) {
+  return String(t == null ? '' : t).replace(/[&<>"]/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+function tekenLijst() {
+  const lijst = gefilterd();
+  document.getElementById('tel').textContent =
+    lijst.length + ' van ' + deelnemers.length;
+  document.getElementById('rijen').innerHTML = lijst.map(d => `
+    <div class="rij ${gekozen && gekozen.id === d.id ? 'actief' : ''}" onclick="kies('${d.id}')">
+      <div class="naam">${veilig(d.naam || d.email)}</div>
+      <div class="tijd">${tijdKort(d.laatsteBerichtOp)}</div>
+      <div class="voorbeeld">week ${d.week}${d.voorbeeld ? ' &middot; ' + (d.voorbeeldVan === 'michel' ? 'jij: ' : '') + veilig(d.voorbeeld) : ' &middot; nog geen bericht'}</div>
+      ${d.vlaggen.length ? `<div class="vlaggen">${d.vlaggen.map(v =>
+        `<span class="vlag ${v}">${VLAGTEKST[v] || v}</span>`).join('')}</div>` : ''}
+    </div>`).join('') || '<div style="padding:22px;color:var(--muted)">Niets dat op je wacht.</div>';
+}
+
+function kies(id) {
+  gekozen = deelnemers.find(d => d.id === id) || null;
+  tekenLijst();
+  tekenGesprek();
+}
+
+function tekenGesprek() {
+  const d = gekozen;
+  if (!d) return;
+  const start = d.metingen?.[0]?.gewicht ?? null;
+  const nu = d.metingen?.[d.metingen.length - 1]?.gewicht ?? start;
+  const verschil = (start != null && nu != null) ? (nu - start).toFixed(1) : null;
+  const laatsteKlant = [...(d.berichten || [])].reverse().find(b => b.van === 'klant');
+  const concept = laatsteKlant && d.vlaggen.includes('vraag') || d.vlaggen.includes('medisch')
+    ? (laatsteKlant?.concept || null) : null;
+  const evaluatie = d.vlaggen.includes('evaluatie');
+
+  document.getElementById('gesprek').innerHTML = `
+    <div class="kop">
+      <div>
+        <h3>${veilig(d.naam || d.email)}</h3>
+        <div class="sub">week ${d.week} van ${d.weken}
+          ${d.niveau ? ' &middot; ' + (d.niveau.keuze === 'twijfel'
+            ? 'niveau TWIJFEL (' + d.niveau.percentage + '%), voorstel ' + d.niveau.advies
+            : d.niveau.advies + ' (' + d.niveau.percentage + '%)') : ''}</div>
+      </div>
+      <div class="cijfers">
+        <div class="cijfer"><span>gewicht</span><b>${nu != null ? nu + ' kg' : '—'}</b></div>
+        <div class="cijfer"><span>verschil</span><b class="${verschil && verschil < 0 ? 'op' : ''}">${verschil != null ? verschil : '—'}</b></div>
+        <div class="cijfer"><span>doel</span><b>${d.intake?.streefgewicht ?? '—'}</b></div>
+        <div class="cijfer"><span>kcal gem.</span><b>${d.plan?.gemiddeld ?? '—'}</b></div>
+      </div>
+    </div>
+
+    <div class="draad" id="draad">
+      ${(d.berichten || []).map(b => b.van === 'klant'
+        ? `<div class="bericht klant">${veilig(b.tekst)}<div class="meta">${tijdKort(b.op)}${b.medisch ? ' &middot; MEDISCH' : ''}</div></div>`
+        : `<div class="bericht michel">${veilig(b.tekst)}<div class="meta">${tijdKort(b.op)}${b.automatisch ? ' &middot; automatisch uit je bibliotheek' : ''}</div></div>`
+      ).join('') || '<div class="systeem">Nog geen berichten</div>'}
+      ${d.laatsteBijsturing ? `<div class="systeem">Check-in week ${d.laatsteBijsturing.week}: ${veilig(d.laatsteBijsturing.kop)} (${d.laatsteBijsturing.kcalAanpassing > 0 ? '+' : ''}${d.laatsteBijsturing.kcalAanpassing} kcal)</div>` : ''}
+    </div>
+
+    <div class="antwoordvak">
+      ${d.vlaggen.includes('medisch') ? '<div class="waarschuwing">Deze vraag is als medisch gemarkeerd. Schrijf zelf, gebruik het concept niet.</div>' : ''}
+      ${evaluatie ? `<div class="waarschuwing" style="background:rgba(245,165,36,0.12);border-color:rgba(245,165,36,0.4);color:#ffd79a">Evaluatieweek ${d.week}. Verstuur je evaluatie met de knop hiernaast.</div>` : ''}
+      ${concept ? `<div class="concept"><button onclick="neemOver()">Overnemen</button><b>Concept, nog niet verstuurd</b><span id="conceptTekst">${veilig(concept)}</span></div>` : ''}
+      <textarea id="antwoord" placeholder="Je bericht aan ${veilig((d.naam || '').split(' ')[0] || 'de deelnemer')}..."></textarea>
+      <div class="knoppenbalk">
+        <button class="knop" onclick="verstuur('bericht')">Versturen</button>
+        ${evaluatie ? `<button class="knop leeg" onclick="verstuur('evaluatie')">Versturen als evaluatie week ${d.week}</button>` : ''}
+        <span class="melding" id="melding"></span>
+      </div>
+      ${d.niveau ? `<details class="detail"><summary>Inschrijfkaart en cijfers</summary>
+        <ul><li>${(d.niveau.redenen || []).map(veilig).join('</li><li>')}</li></ul>
+        <ul style="margin-top:8px"><li>eiwit ${d.plan?.eiwit ?? '—'} g, ondergrens ${d.plan?.ondergrens ?? '—'} kcal, verwacht ${d.plan?.verwachtTempo ?? '—'} kg/week</li>
+        <li>wegingen: ${(d.metingen || []).map(m => 'wk' + m.week + ' ' + m.gewicht).join(', ') || 'geen'}</li></ul>
+      </details>` : ''}
+    </div>`;
+  const dr = document.getElementById('draad');
+  if (dr) dr.scrollTop = dr.scrollHeight;
+}
+
+function neemOver() {
+  const c = document.getElementById('conceptTekst');
+  const a = document.getElementById('antwoord');
+  if (c && a) { a.value = c.textContent.replace(/^\[MEDISCH\]\s*/, ''); a.focus(); }
+}
+
+async function verstuur(soort) {
+  const tekst = document.getElementById('antwoord').value.trim();
+  const melding = document.getElementById('melding');
+  if (!tekst) { melding.textContent = 'Nog niets getypt.'; melding.className = 'melding fout'; return; }
+  melding.textContent = 'Versturen...'; melding.className = 'melding';
+  try {
+    const r = await fetch(API + '?actie=antwoord', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-afval-sleutel': sleutel },
+      body: JSON.stringify({ id: gekozen.id, tekst, soort, week: gekozen.week })
+    });
+    const j = await r.json();
+    if (!j.ok) { melding.textContent = j.fout || 'Mislukt.'; melding.className = 'melding fout'; return; }
+    melding.textContent = 'Verstuurd.'; melding.className = 'melding goed';
+    document.getElementById('antwoord').value = '';
+    await laden();
+  } catch (e) {
+    melding.textContent = 'Mislukt.'; melding.className = 'melding fout';
+  }
+}
+
+document.getElementById('sleutel').addEventListener('keydown', e => { if (e.key === 'Enter') inloggen(); });
+if (sleutel) laden(true);
+setInterval(() => { if (sleutel && document.getElementById('app').classList.contains('aan')) laden(); }, 60000);
+</script>
+</body>
+</html>
