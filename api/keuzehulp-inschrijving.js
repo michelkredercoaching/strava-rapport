@@ -42,6 +42,7 @@
 // Vereist in Vercel (staan er al voor de betaling-webhook):
 //   MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID, PP_TOKEN_SECRET, RESEND_API_KEY
 import crypto from 'node:crypto';
+import { persoonlijkeRichtlijn, URENKLASSEN } from '../lib/voeding.js';
 
 const MC_KEY  = process.env.MAILCHIMP_API_KEY;      // ...-usXX
 const MC_LIST = process.env.MAILCHIMP_LIST_ID;
@@ -53,6 +54,7 @@ const TAG_GRATIS      = 'gratis-training';
 const TAG_BEGELEIDING = 'begeleiding-aanvraag';
 const TAG_ZESUUR      = 'zesuur-pdf';
 const TAG_BANDEN      = 'bandenspanning-pdf';
+const TAG_AFVALKAART  = 'afvalkaart-pdf';
 // Binaire keuzehulp-uitkomst (11-09-2026): schema is geen directe uitkomst
 // meer, zie [[het-startpakket]] in memory. Eigen tags zodat Michel de twee
 // paden apart kan zien/bewerken in Mailchimp, los van de oude schema-journey.
@@ -94,6 +96,12 @@ const ZESUUR_PDF = process.env.ZESUUR_PDF
 // bandbreedte, plus de correcties voor wegdek, tubeless en hookless.
 const BANDEN_PDF = process.env.BANDENSPANNING_PDF
   || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/Bandenspanning.pdf';
+
+// Afvalkaart: 3 A4'tjes met kcal per gewicht en trainingsuren, de koolhydraten
+// per uur op de fiets, de drie regels en de ruiltabel. Wordt gegenereerd met
+// scripts/maak-afvalkaart.mjs, dus nooit met de hand bijwerken.
+const AFVALKAART_PDF = process.env.AFVALKAART_PDF
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/10/Afvalkaart.pdf';
 
 const AFZENDER     = 'Michel Kreder Coaching <rapport@michelkredercoaching.nl>';
 const REPLY_TO     = 'info@michelkredercoaching.nl';
@@ -565,6 +573,30 @@ function bandenspanningHtml(naam, pdfUrl) {
   return naarHtmlEntities(html);
 }
 
+// Afleveringsmail van de Afvalkaart. Kort, geen pitch: de kaart doet zelf het
+// werk en het aanbod komt in de journey op de tag 'afvalkaart-pdf'.
+function afvalkaartHtml(naam, pdfUrl, richtlijn) {
+  const hoi = naam ? `Hoi ${String(naam).trim().split(' ')[0]},` : 'Hoi,';
+  const blok = richtlijn ? `
+    <div style="border:1px solid #e3ded6;border-left:4px solid #ff6b1a;padding:16px 20px;margin:0 0 20px;">
+      <p style="margin:0 0 12px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#ff6b1a;font-weight:700;">Jouw startrichtlijn</p>
+      <p style="margin:0 0 6px;">Rustdag: <b>${richtlijn.rustdag} kcal</b></p>
+      <p style="margin:0 0 6px;">Trainingsdag: <b>${richtlijn.trainingsdag} kcal</b> gemiddeld</p>
+      <p style="margin:0 0 12px;">Eiwit: <b>${richtlijn.eiwit} gram per dag</b>, elke dag hetzelfde</p>
+      <p style="margin:0;font-size:13px;color:#6d6862;">Startrichtlijn op basis van ${richtlijn.gewicht} kg en je antwoorden, geen voedingsadvies. Je lengte en leeftijd vragen we hier niet, en die schuiven je getallen.</p>
+    </div>` : '';
+  return `
+  <div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.7;color:#1a1a1a;max-width:560px;">
+    <p style="margin:0 0 18px;">${hoi}</p>
+    ${blok}
+    <p style="margin:0 0 18px;">Hier is je Afvalkaart. Op de eerste bladzijde zoek je je gewicht en je trainingsuren op, en lees je af wat je eet op een rustdag en wat op een trainingsdag. Dat verschil is het hele punt: op de dag dat je traint eet je meer, niet minder.</p>
+    <p style="margin:0 0 18px;">Daarna staan de grammen koolhydraten per uur op de fiets, de drie regels waar het meestal misgaat, en een ruiltabel zodat je niets hoeft af te wegen wat je niet wil afwegen.</p>
+    <p style="margin:0 0 22px;"><a href="${pdfUrl}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;text-decoration:none;font-weight:bold;display:inline-block;">Open je Afvalkaart</a></p>
+    <p style="margin:0 0 14px;">Begin met één ding: zet je tekort op de dagen dat je niet of rustig rijdt, en laat je intervaldag en je lange rit met rust. Dat alleen al scheelt de meeste renners een hoop ellende.</p>
+    <p style="margin:0;">Michel</p>
+  </div>`;
+}
+
 // Afleveringsmail van de schema-uitkomst (route 'schema': het Piek-advies uit
 // de 9-vragen-keuzehulp, en het schema-advies uit de adviestool). Direct
 // verstuurd in plaats van via de Mailchimp-journey, zodat het advies altijd
@@ -666,6 +698,7 @@ export default async function handler(req, res) {
               : b.route === 'gratis-training'     ? 'gratis-training'
               : b.route === 'zesuur'              ? 'zesuur'
               : b.route === 'bandenspanning'     ? 'bandenspanning'
+              : b.route === 'afvalkaart'          ? 'afvalkaart'
               : b.route === 'analyse-advies'      ? 'analyse-advies'
               : b.route === 'startpakket-advies'  ? 'startpakket-advies'
               : b.route === 'winter10'            ? 'winter10'
@@ -815,6 +848,7 @@ export default async function handler(req, res) {
               : route === 'gratis-training'    ? TAG_GRATIS
               : route === 'zesuur'             ? TAG_ZESUUR
               : route === 'bandenspanning'    ? TAG_BANDEN
+              : route === 'afvalkaart'         ? TAG_AFVALKAART
               : route === 'analyse-advies'     ? TAG_KEUZEHULP_ANALYSE
               : route === 'startpakket-advies' ? TAG_KEUZEHULP_STARTPAKKET
               : route === 'winter10'           ? TAG_WINTER10
@@ -886,6 +920,27 @@ export default async function handler(req, res) {
       });
       console.log('Bandenspanning OK:', email);
       return res.status(200).json({ ok: true, downloadUrl: BANDEN_PDF });
+    }
+
+    // 2c-3) Afvalkaart: kaart mailen en de downloadUrl teruggeven, zelfde
+    //     patroon als de bandenspanning-kaart.
+    if (route === 'afvalkaart') {
+      // De mini-check: uit vier vragen komt een startrichtlijn. Bewust met
+      // dezelfde motor als het betaalde programma, zodat iemand die later
+      // koopt geen andere getallen ziet dan hier.
+      const richtlijn = persoonlijkeRichtlijn({
+        geslacht: b.geslacht === 'vrouw' ? 'vrouw' : 'man',
+        gewicht: Number(b.gewicht),
+        urenklasse: URENKLASSEN.some(u => u.waarde === b.urenklasse) ? b.urenklasse : '4-8',
+        werk: ['zittend', 'actief', 'zwaar'].includes(b.werk) ? b.werk : 'zittend'
+      });
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: richtlijn ? 'Je richtlijn en je Afvalkaart' : 'Je Afvalkaart staat klaar',
+        html: afvalkaartHtml(b.naam, AFVALKAART_PDF, richtlijn),
+      });
+      console.log('Afvalkaart OK:', email, richtlijn ? `| ${richtlijn.gewicht}kg ${richtlijn.urenklasse}` : '| zonder richtlijn');
+      return res.status(200).json({ ok: true, downloadUrl: AFVALKAART_PDF, richtlijn });
     }
 
     // 2d) Keuzehulp-uitkomst 'analyse': geen mail nodig, de pagina linkt zelf
