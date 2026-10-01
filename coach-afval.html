@@ -220,6 +220,19 @@ function kies(id) {
   tekenGesprek();
 }
 
+// Buikomtrek staat hier omdat juist de weken waarin het gewicht stilstaat
+// de weken zijn waarin iemand afhaakt. Zakt de omtrek wel, dan heb je iets
+// om te laten zien bij de evaluatie.
+function omtrekCijfer(d) {
+  const met = (d.metingen || []).filter(m => Number(m.buikomtrek) > 0);
+  if (!met.length) return '';
+  const eerste = Number(met[0].buikomtrek);
+  const laatste = Number(met[met.length - 1].buikomtrek);
+  if (met.length === 1) return `<div class="cijfer"><span>buik</span><b>${eerste} cm</b></div>`;
+  const v = Math.round((laatste - eerste) * 10) / 10;
+  return `<div class="cijfer"><span>buik</span><b class="${v < 0 ? 'op' : ''}">${laatste} cm (${v > 0 ? '+' : ''}${v})</b></div>`;
+}
+
 function tekenGesprek() {
   const d = gekozen;
   if (!d) return;
@@ -245,6 +258,7 @@ function tekenGesprek() {
         <div class="cijfer"><span>verschil</span><b class="${verschil && verschil < 0 ? 'op' : ''}">${verschil != null ? verschil : '—'}</b></div>
         <div class="cijfer"><span>doel</span><b>${d.intake?.streefgewicht ?? '—'}</b></div>
         <div class="cijfer"><span>kcal gem.</span><b>${d.plan?.gemiddeld ?? '—'}</b></div>
+        ${omtrekCijfer(d)}
       </div>
     </div>
 
