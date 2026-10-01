@@ -71,10 +71,14 @@
   .getallen { display:flex; gap:26px; flex-wrap:wrap; margin-bottom:18px; padding-bottom:16px; border-bottom:1px solid var(--border); }
   .getallen div span { display:block; font-size:10px; letter-spacing:0.13em; text-transform:uppercase; color:var(--muted); }
   .getallen div b { font-family:'Bebas Neue',sans-serif; font-size:25px; }
-  .moment { display:flex; justify-content:space-between; gap:14px; padding:9px 0; border-bottom:1px solid var(--border); font-size:14.5px; }
+  .moment { padding:11px 0; border-bottom:1px solid var(--border); font-size:14.5px; }
   .moment:last-of-type { border-bottom:none; }
   .moment b { font-weight:600; }
-  .moment span { color:var(--muted); white-space:nowrap; }
+  .momentkop { display:flex; justify-content:space-between; gap:14px; align-items:baseline; }
+  .momentkop span { color:var(--muted); white-space:nowrap; font-size:13.5px; }
+  .kieslabel { display:block; font-size:11.5px; letter-spacing:0.08em; text-transform:uppercase; color:var(--accent); margin:8px 0 3px; }
+  .moment ol { margin:0; padding-left:19px; }
+  .moment ol li { color:var(--muted); padding:2.5px 0; }
   .fiets { background:var(--black); border:1px solid rgba(255,107,26,0.3); padding:16px 18px; margin-top:16px; }
   .fiets h3 { font-size:12px; letter-spacing:0.13em; text-transform:uppercase; color:var(--accent); margin-bottom:10px; }
   .fiets ul { margin:0 0 0 18px; }
@@ -182,6 +186,10 @@ function tekenIntake() {
         <div class="veld"><label>Je FTP in watt, als je die weet</label>
           <input type="number" id="ftp" min="60" max="500" placeholder="Laat leeg als je op hartslag rijdt">
         </div>
+        <div class="veld"><label>Je buikomtrek in cm, als je een meetlint hebt</label>
+          <input type="number" id="buikomtrek" step="0.5" min="50" max="200" placeholder="Mag je ook leeg laten">
+          <p class="klein muted" style="margin-top:6px">Meet 's ochtends rond je navel, rechtop, ontspannen uitgeademd. Dit bepaalt je plan niet. Het is er voor de weken waarin de weegschaal stilstaat terwijl er wel degelijk iets gebeurt. Ik vraag hem opnieuw in week 4, 8 en 12.</p>
+        </div>
       </div>
     </div>
 
@@ -208,6 +216,15 @@ function tekenIntake() {
               ${v.opties.map(o => `<option value="${veilig(o.waarde)}">${veilig(o.tekst)}</option>`).join('')}
             </select>
           </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="stap">
+      <h2>Wat je eet<small>Hiermee kies ik welke maaltijden ik je voorleg. Niets aanvinken is prima.</small></h2>
+      <div class="kaart">
+        <label class="vinkje"><input type="checkbox" id="vegetarisch"> Ik eet geen vlees of vis</label>
+        <label class="vinkje"><input type="checkbox" id="geenZuivel"> Ik eet geen zuivel</label>
+        <label class="vinkje"><input type="checkbox" id="weinigTijd"> Ik heb doordeweeks weinig tijd om te koken</label>
       </div>
     </div>
 
@@ -243,6 +260,10 @@ async function stuurIntake() {
     gewicht: n('gewicht'), streefgewicht: n('streefgewicht'),
     werk: document.getElementById('werk').value,
     ftp: n('ftp'),
+    buikomtrek: n('buikomtrek'),
+    vegetarisch: document.getElementById('vegetarisch').checked,
+    geenZuivel: document.getElementById('geenZuivel').checked,
+    weinigTijd: document.getElementById('weinigTijd').checked,
     diabetes: document.getElementById('diabetes').checked,
     zwanger: document.getElementById('zwanger').checked,
     eetstoornis: document.getElementById('eetstoornis').checked,
@@ -286,6 +307,7 @@ function tekenDashboard() {
         <div><span>Gemiddeld per dag</span><b>${p ? p.gemiddeld : '—'}</b></div>
         <div><span>Eiwit per dag</span><b>${p ? p.eiwit + ' g' : '—'}</b></div>
       </div>
+      ${omtrekRegel()}
       ${grafiek()}
       ${extraWeging()}
     </div>
@@ -304,6 +326,7 @@ function tekenDashboard() {
       ${dagKaart(p.week[dagIndex])}
       ${ruilen()}
     </div>
+    ${gewoonteBlok()}
     ${ruilTipBlok()}` : ''}
 
     ${berichtenBlok()}
@@ -384,6 +407,11 @@ function checkinBlok() {
       <div class="kaart">
         <div class="veld"><label>Je gewicht vanochtend, nuchter</label>
           <input type="number" id="gewicht_in" step="0.1" min="40" max="200" placeholder="kg"></div>
+        ${D.omtrekGevraagd ? `
+        <div class="veld"><label>Je buikomtrek in cm</label>
+          <input type="number" id="omtrek_in" step="0.5" min="50" max="200" placeholder="Mag je ook leeg laten">
+          <p class="klein muted" style="margin-top:6px">Rond je navel, rechtop, ontspannen uitgeademd. Ik vraag hem alleen in week 1, 4, 8 en 12.</p>
+        </div>` : ''}
         <div class="veld"><label>Hoe voelden je trainingen?</label>
           <div class="keuze" id="k_gevoel">
             ${[['goed','Goed'],['wisselend','Wisselend'],['slecht','Zwaar en leeg']].map(([w,t]) =>
@@ -414,7 +442,8 @@ async function stuurCheckin() {
   m.textContent = 'Bezig...'; m.className = 'melding';
   const r = await fetch(API + '?actie=checkin', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ t: token, gewicht, gevoel: keuzes.gevoel, etenGelukt: keuzes.etenGelukt }) });
+    body: JSON.stringify({ t: token, gewicht, gevoel: keuzes.gevoel, etenGelukt: keuzes.etenGelukt,
+      buikomtrek: parseFloat((document.getElementById('omtrek_in') || {}).value) || undefined }) });
   const j = await r.json();
   if (!j.ok) { m.textContent = j.fout || 'Er ging iets mis.'; m.className = 'melding fout'; return; }
   D = j; window.scrollTo(0, 0); teken();
@@ -436,13 +465,28 @@ function dagKaart(d) {
       ${d.isKwaliteitsdag ? '<p class="klein" style="color:var(--accent);margin-bottom:14px">Kwaliteitsdag. Hier zit geen tekort in, want vandaag moet je kunnen trainen.</p>' : ''}
       ${p.ritKh ? `<p class="klein muted" style="margin-bottom:12px">Van je ${d.koolhydraten} gram koolhydraten eet je er ${p.ritKh} op de fiets. De rest, ${p.khThuis} gram, verdeel je zo:</p>` : ''}
       ${p.momenten.map(m => `
-        <div class="moment"><b>${veilig(m.moment)}</b>
-          <span>${m.kcal} kcal &middot; ${m.kh} koolhydraatblokken</span></div>`).join('')}
+        <div class="moment">
+          <div class="momentkop"><b>${veilig(m.moment)}</b>
+            <span>${m.kcal} kcal &middot; ${String(m.kh).replace('.', ',')} blokken</span></div>
+          ${m.kies && m.kies.length ? `
+            <span class="kieslabel">Kies er &eacute;&eacute;n</span>
+            <ol>${m.kies.map(k => `<li>${veilig(k)}</li>`).join('')}</ol>` : ''}
+        </div>`).join('')}
       ${d.fiets ? `
         <div class="fiets">
-          <h3>Op de fiets: ${d.fiets.totaal} gram, ${d.fiets.perUur} per uur</h3>
+          <h3>Op de fiets: ${d.fiets.totaal} gram koolhydraten, ${d.fiets.perUur} per uur</h3>
           ${d.fiets.manieren.map(w => `<p><b>${veilig(w.naam)}:</b> ${veilig(w.onderdelen.join(' + '))}</p>`).join('')}
           ${d.fiets.let_op ? `<p class="letop">${veilig(d.fiets.let_op)}</p>` : ''}
+          ${d.fiets.voor ? `
+            <h3 style="margin-top:16px">Voor de rit</h3>
+            <p><span class="muted">${veilig(d.fiets.voor.wanneer)}:</span> ${veilig(d.fiets.voor.koolhydraten)} koolhydraten en ${veilig(d.fiets.voor.eiwit)} eiwit.</p>
+            <p class="klein muted">Bijvoorbeeld: ${veilig(d.fiets.voor.voorbeelden[0])}.</p>` : ''}
+          ${d.fiets.na ? `
+            <h3 style="margin-top:16px">Na de rit</h3>
+            <p><span class="muted">${veilig(d.fiets.na.wanneer)}:</span> ${veilig(d.fiets.na.eiwit)} eiwit en ${veilig(d.fiets.na.koolhydraten)} koolhydraten.</p>
+            <p class="klein muted">Bijvoorbeeld: ${veilig(d.fiets.na.voorbeelden[0])}.</p>
+            <p class="klein" style="color:var(--accent);margin-top:6px">${veilig(d.fiets.na.waarom)}</p>` : ''}
+          <p class="klein muted" style="margin-top:12px">Wat je voor en na de rit eet zit al in de momenten hierboven. Alleen wat je &oacute;p de fiets eet staat apart.</p>
         </div>` : ''}
       ${recepten(d)}
     </div>`;
@@ -482,6 +526,37 @@ function recepten(d) {
         <p class="klein muted" style="margin-top:14px">De hoeveelheden zijn al omgerekend naar jouw plan voor deze dag. Wijk je af, ruil dan binnen dezelfde kolom van de ruiltabel.</p>
       </div>
     </details>`;
+}
+
+// Eén gedragsregel per week. De rekensom klopt wel, mensen vallen om op de
+// avond, en een lijst van twaalf regels tegelijk leest niemand.
+function gewoonteBlok() {
+  const g = D.gewoonte;
+  if (!g) return '';
+  return `
+    <div class="blok">
+      <h2>Deze week let je hierop</h2>
+      <div class="kaart">
+        <p class="klein" style="color:var(--accent);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:8px">${g.nummer} van ${g.van}</p>
+        <p style="font-size:17px;font-weight:600;margin-bottom:8px">${veilig(g.kop)}</p>
+        <p>${veilig(g.tekst)}</p>
+      </div>
+    </div>`;
+}
+
+// De buikomtrek stuurt het plan niet bij. Hij staat er voor de weken waarin
+// de weegschaal stilstaat terwijl er wel degelijk iets gebeurt.
+function omtrekRegel() {
+  const o = D.omtrek;
+  if (!o) return '';
+  if (o.laatste == null) {
+    return `<p class="klein muted" style="margin-top:12px">Buikomtrek bij de start: ${o.start} cm. Ik vraag hem opnieuw in week 4, 8 en 12.</p>`;
+  }
+  const v = o.verschil;
+  const tekst = v < 0 ? `${Math.abs(v).toString().replace('.', ',')} cm eraf sinds de start`
+    : v > 0 ? `${v.toString().replace('.', ',')} cm erbij sinds de start`
+    : 'gelijk gebleven sinds de start';
+  return `<p class="klein" style="margin-top:12px;color:${v < 0 ? 'var(--accent)' : 'var(--muted)'}">Buikomtrek: ${o.laatste} cm, ${tekst}.</p>`;
 }
 
 function ruilTipBlok() {
