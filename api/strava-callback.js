@@ -549,7 +549,18 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     // nooit onterecht wordt weggefilterd. Toegepast per kandidaat-venster, vóór
     // de HR- en dominantie-check, zodat een sensor-storing nooit in de gekozen
     // piek — en dus nooit in het rapport — terechtkomt.
-    maxWattPerKgVenster: { 60: 12.0, 300: 9.0, 720: 7.0, 1200: 6.5 },
+    // 720/1200 van 7,0 en 6,5 naar 6,0 en 5,5 (Misael, 01-10-2026): zijn rit van
+    // 12-09 schreef 541W over 20 minuten weg bij 92 kg, dat is 5,9 W/kg, en die
+    // glipte onder het oude plafond door. Alleen de HR-check hield hem tegen, en
+    // dat is te veel geluk voor een getal dat 4 van de 9 gewicht draagt. Een 20
+    // min op 5,5 W/kg en een 12 min op 6,0 W/kg is nog altijd ruim boven wat deze
+    // doelgroep (recreatief tot sub-elite) ooit rijdt, dus een echte topdag valt
+    // hier niet uit.
+    maxWattPerKgVenster: { 60: 12.0, 300: 9.0, 720: 5.8, 1200: 5.5 },
+    // Een maximale 12 min ligt normaal op 85-93% van een maximale 5 min, een
+    // maximale 20 min op 80-88%. Hieronder is het geen inspanning maar het
+    // hardste stuk van een rustige rit (zie 3-bis verderop).
+    langVensterMinVan5: { 720: 0.70, 1200: 0.65 },
   };
 
   // ===== STRENGERE GRENS VOOR DE KORTE VENSTERS (1 en 5 min) =====
@@ -564,6 +575,10 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   let heeftPowerStream = false;
   let aantalRittenMetStream = 0;
   let piekFilterNotities = [];
+  // Is er ergens een venster weggegooid omdat het boven het W/kg-plafond lag?
+  // Dan is de vermogensfile van deze sporter aantoonbaar onbetrouwbaar, en dat
+  // moet doorwerken in de betrouwbaarheid (zie 4d).
+  let sensorGlitchGezien = false;
 
   // (1) BRON — alleen ritten met een echte meter. Geschat vermogen piekt op
   // afdalingen en is de #1 bron van rotdata → uitgesloten voor de pieken.
@@ -597,6 +612,7 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
       if (!v || v.avg <= 50) return;
       const plafondPerKg = PIEK_FILTER.maxWattPerKgVenster[w.sec];
       if (weight && plafondPerKg && (v.avg / weight) > plafondPerKg) {
+        sensorGlitchGezien = true;
         piekFilterNotities.push(
           `rit ${rit.id} ${w.naam}: ${Math.round(v.avg)}W (${(v.avg / weight).toFixed(1)} W/kg > plafond ${plafondPerKg}) → sensor-glitch, genegeerd`
         );
@@ -695,6 +711,49 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     }
   }
 
+  // ===== (3-bis) EEN LANG VENSTER MOET PLAUSIBEL ZIJN T.O.V. DE 5 MIN =====
+  // (Misael-case, 01-10-2026.) De HR-check in (2) keurt een 12/20-min venster goed
+  // zodra de hartslag daar boven 85% van de max zat. Op gravel en mtb is dat
+  // precies het verkeerde bewijs: de hartslag staat hoog door terrein, techniek en
+  // hitte, terwijl het vermogen laag blijft door uitbollen en stilstand. Misael
+  // kreeg zo een 12-min van 147W en een 20-min van 137W naast een 5-min piek van
+  // 262W, oftewel 56% en 52%. Omdat de lange vensters samen 7 van de 9 gewicht
+  // dragen, rolde daar een FTP van 155W uit — terwijl hij een week eerder zeven
+  // dagen achter elkaar vijf uur op NP 175-190W reed. Betrouwbaarheid: 'hoog'.
+  //
+  // De grenzen (70% en 65%) staan ruim onder het normale bereik, zodat een echte
+  // diesel er niet door geknepen wordt: die zit in deze verhouding juist HOGER,
+  // niet lager. Alleen een venster dat fysiologisch niet als maximale inspanning
+  // kan bestaan valt af.
+  //
+  // Zo'n venster wordt NIET weggegooid: het blijft gewoon als beste 12/20 minuten
+  // in het rapport staan. Het telt alleen niet mee als drempelbewijs. De FTP valt
+  // dan terug op de korte-vensterroute, en die heeft in (3b) hieronder al een
+  // plafond dat op zijn ECHT GEREDEN lange vensters gebaseerd is. Daarmee komt
+  // Misael rond de 230W uit in plaats van 155W.
+  //
+  // Voorwaarde: de 5-min piek moet zelf plausibel zijn. Is die een glitch, dan
+  // zou juist elk gezond lang venster er onterecht naast vallen.
+  const negeerVoorFtp = new Set();
+  const vijfMinBruikbaar = !!piek[300]
+    && (!weight || (piek[300] / weight) <= KORT_PLAFOND_PER_KG[300]);
+  if (vijfMinBruikbaar) {
+    [720, 1200].forEach(sec => {
+      const grens = PIEK_FILTER.langVensterMinVan5[sec];
+      if (!piek[sec] || !grens) return;
+      const aandeel = piek[sec] / piek[300];
+      if (aandeel >= grens) return;
+      negeerVoorFtp.add(sec);
+      const naam = sec === 720 ? '12min' : '20min';
+      piekFilterNotities.push(
+        `${naam}-piek ${Math.round(piek[sec])}W is ${Math.round(aandeel * 100)}% van de 5-min piek ` +
+        `(< ${Math.round(grens * 100)}%) → geen drempelinspanning, telt niet mee in de FTP`
+      );
+      console.log(`FTP ${naam}: overgeslagen, ${Math.round(aandeel * 100)}% van de 5-min piek (${Math.round(piek[sec])}W vs ${Math.round(piek[300])}W)`);
+    });
+  }
+  const langVensterVerworpen = negeerVoorFtp.size > 0;
+
   const schatFactor = 1.0;
 
   // ===== (3a) KORTE VENSTERS WEGEN NIET MEE ZODRA ER EEN LANGE LIGT =====
@@ -718,12 +777,15 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   //
   // Valt 12 én 20 min weg, dan verandert er hier niets: dan telt 1 min gewoon
   // mee en vangt het korte-piek-plafond (3b) hieronder de scheefheid op.
-  const langVensterAanwezig = !!(piek[720] || piek[1200]);
+  const langVensterAanwezig = !!((piek[720] && !negeerVoorFtp.has(720))
+                              || (piek[1200] && !negeerVoorFtp.has(1200)));
 
   if (heeftPowerStream) {
     let gewogenSom = 0, gewogenTotaal = 0;
     ftpWindows.forEach(w => {
       if (piek[w.sec]) {
+        // (3-bis) een lang venster dat niet als inspanning kan bestaan, draagt niets.
+        if (negeerVoorFtp.has(w.sec)) return;
         // 1 min draagt niet mee zolang er een lang venster is.
         if (w.sec === 60 && langVensterAanwezig) {
           piekFilterNotities.push(
@@ -873,7 +935,23 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
     // feite op je korte pieken. Dat is een voorzichtige ONDERgrens, geen gemeten
     // plafond — precies de Ard-case (232W "hoog" terwijl z'n zwaarste 20 min op
     // 151bpm bij een drempel van 177 lag). Zo'n getal krijgt nooit 'hoog'.
-    const langGeverifieerd = !!(piekGeverifieerd[720] || piekGeverifieerd[1200]);
+    // Een venster dat in (3-bis) is verworpen telt hier óók niet: de HR-dekking
+    // zei wel 'inspanning', maar het vermogen weersprak dat.
+    const langGeverifieerd = !!((piekGeverifieerd[720] && !negeerVoorFtp.has(720))
+                             || (piekGeverifieerd[1200] && !negeerVoorFtp.has(1200)));
+    if (langVensterVerworpen && ftpBetrouwbaarheid === 'hoog') verlaag();
+
+    // (4d) SENSOR-GLITCH — het W/kg-plafond slaat alleen aan bij waarden die
+    // fysiek niet kunnen (5,5 W/kg over 20 min, 5,8 over 12 min). Gebeurt dat,
+    // dan weten we dat deze vermogensfile fouten bevat; dat de rest van de
+    // vensters er daarna netjes uitziet, zegt dan weinig. Vóór deze regel liep
+    // zo'n file juist omhóóg in betrouwbaarheid zodra het weggefilterde venster
+    // de curve weer 'gezond' maakte (laag -> gemiddeld), en dat is precies de
+    // verkeerde kant op.
+    if (sensorGlitchGezien && ftpBetrouwbaarheid !== 'laag') {
+      ftpBetrouwbaarheid = 'laag';
+      piekFilterNotities.push('sensor-glitch in de vermogensdata → betrouwbaarheid laag');
+    }
     if (ftpBetrouwbaarheid === 'hoog' && !langGeverifieerd) {
       ftpBetrouwbaarheid = 'gemiddeld';
       piekFilterNotities.push('geen HR-geverifieerde 12/20-min inspanning → FTP is een ondergrens, betrouwbaarheid verlaagd naar gemiddeld');
