@@ -42,7 +42,7 @@
 // Vereist in Vercel (staan er al voor de betaling-webhook):
 //   MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID, PP_TOKEN_SECRET, RESEND_API_KEY
 import crypto from 'node:crypto';
-import { persoonlijkeRichtlijn, URENKLASSEN } from '../lib/voeding.js';
+import { persoonlijkeRichtlijn, URENKLASSEN, belemmeringAdvies } from '../lib/voeding.js';
 
 const MC_KEY  = process.env.MAILCHIMP_API_KEY;      // ...-usXX
 const MC_LIST = process.env.MAILCHIMP_LIST_ID;
@@ -580,24 +580,36 @@ function bandenspanningHtml(naam, pdfUrl) {
 
 // Afleveringsmail van de Afvalkaart. Kort, geen pitch: de kaart doet zelf het
 // werk en het aanbod komt in de journey op de tag 'afvalkaart-pdf'.
-function afvalkaartHtml(naam, pdfUrl, richtlijn) {
+function afvalkaartHtml(naam, pdfUrl, richtlijn, belemmering) {
   const hoi = naam ? `Hoi ${String(naam).trim().split(' ')[0]},` : 'Hoi,';
+  const zwaarste = richtlijn && richtlijn.zwaarsteDag
+    ? `<p style="margin:0 0 6px;">Je zwaarste dag: <b>${richtlijn.zwaarsteDag} kcal</b></p>` : '';
   const blok = richtlijn ? `
     <div style="border:1px solid #e3ded6;border-left:4px solid #ff6b1a;padding:16px 20px;margin:0 0 20px;">
       <p style="margin:0 0 12px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#ff6b1a;font-weight:700;">Jouw startrichtlijn</p>
       <p style="margin:0 0 6px;">Rustdag: <b>${richtlijn.rustdag} kcal</b></p>
       <p style="margin:0 0 6px;">Trainingsdag: <b>${richtlijn.trainingsdag} kcal</b> gemiddeld</p>
+      ${zwaarste}
       <p style="margin:0 0 12px;">Eiwit: <b>${richtlijn.eiwit} gram per dag</b>, elke dag hetzelfde</p>
       <p style="margin:0;font-size:13px;color:#6d6862;">Startrichtlijn op basis van ${richtlijn.gewicht} kg en je antwoorden, geen voedingsadvies. Je lengte en leeftijd vragen we hier niet, en die schuiven je getallen.</p>
+    </div>` : '';
+  // Het persoonlijke stuk: het antwoord op de belemmering die hij zelf heeft
+  // aangeklikt. Dit is wat van een algemene kaart een persoonlijke mail maakt.
+  const bel = belemmering ? `
+    <div style="background:#faf8f5;border:1px solid #e3ded6;padding:18px 20px;margin:0 0 22px;">
+      <p style="margin:0 0 10px;font-size:17px;font-weight:700;">${escHtml(belemmering.kop)}</p>
+      <p style="margin:0 0 12px;">${escHtml(belemmering.tekst)}</p>
+      <p style="margin:0;"><b>Wat je deze week doet:</b> ${escHtml(belemmering.actie)}</p>
     </div>` : '';
   return `
   <div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.7;color:#1a1a1a;max-width:560px;">
     <p style="margin:0 0 18px;">${hoi}</p>
     ${blok}
+    ${bel}
     <p style="margin:0 0 18px;">Hier is je Afvalkaart. Op de eerste bladzijde zoek je je gewicht en je trainingsuren op, en lees je af wat je eet op een rustdag en wat op een trainingsdag. Dat verschil is het hele punt: op de dag dat je traint eet je meer, niet minder.</p>
     <p style="margin:0 0 18px;">Daarna staan de grammen koolhydraten per uur op de fiets, de drie regels waar het meestal misgaat, en een ruiltabel zodat je niets hoeft af te wegen wat je niet wil afwegen.</p>
     <p style="margin:0 0 22px;"><a href="${pdfUrl}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;text-decoration:none;font-weight:bold;display:inline-block;">Open je Afvalkaart</a></p>
-    <p style="margin:0 0 14px;">Begin met één ding: zet je tekort op de dagen dat je niet of rustig rijdt, en laat je intervaldag en je lange rit met rust. Dat alleen al scheelt de meeste renners een hoop ellende.</p>
+    <p style="margin:0 0 14px;">En als er iets niet klopt met jouw situatie, reageer gewoon op deze mail. Schrijf even wat je rijdt en waar je op vastloopt, dan denk ik met je mee. Ik lees alles zelf.</p>
     <p style="margin:0;">Michel</p>
   </div>`;
 }
@@ -939,13 +951,21 @@ export default async function handler(req, res) {
         urenklasse: URENKLASSEN.some(u => u.waarde === b.urenklasse) ? b.urenklasse : '4-8',
         werk: ['zittend', 'actief', 'zwaar'].includes(b.werk) ? b.werk : 'zittend'
       });
+      // Vraag 5: waar loopt deze renner op vast. Stuurt de berekening NIET aan,
+      // maar bepaalt wel welk stuk advies hij te zien krijgt en op welke tag hij
+      // in Mailchimp belandt, zodat de mails daarna over zijn probleem gaan.
+      const belemmering = belemmeringAdvies(b.belemmering);
+      if (belemmering) {
+        try { await hertag(base, headers, hash, belemmering.tag); }
+        catch (e) { console.error('Belemmering-tag mislukt (genegeerd):', e); }
+      }
       await stuurMail({
         from: AFZENDER, to: email, reply_to: REPLY_TO,
         subject: richtlijn ? 'Je richtlijn en je Afvalkaart' : 'Je Afvalkaart staat klaar',
-        html: afvalkaartHtml(b.naam, AFVALKAART_PDF, richtlijn),
+        html: afvalkaartHtml(b.naam, AFVALKAART_PDF, richtlijn, belemmering),
       });
-      console.log('Afvalkaart OK:', email, richtlijn ? `| ${richtlijn.gewicht}kg ${richtlijn.urenklasse}` : '| zonder richtlijn');
-      return res.status(200).json({ ok: true, downloadUrl: AFVALKAART_PDF, richtlijn });
+      console.log('Afvalkaart OK:', email, richtlijn ? `| ${richtlijn.gewicht}kg ${richtlijn.urenklasse}` : '| zonder richtlijn', belemmering ? `| ${belemmering.sleutel}` : '');
+      return res.status(200).json({ ok: true, downloadUrl: AFVALKAART_PDF, richtlijn, belemmering });
     }
 
     // 2d) Keuzehulp-uitkomst 'analyse': geen mail nodig, de pagina linkt zelf
