@@ -583,7 +583,8 @@ function bandenspanningHtml(naam, pdfUrl) {
 function afvalkaartHtml(naam, pdfUrl, richtlijn, belemmering) {
   const hoi = naam ? `Hoi ${String(naam).trim().split(' ')[0]},` : 'Hoi,';
   const zwaarste = richtlijn && richtlijn.zwaarsteDag
-    ? `<p style="margin:0 0 6px;">Je zwaarste dag: <b>${richtlijn.zwaarsteDag} kcal</b></p>` : '';
+    ? `<p style="margin:0 0 6px;">Je zwaarste dag: <b>${richtlijn.zwaarsteDag} kcal</b>${
+        richtlijn.zwaarsteOmschrijving ? `, bij ${richtlijn.zwaarsteOmschrijving}` : ''}</p>` : '';
   const blok = richtlijn ? `
     <div style="border:1px solid #e3ded6;border-left:4px solid #ff6b1a;padding:16px 20px;margin:0 0 20px;">
       <p style="margin:0 0 12px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#ff6b1a;font-weight:700;">Jouw startrichtlijn</p>
