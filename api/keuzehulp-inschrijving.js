@@ -105,8 +105,11 @@ const BANDEN_PDF = process.env.BANDENSPANNING_PDF
 // Afvalkaart: 3 A4'tjes met kcal per gewicht en trainingsuren, de koolhydraten
 // per uur op de fiets, de drie regels en de ruiltabel. Wordt gegenereerd met
 // scripts/maak-afvalkaart.mjs, dus nooit met de hand bijwerken.
+// 02-10-2026: nieuwe versie staat in de map van oktober. Let op: WordPress maakt
+// bij elke upload een nieuw pad, dus deze regel moet mee veranderen. Staat er in
+// Vercel een AFVALKAART_PDF ingesteld, dan wint die en moet hij DAAR ook om.
 const AFVALKAART_PDF = process.env.AFVALKAART_PDF
-  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/afvalkaart.pdf';
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/10/afvalkaart.pdf';
 
 const AFZENDER     = 'Michel Kreder Coaching <rapport@michelkredercoaching.nl>';
 const REPLY_TO     = 'info@michelkredercoaching.nl';
