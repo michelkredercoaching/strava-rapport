@@ -2755,6 +2755,15 @@ window.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
+  // ===== DIRECT NAAR KOPPELEN: ?stap=koppel =====
+  // De knop op /bedankt-strava-analyse/ stuurt webshop-kopers hierheen. Die
+  // hebben al betaald en hoeven de verkoop-landing niet meer te zien, dus
+  // meteen het Strava-scherm. Alleen bij een verse landing, niet bij een
+  // terugkeer uit Strava (ready) of Mollie (betaald).
+  if (params.get('stap') === 'koppel' && !ready && !betaald) {
+    gaNaar('s2');
+  }
+
   // ===== NA BETALING: rapport ophalen via de server-gate =====
   if(betaald === 'true') {
     let blob = '', pid = '';
