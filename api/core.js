@@ -18,8 +18,9 @@
 //   POST ?actie=doorgaan   interesse in een vervolg na week 12 (meten, nog niets verkopen)
 //   POST ?actie=vraag      vraag -> direct antwoord van de AI-assistent (medisch: vast veilig antwoord)
 //   POST ?actie=groenlicht deelnemer met rode vlag bevestigt groen licht van huisarts/fysio
+//   POST ?actie=frequentie 2, 3 of 4 sessies per week wijzigen (geldt meteen)
 //   GET  ?actie=manifest   persoonlijk app-manifest: het beginscherm-icoon opent de eigen pagina
-//   GET  ?actie=agenda     .ics met de 36 sessies op vaste dagen, met de link erin
+//   GET  ?actie=agenda     .ics met de sessies (2, 3 of 4 per week) op vaste dagen, met de link erin
 //   GET  ?actie=rij        intern: deelnemers voor het coachscherm (beveiligd)
 //   POST ?actie=antwoord   intern: goedgekeurd antwoord versturen (beveiligd)
 //   POST ?actie=herinner   maandagmail, via Vercel Cron (beveiligd)
@@ -37,8 +38,8 @@
 import crypto from 'node:crypto';
 import {
   maakPlan, sessie, heeftRodeVlag, KLACHTEN, OEFENINGEN, TESTS, rompscore, balans,
-  volgendeWeek, testNodig, meterNodig, SESSIES_VOOR_WEEK, verdiendeBadges, BADGES,
-  WEEKTIPS, besteStart, doelTip, FASES, WEKEN as WEEKTABEL
+  volgendeWeek, testNodig, meterNodig, verdiendeBadges, BADGES,
+  WEEKTIPS, besteStart, FASES, WEKEN as WEEKTABEL, letters, nodigVoorWeek, frequentie, startniveau
 } from '../lib/core.js';
 
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
@@ -202,8 +203,8 @@ async function assistentAntwoord(vraag, d) {
   const context = [
     `Deelnemer: ${d.naam || 'onbekend'}`,
     `Week ${d.week} van 12 (${FASES[WEEKTABEL[d.week - 1]?.fase] || ''}), ${d.afgerond} weken afgerond.`,
-    d.intake ? `Klachten: ${(d.intake.klachten || []).join(', ') || 'geen'}. Ervaring: ${d.intake.ervaring}.` : 'Intake nog niet gedaan.',
-    s ? `Oefeningen deze week: ${['A', 'B', 'C'].map((l) => { const x = sessie(d.week, l, planIntake(d)); return 'sessie ' + ({ A: 1, B: 2, C: 3 })[l] + ': ' + x.oefeningen.map((o) => `${o.naam} (${o.cue})`).join('; '); }).join(' | ')}.` : '',
+    d.intake ? `Klachten: ${(d.intake.klachten || []).join(', ') || 'geen'}. Ervaring: ${d.intake.ervaring}. Leeftijd: ${({ onder40: 'jonger dan 40', '40-55': '40 tot 55', '55plus': '55 of ouder' })[d.intake.leeftijd] || 'onbekend'}. ${frequentie(d.intake)}x per week. Startniveau uit de starttest: ${startniveau(planIntake(d))}.` : 'Intake nog niet gedaan.',
+    s ? `Oefeningen deze week: ${letters(d.intake).map((l, i) => { const x = sessie(d.week, l, planIntake(d)); return 'sessie ' + (i + 1) + ': ' + x.oefeningen.map((o) => `${o.naam} (${o.cue})`).join('; '); }).join(' | ')}.` : '',
     s ? `Werk/rust deze week: ${s.werk}s/${s.rust}s, ${s.rondes} rondes.` : '',
     (d.reacties || []).length ? `Laatste weekreacties: ${(d.reacties || []).slice(-3).map((x) => `week ${x.week} ${x.reactie}`).join(', ')}.` : '',
     (d.berichten || []).length ? `Eerdere vragen: ${(d.berichten || []).filter((b) => b.van === 'klant').slice(-3).map((b) => b.tekst.slice(0, 120)).join(' / ')}` : '',
@@ -213,7 +214,7 @@ async function assistentAntwoord(vraag, d) {
 
   const systeem = [
     'Je bent de coach-assistent van het Core-programma van Michel Kreder, wielercoach en oud-profrenner. Je antwoord gaat direct naar de deelnemer, er kijkt niemand meer naar.',
-    'Het programma: 12 weken romp- en heupoefeningen zonder gewichten voor wielrenners, drie sessies per week, elke week zwaarder. Een week is rond bij 2 van de 3 sessies. Gaat het slechter, dan herhaalt de deelnemer de week met lichtere varianten. Romptest in week 0, 4, 8 en 12.',
+    'Het programma: 12 weken romp- en heupoefeningen zonder gewichten voor wielrenners, 2, 3 of 4 sessies per week (de deelnemer kiest en kan wisselen), elke week zwaarder. Een week is rond bij 2 van de 2, 2 van de 3 of 3 van de 4 sessies. Gaat het slechter, dan herhaalt de deelnemer de week met lichtere varianten. Romptest in week 0, 4, 8 en 12.',
     'Toon: warm, direct, korte zinnen, geen gedachtestreepjes, geen jargon. Spreek de deelnemer aan met je. Nederlands, maximaal 120 woorden, geen begroeting en geen ondertekening.',
     'Geef praktische uitleg over uitvoering, makkelijkere of zwaardere varianten, planning naast fietstraining en wat de deelnemer voelt (spierpijn, vermoeidheid). Gebruik de oefeningen uit de context.',
     'Spierpijn of vermoeidheid mag je uitleggen. Maar gaat de vraag over pijn die scherp is, erger wordt of blijft, uitstraling naar een been of arm, tintelingen, een doof gevoel, een hernia, een operatie, zwangerschap, medicijnen of iets anders medisch: geef GEEN advies en antwoord alleen met het woord [MEDISCH].',
@@ -281,7 +282,12 @@ async function metToken(req, res) {
   return { d, body };
 }
 // De intake plus de tijdelijke verlichting na een slechte week.
-function planIntake(d) { return { ...(d.intake || {}), verlicht: !!d.verlicht }; }
+// De intake plus wat het plan verder bijstuurt: lichtere week na 'slechter',
+// en de score van de starttest (bepaalt het startniveau).
+function planIntake(d) {
+  const start = (d.tests || []).find((t) => t.moment === 0);
+  return { ...(d.intake || {}), verlicht: !!d.verlicht, startScore: start ? start.score : null };
+}
 const nu = () => new Date().toISOString();
 
 function gedaanDezeWeek(d) {
@@ -294,7 +300,7 @@ function klantBeeld(d) {
   const geblokkeerd = d.status === 'wacht-op-fysio';
   const week = d.week;
   const sessies = d.intake && !geblokkeerd
-    ? ['A', 'B', 'C'].map((l) => {
+    ? letters(d.intake).map((l) => {
         const s = sessie(week, l, intake);
         return { ...s, warmingUp: s.warmingUp.map((id) => ({ id, ...OEFENINGEN[id] })),
                  coolDown: { ...s.coolDown, ...OEFENINGEN[s.coolDown.id] } };
@@ -303,10 +309,11 @@ function klantBeeld(d) {
   const gedaan = gedaanDezeWeek(d);
   const tests = (d.tests || []).map((t) => ({ moment: t.moment, score: t.score, uitslag: t.uitslag, balans: balans(t.uitslag) }));
   const vakjes = [];
-  for (let w = 1; w <= 12; w++) for (const l of ['A', 'B', 'C']) {
+  for (let w = 1; w <= 12; w++) for (const l of letters(d.intake)) {
     vakjes.push({ week: w, letter: l, gedaan: (d.sessies || []).some((s) => s.week === w && s.letter === l) });
   }
-  const doel = d.doel ? { ...d.doel, ...(besteStart(d.doel.datum) || {}), tip: doelTip(d.doel) } : null;
+  // Alleen aftellen, geen doeltip (besluit Michel).
+  const doel = d.doel ? { ...d.doel, ...(besteStart(d.doel.datum) || {}) } : null;
 
   return {
     naam: d.naam || '', status: d.status,
@@ -318,7 +325,8 @@ function klantBeeld(d) {
     intakeNodig: !d.intake, geblokkeerd,
     week, afgerond: d.afgerond, fase: WEEKTABEL[week - 1].fase, faseNaam: FASES[WEEKTABEL[week - 1].fase],
     sessies, gedaanDezeWeek: gedaan,
-    weekRond: gedaan.length >= SESSIES_VOOR_WEEK, nodigVoorWeek: SESSIES_VOOR_WEEK,
+    weekRond: gedaan.length >= nodigVoorWeek(d.intake), nodigVoorWeek: nodigVoorWeek(d.intake),
+    frequentie: frequentie(d.intake),
     herhaling: !!d.verlicht,
     klaar: d.status === 'klaar',
     testNodig: d.intake && !geblokkeerd ? testNodig(d.afgerond, (d.tests || []).map((t) => t.moment)) : null,
@@ -352,6 +360,7 @@ export default async function handler(req, res) {
       case 'doorgaan':  return await routeDoorgaan(req, res);
       case 'vraag':     return await routeVraag(req, res);
       case 'groenlicht': return await routeGroenlicht(req, res);
+      case 'frequentie': return await routeFrequentie(req, res);
       case 'manifest':  return routeManifest(req, res);
       case 'agenda':    return await routeAgenda(req, res);
       case 'rij':       return await routeRij(req, res);
@@ -430,6 +439,8 @@ async function routeIntake(req, res) {
     rugErnst: klachten.includes('onderrug') && ['lange-ritten', 'regelmatig', 'rust'].includes(body.rugErnst) ? body.rugErnst : null,
     rodeVlag: body.rodeVlag === true,
     ervaring: ['nooit', 'af en toe', 'regelmatig'].includes(body.ervaring) ? body.ervaring : 'af en toe',
+    frequentie: [2, 3, 4].includes(Number(body.frequentie)) ? Number(body.frequentie) : 3,
+    leeftijd: ['onder40', '40-55', '55plus'].includes(body.leeftijd) ? body.leeftijd : null,
     zwaarsteDag: ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'].includes(body.zwaarsteDag) ? body.zwaarsteDag : null,
     op: nu()
   };
@@ -486,7 +497,7 @@ async function routeAfvink(req, res) {
   const { d, body } = r;
   if (!d.intake || d.status === 'wacht-op-fysio') return res.status(400).json({ ok: false, fout: 'eerst de intake' });
   if (!isBetaald(d) && d.week >= 2) return res.status(403).json({ ok: false, fout: 'je proefweek zit erop', opSlot: true });
-  const letter = ['A', 'B', 'C'].includes(body.letter) ? body.letter : null;
+  const letter = letters(d.intake).includes(body.letter) ? body.letter : null;
   if (!letter) return res.status(400).json({ ok: false, fout: 'welke sessie?' });
   if (!gedaanDezeWeek(d).includes(letter)) {
     d.sessies.push({ week: d.week, letter, teller: d.teller, op: nu(),
@@ -501,7 +512,7 @@ async function routeWeekklaar(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const r = await metToken(req, res); if (!r) return;
   const { d, body } = r;
-  if (gedaanDezeWeek(d).length < SESSIES_VOOR_WEEK) return res.status(400).json({ ok: false, fout: `rond eerst ${SESSIES_VOOR_WEEK} sessies af` });
+  if (gedaanDezeWeek(d).length < nodigVoorWeek(d.intake)) return res.status(400).json({ ok: false, fout: `rond eerst ${nodigVoorWeek(d.intake)} sessies af` });
   if (!isBetaald(d) && d.week >= 2) return res.status(403).json({ ok: false, fout: 'je proefweek zit erop', opSlot: true });
   const reactie = ['beter', 'gelijk', 'slechter'].includes(body.reactie) ? body.reactie : null;
   if (!reactie) return res.status(400).json({ ok: false, fout: 'hoe reageerde je lichaam?' });
@@ -527,6 +538,11 @@ async function routeWeekklaar(req, res) {
     d.verlicht = false;
     d.afgerond = Math.max(d.afgerond, oudeWeek);
     if (oudeWeek >= 12) { d.status = 'klaar'; melding = 'Alle 12 weken rond. Doe nu je eindtest en kijk wat het je heeft opgeleverd.'; }
+    else if (d.vasthouden) {
+      // Eén week vasthouden na een hertest met weinig vooruitgang.
+      d.vasthouden = false;
+      melding = `Je Rompscore steeg de laatste weken nog weinig. Je doet week ${d.week} daarom nog één keer, op hetzelfde niveau, en daarna bouwen we verder.`;
+    }
     else {
       d.week = stap.week;
       melding = isBetaald(d) ? `Week ${d.week} staat klaar.` : 'Je proefweek zit erop. Week 2 staat voor je klaar.';
@@ -551,7 +567,13 @@ async function routeTest(req, res) {
     if (!(s >= 0 && s <= 900)) return res.status(400).json({ ok: false, fout: `vul ${t.naam.toLowerCase()} in` });
     uitslag[t.id] = s;
   }
-  d.tests.push({ moment, uitslag, score: rompscore(uitslag), op: nu() });
+  const score = rompscore(uitslag);
+  // Hertest in week 4 of 8 en de Rompscore steeg minder dan 5 punten sinds de
+  // vorige test? Dan houden we de volgende week één keer vast in plaats van
+  // weer zwaarder te gaan, zodat de basis eerst steviger wordt.
+  const vorige = (d.tests || []).filter((t) => t.moment < moment).pop();
+  if (vorige && [4, 8].includes(moment) && score - vorige.score < 5) d.vasthouden = true;
+  d.tests.push({ moment, uitslag, score, op: nu() });
   await bewaarDossier(d);
   return res.status(200).json({ ok: true, ...klantBeeld(d) });
 }
@@ -607,6 +629,19 @@ async function routeVraag(req, res) {
   return res.status(200).json({ ok: true, ...klantBeeld(d) });
 }
 
+// --- Aantal sessies per week wijzigen -------------------------------------------
+// Geldt meteen. Wat deze week al is afgevinkt telt gewoon mee.
+async function routeFrequentie(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const r = await metToken(req, res); if (!r) return;
+  const { d, body } = r;
+  const f = Number(body.frequentie);
+  if (![2, 3, 4].includes(f) || !d.intake) return res.status(400).json({ ok: false, fout: 'kies 2, 3 of 4' });
+  d.intake.frequentie = f;
+  await bewaarDossier(d);
+  return res.status(200).json({ ok: true, ...klantBeeld(d) });
+}
+
 // --- App op het beginscherm ---------------------------------------------------
 // Per deelnemer een eigen manifest, zodat het icoon direct zijn eigen pagina
 // opent (de token zit in start_url). iOS en Android lezen dit bij "Zet op
@@ -641,8 +676,10 @@ async function routeAgenda(req, res) {
   const t = (req.query?.t || '').toString();
   const id = leesCoreToken(t);
   if (!id) return res.status(403).send('link ongeldig');
-  const dagen = String(req.query?.dagen || 'di,do,za').split(',').filter((x) => DAGCODE[x]).slice(0, 3);
-  if (dagen.length !== 3) return res.status(400).send('kies drie dagen');
+  const d = await haalDossier(id);
+  const lt = letters(d?.intake);
+  const dagen = String(req.query?.dagen || '').split(',').filter((x) => DAGCODE[x]).slice(0, lt.length);
+  if (dagen.length !== lt.length) return res.status(400).send(`kies ${lt.length} dagen`);
   const m = String(req.query?.tijd || '19:00').match(/^(\d{1,2}):(\d{2})$/);
   const uur = m ? Math.min(23, Number(m[1])) : 19, min = m ? Math.min(59, Number(m[2])) : 0;
   const link = linkVoor(id);
@@ -650,7 +687,7 @@ async function routeAgenda(req, res) {
   const stempel = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
   // Eerstvolgende datum (vanaf morgen) voor elke gekozen dag; zwevende lokale tijd.
   const regels = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Michel Kreder Coaching//Core//NL', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Core-programma'];
-  ['A', 'B', 'C'].forEach((letter, i) => {
+  lt.forEach((letter, i) => {
     const d = new Date(); d.setDate(d.getDate() + 1);
     while (d.getDay() !== DAGNR[dagen[i]]) d.setDate(d.getDate() + 1);
     const start = `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}T${p2(uur)}${p2(min)}00`;
@@ -775,8 +812,8 @@ function welkomHtml(d, link, begeleiding) {
   return `<div style="${STIJL}">
     <p>${hoi(d)}</p>
     ${begeleiding
-      ? '<p>Vanaf nu hoort het Core-programma bij je begeleiding, zonder extra kosten. Twaalf weken, drie korte sessies per week, en elke week net iets zwaarder. Plan de sessies op je rustige dagen, dan stem ik je fietstrainingen erop af.</p>'
-      : '<p>Welkom bij het Core-programma. Twaalf weken, drie korte sessies per week, en elke week net iets zwaarder.</p>'}
+      ? '<p>Vanaf nu hoort het Core-programma bij je begeleiding, zonder extra kosten. Twaalf weken, 2, 3 of 4 korte sessies per week, en elke week net iets zwaarder. Plan de sessies op je rustige dagen, dan stem ik je fietstrainingen erop af.</p>'
+      : '<p>Welkom bij het Core-programma. Twaalf weken, 2, 3 of 4 korte sessies per week (jij kiest), en elke week net iets zwaarder.</p>'}
     <p>Dit is je eigen pagina. Bewaar deze mail, want de link is persoonlijk:</p>
     <p><a href="${link}" style="${KNOP}">Naar mijn Core-programma</a></p>
     <p><b>Eerst doe je de intake.</b> Een paar korte vragen, onder andere of je last hebt van je onderrug, nek of knie. Daarop stem ik je oefeningen af.</p>
@@ -800,7 +837,7 @@ function herinneringHtml(d) {
   const doel = d.doel ? besteStart(d.doel.datum) : null;
   return `<div style="${STIJL}">
     <p>${hoi(d)}</p>
-    <p>Week ${d.week} van 12. Je drie sessies staan klaar op je pagina.</p>
+    <p>Week ${d.week} van 12. Je sessies staan klaar op je pagina.</p>
     ${doel && doel.dagenTotDoel > 0 ? `<p>Nog <b>${doel.wekenTotDoel} weken</b> tot ${esc(d.doel.naam)}.</p>` : ''}
     ${tip ? `<p style="border-left:3px solid #FF6B1A;padding-left:14px;color:#333"><b>Tip van de week:</b> ${esc(tip)}</p>` : ''}
     <p><a href="${linkVoor(d.id)}" style="${KNOP}">Start je sessie</a></p>
