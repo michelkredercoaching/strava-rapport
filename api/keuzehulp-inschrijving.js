@@ -55,6 +55,9 @@ const TAG_GRATIS      = 'gratis-training';
 const TAG_BEGELEIDING = 'begeleiding-aanvraag';
 const TAG_ZESUUR      = 'zesuur-pdf';
 const TAG_BANDEN      = 'bandenspanning-pdf';
+const TAG_CORE_GRATIS = 'core-gratis';
+// De gratis mini-sessie van 3 core-oefeningen (leadmagnet Core-programma).
+const CORE_PROEF_URL  = 'https://rapport.michelkredercoaching.nl/core-proef';
 const TAG_AFVALKAART  = 'afvalkaart-pdf';
 // Binaire keuzehulp-uitkomst (11-09-2026): schema is geen directe uitkomst
 // meer, zie [[het-startpakket]] in memory. Eigen tags zodat Michel de twee
@@ -597,7 +600,7 @@ function bandenAdviesHtml(veiligeNaam, pdfUrl, adv) {
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
     <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
-    <p style="font-size:15px;margin:0 0 18px;">Hier is je bandenspanning, uitgerekend voor jouw ${fiets}: ${adv.gewicht} kg op ${adv.breedte} mm, ${adv.tubeless ? 'tubeless' : 'met binnenband'}.</p>
+    <p style="font-size:15px;margin:0 0 18px;">Hier is je bandenspanning, uitgerekend voor jouw ${fiets}: ${adv.gewicht} kg op ${adv.breedte} mm, ${adv.tubeless ? 'tubeless' : 'met binnenband'}. Je fiets, kleding, helm en bidons zitten er al in, samen zo'n 10,5 kg.</p>
     <div style="border:1px solid #e3ded6;border-left:4px solid #ff6b1a;padding:16px 20px;margin:0 0 20px;">
       <p style="margin:0 0 12px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#ff6b1a;font-weight:700;">Jouw startdruk</p>
       <p style="margin:0 0 6px;font-size:16px;">Voorband: <b>${nl1(adv.voor)} bar</b> <span style="color:#6d6862;">(${adv.voorPsi} psi)</span></p>
@@ -610,6 +613,25 @@ function bandenAdviesHtml(veiligeNaam, pdfUrl, adv) {
     <p style="margin:4px 0 18px;">
       <a href="${escHtml(pdfUrl)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Download de kaart</a>
     </p>
+    <p style="font-size:14px;margin:0 0 4px;">Vragen? Reageer gewoon op deze mail, ik lees alles zelf.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
+// Afleveringsmail van de Core-leadmagnet. Kort: de mini-sessie doet het werk,
+// het aanbod zit in de Mailchimp-journey op de tag 'core-gratis'.
+function coreGratisHtml(naam, url) {
+  const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 14px;">Hier zijn je 3 core-oefeningen. Dezelfde drie die ik elke renner als eerste geef: de dead bug, de zijplank op je knieën en de bird dog.</p>
+    <p style="font-size:15px;margin:0 0 18px;">Je doet ze als mini-sessie van zes minuten. Leg je telefoon op de grond en druk op start: je ziet elke oefening bewegen, de klok telt af en een piepje zegt wanneer je wisselt.</p>
+    <p style="margin:4px 0 18px;">
+      <a href="${escHtml(url)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Start je mini-sessie</a>
+    </p>
+    <p style="font-size:15px;margin:0 0 14px;">Let bij de zijplank op het verschil tussen links en rechts. Is de ene kant duidelijk zwaarder? Dat zie je vaak terug in een scheve zit op de fiets. Daar kom ik deze week op terug.</p>
     <p style="font-size:14px;margin:0 0 4px;">Vragen? Reageer gewoon op deze mail, ik lees alles zelf.</p>
     <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
   </div>`;
@@ -754,6 +776,7 @@ export default async function handler(req, res) {
               : b.route === 'gratis-training'     ? 'gratis-training'
               : b.route === 'zesuur'              ? 'zesuur'
               : b.route === 'bandenspanning'     ? 'bandenspanning'
+              : b.route === 'core-gratis'         ? 'core-gratis'
               : b.route === 'afvalkaart'          ? 'afvalkaart'
               : b.route === 'analyse-advies'      ? 'analyse-advies'
               : b.route === 'startpakket-advies'  ? 'startpakket-advies'
@@ -923,6 +946,7 @@ export default async function handler(req, res) {
               : route === 'gratis-training'    ? TAG_GRATIS
               : route === 'zesuur'             ? TAG_ZESUUR
               : route === 'bandenspanning'    ? TAG_BANDEN
+              : route === 'core-gratis'        ? TAG_CORE_GRATIS
               : route === 'afvalkaart'         ? TAG_AFVALKAART
               : route === 'analyse-advies'     ? TAG_KEUZEHULP_ANALYSE
               : route === 'startpakket-advies' ? TAG_KEUZEHULP_STARTPAKKET
@@ -999,6 +1023,18 @@ export default async function handler(req, res) {
         ? `| ${bandenAdv.type} ${bandenAdv.gewicht}kg ${bandenAdv.breedte}mm ${bandenAdv.tubeless ? 'tubeless' : 'binnenband'} | ${bandenAdv.status}`
         : '| zonder calculator');
       return res.status(200).json({ ok: true, downloadUrl: BANDEN_PDF, advies: bandenAdv });
+    }
+
+    // 2c-2b) Core-leadmagnet: de link naar de gratis mini-sessie mailen en
+    //     teruggeven, zodat de pagina meteen kan doorlinken.
+    if (route === 'core-gratis') {
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: 'Je 3 core-oefeningen staan klaar',
+        html: coreGratisHtml(b.naam, CORE_PROEF_URL),
+      });
+      console.log('Core-gratis OK:', email);
+      return res.status(200).json({ ok: true, downloadUrl: CORE_PROEF_URL });
     }
 
     // 2c-3) Afvalkaart: kaart mailen en de downloadUrl teruggeven, zelfde
