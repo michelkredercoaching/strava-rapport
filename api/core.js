@@ -18,6 +18,8 @@
 //   POST ?actie=doorgaan   interesse in een vervolg na week 12 (meten, nog niets verkopen)
 //   POST ?actie=vraag      vraag -> direct antwoord van de AI-assistent (medisch: vast veilig antwoord)
 //   POST ?actie=groenlicht deelnemer met rode vlag bevestigt groen licht van huisarts/fysio
+//   GET  ?actie=manifest   persoonlijk app-manifest: het beginscherm-icoon opent de eigen pagina
+//   GET  ?actie=agenda     .ics met de 36 sessies op vaste dagen, met de link erin
 //   GET  ?actie=rij        intern: deelnemers voor het coachscherm (beveiligd)
 //   POST ?actie=antwoord   intern: goedgekeurd antwoord versturen (beveiligd)
 //   POST ?actie=herinner   maandagmail, via Vercel Cron (beveiligd)
@@ -312,6 +314,7 @@ function klantBeeld(d) {
     // Proefweek: week 1 mag, vanaf week 2 op slot tot er betaald is.
     opSlot: !isBetaald(d) && d.week >= 2,
     koopUrl: KOOP_URL,
+    zwaarsteDag: d.intake?.zwaarsteDag || null,
     intakeNodig: !d.intake, geblokkeerd,
     week, afgerond: d.afgerond, fase: WEEKTABEL[week - 1].fase, faseNaam: FASES[WEEKTABEL[week - 1].fase],
     sessies, gedaanDezeWeek: gedaan,
@@ -349,6 +352,8 @@ export default async function handler(req, res) {
       case 'doorgaan':  return await routeDoorgaan(req, res);
       case 'vraag':     return await routeVraag(req, res);
       case 'groenlicht': return await routeGroenlicht(req, res);
+      case 'manifest':  return routeManifest(req, res);
+      case 'agenda':    return await routeAgenda(req, res);
       case 'rij':       return await routeRij(req, res);
       case 'antwoord':  return await routeAntwoord(req, res);
       case 'herinner':  return await routeHerinner(req, res);
@@ -600,6 +605,71 @@ async function routeVraag(req, res) {
   d.berichten = berichten.concat(bericht, antwoord);
   await bewaarDossier(d);
   return res.status(200).json({ ok: true, ...klantBeeld(d) });
+}
+
+// --- App op het beginscherm ---------------------------------------------------
+// Per deelnemer een eigen manifest, zodat het icoon direct zijn eigen pagina
+// opent (de token zit in start_url). iOS en Android lezen dit bij "Zet op
+// beginscherm".
+function routeManifest(req, res) {
+  const t = (req.query?.t || '').toString();
+  if (!leesCoreToken(t)) return res.status(403).json({ ok: false });
+  const basis = new URL(PAGINA_URL);
+  res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+  res.setHeader('Cache-Control', 'private, max-age=86400');
+  return res.status(200).send(JSON.stringify({
+    name: 'Mijn Core', short_name: 'Core', lang: 'nl',
+    description: 'Je Core-programma voor wielrenners',
+    start_url: `${basis.pathname}?t=${encodeURIComponent(t)}`,
+    scope: basis.pathname, id: basis.pathname,
+    display: 'standalone', orientation: 'portrait',
+    background_color: '#0A0A0A', theme_color: '#0A0A0A',
+    icons: [
+      { src: '/core-programma/icoon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: '/core-programma/icoon-512.png', sizes: '512x512', type: 'image/png' },
+      { src: '/core-programma/icoon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+    ]
+  }));
+}
+
+// --- Sessies in je agenda -------------------------------------------------------
+// Drie vaste dagen, één tijd, 12 weken. Elke afspraak heeft de link naar de
+// eigen pagina, zodat tikken in de agenda meteen de sessie opent.
+const DAGCODE = { ma: 'MO', di: 'TU', wo: 'WE', do: 'TH', vr: 'FR', za: 'SA', zo: 'SU' };
+const DAGNR = { zo: 0, ma: 1, di: 2, wo: 3, do: 4, vr: 5, za: 6 };
+async function routeAgenda(req, res) {
+  const t = (req.query?.t || '').toString();
+  const id = leesCoreToken(t);
+  if (!id) return res.status(403).send('link ongeldig');
+  const dagen = String(req.query?.dagen || 'di,do,za').split(',').filter((x) => DAGCODE[x]).slice(0, 3);
+  if (dagen.length !== 3) return res.status(400).send('kies drie dagen');
+  const m = String(req.query?.tijd || '19:00').match(/^(\d{1,2}):(\d{2})$/);
+  const uur = m ? Math.min(23, Number(m[1])) : 19, min = m ? Math.min(59, Number(m[2])) : 0;
+  const link = linkVoor(id);
+  const p2 = (n) => String(n).padStart(2, '0');
+  const stempel = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+  // Eerstvolgende datum (vanaf morgen) voor elke gekozen dag; zwevende lokale tijd.
+  const regels = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Michel Kreder Coaching//Core//NL', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Core-programma'];
+  ['A', 'B', 'C'].forEach((letter, i) => {
+    const d = new Date(); d.setDate(d.getDate() + 1);
+    while (d.getDay() !== DAGNR[dagen[i]]) d.setDate(d.getDate() + 1);
+    const start = `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}T${p2(uur)}${p2(min)}00`;
+    const eindMin = uur * 60 + min + 20;
+    const eind = `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}T${p2(Math.floor(eindMin / 60) % 24)}${p2(eindMin % 60)}00`;
+    regels.push('BEGIN:VEVENT', `UID:core-${id}-${letter}@michelkredercoaching.nl`, `DTSTAMP:${stempel}`,
+      `DTSTART:${start}`, `DTEND:${eind}`, `RRULE:FREQ=WEEKLY;BYDAY=${DAGCODE[dagen[i]]};COUNT=12`,
+      `SUMMARY:Core-sessie ${letter}`,
+      `DESCRIPTION:Tijd voor je core-sessie. Telefoon op de grond en op start drukken.\\n\\n${link}`,
+      `URL:${link}`,
+      'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Core-sessie', 'TRIGGER:-PT10M', 'END:VALARM',
+      'END:VEVENT');
+  });
+  regels.push('END:VCALENDAR');
+  // ICS-regels mogen max 75 tekens zijn: vouwen met een spatie op de volgende regel.
+  const gevouwen = regels.map((r) => { let uit = '', rest = r; while (rest.length > 74) { uit += rest.slice(0, 74) + '\r\n '; rest = rest.slice(74); } return uit + rest; }).join('\r\n') + '\r\n';
+  res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="core-programma.ics"');
+  return res.status(200).send(gevouwen);
 }
 
 // --- Intern: coachscherm ----------------------------------------------------------
