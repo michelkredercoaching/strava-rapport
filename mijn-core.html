@@ -5,6 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <meta name="theme-color" content="#0A0A0A">
+<!-- Als app op het beginscherm: eigen icoon, schermvullend, opent direct de eigen pagina. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Core">
+<link rel="apple-touch-icon" href="/core-programma/icoon-180.png">
+<link rel="icon" type="image/png" href="/core-programma/icoon-192.png">
+<script>
+  // Token onthouden: opent iemand /mijn-core zonder link, dan pakken we de
+  // laatst gebruikte. En een persoonlijk manifest, zodat "Zet op beginscherm"
+  // een icoon geeft dat meteen de eigen pagina opent.
+  (function () {
+    var t = new URLSearchParams(location.search).get('t');
+    try {
+      if (t) localStorage.setItem('coreToken', t);
+      else { var o = localStorage.getItem('coreToken'); if (o) { history.replaceState(null, '', location.pathname + '?t=' + encodeURIComponent(o)); t = o; } }
+    } catch (e) {}
+    if (t) { var l = document.createElement('link'); l.rel = 'manifest'; l.href = '/api/core?actie=manifest&t=' + encodeURIComponent(t); document.head.appendChild(l); }
+  })();
+</script>
 <title>Mijn Core | Michel Kreder Coaching</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
@@ -16,7 +36,16 @@
   html, body { background:var(--black); }
   body { font-family:'DM Sans',sans-serif; color:var(--white); -webkit-font-smoothing:antialiased; font-size:15px; line-height:1.6; }
   button, input, select, textarea { font-family:inherit; font-size:inherit; color:inherit; }
-  .wrap { max-width:760px; margin:0 auto; padding:26px 16px 80px; }
+  .wrap { max-width:760px; margin:0 auto; padding:calc(26px + env(safe-area-inset-top)) 16px 90px; }
+  .appkaart { display:flex; gap:12px; align-items:flex-start; background:var(--surface); border:1px solid rgba(255,107,26,.35); border-radius:8px; padding:14px; margin-bottom:24px; }
+  .appkaart img { width:46px; height:46px; border-radius:11px; flex-shrink:0; }
+  .appkaart .x { margin-left:auto; background:none; border:none; color:var(--muted); font-size:22px; line-height:1; cursor:pointer; padding:0 2px; }
+  .appkaart .stap { font-size:13px; color:var(--muted); margin-top:4px; }
+  .deelicoon { display:inline-block; vertical-align:-3px; width:15px; height:17px; }
+  .dagen { display:flex; gap:5px; flex-wrap:wrap; margin:10px 0; }
+  .dagen button { width:42px; height:38px; border-radius:6px; border:1px solid rgba(255,255,255,.18); background:var(--surface2); color:var(--white); cursor:pointer; font-weight:600; }
+  .dagen button.aan { background:var(--accent); color:#0A0A0A; border-color:var(--accent); }
+  .dagen button.zwaar { opacity:.45; }
   h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(34px,7vw,50px); line-height:1; letter-spacing:.01em; }
   h2 { font-family:'Bebas Neue',sans-serif; font-size:25px; letter-spacing:.02em; margin-bottom:12px; }
   .eyebrow { font-size:11px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; }
@@ -220,6 +249,7 @@ function teken() {
       <label class="optie" style="margin-top:14px"><input type="checkbox" id="groenlicht"><span>Mijn huisarts of fysiotherapeut heeft gezegd dat ik met deze oefeningen mag beginnen.</span></label>
       <button class="knop" data-actie="groenlicht" style="margin-top:6px">Open mijn programma</button><div class="fout" id="groenfout"></div></div>`;
   else {
+    h += appHtml();
     if (d.testNodig === 0) h += testHtml(d, true);
     if (d.meterNodig != null) h += meterHtml(d);
     if (d.testNodig != null && d.testNodig !== 0) h += testHtml(d, false);
@@ -232,6 +262,7 @@ function teken() {
       h += tipsHtml(d);
     }
     h += voortgangHtml(d);
+    if (!d.opSlot) h += agendaHtml(d);
     h += doelHtml(d);
     if (d.vervolgVraag) h += vervolgHtml(d);
     h += vraagHtml(d);
@@ -400,6 +431,44 @@ function voortgangHtml(d) {
   </div></div>`;
 }
 
+// ---- App op het beginscherm ----
+// Alleen op een telefoon die de pagina nog niet als app open heeft, en weg te klikken.
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; if (S) teken(); });
+function isApp() { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
+function appHtml() {
+  let weg = false; try { weg = localStorage.getItem('coreAppWeg') === '1'; } catch (e) {}
+  const telefoon = window.matchMedia('(pointer: coarse)').matches;
+  if (isApp() || weg || !telefoon) return '';
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const deel = '<svg class="deelicoon" viewBox="0 0 15 17" fill="none" stroke="#FF6B1A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 1v10M4 4.5 7.5 1 11 4.5M3 7.5H1.5v8h12v-8H12"/></svg>';
+  const uitleg = installPrompt
+    ? '<button class="knop" data-actie="installeer" style="font-size:16px;padding:8px 14px 6px;margin-top:8px">Zet op beginscherm</button>'
+    : ios ? `<div class="stap">Tik onderaan in Safari op ${deel} en kies <b style="color:var(--white)">Zet op beginscherm</b>.</div>`
+          : '<div class="stap">Open het menu van je browser (&#8942;) en kies <b style="color:var(--white)">Toevoegen aan startscherm</b>.</div>';
+  return `<div class="appkaart"><img src="/core-programma/icoon-180.png" alt="">
+    <div><b>Zet Core op je beginscherm</b><div class="stap">Dan open je je sessies met één tik, als app, zonder je mail te zoeken.</div>${uitleg}</div>
+    <button class="x" data-actie="appweg" aria-label="Sluiten">&times;</button></div>`;
+}
+
+// ---- Sessies in je agenda ----
+const DAGEN = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'];
+let agendaDagen = null, agendaTijd = '19:00';
+function agendaHtml(d) {
+  const zwaar = d.zwaarsteDag;
+  if (!agendaDagen) {
+    // Standaard drie dagen met rust ertussen, niet op de zwaarste fietsdag.
+    const opties = [['di', 'do', 'za'], ['ma', 'wo', 'vr'], ['wo', 'vr', 'zo']];
+    agendaDagen = (opties.find((o) => !o.includes(zwaar)) || opties[0]).slice();
+  }
+  return `<div class="blok"><h2>Zet je sessies in je agenda</h2><div class="kaart">
+    <p class="muted klein">Kies drie vaste dagen en een tijd. Je krijgt 12 weken lang een afspraak met een herinnering, en tikken op de afspraak opent je sessie.</p>
+    <div class="dagen">${DAGEN.map((x) => `<button data-actie="dag" data-dag="${x}" class="${agendaDagen.includes(x) ? 'aan' : ''} ${x === zwaar ? 'zwaar' : ''}" title="${x === zwaar ? 'Je zwaarste fietsdag' : ''}">${x}</button>`).join('')}</div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><input type="time" id="agendaTijd" value="${agendaTijd}" style="width:130px">
+      <button class="knop" data-actie="agenda">Zet in mijn agenda</button></div>
+    <div class="fout" id="agendafout"></div></div></div>`;
+}
+
 // ---- Doel ----
 function doelHtml(d) {
   const g = d.doel;
@@ -507,6 +576,22 @@ document.addEventListener('click', async (e) => {
   }
   if (actie === 'doorgaan') { await post('doorgaan', {}); melding('Genoteerd, dank je.'); }
   if (actie === 'coach') coachOpen(true);
+  if (actie === 'appweg') { try { localStorage.setItem('coreAppWeg', '1'); } catch (e) {} teken(); }
+  if (actie === 'installeer' && installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; teken(); }); }
+  if (actie === 'dag') {
+    const x = k.dataset.dag;
+    if (agendaDagen.includes(x)) agendaDagen = agendaDagen.filter((y) => y !== x);
+    else if (agendaDagen.length < 3) agendaDagen.push(x);
+    else { agendaDagen.shift(); agendaDagen.push(x); }
+    agendaTijd = $('#agendaTijd').value || agendaTijd;
+    teken();
+  }
+  if (actie === 'agenda') {
+    agendaTijd = $('#agendaTijd').value || '19:00';
+    if (agendaDagen.length !== 3) return ($('#agendafout').textContent = 'Kies precies drie dagen.');
+    const volgorde = DAGEN.filter((x) => agendaDagen.includes(x));
+    location.href = API + '?actie=agenda&t=' + encodeURIComponent(token) + '&dagen=' + volgorde.join(',') + '&tijd=' + encodeURIComponent(agendaTijd);
+  }
 });
 
 function toonBadge(b) {
