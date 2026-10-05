@@ -60,9 +60,12 @@
       s += lijn(schouder, r[0], kleur, 7.5) + lijn(r[0], r[1], kleur, 6) +
         '<circle cx="' + f1(r[1][0]) + '" cy="' + f1(r[1][1]) + '" r="3.6" fill="' + kleur + '"/>';
     }
+    // scheenSchaal en voetSchaal (0-1): onderbeen en voet in perspectief
+    // korter, voor een been dat van de kijker af wijst (zijplank op de knieën).
     function been(b, kleur) {
-      var r = ik(h.heup, b.naar, L.dij, L.scheen, b.buig);
-      s += lijn(h.heup, r[0], kleur, 11) + lijn(r[0], r[1], kleur, 8) + lijn(r[1], punt(r[1], b.voet, L.voet), kleur, 5.5);
+      var sl = L.scheen * (b.scheenSchaal || 1), vl = L.voet * (b.voetSchaal || 1);
+      var r = ik(h.heup, b.naar, L.dij, sl, b.buig);
+      s += lijn(h.heup, r[0], kleur, 11) + lijn(r[0], r[1], kleur, 8) + lijn(r[1], punt(r[1], b.voet, vl), kleur, 5.5);
     }
     arm(h.armVer, KLEUR.ver); been(h.beenVer, KLEUR.ver);
     s += lijn(schouder, punt(schouder, h.hoofd, L.nek), KLEUR.dichtbij, 6);
