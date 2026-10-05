@@ -37,6 +37,10 @@
   body { font-family:'DM Sans',sans-serif; color:var(--white); -webkit-font-smoothing:antialiased; font-size:15px; line-height:1.6; }
   button, input, select, textarea { font-family:inherit; font-size:inherit; color:inherit; }
   .wrap { max-width:760px; margin:0 auto; padding:calc(26px + env(safe-area-inset-top)) 16px 90px; }
+  .freqkeuze { display:flex; border:1px solid rgba(255,255,255,.18); border-radius:6px; overflow:hidden; flex-shrink:0; }
+  .freqkeuze button { background:transparent; border:none; color:var(--muted); padding:7px 11px; font-weight:600; cursor:pointer; font-size:13px; }
+  .freqkeuze button.aan { background:var(--accent); color:#0A0A0A; }
+  .aftel { font-family:'Bebas Neue',sans-serif; font-size:46px; line-height:1; color:var(--accent); margin:8px 0 6px; }
   .appkaart { display:flex; gap:12px; align-items:flex-start; background:var(--surface); border:1px solid rgba(255,107,26,.35); border-radius:8px; padding:14px; margin-bottom:24px; }
   .appkaart img { width:46px; height:46px; border-radius:11px; flex-shrink:0; }
   .appkaart .x { margin-left:auto; background:none; border:none; color:var(--muted); font-size:22px; line-height:1; cursor:pointer; padding:0 2px; }
@@ -215,7 +219,7 @@
 const API = '/api/core';
 // Intern heten de sessies A, B en C (zo staat het in de opgeslagen voortgang).
 // De deelnemer ziet 1, 2 en 3.
-const NR = { A: 1, B: 2, C: 3 };
+const NR = { A: 1, B: 2, C: 3, D: 4 };
 const token = new URLSearchParams(location.search).get('t') || '';
 let S = null;                  // laatste stand van de server
 const $ = (s, r = document) => r.querySelector(s);
@@ -293,7 +297,7 @@ function kopHtml(d) {
   const doel = d.doel && d.doel.dagenTotDoel > 0
     ? `<div class="pil">${esc(d.doel.naam)} &middot; nog <b>${d.doel.wekenTotDoel >= 1 ? d.doel.wekenTotDoel + ' weken' : d.doel.dagenTotDoel + ' dagen'}</b></div>` : '';
   const sub = d.intakeNodig ? 'Eerst een paar korte vragen, dan staat je plan klaar.'
-    : d.klaar ? 'Programma afgerond.' : d.opSlot ? 'Proefweek afgerond. Week 1 zit erop.' : `Fase ${d.fase}: ${esc(d.faseNaam)} &middot; ${d.gedaanDezeWeek.length} van 3 sessies gedaan`;
+    : d.klaar ? 'Programma afgerond.' : d.opSlot ? 'Proefweek afgerond. Week 1 zit erop.' : `Fase ${d.fase}: ${esc(d.faseNaam)} &middot; ${d.gedaanDezeWeek.length} van ${d.frequentie} sessies gedaan`;
   return `<div class="kop"><div class="eyebrow">Mijn Core${d.naam ? ' &middot; ' + esc(d.naam.split(' ')[0]) : ''}</div>
     <h1>${d.intakeNodig ? 'Welkom' : d.klaar ? 'Klaar!' : 'Week ' + d.week + ' van 12'}</h1>
     <div class="sub">${sub}</div>${doel}</div>`;
@@ -324,15 +328,20 @@ function intakeHtml() {
     <div class="vraag"><div class="v">1. Waar heb je last van, op of na de fiets?</div>
       ${optie('klacht', 'onderrug', 'Onderrug', 'checkbox')}${optie('klacht', 'nek', 'Nek en schouders', 'checkbox')}
       ${optie('klacht', 'knie', 'Knie', 'checkbox')}${optie('klacht', 'heup', 'Heup', 'checkbox')}
+      ${optie('klacht', 'bekkenbodem', 'Bekkenbodem of buikspieren <span class="muted">(bijvoorbeeld na een bevalling)</span>', 'checkbox')}
       ${optie('klacht', 'geen', 'Nergens last van', 'checkbox')}</div>
     <div class="vraag" id="rugvraag" style="display:none"><div class="v">Hoe erg is je onderrug?</div>
       ${optie('rug', 'lange-ritten', 'Alleen na lange ritten')}${optie('rug', 'regelmatig', 'Regelmatig, ook bij kortere ritten')}${optie('rug', 'rust', 'Ook in rust, zonder te fietsen')}</div>
     <div class="vraag"><div class="v">2. Heb je een van deze dingen?</div>
       <p class="klein muted" style="margin-bottom:8px">Pijn die uitstraalt naar je been, tintelingen of een doof gevoel, pijn 's nachts, of een operatie of blessure in het afgelopen half jaar.</p>
       ${optie('vlag', 'nee', 'Nee')}${optie('vlag', 'ja', 'Ja')}</div>
-    <div class="vraag"><div class="v">3. Hoeveel ervaring heb je met core-training?</div>
+    <div class="vraag"><div class="v">3. Hoe oud ben je?</div>
+      ${optie('leeftijd', 'onder40', 'Jonger dan 40')}${optie('leeftijd', '40-55', '40 tot 55')}${optie('leeftijd', '55plus', '55 of ouder')}</div>
+    <div class="vraag"><div class="v">4. Hoeveel ervaring heb je met core-training?</div>
       ${optie('ervaring', 'nooit', 'Nooit of bijna nooit')}${optie('ervaring', 'af en toe', 'Af en toe')}${optie('ervaring', 'regelmatig', 'Regelmatig, wekelijks')}</div>
-    <div class="vraag"><div class="v">4. Op welke dag rijd je meestal je zwaarste training?</div>
+    <div class="vraag"><div class="v">5. Hoe vaak per week wil je trainen?</div>
+      ${optie('freq', '2', '2x per week, 20 tot 25 minuten')}${optie('freq', '3', '3x per week, 15 tot 20 minuten <span class="muted">(meest gekozen)</span>')}${optie('freq', '4', '4x per week, 10 tot 15 minuten <span class="muted">(bijvoorbeeld vlak voor je rit)</span>')}</div>
+    <div class="vraag"><div class="v">6. Op welke dag rijd je meestal je zwaarste training?</div>
       <select name="dag"><option value="">Wisselt, geen vaste dag</option><option value="ma">Maandag</option><option value="di">Dinsdag</option><option value="wo">Woensdag</option><option value="do">Donderdag</option><option value="vr">Vrijdag</option><option value="za">Zaterdag</option><option value="zo">Zondag</option></select></div>
     <div class="vraag"><div class="v">Train je naar iets toe? <span class="muted" style="font-weight:400">(mag je overslaan)</span></div>
       <div class="rij2"><input type="text" name="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60">${datumVeld('name="doelDatum"', '')}</div></div>
@@ -367,7 +376,7 @@ function meterHtml(d) {
 // ---- Week afsluiten ----
 function weekklaarHtml(d) {
   return `<div class="blok kaart accent" id="weekklaar"><h2>Week ${d.week} afsluiten</h2>
-    <p class="muted klein" style="margin-bottom:12px">${d.gedaanDezeWeek.length} van 3 sessies gedaan, genoeg om door te gaan${d.gedaanDezeWeek.length < 3 ? ' (de derde mag je nog doen)' : ''}. Hoe reageerde je lichaam op deze week?</p>
+    <p class="muted klein" style="margin-bottom:12px">${d.gedaanDezeWeek.length} van ${d.frequentie} sessies gedaan, genoeg om door te gaan${d.gedaanDezeWeek.length < d.frequentie ? ' (de laatste mag je nog doen)' : ''}. Hoe reageerde je lichaam op deze week?</p>
     <div class="keuze3"><button data-actie="reactie" data-waarde="beter">Beter</button><button data-actie="reactie" data-waarde="gelijk">Hetzelfde</button><button data-actie="reactie" data-waarde="slechter">Slechter</button></div>
     <p class="klein muted" style="margin-top:10px">Slechter betekent: meer pijn of klachten, niet gewoon spierpijn. Dan doe je de week opnieuw met lichtere varianten.</p></div>`;
 }
@@ -386,7 +395,7 @@ function muurHtml(d) {
       <div class="prijs">&euro;49</div>
       <div class="klein muted">eenmalig, voor de rest van de 12 weken</div>
       <ul>
-        <li>Nog 33 sessies, elke week net iets zwaarder</li>
+        <li>Nog ${11 * d.frequentie} sessies, elke week net iets zwaarder</li>
         <li>Je romptest in week 4, 8 en 12, met grafiek</li>
         <li>Je plan past zich aan als het ergens slechter gaat</li>
         <li>Direct antwoord op je vragen over de oefeningen</li>
@@ -401,7 +410,8 @@ function muurHtml(d) {
 // ---- Sessies ----
 function sessiesHtml(d) {
   const slot = d.testNodig === 0;
-  return `<div class="blok"><h2>Deze week${d.herhaling ? ' <span class="muted klein" style="font-family:DM Sans">(herhaling, lichtere varianten)</span>' : ''}</h2><div class="sessies">
+  return `<div class="blok"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px"><h2 style="margin:0">Deze week${d.herhaling ? ' <span class="muted klein" style="font-family:DM Sans">(herhaling, lichtere varianten)</span>' : ''}</h2>
+    <div class="freqkeuze" title="Hoe vaak per week">${[2, 3, 4].map((f) => `<button data-actie="freq" data-f="${f}" class="${d.frequentie === f ? 'aan' : ''}">${f}x</button>`).join('')}</div></div><div class="sessies">
     ${d.sessies.map((s) => {
       const klaar = d.gedaanDezeWeek.includes(s.letter);
       return `<div class="sessie ${klaar ? 'gedaan' : ''}">
@@ -416,7 +426,6 @@ function sessiesHtml(d) {
 
 function tipsHtml(d) {
   const tips = [];
-  if (d.doel && d.doel.tip) tips.push(d.doel.tip);
   if (d.weektip) tips.push(d.weektip);
   if (d.week === 1) tips.push(...d.intakeTips);
   if (!tips.length) return '';
@@ -439,7 +448,7 @@ function lijnGrafiek(series, opts) {
   return s + '</svg>';
 }
 function voortgangHtml(d) {
-  const vak = d.vakjes, rijen = ['A', 'B', 'C'].map((l) => vak.filter((v) => v.letter === l).map((v) =>
+  const vak = d.vakjes, rijen = [...new Set(vak.map((v) => v.letter))].map((l) => vak.filter((v) => v.letter === l).map((v) =>
     `<div class="vakje ${v.gedaan ? 'aan' : ''} ${v.week === d.week && !d.klaar ? 'nu' : ''}" title="Week ${v.week} sessie ${NR[l]}"></div>`).join('')).join('');
   const eerste = d.tests[0], laatste = d.tests[d.tests.length - 1];
   const verschil = eerste && laatste && laatste !== eerste ? laatste.score - eerste.score : null;
@@ -447,7 +456,7 @@ function voortgangHtml(d) {
   const totaal = vak.filter((v) => v.gedaan).length;
   return `<div class="blok"><h2>Je voortgang</h2><div class="kaart">
     <div class="cijfers">
-      <div class="cijfer"><span>Sessies</span><b>${totaal}<span style="font-size:15px;color:var(--muted)"> / 36</span></b></div>
+      <div class="cijfer"><span>Sessies</span><b>${totaal}<span style="font-size:15px;color:var(--muted)"> / ${vak.length}</span></b></div>
       <div class="cijfer"><span>Rompscore</span><b>${laatste ? laatste.score : '–'}</b></div>
       <div class="cijfer"><span>Sinds start</span><b class="${verschil > 0 ? 'op' : ''}">${verschil != null ? (verschil > 0 ? '+' : '') + verschil : '–'}</b></div>
     </div>
@@ -485,16 +494,19 @@ function appHtml() {
 
 // ---- Sessies in je agenda ----
 const DAGEN = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'];
-let agendaDagen = null, agendaTijd = '19:00';
+let agendaDagen = null, agendaTijd = '19:00', agendaAantal = 3;
+const TELWOORD = { 2: 'twee', 3: 'drie', 4: 'vier' };
 function agendaHtml(d) {
   const zwaar = d.zwaarsteDag;
-  if (!agendaDagen) {
-    // Standaard drie dagen met rust ertussen, niet op de zwaarste fietsdag.
-    const opties = [['di', 'do', 'za'], ['ma', 'wo', 'vr'], ['wo', 'vr', 'zo']];
+  const n = d.frequentie;
+  if (!agendaDagen || agendaDagen.length !== n) {
+    // Standaarddagen met rust ertussen, niet op de zwaarste fietsdag.
+    const opties = { 2: [['di', 'za'], ['ma', 'do'], ['wo', 'zo']], 3: [['di', 'do', 'za'], ['ma', 'wo', 'vr'], ['wo', 'vr', 'zo']], 4: [['ma', 'di', 'do', 'za'], ['ma', 'wo', 'vr', 'zo'], ['di', 'wo', 'vr', 'zo']] }[n];
     agendaDagen = (opties.find((o) => !o.includes(zwaar)) || opties[0]).slice();
   }
+  agendaAantal = n;
   return `<div class="blok"><h2>Zet je sessies in je agenda</h2><div class="kaart">
-    <p class="muted klein">Kies drie vaste dagen en een tijd. Je krijgt 12 weken lang een afspraak met een herinnering, en tikken op de afspraak opent je sessie.</p>
+    <p class="muted klein">Kies ${TELWOORD[n]} vaste dagen en een tijd. Je krijgt 12 weken lang een afspraak met een herinnering, en tikken op de afspraak opent je sessie.</p>
     <div class="dagen">${DAGEN.map((x) => `<button data-actie="dag" data-dag="${x}" class="${agendaDagen.includes(x) ? 'aan' : ''} ${x === zwaar ? 'zwaar' : ''}" title="${x === zwaar ? 'Je zwaarste fietsdag' : ''}">${x}</button>`).join('')}</div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><input type="time" id="agendaTijd" value="${agendaTijd}" style="width:130px">
       <button class="knop" data-actie="agenda">Zet in mijn agenda</button></div>
@@ -504,16 +516,17 @@ function agendaHtml(d) {
 // ---- Doel ----
 function doelHtml(d) {
   const g = d.doel;
-  let uitleg = '';
+  // Alleen aftellen, geen advies over wanneer je moet beginnen.
+  let aftel = '';
   if (g) {
-    const datum = new Date(g.startDatum).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
-    if (g.dagenTotDoel < 0) uitleg = 'Dit doel ligt achter je. Zet een nieuw doel om weer af te tellen.';
-    else if (!g.nuBeginnen) uitleg = `Ideale start: ${datum}. Dan valt week 12 precies vlak voor je doel. Begin je eerder? Ook goed, dan ben je juist eerder sterk. Herhaal na week 12 de laatste fase tot je doel.`;
-    else if (g.haalbareWeken < 12) uitleg = `Je haalt ${g.haalbareWeken} van de 12 weken voor je doel. Geen probleem: elke week maakt je stabieler. In de week voor je doel wordt je programma vanzelf lichter.`;
-    else uitleg = 'Je zit precies goed: week 12 valt vlak voor je doel.';
+    const dagen = g.dagenTotDoel;
+    aftel = dagen < 0 ? '<p class="muted klein" style="margin:6px 0 14px">Dit doel ligt achter je. Zet een nieuw doel om weer af te tellen.</p>'
+      : dagen === 0 ? '<div class="aftel">Vandaag!</div>'
+      : `<div class="aftel">nog ${dagen} ${dagen === 1 ? 'dag' : 'dagen'}</div>`
+        + (dagen >= 14 ? `<div class="muted klein" style="margin:-2px 0 14px">${Math.floor(dagen / 7)} weken en ${dagen % 7} ${dagen % 7 === 1 ? 'dag' : 'dagen'}</div>` : '<div style="height:10px"></div>');
   }
   return `<div class="blok"><h2>Je doel</h2><div class="kaart" id="doel">
-    ${g ? `<p><b>${esc(g.naam)}</b> &middot; ${new Date(g.datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}${g.dagenTotDoel >= 0 ? ` &middot; nog ${g.dagenTotDoel} dagen` : ''}</p><p class="muted klein" style="margin:6px 0 14px">${uitleg}</p>` : '<p class="muted klein" style="margin-bottom:12px">Train je naar een rit of wedstrijd toe? Dan tel ik af en past je programma zich aan in de laatste week ervoor.</p>'}
+    ${g ? `<p><b>${esc(g.naam)}</b> &middot; ${new Date(g.datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}</p>${aftel}` : '<p class="muted klein" style="margin-bottom:12px">Train je naar een rit of wedstrijd toe? Dan tel ik voor je af.</p>'}
     <div class="rij2"><input type="text" id="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60" value="${g ? esc(g.naam) : ''}">${datumVeld('id="doelDatum"', g ? g.datum : '')}</div>
     <div style="display:flex;gap:8px;margin-top:10px"><button class="knop" data-actie="doel">${g ? 'Wijzig doel' : 'Zet doel'}</button>${g ? '<button class="knop leeg" data-actie="doelwis">Wis</button>' : ''}</div>
     <div class="fout" id="doelfout"></div></div></div>`;
@@ -558,9 +571,13 @@ document.addEventListener('click', async (e) => {
     if (!klachten.length && !geen) return (fout.textContent = 'Vink bij vraag 1 iets aan, of kies "nergens last van".');
     if (klachten.includes('onderrug') && !rug) return (fout.textContent = 'Geef aan hoe erg je onderrug is.');
     if (!vlag) return (fout.textContent = 'Beantwoord vraag 2 even.');
-    if (!erv) return (fout.textContent = 'Kies bij vraag 3 je ervaring.');
+    const leeftijd = $('input[name=leeftijd]:checked')?.value;
+    if (!leeftijd) return (fout.textContent = 'Kies bij vraag 3 je leeftijd.');
+    if (!erv) return (fout.textContent = 'Kies bij vraag 4 je ervaring.');
     k.disabled = true; k.textContent = 'Plan maken...';
-    const j = await post('intake', { klachten, rugErnst: rug, rodeVlag: vlag === 'ja', ervaring: erv, zwaarsteDag: $('select[name=dag]').value,
+    const freq = $('input[name=freq]:checked')?.value;
+    if (!freq) { k.disabled = false; k.textContent = 'Maak mijn plan'; return (fout.textContent = 'Kies bij vraag 5 hoe vaak per week.'); }
+    const j = await post('intake', { klachten, rugErnst: rug, rodeVlag: vlag === 'ja', ervaring: erv, leeftijd, frequentie: Number(freq), zwaarsteDag: $('select[name=dag]').value,
       doelNaam: $('input[name=doelNaam]').value.trim(), doelDatum: $('input[name=doelDatum]').value });
     if (!j.ok) { k.disabled = false; k.textContent = 'Maak mijn plan'; fout.textContent = j.fout || 'Mislukt.'; }
     else window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -608,19 +625,20 @@ document.addEventListener('click', async (e) => {
   }
   if (actie === 'doorgaan') { await post('doorgaan', {}); melding('Genoteerd, dank je.'); }
   if (actie === 'coach') coachOpen(true);
+  if (actie === 'freq') { const j = await post('frequentie', { frequentie: Number(k.dataset.f) }); if (j.ok) melding(`Vanaf nu ${k.dataset.f}x per week. Je sessies zijn aangepast.`); }
   if (actie === 'appweg') { try { localStorage.setItem('coreAppWeg', '1'); } catch (e) {} teken(); }
   if (actie === 'installeer' && installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; teken(); }); }
   if (actie === 'dag') {
     const x = k.dataset.dag;
     if (agendaDagen.includes(x)) agendaDagen = agendaDagen.filter((y) => y !== x);
-    else if (agendaDagen.length < 3) agendaDagen.push(x);
+    else if (agendaDagen.length < agendaAantal) agendaDagen.push(x);
     else { agendaDagen.shift(); agendaDagen.push(x); }
     agendaTijd = $('#agendaTijd').value || agendaTijd;
     teken();
   }
   if (actie === 'agenda') {
     agendaTijd = $('#agendaTijd').value || '19:00';
-    if (agendaDagen.length !== 3) return ($('#agendafout').textContent = 'Kies precies drie dagen.');
+    if (agendaDagen.length !== agendaAantal) return ($('#agendafout').textContent = 'Kies precies ' + TELWOORD[agendaAantal] + ' dagen.');
     const volgorde = DAGEN.filter((x) => agendaDagen.includes(x));
     location.href = API + '?actie=agenda&t=' + encodeURIComponent(token) + '&dagen=' + volgorde.join(',') + '&tijd=' + encodeURIComponent(agendaTijd);
   }
