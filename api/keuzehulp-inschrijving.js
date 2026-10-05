@@ -24,6 +24,10 @@
 //     zones + duw naar de Strava-analyse) en geeft de downloadUrl terug zodat
 //     de pagina 'm ook meteen kan tonen. Geen aparte meetmethode-variant nodig
 //     (het schema zelf is generiek, alleen het invulblad heeft twee kolommen).
+//   - 'core-gratis': de leadmagnet op /core-gratis/. Zet de tag 'core-gratis',
+//     maakt via api/core.js een proefdossier (week 1 van het echte
+//     Core-programma) en geeft de persoonlijke link terug, zodat de pagina
+//     meteen doorstuurt. Na week 1 zet api/core.js de tag 'core-proef-klaar'.
 //   - 'bandenspanning': de lead magnet op /bandenspanning/. Zet de tag
 //     'bandenspanning-pdf', mailt de bandenspanning-kaart en geeft de
 //     downloadUrl terug zodat de pagina 'm meteen kan tonen. Zelfde patroon
@@ -44,6 +48,7 @@
 import crypto from 'node:crypto';
 import { persoonlijkeRichtlijn, URENKLASSEN, belemmeringAdvies } from '../lib/voeding.js';
 import { leesInvoer, bandenAdvies } from '../lib/bandendruk.js';
+import { maakProef } from './core.js';
 
 const MC_KEY  = process.env.MAILCHIMP_API_KEY;      // ...-usXX
 const MC_LIST = process.env.MAILCHIMP_LIST_ID;
@@ -55,9 +60,9 @@ const TAG_GRATIS      = 'gratis-training';
 const TAG_BEGELEIDING = 'begeleiding-aanvraag';
 const TAG_ZESUUR      = 'zesuur-pdf';
 const TAG_BANDEN      = 'bandenspanning-pdf';
+// Leadmagnet Core-programma: een gratis proefweek (week 1 van het echte
+// programma). Daarna staat week 2 op slot tot er betaald is, zie api/core.js.
 const TAG_CORE_GRATIS = 'core-gratis';
-// De gratis mini-sessie van 3 core-oefeningen (leadmagnet Core-programma).
-const CORE_PROEF_URL  = 'https://rapport.michelkredercoaching.nl/core-proef';
 const TAG_AFVALKAART  = 'afvalkaart-pdf';
 // Binaire keuzehulp-uitkomst (11-09-2026): schema is geen directe uitkomst
 // meer, zie [[het-startpakket]] in memory. Eigen tags zodat Michel de twee
@@ -619,20 +624,21 @@ function bandenAdviesHtml(veiligeNaam, pdfUrl, adv) {
   return naarHtmlEntities(html);
 }
 
-// Afleveringsmail van de Core-leadmagnet. Kort: de mini-sessie doet het werk,
-// het aanbod zit in de Mailchimp-journey op de tag 'core-gratis'.
-function coreGratisHtml(naam, url) {
+// Afleveringsmail van de Core-proefweek. Kort: de pagina doet het werk, het
+// aanbod zit in de Mailchimp-journey op de tags 'core-gratis' en 'core-proef-klaar'.
+function coreGratisHtml(naam, url, betaald) {
   const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
     <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
-    <p style="font-size:15px;margin:0 0 14px;">Hier zijn je 3 core-oefeningen. Dezelfde drie die ik elke renner als eerste geef: de dead bug, de zijplank op je knieën en de bird dog.</p>
-    <p style="font-size:15px;margin:0 0 18px;">Je doet ze als mini-sessie van zes minuten. Leg je telefoon op de grond en druk op start: je ziet elke oefening bewegen, de klok telt af en een piepje zegt wanneer je wisselt.</p>
+    ${betaald ? `<p style="font-size:15px;margin:0 0 18px;">Je hebt het Core-programma al. Hier is je persoonlijke link nog een keer.</p>` : `
+    <p style="font-size:15px;margin:0 0 14px;">Je proefweek van het Core-programma staat klaar. Geen demo, maar gewoon week 1 van het echte programma.</p>
+    <p style="font-size:15px;margin:0 0 14px;">Je beantwoordt eerst een paar vragen, zodat de oefeningen passen bij jouw klachten. Dan doe je je starttest, en daarna de drie sessies van week 1. Leg je telefoon op de grond en druk op start: de pagina telt af en zegt wanneer je wisselt.</p>`}
     <p style="margin:4px 0 18px;">
-      <a href="${escHtml(url)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Start je mini-sessie</a>
+      <a href="${escHtml(url)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">${betaald ? 'Naar mijn Core-programma' : 'Start mijn proefweek'}</a>
     </p>
-    <p style="font-size:15px;margin:0 0 14px;">Let bij de zijplank op het verschil tussen links en rechts. Is de ene kant duidelijk zwaarder? Dat zie je vaak terug in een scheve zit op de fiets. Daar kom ik deze week op terug.</p>
-    <p style="font-size:14px;margin:0 0 4px;">Vragen? Reageer gewoon op deze mail, ik lees alles zelf.</p>
+    ${betaald ? '' : `<p style="font-size:15px;margin:0 0 14px;">Bewaar deze mail, de link is persoonlijk. Let bij je starttest op het verschil tussen je linker- en rechterkant bij de zijplank. Dat zie je vaak terug in een scheve zit op de fiets.</p>`}
+    <p style="font-size:14px;margin:0 0 4px;">Twijfel je over een oefening? Op je pagina kun je je vraag stellen.</p>
     <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
   </div>`;
   return naarHtmlEntities(html);
@@ -841,6 +847,11 @@ export default async function handler(req, res) {
   // merge-velden mee, zodat de vervolgmails zijn eigen getallen kunnen noemen
   // en de journey op weg/gravel kan splitsen. Zonder geldige invoer (oude
   // pagina, of velden leeg) blijft het gewoon de kaart zonder advies.
+  // Core-proefweek: dossier nu al maken, zodat de persoonlijke link als
+  // merge-veld CORELINK in Mailchimp komt. De journey-mails linken daarnaar.
+  const coreProef = route === 'core-gratis' ? await maakProef({ email, naam: b.naam }) : null;
+  if (coreProef) merge.CORELINK = coreProef.link;
+
   const bandenAdv = route === 'bandenspanning' ? bandenAdvies(leesInvoer(b)) : null;
   if (bandenAdv) {
     const nl1 = (n) => n == null ? '' : n.toFixed(1).replace('.', ',');
@@ -924,14 +935,14 @@ export default async function handler(req, res) {
       signal: AbortSignal.timeout(10000),
     });
     let lid = await upsert(merge);
-    if (!lid.ok && (merge.KHPAKKET || merge.KHPURL || merge.WKTOKEN || merge.WKDEADLINE || merge.SKTOKEN || merge.SKDEADLINE || merge.BTYPE)) {
+    if (!lid.ok && (merge.KHPAKKET || merge.KHPURL || merge.WKTOKEN || merge.WKDEADLINE || merge.SKTOKEN || merge.SKDEADLINE || merge.BTYPE || merge.CORELINK)) {
       // Vangnet: bestaan deze merge-velden (nog) niet in Mailchimp, dan
       // weigert de API de hele upsert. Liever het contact binnen zonder
       // die velden dan de lead kwijt.
       const detail = await lid.text().catch(() => '');
       console.error('Keuzehulp: upsert met extra velden faalde, retry zonder:', lid.status, detail);
       const { KHPAKKET, KHPURL, WKTOKEN, WKDEADLINE, SKTOKEN, SKDEADLINE,
-              BTYPE, BGEWICHT, BBREEDTE, BTUBE, BVOOR, BACHTER, BNUVOOR, BNUACHTER, BSTATUS, ...rest } = merge;
+              BTYPE, BGEWICHT, BBREEDTE, BTUBE, BVOOR, BACHTER, BNUVOOR, BNUACHTER, BSTATUS, CORELINK, ...rest } = merge;
       lid = await upsert(rest);
     }
     if (!lid.ok) {
@@ -1028,13 +1039,15 @@ export default async function handler(req, res) {
     // 2c-2b) Core-leadmagnet: de link naar de gratis mini-sessie mailen en
     //     teruggeven, zodat de pagina meteen kan doorlinken.
     if (route === 'core-gratis') {
+      const proef = coreProef;
+      // Wie al betaald heeft, krijgt geen proefmail maar gewoon zijn eigen link.
       await stuurMail({
         from: AFZENDER, to: email, reply_to: REPLY_TO,
-        subject: 'Je 3 core-oefeningen staan klaar',
-        html: coreGratisHtml(b.naam, CORE_PROEF_URL),
+        subject: proef.betaald ? 'Je link naar je Core-programma' : 'Je gratis proefweek staat klaar',
+        html: coreGratisHtml(b.naam, proef.link, proef.betaald),
       });
-      console.log('Core-gratis OK:', email);
-      return res.status(200).json({ ok: true, downloadUrl: CORE_PROEF_URL });
+      console.log('Core-gratis OK:', email, proef.nieuw ? '| nieuwe proef' : '| bestond al');
+      return res.status(200).json({ ok: true, link: proef.link });
     }
 
     // 2c-3) Afvalkaart: kaart mailen en de downloadUrl teruggeven, zelfde
