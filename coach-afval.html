@@ -51,6 +51,12 @@
   .vlag.evaluatie { background:var(--geel); color:var(--black); }
   .vlag.checkin, .vlag.niveau { background:rgba(245,243,239,0.15); color:var(--white); }
   .vlag.niet-gewogen, .vlag.geen-intake { background:transparent; color:var(--muted); border:1px solid var(--border); }
+  .vlag.label { background:transparent; color:var(--muted); border:1px solid var(--border); }
+  .vlag.label.begeleiding { color:var(--accent); border-color:var(--accent); }
+  .toevoegen { display:none; padding:12px 16px; border-bottom:1px solid var(--border); }
+  .toevoegen.aan { display:block; }
+  .toevoegen input { width:100%; margin-bottom:8px; }
+  .toevoegen .klein { font-size:12px; color:var(--muted); margin-top:8px; word-break:break-all; }
 
   /* Gesprek rechts */
   .gesprek { display:flex; flex-direction:column; min-height:0; background:var(--black); }
@@ -108,6 +114,14 @@
     <div class="lijst-kop">
       <h2>Deelnemers</h2>
       <span class="tel" id="tel"></span>
+      <button class="knop leeg" id="plusKnop" style="display:none;padding:4px 10px;font-size:13px" onclick="document.getElementById('toevoegen').classList.toggle('aan')">+ Deelnemer</button>
+    </div>
+    <!-- Alleen bij ?programma=core: begeleidingsklant gratis toegang geven. -->
+    <div class="toevoegen" id="toevoegen">
+      <input id="nwNaam" placeholder="Naam" autocomplete="off">
+      <input id="nwEmail" placeholder="E-mailadres" autocomplete="off">
+      <button class="knop" style="width:100%" onclick="voegToe()">Geef gratis toegang (begeleiding)</button>
+      <div class="klein" id="nwMelding"></div>
     </div>
     <div class="filters">
       <button data-f="open" class="aan" onclick="zetFilter('open')">Wacht op mij</button>
@@ -124,7 +138,11 @@
 </div>
 
 <script>
-const API = '/api/afvalprogramma';
+// ?programma=core toont de deelnemers van het Core-programma in hetzelfde scherm.
+const CORE = new URLSearchParams(location.search).get('programma') === 'core';
+const API = CORE ? '/api/core' : '/api/afvalprogramma';
+if (CORE) document.title = 'Coach | Core-programma';
+if (CORE) document.addEventListener('DOMContentLoaded', () => { document.getElementById('plusKnop').style.display = ''; });
 // Opslag kan geblokkeerd zijn (privévenster, strenge instellingen). Dan werkt
 // de pagina gewoon, je typt de sleutel alleen elke keer opnieuw.
 const bewaar = {
@@ -140,7 +158,8 @@ let filter = 'open';
 const VLAGTEKST = {
   medisch: 'medisch', vraag: 'vraag open', evaluatie: 'evaluatie',
   checkin: 'check-in', niveau: 'niveau?', 'niet-gewogen': 'niet gewogen',
-  'geen-intake': 'geen intake'
+  'geen-intake': 'geen intake',
+  'rode-vlag': 'RODE VLAG', slechter: 'gaat slechter', stil: '14 dagen stil'
 };
 
 function inloggen() {
@@ -209,8 +228,9 @@ function tekenLijst() {
       <div class="naam">${veilig(d.naam || d.email)}</div>
       <div class="tijd">${tijdKort(d.laatsteBerichtOp)}</div>
       <div class="voorbeeld">week ${d.week}${d.voorbeeld ? ' &middot; ' + (d.voorbeeldVan === 'michel' ? 'jij: ' : '') + veilig(d.voorbeeld) : ' &middot; nog geen bericht'}</div>
-      ${d.vlaggen.length ? `<div class="vlaggen">${d.vlaggen.map(v =>
-        `<span class="vlag ${v}">${VLAGTEKST[v] || v}</span>`).join('')}</div>` : ''}
+      ${(d.vlaggen.length || (d.labels || []).length) ? `<div class="vlaggen">${d.vlaggen.map(v =>
+        `<span class="vlag ${v}">${VLAGTEKST[v] || v}</span>`).join('')}${(d.labels || []).map(l =>
+        `<span class="vlag label ${l}">${l}</span>`).join('')}</div>` : ''}
     </div>`).join('') || '<div style="padding:22px;color:var(--muted)">Niets dat op je wacht.</div>';
 }
 
@@ -253,13 +273,13 @@ function tekenGesprek() {
             ? 'niveau TWIJFEL (' + d.niveau.percentage + '%), voorstel ' + d.niveau.advies
             : d.niveau.advies + ' (' + d.niveau.percentage + '%)') : ''}</div>
       </div>
-      <div class="cijfers">
+      ${CORE ? coreCijfers(d) : `<div class="cijfers">
         <div class="cijfer"><span>gewicht</span><b>${nu != null ? nu + ' kg' : '—'}</b></div>
         <div class="cijfer"><span>verschil</span><b class="${verschil && verschil < 0 ? 'op' : ''}">${verschil != null ? verschil : '—'}</b></div>
         <div class="cijfer"><span>doel</span><b>${d.intake?.streefgewicht ?? '—'}</b></div>
         <div class="cijfer"><span>kcal gem.</span><b>${d.plan?.gemiddeld ?? '—'}</b></div>
         ${omtrekCijfer(d)}
-      </div>
+      </div>`}
     </div>
 
     <div class="draad" id="draad">
@@ -277,6 +297,7 @@ function tekenGesprek() {
       <textarea id="antwoord" placeholder="Je bericht aan ${veilig((d.naam || '').split(' ')[0] || 'de deelnemer')}..."></textarea>
       <div class="knoppenbalk">
         <button class="knop" onclick="verstuur('bericht')">Versturen</button>
+        ${CORE && d.vlaggen.includes('rode-vlag') ? `<button class="knop leeg" onclick="verstuur('bericht', true)">Versturen en plan vrijgeven</button>` : ''}
         ${evaluatie ? `<button class="knop leeg" onclick="verstuur('evaluatie')">Versturen als evaluatie week ${d.week}</button>` : ''}
         <span class="melding" id="melding"></span>
       </div>
@@ -290,13 +311,45 @@ function tekenGesprek() {
   if (dr) dr.scrollTop = dr.scrollHeight;
 }
 
+function coreCijfers(d) {
+  const c = d.core || {};
+  const winst = c.rompscore != null && c.eersteScore != null ? c.rompscore - c.eersteScore : null;
+  return `<div class="cijfers">
+    <div class="cijfer"><span>afgerond</span><b>${c.afgerond ?? 0} wk</b></div>
+    <div class="cijfer"><span>sessies</span><b>${c.sessies ?? 0}</b></div>
+    <div class="cijfer"><span>rompscore</span><b class="${winst > 0 ? 'op' : ''}">${c.rompscore ?? '—'}${winst != null ? ' (' + (winst > 0 ? '+' : '') + winst + ')' : ''}</b></div>
+    <div class="cijfer"><span>rug/nek</span><b>${c.rug ? c.rug.onderrug + '/' + c.rug.nek : '—'}</b></div>
+  </div>
+  <div class="sub" style="margin-top:6px">klachten: ${(c.klachten || []).join(', ') || 'geen'} · ervaring: ${c.ervaring || '—'}${c.reacties?.length ? ' · ' + c.reacties.join(', ') : ''}${c.doel ? ' · doel: ' + veilig(c.doel.naam) + ' ' + c.doel.datum : ''}${c.doorgaan ? ' · wil doorgaan' : ''}</div>`;
+}
+
+async function voegToe() {
+  const naam = document.getElementById('nwNaam').value.trim();
+  const email = document.getElementById('nwEmail').value.trim();
+  const m = document.getElementById('nwMelding');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { m.textContent = 'Vul een geldig e-mailadres in.'; return; }
+  m.textContent = 'Bezig...';
+  try {
+    const r = await fetch(API + '?actie=nieuw', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-afval-sleutel': sleutel },
+      body: JSON.stringify({ email, naam, bron: 'begeleiding' })
+    });
+    const j = await r.json();
+    if (!j.ok) { m.textContent = j.fout || 'Mislukt.'; return; }
+    m.textContent = (j.herhaling ? 'Had al toegang, gemarkeerd als begeleiding. ' : 'Toegang gegeven, welkomstmail is verstuurd. ') + 'Link: ' + j.link;
+    document.getElementById('nwNaam').value = ''; document.getElementById('nwEmail').value = '';
+    await laden();
+  } catch (e) { m.textContent = 'Mislukt.'; }
+}
+
 function neemOver() {
   const c = document.getElementById('conceptTekst');
   const a = document.getElementById('antwoord');
   if (c && a) { a.value = c.textContent.replace(/^\[MEDISCH\]\s*/, ''); a.focus(); }
 }
 
-async function verstuur(soort) {
+async function verstuur(soort, ontgrendel) {
   const tekst = document.getElementById('antwoord').value.trim();
   const melding = document.getElementById('melding');
   if (!tekst) { melding.textContent = 'Nog niets getypt.'; melding.className = 'melding fout'; return; }
@@ -305,7 +358,7 @@ async function verstuur(soort) {
     const r = await fetch(API + '?actie=antwoord', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-afval-sleutel': sleutel },
-      body: JSON.stringify({ id: gekozen.id, tekst, soort, week: gekozen.week })
+      body: JSON.stringify({ id: gekozen.id, tekst, soort, week: gekozen.week, ontgrendel: !!ontgrendel })
     });
     const j = await r.json();
     if (!j.ok) { melding.textContent = j.fout || 'Mislukt.'; melding.className = 'melding fout'; return; }
