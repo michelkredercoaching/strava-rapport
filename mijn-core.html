@@ -42,8 +42,8 @@
   .appkaart .x { margin-left:auto; background:none; border:none; color:var(--muted); font-size:22px; line-height:1; cursor:pointer; padding:0 2px; }
   .appkaart .stap { font-size:13px; color:var(--muted); margin-top:4px; }
   .deelicoon { display:inline-block; vertical-align:-3px; width:15px; height:17px; }
-  .dagen { display:flex; gap:5px; flex-wrap:wrap; margin:10px 0; }
-  .dagen button { width:42px; height:38px; border-radius:6px; border:1px solid rgba(255,255,255,.18); background:var(--surface2); color:var(--white); cursor:pointer; font-weight:600; }
+  .dagen { display:grid; grid-template-columns:repeat(7, 1fr); gap:5px; margin:10px 0; }
+  .dagen button { width:100%; height:40px; border-radius:6px; border:1px solid rgba(255,255,255,.18); background:var(--surface2); color:var(--white); cursor:pointer; font-weight:600; }
   .dagen button.aan { background:var(--accent); color:#0A0A0A; border-color:var(--accent); }
   .dagen button.zwaar { opacity:.45; }
   h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(34px,7vw,50px); line-height:1; letter-spacing:.01em; }
@@ -67,7 +67,11 @@
   label.optie input { margin-top:4px; accent-color:var(--accent); }
   .vraag { margin-bottom:20px; }
   .vraag > .v { font-weight:600; margin-bottom:8px; }
-  input[type=text], input[type=date], input[type=number], select, textarea { width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,.14); border-radius:5px; padding:12px 13px; }
+  /* Donkere modus voor de ingebouwde kiezers van iOS en Android (tijd, datum). */
+  html { color-scheme:dark; }
+  input[type=text], input[type=date], input[type=time], input[type=number], select, textarea { width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,.14); border-radius:5px; padding:12px 13px; color:var(--white); -webkit-appearance:none; appearance:none; min-height:46px; }
+  input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-and-time-value { text-align:left; color:var(--white); }
+  input:focus, select:focus, textarea:focus { outline:none; border-color:var(--accent); }
   textarea { min-height:90px; resize:vertical; }
   .rij2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   /* Sessies */
