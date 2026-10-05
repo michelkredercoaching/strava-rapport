@@ -217,7 +217,8 @@
     return {
       heup: heup, romp: r, hoofd: r,
       armVer: { naar: [schouder[0] - 27, GROND], buig: -1 },
-      armDicht: { naar: [heup[0] + 4, heup[1] - 10], buig: -1 },
+      // Heup hoog: bovenste arm naar het plafond (zo herken je de zijplank van voren). Heup laag: hand op de heup.
+      armDicht: heupDip >= 20 ? { naar: [heup[0] + 4, heup[1] - 10], buig: -1 } : { naar: [schouder[0] + 2, schouder[1] - 54.5], buig: 1 },
       beenDicht: { naar: [enkel[0] + 4, enkel[1] - 4], buig: 1, voet: -70 }, beenVer: { naar: [enkel[0], enkel[1]], buig: 1, voet: -70 }
     };
   }
@@ -242,11 +243,16 @@
   function zpKnie(heupDip) {
     var knie = [192, GROND], hk = hoekVan(knie, zpS);
     var heup = op(knie, hk, 39); if (heupDip) heup = [heup[0], heup[1] + heupDip];
-    var r = hoekVan(heup, zpS), enkel = op(knie, -98, 37);
+    // Van voren gezien wijzen de onderbenen naar achteren, van de kijker af:
+    // daarom een kort stukje onderbeen en voet achter de knie (perspectief).
+    var r = hoekVan(heup, zpS), enkel = op(knie, -35, 11);
+    var kortBeen = { scheenSchaal: 0.3, voetSchaal: 0.55 };
     return {
       heup: heup, romp: r, hoofd: r,
-      armVer: { naar: [zpS[0] - 27, GROND], buig: -1 }, armDicht: { naar: [heup[0] + 4, heup[1] - 10], buig: -1 },
-      beenDicht: { naar: [enkel[0] + 3, enkel[1] - 1], buig: 1, voet: 0 }, beenVer: { naar: enkel, buig: 1, voet: 0 }
+      armVer: { naar: [zpS[0] - 27, GROND], buig: -1 },
+      armDicht: heupDip ? { naar: [heup[0] + 4, heup[1] - 10], buig: -1 } : { naar: [zpS[0] + 2, zpS[1] - 54.5], buig: 1 },
+      beenDicht: Object.assign({ naar: [enkel[0] + 2, enkel[1] - 2], buig: 1, voet: -20 }, kortBeen),
+      beenVer: Object.assign({ naar: enkel, buig: 1, voet: -20 }, kortBeen)
     };
   }
   A['zijplank-knieen'] = { spier: 'zij', reeks: [{ h: 'rust', vast: 800 }, { h: 'hold', vast: 2600 }], houdingen: { rust: zpKnie(16), hold: zpKnie(0) } };
