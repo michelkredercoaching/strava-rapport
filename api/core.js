@@ -203,7 +203,7 @@ async function assistentAntwoord(vraag, d) {
     `Deelnemer: ${d.naam || 'onbekend'}`,
     `Week ${d.week} van 12 (${FASES[WEEKTABEL[d.week - 1]?.fase] || ''}), ${d.afgerond} weken afgerond.`,
     d.intake ? `Klachten: ${(d.intake.klachten || []).join(', ') || 'geen'}. Ervaring: ${d.intake.ervaring}.` : 'Intake nog niet gedaan.',
-    s ? `Oefeningen deze week: ${['A', 'B', 'C'].map((l) => { const x = sessie(d.week, l, planIntake(d)); return l + ': ' + x.oefeningen.map((o) => `${o.naam} (${o.cue})`).join('; '); }).join(' | ')}.` : '',
+    s ? `Oefeningen deze week: ${['A', 'B', 'C'].map((l) => { const x = sessie(d.week, l, planIntake(d)); return 'sessie ' + ({ A: 1, B: 2, C: 3 })[l] + ': ' + x.oefeningen.map((o) => `${o.naam} (${o.cue})`).join('; '); }).join(' | ')}.` : '',
     s ? `Werk/rust deze week: ${s.werk}s/${s.rust}s, ${s.rondes} rondes.` : '',
     (d.reacties || []).length ? `Laatste weekreacties: ${(d.reacties || []).slice(-3).map((x) => `week ${x.week} ${x.reactie}`).join(', ')}.` : '',
     (d.berichten || []).length ? `Eerdere vragen: ${(d.berichten || []).filter((b) => b.van === 'klant').slice(-3).map((b) => b.tekst.slice(0, 120)).join(' / ')}` : '',
@@ -658,7 +658,7 @@ async function routeAgenda(req, res) {
     const eind = `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}T${p2(Math.floor(eindMin / 60) % 24)}${p2(eindMin % 60)}00`;
     regels.push('BEGIN:VEVENT', `UID:core-${id}-${letter}@michelkredercoaching.nl`, `DTSTAMP:${stempel}`,
       `DTSTART:${start}`, `DTEND:${eind}`, `RRULE:FREQ=WEEKLY;BYDAY=${DAGCODE[dagen[i]]};COUNT=12`,
-      `SUMMARY:Core-sessie ${letter}`,
+      `SUMMARY:Core-sessie ${i + 1}`,
       `DESCRIPTION:Tijd voor je core-sessie. Telefoon op de grond en op start drukken.\\n\\n${link}`,
       `URL:${link}`,
       'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Core-sessie', 'TRIGGER:-PT10M', 'END:VALARM',
