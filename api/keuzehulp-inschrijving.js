@@ -1,731 +1,1178 @@
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="robots" content="noindex, nofollow">
-<meta name="theme-color" content="#0A0A0A">
-<title>Mijn Core | Michel Kreder Coaching</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
-<style>
-  :root { --black:#0A0A0A; --offblack:#111; --surface:#161616; --surface2:#1c1c1c;
-          --border:rgba(255,255,255,0.08); --white:#F5F3EF; --muted:rgba(245,243,239,0.6);
-          --accent:#FF6B1A; --accent-dim:rgba(255,107,26,0.12); --groen:#4CC38A; --rood:#ff8a5c; }
-  * { box-sizing:border-box; margin:0; padding:0; }
-  html, body { background:var(--black); }
-  body { font-family:'DM Sans',sans-serif; color:var(--white); -webkit-font-smoothing:antialiased; font-size:15px; line-height:1.6; }
-  button, input, select, textarea { font-family:inherit; font-size:inherit; color:inherit; }
-  .wrap { max-width:760px; margin:0 auto; padding:26px 16px 80px; }
-  h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(34px,7vw,50px); line-height:1; letter-spacing:.01em; }
-  h2 { font-family:'Bebas Neue',sans-serif; font-size:25px; letter-spacing:.02em; margin-bottom:12px; }
-  .eyebrow { font-size:11px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; }
-  .muted { color:var(--muted); } .klein { font-size:13px; }
-  .kop { padding-bottom:18px; border-bottom:1px solid var(--border); margin-bottom:24px; }
-  .kop .sub { color:var(--muted); margin-top:6px; }
-  .pil { display:inline-flex; align-items:center; gap:8px; background:var(--accent-dim); border:1px solid rgba(255,107,26,.35); color:var(--white); padding:6px 12px; border-radius:99px; font-size:13px; margin-top:12px; }
-  .pil b { color:var(--accent); }
-  .blok { margin-bottom:30px; }
-  .kaart { background:var(--surface); border:1px solid var(--border); padding:20px; border-radius:6px; }
-  .kaart.accent { border-color:rgba(255,107,26,.4); background:linear-gradient(180deg, rgba(255,107,26,.07), var(--surface)); }
-  .knop { display:inline-block; background:var(--accent); color:#0A0A0A; border:none; font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:.06em; padding:13px 22px 10px; border-radius:5px; cursor:pointer; text-decoration:none; }
-  .knop:disabled { opacity:.45; cursor:default; }
-  .knop.leeg { background:transparent; color:var(--white); border:1px solid rgba(255,255,255,.25); }
-  .knop.breed { width:100%; }
-  .fout { color:var(--rood); font-size:13px; margin-top:8px; min-height:1em; }
-  label.optie { display:flex; gap:10px; align-items:flex-start; padding:11px 13px; border:1px solid var(--border); border-radius:5px; margin-bottom:7px; cursor:pointer; background:var(--surface2); }
-  label.optie:has(input:checked) { border-color:var(--accent); background:var(--accent-dim); }
-  label.optie input { margin-top:4px; accent-color:var(--accent); }
-  .vraag { margin-bottom:20px; }
-  .vraag > .v { font-weight:600; margin-bottom:8px; }
-  input[type=text], input[type=date], input[type=number], select, textarea { width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,.14); border-radius:5px; padding:12px 13px; }
-  textarea { min-height:90px; resize:vertical; }
-  .rij2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-  /* Sessies */
-  .sessies { display:grid; gap:12px; }
-  .sessie { background:var(--surface); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
-  .sessie.gedaan { border-color:rgba(76,195,138,.45); }
-  .sessie .boven { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:16px 18px 10px; }
-  .sessie .letter { font-family:'Bebas Neue',sans-serif; font-size:30px; color:var(--accent); line-height:1; }
-  .sessie .titel { font-weight:600; } .sessie .meta { font-size:13px; color:var(--muted); }
-  .sessie .vink { color:var(--groen); font-weight:700; font-size:14px; }
-  .oefrij { display:flex; gap:8px; overflow-x:auto; padding:4px 18px 14px; scrollbar-width:none; }
-  .oefrij::-webkit-scrollbar { display:none; }
-  .oefmini { flex:0 0 112px; background:var(--surface2); border-radius:4px; padding:4px; }
-  .oefmini > div { height:58px; display:flex; align-items:center; justify-content:center; }
-  .oefmini svg { max-width:100%; max-height:58px; width:auto; height:auto; display:block; }
-  .oefmini span { display:block; font-size:10.5px; line-height:1.3; color:var(--muted); padding:3px 3px 2px; }
-  .sessie .onder { padding:0 18px 16px; }
-  /* Voortgang */
-  .vakjes { display:grid; grid-template-columns:repeat(12, 1fr); gap:4px; }
-  .vakje { aspect-ratio:1; border-radius:3px; background:var(--surface2); border:1px solid var(--border); }
-  .vakje.aan { background:var(--accent); border-color:var(--accent); }
-  .vakje.nu { outline:1px solid rgba(255,255,255,.5); }
-  .weeklabels { display:grid; grid-template-columns:repeat(12, 1fr); gap:4px; font-size:10px; color:var(--muted); text-align:center; margin-top:4px; }
-  .badges { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:16px; }
-  .badge { text-align:center; padding:12px 6px; border:1px solid var(--border); border-radius:5px; background:var(--surface2); opacity:.45; }
-  .badge.aan { opacity:1; border-color:rgba(255,107,26,.5); background:var(--accent-dim); }
-  .badge .ic { font-family:'Bebas Neue',sans-serif; font-size:26px; color:var(--accent); line-height:1; }
-  .badge .nm { font-size:12px; font-weight:600; margin-top:4px; }
-  .grafiek svg { width:100%; height:auto; display:block; }
-  .cijfers { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
-  .cijfer { background:var(--surface2); border:1px solid var(--border); border-radius:5px; padding:12px; }
-  .cijfer span { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; }
-  .cijfer b { display:block; font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1.1; }
-  .cijfer b.op { color:var(--groen); }
-  /* Test */
-  .test { display:grid; grid-template-columns:96px 1fr auto; gap:12px; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); }
-  .test:last-child { border-bottom:0; }
-  .test .anim svg { width:100%; height:auto; display:block; }
-  .test .stop { font-family:'Bebas Neue',sans-serif; font-size:30px; width:64px; text-align:right; }
-  .test input { width:80px; padding:8px; text-align:center; }
-  .testknoppen { display:flex; gap:6px; align-items:center; }
-  .klokknop { background:var(--surface2); border:1px solid rgba(255,255,255,.2); color:var(--white); border-radius:5px; padding:8px 12px; cursor:pointer; font-weight:600; }
-  .klokknop.loopt { background:var(--accent); color:#0A0A0A; border-color:var(--accent); }
-  .schaal { display:flex; gap:4px; flex-wrap:wrap; }
-  .schaal button { width:36px; height:36px; border-radius:5px; border:1px solid rgba(255,255,255,.18); background:var(--surface2); color:var(--white); cursor:pointer; }
-  .schaal button.aan { background:var(--accent); color:#0A0A0A; border-color:var(--accent); }
-  .keuze3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-  .keuze3 button { padding:14px 6px; border-radius:5px; border:1px solid rgba(255,255,255,.18); background:var(--surface2); color:var(--white); cursor:pointer; font-weight:600; }
-  .keuze3 button.aan { background:var(--accent); color:#0A0A0A; border-color:var(--accent); }
-  .tip { border-left:3px solid var(--accent); padding:4px 0 4px 14px; margin-bottom:12px; color:rgba(245,243,239,.85); }
-  .bericht { padding:11px 14px; border-radius:6px; margin-bottom:8px; max-width:88%; }
-  .bericht.klant { background:var(--surface2); margin-left:auto; }
-  .bericht.michel { background:var(--accent-dim); border:1px solid rgba(255,107,26,.3); }
-  .bericht .wie { font-size:11px; color:var(--muted); margin-top:4px; }
-  .laden { padding:60px 0; text-align:center; color:var(--muted); }
-  .melding { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:var(--white); color:#0A0A0A; padding:12px 18px; border-radius:6px; font-weight:600; font-size:14px; z-index:60; max-width:calc(100% - 32px); box-shadow:0 8px 30px rgba(0,0,0,.5); }
+// /api/keuzehulp-inschrijving.js
+// Ontvangt inschrijvingen vanaf de keuzehulp-pagina's op michelkredercoaching.nl
+// en zet het contact in Mailchimp via de API (in plaats van het gewone inschrijfformulier).
+//
+// Twee routes (veld `route` in de POST-body):
+//   - 'schema' (of geen route, backward-compatible met de oude keuzehulp):
+//     upsert + merge-velden + journey-tag 'keuzehulp-gedaan'. De welkomst-journey
+//     met trigger "tag toegevoegd" gaat af; de tag wordt eerst verwijderd en
+//     opnieuw gezet zodat hij ook voor bestaande contacten opnieuw triggert.
+//   - 'coaching': eigen tag 'keuzehulp-coaching' (dus GEEN schema-journey met
+//     kortingsmail). Bij `inschrijving: 'ja'` (het begeleidingsformulier) gaat
+//     er een notificatie naar Michel en een warme bevestiging naar de lead,
+//     allebei via Resend.
+//   - 'gratis-training': de lead magnet vanaf /de-proeftraining/. Zet de tag
+//     'gratis-training' + mergeveld MEETMETH (vermogen/hartslag), mailt de
+//     bijbehorende Startprotocol-pdf en geeft die link ook terug aan de pagina.
+//     Sinds de knip (De Proeftraining = alleen de test, het opbouwblok zit nu
+//     in het betaalde Het Startpakket) is er geen TrainingPeaks-koppeling en
+//     dus geen interne notificatie naar Michel meer nodig voor deze route.
+//     Woont hier en niet in een eigen /api/gratis-training.js omdat de Vercel
+//     Hobby-limiet van 12 serverless functions al vol zat (zie ook lead.js).
+//   - 'zesuur': inline opt-in op de 6-uur-per-week-advertentiepagina. Zet de
+//     tag 'zesuur-pdf', mailt de zesuur-schema-pdf (schema + invulblad eigen
+//     zones + duw naar de Strava-analyse) en geeft de downloadUrl terug zodat
+//     de pagina 'm ook meteen kan tonen. Geen aparte meetmethode-variant nodig
+//     (het schema zelf is generiek, alleen het invulblad heeft twee kolommen).
+//   - 'core-gratis': de leadmagnet op /core-gratis/. Zet de tag 'core-gratis',
+//     maakt via api/core.js een proefdossier (week 1 van het echte
+//     Core-programma) en geeft de persoonlijke link terug, zodat de pagina
+//     meteen doorstuurt. Na week 1 zet api/core.js de tag 'core-proef-klaar'.
+//   - 'bandenspanning': de lead magnet op /bandenspanning/. Zet de tag
+//     'bandenspanning-pdf', mailt de bandenspanning-kaart en geeft de
+//     downloadUrl terug zodat de pagina 'm meteen kan tonen. Zelfde patroon
+//     als 'zesuur'. De kaart zelf linkt door naar de Power Profile-analyse op
+//     WORDPRESS (niet het strava-analyse-subdomein), omdat alleen daar de
+//     Meta-pixel staat en het klikverkeer dus meetbaar is.
+//   - 'analyse-advies' / 'startpakket-advies': de binaire uitkomst van de
+//     9-vragen-keuzehulp (trainingsschema-keuzehulp-v2.html), sinds 11-09-2026
+//     niet meer schema-first. Wie al ritdata heeft (Strava/Garmin) krijgt het
+//     advies om eerst de Strava-analyse te doen; wie nog niets vastlegt krijgt
+//     Het Startpakket. Zet alleen de bijbehorende tag; 'startpakket-advies'
+//     mint daarnaast een sp19-token (1 uur geldig, zie maakStartpakketKorting)
+//     zodat de uitkomstpagina zelf een aftelklok en €14,95 kan tonen. Geen
+//     mail nodig, de pagina linkt zelf door naar analyse of checkout.
+//
+// Vereist in Vercel (staan er al voor de betaling-webhook):
+//   MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID, PP_TOKEN_SECRET, RESEND_API_KEY
+import crypto from 'node:crypto';
+import { persoonlijkeRichtlijn, URENKLASSEN, belemmeringAdvies } from '../lib/voeding.js';
+import { leesInvoer, bandenAdvies } from '../lib/bandendruk.js';
+import { maakProef } from './core.js';
 
-  /* ===== Core-coach (chat) ===== */
-  .cc-fab { position:fixed; right:16px; bottom:max(16px, env(safe-area-inset-bottom)); z-index:40; display:flex; align-items:center; gap:10px; background:var(--accent); color:#0A0A0A; border:none; border-radius:99px; padding:6px 18px 6px 6px; font-family:'Bebas Neue',sans-serif; font-size:19px; letter-spacing:.05em; cursor:pointer; box-shadow:0 10px 30px rgba(0,0,0,.5), 0 0 0 1px rgba(255,107,26,.4); }
-  .cc-fab .cc-av { width:38px; height:38px; }
-  .cc-av { border-radius:50%; background:#0A0A0A; border:2px solid var(--accent); overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-  .cc-av svg { width:150%; height:auto; transform:translateY(8%); }
-  .cc-paneel { position:fixed; right:16px; bottom:16px; z-index:45; width:min(400px, calc(100vw - 32px)); height:min(620px, calc(100vh - 32px)); background:#101010; border:1px solid rgba(255,107,26,.35); border-radius:14px; display:none; flex-direction:column; overflow:hidden; box-shadow:0 24px 70px rgba(0,0,0,.7); }
-  .cc-paneel.open { display:flex; }
-  .cc-kop { display:flex; align-items:center; gap:12px; padding:14px 14px 12px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(255,107,26,.09), transparent); }
-  .cc-kop .cc-av { width:44px; height:44px; }
-  .cc-kop .nm { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.04em; line-height:1; display:flex; align-items:center; gap:8px; }
-  .cc-kop .ai { font-family:'DM Sans',sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.12em; color:var(--muted); border:1px solid rgba(255,255,255,.2); border-radius:4px; padding:1px 5px; }
-  .cc-kop .st { font-size:12px; color:var(--muted); margin-top:3px; display:flex; align-items:center; gap:6px; }
-  .cc-kop .st::before { content:''; width:7px; height:7px; border-radius:50%; background:var(--groen); }
-  .cc-kop .x { margin-left:auto; background:none; border:none; color:var(--muted); font-size:26px; line-height:1; cursor:pointer; padding:4px 6px; }
-  .cc-lijst { flex:1; overflow-y:auto; padding:16px 14px 8px; display:flex; flex-direction:column; gap:10px; }
-  .cc-b { max-width:86%; padding:10px 13px; border-radius:14px; font-size:14.5px; line-height:1.55; white-space:pre-wrap; }
-  .cc-b.ik { align-self:flex-end; background:var(--accent); color:#0A0A0A; border-bottom-right-radius:4px; }
-  .cc-b.coach { align-self:flex-start; background:#1c1c1c; border:1px solid var(--border); border-bottom-left-radius:4px; }
-  .cc-b.let { border-color:rgba(255,138,92,.5); }
-  .cc-tijd { font-size:10.5px; color:var(--muted); margin-top:3px; }
-  .cc-typen { align-self:flex-start; background:#1c1c1c; border:1px solid var(--border); border-radius:14px; padding:12px 14px; display:flex; gap:5px; }
-  .cc-typen i { width:7px; height:7px; border-radius:50%; background:var(--muted); animation:ccPunt 1.2s infinite ease-in-out; }
-  .cc-typen i:nth-child(2) { animation-delay:.15s; } .cc-typen i:nth-child(3) { animation-delay:.3s; }
-  @keyframes ccPunt { 0%,60%,100% { opacity:.3; transform:translateY(0); } 30% { opacity:1; transform:translateY(-4px); } }
-  .cc-chips { display:flex; gap:6px; overflow-x:auto; padding:6px 14px 10px; scrollbar-width:none; }
-  .cc-chips::-webkit-scrollbar { display:none; }
-  .cc-chips button { flex-shrink:0; background:transparent; border:1px solid rgba(255,107,26,.45); color:var(--white); border-radius:99px; padding:7px 12px; font-size:13px; cursor:pointer; }
-  .cc-invoer { display:flex; gap:8px; align-items:flex-end; padding:10px 12px max(12px, env(safe-area-inset-bottom)); border-top:1px solid var(--border); }
-  .cc-invoer textarea { flex:1; min-height:44px; max-height:120px; resize:none; border-radius:22px; padding:11px 16px; background:#1a1a1a; border:1px solid rgba(255,255,255,.14); }
-  .cc-invoer button { width:44px; height:44px; border-radius:50%; border:none; background:var(--accent); color:#0A0A0A; font-size:20px; cursor:pointer; flex-shrink:0; }
-  .cc-invoer button:disabled { opacity:.45; }
-  .cc-voet { font-size:10.5px; color:rgba(245,243,239,.4); text-align:center; padding:0 14px 8px; }
-  @media (max-width:560px) { .cc-paneel { right:0; bottom:0; width:100vw; height:100dvh; border-radius:0; border:none; } }
+const MC_KEY  = process.env.MAILCHIMP_API_KEY;      // ...-usXX
+const MC_LIST = process.env.MAILCHIMP_LIST_ID;
+const MC_DC   = MC_KEY ? MC_KEY.split('-')[1] : null;
 
-  /* ===== Speler ===== */
-  .speler { position:fixed; inset:0; background:#050505; z-index:50; display:flex; flex-direction:column; padding:max(14px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); }
-  .speler .balk { display:flex; justify-content:space-between; align-items:center; gap:10px; }
-  .speler .balk .t { font-size:13px; color:var(--muted); }
-  .speler .sluit { background:none; border:1px solid rgba(255,255,255,.2); color:var(--white); border-radius:5px; padding:6px 12px; cursor:pointer; }
-  .speler .voortgang { height:4px; background:rgba(255,255,255,.08); border-radius:2px; margin:10px 0 0; overflow:hidden; }
-  .speler .voortgang i { display:block; height:100%; background:var(--accent); width:0; transition:width .4s; }
-  .speler .midden { flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; max-width:640px; width:100%; margin:0 auto; }
-  .speler .soort { font-size:12px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); }
-  .speler .soort.rust { color:var(--groen); }
-  .speler .naam { font-family:'Bebas Neue',sans-serif; font-size:clamp(28px,7vw,42px); line-height:1.05; margin:4px 0 2px; }
-  .speler .kant { font-size:15px; font-weight:600; color:var(--white); min-height:1.4em; }
-  .speler .beeld { width:100%; max-width:520px; margin:6px 0; }
-  .speler .beeld.gedimd { opacity:.45; }
-  .speler .beeld svg { width:100%; height:auto; display:block; }
-  .speler .klok { font-family:'Bebas Neue',sans-serif; font-size:clamp(70px,22vw,120px); line-height:.9; letter-spacing:.02em; }
-  .speler .cue { color:rgba(245,243,239,.78); max-width:460px; margin-top:6px; font-size:15px; }
-  .speler .straks { color:var(--muted); font-size:13px; margin-top:8px; min-height:1.3em; }
-  .speler .bediening { display:flex; justify-content:center; gap:10px; }
-  .speler .bediening button { min-width:64px; padding:14px 16px; border-radius:6px; border:1px solid rgba(255,255,255,.2); background:var(--surface); color:var(--white); cursor:pointer; font-weight:600; }
-  .speler .bediening button.hoofd { background:var(--accent); color:#0A0A0A; border-color:var(--accent); min-width:120px; font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.05em; }
-  /* Proefweek */
-  .proefbalk { display:flex; gap:10px; align-items:center; background:var(--accent-dim); border:1px solid rgba(255,107,26,.35); border-radius:6px; padding:12px 14px; margin-bottom:24px; font-size:14px; }
-  .proefbalk b { color:var(--accent); }
-  .opslot { position:relative; }
-  .opslot .wazig { filter:blur(7px); opacity:.55; pointer-events:none; user-select:none; }
-  .opslot .muur { position:absolute; inset:0; display:flex; align-items:flex-start; justify-content:center; padding:28px 0; }
-  .muurkaart { background:rgba(17,17,17,.96); border:1px solid rgba(255,107,26,.5); border-radius:8px; padding:24px 22px; max-width:440px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,.6); text-align:center; }
-  .muurkaart .prijs { font-family:'Bebas Neue',sans-serif; font-size:60px; line-height:.9; margin:14px 0 4px; }
-  .muurkaart ul { list-style:none; text-align:left; margin:14px 0 18px; }
-  .muurkaart li { padding-left:16px; position:relative; font-size:14px; margin-bottom:6px; color:rgba(245,243,239,.85); }
-  .muurkaart li::before { content:''; position:absolute; left:0; top:8px; width:5px; height:5px; border-radius:50%; background:var(--accent); }
-  @media (max-width:560px) { .test { grid-template-columns:72px 1fr; } .test .testknoppen { grid-column:1 / -1; } .badges { grid-template-columns:repeat(2,1fr); } }
-</style>
-</head>
-<body>
-<div class="wrap" id="app"><div class="laden">Je programma laden...</div></div>
+const TAG_SCHEMA      = 'keuzehulp-gedaan';
+const TAG_COACHING    = 'keuzehulp-coaching';
+const TAG_GRATIS      = 'gratis-training';
+const TAG_BEGELEIDING = 'begeleiding-aanvraag';
+const TAG_ZESUUR      = 'zesuur-pdf';
+const TAG_BANDEN      = 'bandenspanning-pdf';
+// Leadmagnet Core-programma: een gratis proefweek (week 1 van het echte
+// programma). Daarna staat week 2 op slot tot er betaald is, zie api/core.js.
+const TAG_CORE_GRATIS = 'core-gratis';
+const TAG_AFVALKAART  = 'afvalkaart-pdf';
+// Binaire keuzehulp-uitkomst (11-09-2026): schema is geen directe uitkomst
+// meer, zie [[het-startpakket]] in memory. Eigen tags zodat Michel de twee
+// paden apart kan zien/bewerken in Mailchimp, los van de oude schema-journey.
+const TAG_KEUZEHULP_ANALYSE     = 'keuzehulp-analyse-advies';
+const TAG_KEUZEHULP_STARTPAKKET = 'keuzehulp-startpakket-advies';
+// Mail-vangst op de winterprogramma-landingspagina (i.p.v. via CreatorFlow,
+// dat alleen CSV-export biedt en geen webhook/API heeft — zie
+// [[creatorflow-mailchimp-webhook]]). WKTOKEN komt als merge-veld mee zodat
+// de Mailchimp-automation op deze tag de code direct in de mail kan zetten,
+// zelfde patroon als KHTOKEN bij de schema-route.
+const TAG_WINTER10 = 'winter-emailcapture';
+// Zelfde mailvangst-patroon, nu op het-startpakket.html zelf (naast de
+// bestaande sp19-uur-korting die alleen binnenkomt via de proeftraining/
+// keuzehulp-bruggetjes). SKTOKEN i.p.v. SPTOKEN zodat dit los staat van sp19.
+const TAG_STARTPAKKET_POPUP = 'startpakket-emailcapture';
 
-<script src="/core-programma/figuur.js"></script>
-<script src="/core-programma/animaties.js"></script>
-<script>
-const API = '/api/core';
-const token = new URLSearchParams(location.search).get('t') || '';
-let S = null;                  // laatste stand van de server
-const $ = (s, r = document) => r.querySelector(s);
-const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const A = window.CoreAnimaties, F = window.CoreFiguur;
+// ===== Gratis-training lead magnet (route 'gratis-training') =====
+// Woont bewust in dit endpoint en niet in een eigen /api/gratis-training.js:
+// de Vercel Hobby-limiet is 12 serverless functions en die zat al vol.
+// Zelfde truc als in lead.js.
+// Het Startprotocol is de download van De Proeftraining: de nulmeting, de zones én
+// de proeftraining helemaal uitgeschreven, in een vermogen- en een
+// hartslagvariant. Daarmee vervalt het losse .fit-bestand: de training komt nu
+// via de TrainingPeaks-koppellink op de fietscomputer, en dat was precies de
+// klacht die het .fit-bestand veroorzaakte.
+const SP_PDF_VERMOGEN = process.env.PROEFTRAINING_PDF_VERMOGEN
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/Startprotocolvermogen-1.pdf';
+const SP_PDF_HARTSLAG = process.env.PROEFTRAINING_PDF_HARTSLAG
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/Startprotocolhartslag-1.pdf';
+const ANALYSE_URL     = 'https://strava-analyse.michelkredercoaching.nl/';
 
-function melding(t, ms = 3200) {
-  const m = document.createElement('div'); m.className = 'melding'; m.textContent = t;
-  document.body.appendChild(m); setTimeout(() => m.remove(), ms);
-}
-async function post(actie, data) {
-  const r = await fetch(API + '?actie=' + actie, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: token, ...data }) });
-  const j = await r.json().catch(() => ({ ok: false, fout: 'verbinding mislukt' }));
-  if (j.ok) { S = j; teken(); }
-  return j;
-}
-// Stilstaand beeld: de gevraagde houding, of anders de tweede in de reeks
-// (de eerste is de rusthouding, de tweede laat de oefening zelf zien).
-function still(id, naam) {
-  const a = A[id]; if (!a) return '';
-  const r = a.reeks[1] || a.reeks[0];
-  const h = naam && a.houdingen[naam] ? naam : (typeof r === 'string' ? r : r.h);
-  return F.still(a, h, 1);
+// Bonus-pdf bij de 6-uur-per-week-advertentiepagina: het schema, wat ik zou
+// schrappen, en een invulblad voor de eigen zones met een duw naar de
+// Strava-analyse. Eén generieke pdf, geen vermogen/hartslag-variant nodig.
+const ZESUUR_PDF = process.env.ZESUUR_PDF
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/zesuur-schema.pdf';
+
+// Bandenspanning-kaart: 2 A4'tjes met voor- en achterdruk per gewicht en
+// bandbreedte, plus de correcties voor wegdek, tubeless en hookless.
+const BANDEN_PDF = process.env.BANDENSPANNING_PDF
+  // Nieuwe bestandsnaam op 30-09-2026: de oude URL zat vast in de Cloudflare-
+  // cache nadat het bestand was vervangen, waardoor een deel van de bezoekers
+  // nog de vorige versie kreeg. Een URL die nog niet bestond, kan ook niet
+  // gecached zijn. Vervang je dit bestand later opnieuw, purge dan de cache
+  // of geef het weer een nieuwe naam.
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/09/Bandenspanning-kaart-1.pdf';
+
+// Afvalkaart: 3 A4'tjes met kcal per gewicht en trainingsuren, de koolhydraten
+// per uur op de fiets, de drie regels en de ruiltabel. Wordt gegenereerd met
+// scripts/maak-afvalkaart.mjs, dus nooit met de hand bijwerken.
+// 02-10-2026: nieuwe versie staat in de map van oktober. Let op: WordPress maakt
+// bij elke upload een nieuw pad, dus deze regel moet mee veranderen. Staat er in
+// Vercel een AFVALKAART_PDF ingesteld, dan wint die en moet hij DAAR ook om.
+const AFVALKAART_PDF = process.env.AFVALKAART_PDF
+  || 'https://michelkredercoaching.nl/wp-content/uploads/2026/10/afvalkaart.pdf';
+
+const AFZENDER     = 'Michel Kreder Coaching <rapport@michelkredercoaching.nl>';
+const REPLY_TO     = 'info@michelkredercoaching.nl';
+const INTERNE_MAIL = 'michel.kredercoaching@gmail.com';
+
+// Persoonlijke TrainingPeaks-link waarmee een nieuwe klant Michel als coach
+// koppelt. Staat in de onboarding-mail van de begeleiding-route.
+const TP_COACH_LINK = process.env.TP_COACH_LINK
+  || 'https://home.trainingpeaks.com/attachtocoach?sharedKey=WVUCQ5NS247P2';
+const TP_ANDROID = 'https://play.google.com/store/apps/details?id=com.peaksware.trainingpeaks';
+const TP_APPLE   = 'https://apps.apple.com/app/id408047715';
+
+// ===== Kortingstoken voor nurture-mail 5 (€10 op elk schema) =====
+// Zelfde HMAC-aanpak als het Power Profile-tegoed, maar met 'kh10' als
+// type zodat de twee soorten tokens elkaars snippet niet activeren.
+// Opbouw: base64url("kh10|email|exp|sig"), sig = eerste 16 hex tekens van
+// HMAC-SHA256(PP_TOKEN_SECRET, "kh10|email|exp").
+// Mail 5 valt normaal op dag 8. Het token is 25 dagen geldig — ruime buffer
+// voor tijdzones, late opens, én een stilstaande journey (zie het incident
+// van 24-08 t/m 07-09: mensen kregen mail 5 tot 19 dagen te laat, met een
+// toen al verlopen kortingslink). De mailtekst zelf noemt sinds die fix geen
+// kalenderdatum meer, dus KHDEADLINE is alleen nog informatief.
+const PP_SECRET = process.env.PP_TOKEN_SECRET || '';
+
+function maakKeuzehulpKorting(email) {
+  if (!PP_SECRET || !email) return { token: '', deadlineNL: '' };
+  const exp = Date.now() + 25 * 24 * 3600 * 1000;
+  const payload = `kh10|${String(email).toLowerCase()}|${exp}`;
+  const sig = crypto.createHmac('sha256', PP_SECRET).update(payload).digest('hex').slice(0, 16);
+  const token = Buffer.from(`${payload}|${sig}`).toString('base64url');
+  const deadlineNL = new Date(Date.now() + 11 * 24 * 3600 * 1000)
+    .toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Amsterdam' });
+  return { token, deadlineNL };
 }
 
-async function laad() {
-  if (!token) { $('#app').innerHTML = '<div class="laden">Deze link is niet compleet. Gebruik de link uit je welkomstmail.</div>'; return; }
-  try {
-    const r = await fetch(API + '?actie=plan&t=' + encodeURIComponent(token));
-    const j = await r.json();
-    if (!j.ok) { $('#app').innerHTML = `<div class="laden">${esc(j.fout || 'Je programma kon niet geladen worden.')}</div>`; return; }
-    S = j; teken();
-  } catch { $('#app').innerHTML = '<div class="laden">Verbinding mislukt. Probeer het zo nog eens.</div>'; }
+// ===== Kortingstoken voor Het Startpakket (€19,95 -> €14,95, 1 uur geldig) =====
+// Zelfde HMAC-aanpak, maar type 'sp19' zodat dit token niet door het kh10-
+// snippet (schema-korting) of het Power Profile-tegoed wordt geaccepteerd.
+// Opbouw: base64url("sp19|email|exp|sig"), sig = eerste 16 hex tekens van
+// HMAC-SHA256(PP_TOKEN_SECRET, "sp19|email|exp"). Wordt gemint zodra iemand
+// de gratis proeftraining (het Startprotocol) aanvraagt, zodat de pagina
+// zelf meteen een aftellende korting naar Het Startpakket kan tonen.
+function maakStartpakketKorting(email) {
+  if (!PP_SECRET || !email) return { token: '', verlooptOm: 0 };
+  const exp = Date.now() + 60 * 60 * 1000; // 1 uur
+  const payload = `sp19|${String(email).toLowerCase()}|${exp}`;
+  const sig = crypto.createHmac('sha256', PP_SECRET).update(payload).digest('hex').slice(0, 16);
+  const token = Buffer.from(`${payload}|${sig}`).toString('base64url');
+  return { token, verlooptOm: exp };
 }
 
-// ===========================================================================
-// TEKENEN
-// ===========================================================================
-function teken() {
-  const d = S;
-  let h = kopHtml(d);
-  if (d.intakeNodig) h += intakeHtml();
-  else if (d.geblokkeerd) h += `<div class="blok kaart accent"><h2>Eerst even laten checken</h2>
-      <p>Je gaf aan dat je pijn hebt die uitstraalt, tintelingen of nachtelijke pijn, of dat je kort geleden een operatie of blessure had. Laat dat eerst checken door je huisarts of fysiotherapeut.</p>
-      <p style="margin-top:10px">Heb je groen licht gekregen? Vink het hieronder aan, dan gaat je programma open. Je begint dan altijd een niveau lichter.</p>
-      <label class="optie" style="margin-top:14px"><input type="checkbox" id="groenlicht"><span>Mijn huisarts of fysiotherapeut heeft gezegd dat ik met deze oefeningen mag beginnen.</span></label>
-      <button class="knop" data-actie="groenlicht" style="margin-top:6px">Open mijn programma</button><div class="fout" id="groenfout"></div></div>`;
-  else {
-    if (d.testNodig === 0) h += testHtml(d, true);
-    if (d.meterNodig != null) h += meterHtml(d);
-    if (d.testNodig != null && d.testNodig !== 0) h += testHtml(d, false);
-    if (!d.betaald && !d.opSlot) h += `<div class="proefbalk"><span><b>Proefweek.</b> Week 1 is gratis. Doe je starttest en je sessies, dan zie je meteen wat het programma met je doet.</span></div>`;
-    if (d.opSlot) h += muurHtml(d);
-    else if (d.klaar) h += `<div class="blok kaart accent"><h2>Alle 12 weken rond</h2><p>Knap gedaan. ${d.testNodig === 12 ? 'Doe hierboven je eindtest en kijk wat het je heeft opgeleverd.' : 'Je eindtest staat in je voortgang hieronder.'}</p></div>`;
-    else {
-      if (d.weekRond) h += weekklaarHtml(d);
-      h += sessiesHtml(d);
-      h += tipsHtml(d);
-    }
-    h += voortgangHtml(d);
-    h += doelHtml(d);
-    if (d.vervolgVraag) h += vervolgHtml(d);
-    h += vraagHtml(d);
+// ===== Kortingstoken voor het Indoor Winterprogramma (10%, 7 dagen geldig) =====
+// Zelfde HMAC-aanpak, type 'wk10'. Langere geldigheid dan sp19 (dit is geen
+// direct-op-de-pagina-impuls maar een terugkommail-korting): 7 dagen geeft
+// de Mailchimp-automation ruimte voor een paar opvolgmails voordat de code
+// verloopt. WKDEADLINE is voor in de mailtekst, net als bij KHDEADLINE.
+function maakWinterKorting(email) {
+  if (!PP_SECRET || !email) return { token: '', deadlineNL: '', verlooptOm: 0 };
+  const exp = Date.now() + 7 * 24 * 3600 * 1000;
+  const payload = `wk10|${String(email).toLowerCase()}|${exp}`;
+  const sig = crypto.createHmac('sha256', PP_SECRET).update(payload).digest('hex').slice(0, 16);
+  const token = Buffer.from(`${payload}|${sig}`).toString('base64url');
+  const deadlineNL = new Date(exp)
+    .toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Amsterdam' });
+  return { token, deadlineNL, verlooptOm: exp };
+}
+
+// ===== Kortingstoken voor Het Startpakket via de popup op de eigen pagina =====
+// Zelfde €5 als de bestaande sp19-uur-korting (consistente belofte, welke
+// route iemand ook neemt), maar type 'sk05' en 7 dagen geldig i.p.v. 1 uur:
+// dit is een terugkommail-korting voor koude bezoekers, geen direct-op-de-
+// pagina-impuls vanuit de proeftraining/keuzehulp.
+function maakStartpakketPopupKorting(email) {
+  if (!PP_SECRET || !email) return { token: '', deadlineNL: '', verlooptOm: 0 };
+  const exp = Date.now() + 7 * 24 * 3600 * 1000;
+  const payload = `sk05|${String(email).toLowerCase()}|${exp}`;
+  const sig = crypto.createHmac('sha256', PP_SECRET).update(payload).digest('hex').slice(0, 16);
+  const token = Buffer.from(`${payload}|${sig}`).toString('base64url');
+  const deadlineNL = new Date(exp)
+    .toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Amsterdam' });
+  return { token, deadlineNL, verlooptOm: exp };
+}
+
+// Alleen de eigen sites mogen dit endpoint vanuit de browser aanroepen.
+const TOEGESTANE_ORIGINS = [
+  'https://michelkredercoaching.nl',
+  'https://www.michelkredercoaching.nl',
+];
+
+function zetCors(req, res) {
+  const origin = req.headers.origin || '';
+  if (TOEGESTANE_ORIGINS.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
   }
-  h += `<p class="klein muted" style="margin-top:30px">Voel je pijn tijdens een oefening (niet hetzelfde als vermoeidheid)? Stop die oefening en sla hem over. Laat het Michel weten via de vraagknop.</p>`;
-  $('#app').innerHTML = h;
-  if (!d.intakeNodig && !d.geblokkeerd) coachBouw();
-  // Mini-animaties in de sessiekaarten laten lopen.
-  document.querySelectorAll('[data-anim]').forEach((el) => { const a = A[el.dataset.anim]; if (a) F.speel(el, a); });
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 }
 
-function kopHtml(d) {
-  const doel = d.doel && d.doel.dagenTotDoel > 0
-    ? `<div class="pil">${esc(d.doel.naam)} &middot; nog <b>${d.doel.wekenTotDoel >= 1 ? d.doel.wekenTotDoel + ' weken' : d.doel.dagenTotDoel + ' dagen'}</b></div>` : '';
-  const sub = d.intakeNodig ? 'Eerst een paar korte vragen, dan staat je plan klaar.'
-    : d.klaar ? 'Programma afgerond.' : d.opSlot ? 'Proefweek afgerond. Week 1 zit erop.' : `Fase ${d.fase}: ${esc(d.faseNaam)} &middot; ${d.gedaanDezeWeek.length} van 3 sessies gedaan`;
-  return `<div class="kop"><div class="eyebrow">Mijn Core${d.naam ? ' &middot; ' + esc(d.naam.split(' ')[0]) : ''}</div>
-    <h1>${d.intakeNodig ? 'Welkom' : d.klaar ? 'Klaar!' : 'Week ' + d.week + ' van 12'}</h1>
-    <div class="sub">${sub}</div>${doel}</div>`;
+// ===== META CONVERSION API — server-side Lead =====
+// AANLEIDING (29-09-2026). In Events Manager stond het Lead-event op 4 events
+// met match quality 0,0, terwijl de Startpakket-popup, de keuzehulp, de
+// 6-uur-pdf en de bandenspanningskaart wel degelijk leads binnenhalen. De
+// oorzaak was simpel: in de hele codebase stond precies één fbq('track','Lead'),
+// op bandenspanning.html, en die stuurde geen enkel matchveld mee.
+//
+// Dat is niet alleen een meetprobleem. De advertentieset krijgt 8 tot 14
+// conversies per week tegen de 50 die Meta wil zien en blijft daardoor in de
+// leerfase hangen. Een werkend Lead-event is het enige signaal met genoeg
+// volume om daar ooit uit te komen.
+//
+// EÉN ZENDER, net als bij de Purchase op het subdomein. Bewust géén browser-
+// pixel-event ernaast: twee zenders met verschillende event-ID's ontdubbelen
+// niet, en dat kostte eerder al een maand aan opgeblazen Purchase-cijfers.
+// Daarom is de losse fbq-regel op bandenspanning.html verwijderd.
+//
+// Dit endpoint wordt rechtstreeks vanuit de browser aangeroepen, dus IP en
+// user agent staan gewoon in de request. De cookies niet: dit is een
+// cross-origin verzoek zonder credentials. Daarom stuurt de hoofdsite
+// _fbp, _fbc en de bannerkeuze zelf mee in de body; dat gebeurt in
+// wordpress-snippets/trechter-bronmeting.php, dat op elke pagina draait.
+const META_PIXEL_ID = process.env.META_PIXEL_ID || '928014910335428';
+
+function metaHash(v) {
+  if (!v) return undefined;
+  const s = String(v).trim().toLowerCase();
+  return s ? crypto.createHash('sha256').update(s).digest('hex') : undefined;
 }
 
-// ---- Intake ----
-function intakeHtml() {
-  const optie = (naam, waarde, tekst, type = 'radio') => `<label class="optie"><input type="${type}" name="${naam}" value="${waarde}"><span>${tekst}</span></label>`;
-  return `<div class="blok kaart accent" id="intake"><h2>Je intake</h2>
-    <p class="muted klein" style="margin-bottom:18px">Hierop stem ik je oefeningen af. Duurt een minuut.</p>
-    <div class="vraag"><div class="v">1. Waar heb je last van, op of na de fiets?</div>
-      ${optie('klacht', 'onderrug', 'Onderrug', 'checkbox')}${optie('klacht', 'nek', 'Nek en schouders', 'checkbox')}
-      ${optie('klacht', 'knie', 'Knie', 'checkbox')}${optie('klacht', 'heup', 'Heup', 'checkbox')}
-      ${optie('klacht', 'geen', 'Nergens last van', 'checkbox')}</div>
-    <div class="vraag" id="rugvraag" style="display:none"><div class="v">Hoe erg is je onderrug?</div>
-      ${optie('rug', 'lange-ritten', 'Alleen na lange ritten')}${optie('rug', 'regelmatig', 'Regelmatig, ook bij kortere ritten')}${optie('rug', 'rust', 'Ook in rust, zonder te fietsen')}</div>
-    <div class="vraag"><div class="v">2. Heb je een van deze dingen?</div>
-      <p class="klein muted" style="margin-bottom:8px">Pijn die uitstraalt naar je been, tintelingen of een doof gevoel, pijn 's nachts, of een operatie of blessure in het afgelopen half jaar.</p>
-      ${optie('vlag', 'nee', 'Nee')}${optie('vlag', 'ja', 'Ja')}</div>
-    <div class="vraag"><div class="v">3. Hoeveel ervaring heb je met core-training?</div>
-      ${optie('ervaring', 'nooit', 'Nooit of bijna nooit')}${optie('ervaring', 'af en toe', 'Af en toe')}${optie('ervaring', 'regelmatig', 'Regelmatig, wekelijks')}</div>
-    <div class="vraag"><div class="v">4. Op welke dag rijd je meestal je zwaarste training?</div>
-      <select name="dag"><option value="">Wisselt, geen vaste dag</option><option value="ma">Maandag</option><option value="di">Dinsdag</option><option value="wo">Woensdag</option><option value="do">Donderdag</option><option value="vr">Vrijdag</option><option value="za">Zaterdag</option><option value="zo">Zondag</option></select></div>
-    <div class="vraag"><div class="v">Train je naar iets toe? <span class="muted" style="font-weight:400">(mag je overslaan)</span></div>
-      <div class="rij2"><input type="text" name="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60"><input type="date" name="doelDatum"></div></div>
-    <button class="knop breed" data-actie="intake">Maak mijn plan</button><div class="fout" id="intakefout"></div></div>`;
+async function stuurMetaLead(req, b, email, route) {
+  const token = process.env.META_CAPI_TOKEN;
+  if (!token) {
+    console.log('Meta Lead overgeslagen | reden: geen META_CAPI_TOKEN in Vercel');
+    return;
+  }
+
+  // Zonder expliciete toestemming gaat er niets naar Meta. Zelfde regel als in
+  // api/betaling-webhook.js en in het WordPress-snippet dat de pixel stilzet:
+  // zwijgen is geen toestemming. Ontbreekt het veld, dan draait het snippet op
+  // de hoofdsite niet (of is deze pagina nieuw en nog niet gedekt).
+  if (b._toestemming !== true) {
+    console.log('Meta Lead overgeslagen |', route, '| reden:',
+      b._toestemming === false
+        ? 'bezoeker heeft marketingcookies geweigerd'
+        : 'geen toestemming meegestuurd (draait het WP-snippet op deze pagina?)');
+    return;
+  }
+
+  const em = metaHash(email);
+  const userData = {};
+  if (em) { userData.em = em; userData.external_id = em; }
+
+  const voornaam = String(b.naam || '').trim().split(/\s+/)[0];
+  const fn = metaHash(voornaam);
+  if (fn) userData.fn = fn;
+
+  if (typeof b._fbp === 'string' && b._fbp) userData.fbp = b._fbp.slice(0, 120);
+  if (typeof b._fbc === 'string' && b._fbc) userData.fbc = b._fbc.slice(0, 300);
+
+  const ip = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  if (ip) userData.client_ip_address = ip;
+  const ua = String(req.headers['user-agent'] || '').slice(0, 400);
+  if (ua) userData.client_user_agent = ua;
+
+  // De pagina waar het formulier stond. Alleen overnemen als het echt de
+  // hoofdsite is; anders zou een willekeurige waarde uit de body in het event
+  // belanden.
+  let bronUrl = 'https://michelkredercoaching.nl/';
+  if (typeof b._pagina === 'string' && /^https:\/\/(www\.)?michelkredercoaching\.nl\//.test(b._pagina)) {
+    bronUrl = b._pagina.slice(0, 500);
+  }
+
+  // Eén lead per mailadres per route per dag. Vult iemand het formulier twee
+  // keer in, dan ontdubbelt Meta dat op dit ID in plaats van er twee leads van
+  // te maken.
+  const dag = new Date().toISOString().slice(0, 10);
+  const eventId = 'lead_' + crypto.createHash('sha256')
+    .update(email + '|' + route + '|' + dag).digest('hex').slice(0, 24);
+
+  const event = {
+    event_name:       'Lead',
+    event_time:       Math.floor(Date.now() / 1000),
+    event_id:         eventId,
+    event_source_url: bronUrl,
+    action_source:    'website',
+    user_data:        userData,
+    // De route erbij, zodat je in Events Manager een aangepaste conversie per
+    // weggever kunt maken (bandenspanning apart van de keuzehulp, enzovoort).
+    custom_data: { content_name: route, content_category: 'lead' }
+  };
+
+  const r = await fetch(
+    `https://graph.facebook.com/v21.0/${META_PIXEL_ID}/events?access_token=${encodeURIComponent(token)}`,
+    {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ data: [event] }),
+      signal:  AbortSignal.timeout(8000)
+    }
+  );
+  const j = await r.json().catch(() => ({}));
+  if (r.ok && j.events_received) {
+    console.log('Meta Lead OK |', route, '| matchvelden:', Object.keys(userData).length,
+      userData.fbc ? '(met klik-ID)' : '(zonder klik-ID)');
+  } else {
+    console.error('Meta Lead fout |', route, '|', r.status, JSON.stringify(j).slice(0, 300));
+  }
 }
 
-// ---- Romptest ----
-const TESTANIM = { plank: 'plank', zijplankL: 'zijplank', zijplankR: 'zijplank', bridgeL: 'bridge-eenbeen', bridgeR: 'bridge-eenbeen', fietshouding: 'fietshouding' };
-function testHtml(d, start) {
-  const titel = start ? 'Je starttest' : (d.testNodig === 12 ? 'Je eindtest' : `Romptest na week ${d.testNodig}`);
-  return `<div class="blok kaart accent" id="test"><h2>${titel}</h2>
-    <p class="muted klein" style="margin-bottom:10px">${start ? 'Dit is je nulmeting. Daar vergelijk je straks alles mee. Je sessies gaan open zodra hij is ingevuld.' : 'Zelfde test als bij de start. Zo zie je zwart op wit wat het oplevert.'}
-    Houd elke houding zo lang als je hem goed kunt houden en druk op stop zodra je houding breekt. Neem twee minuten rust tussen de tests.</p>
-    ${d.testDefinities.map((t) => `<div class="test" data-test="${t.id}">
-      <div class="anim">${still(TESTANIM[t.id], 'hold') || still(TESTANIM[t.id], 'hoog')}</div>
-      <div><b>${esc(t.naam)}</b><div class="klein muted">Doel voor de volle score: ${t.doel} s</div></div>
-      <div class="testknoppen"><button class="klokknop" data-actie="klok" data-id="${t.id}">Start</button>
-        <input type="number" min="0" max="900" inputmode="numeric" placeholder="sec" data-uitslag="${t.id}"></div></div>`).join('')}
-    <button class="knop breed" data-actie="test" style="margin-top:16px">Sla mijn test op</button><div class="fout" id="testfout"></div></div>`;
+// ===== Mail-helpers (zelfde patroon als de betaling-webhook) =====
+function escHtml(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+function naarHtmlEntities(s) {
+  // Array.from itereert per codepoint, zodat emoji's (surrogaatparen)
+  // heel blijven in plaats van als twee kapotte entities te eindigen.
+  return Array.from(String(s)).map(ch => {
+    const cp = ch.codePointAt(0);
+    return cp > 127 ? '&#' + cp + ';' : ch;
+  }).join('');
 }
 
-// ---- Rugklachtenmeter ----
-function meterHtml(d) {
-  const schaal = (naam) => `<div class="schaal" data-schaal="${naam}">${[...Array(11).keys()].map((i) => `<button data-actie="schaal" data-naam="${naam}" data-waarde="${i}">${i}</button>`).join('')}</div>`;
-  return `<div class="blok kaart" id="meter"><h2>Hoe voelt je lijf op de fiets?</h2>
-    <p class="muted klein" style="margin-bottom:14px">Denk aan je laatste rit van twee uur of langer. 0 is nergens last van, 10 is heel veel last.</p>
-    <div class="vraag"><div class="v">Onderrug</div>${schaal('onderrug')}</div>
-    <div class="vraag"><div class="v">Nek en schouders</div>${schaal('nek')}</div>
-    <button class="knop" data-actie="meter">Opslaan</button><div class="fout" id="meterfout"></div></div>`;
+async function stuurMail(payload) {
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(20000)
+    });
+    if (!r.ok) { console.error('Resend fout:', r.status, await r.text()); return false; }
+    console.log('Resend OK ->', payload.to, '|', payload.subject);
+    return true;
+  } catch (e) { console.error('Resend exception:', e); return false; }
 }
 
-// ---- Week afsluiten ----
-function weekklaarHtml(d) {
-  return `<div class="blok kaart accent" id="weekklaar"><h2>Week ${d.week} afsluiten</h2>
-    <p class="muted klein" style="margin-bottom:12px">${d.gedaanDezeWeek.length} van 3 sessies gedaan, genoeg om door te gaan${d.gedaanDezeWeek.length < 3 ? ' (de derde mag je nog doen)' : ''}. Hoe reageerde je lichaam op deze week?</p>
-    <div class="keuze3"><button data-actie="reactie" data-waarde="beter">Beter</button><button data-actie="reactie" data-waarde="gelijk">Hetzelfde</button><button data-actie="reactie" data-waarde="slechter">Slechter</button></div>
-    <p class="klein muted" style="margin-top:10px">Slechter betekent: meer pijn of klachten, niet gewoon spierpijn. Dan doe je de week opnieuw met lichtere varianten.</p></div>`;
+function interneCoachingHtml(b) {
+  const r = (label, val) => `<tr><td style="padding:4px 16px 4px 0;color:#666;">${label}</td><td style="padding:4px 0;font-weight:700;">${val}</td></tr>`;
+  return naarHtmlEntities(`
+  <div style="font-family:Arial,sans-serif;color:#111;line-height:1.6;">
+    <h2 style="margin:0 0 4px;">🚴 Nieuwe coaching-aanvraag</h2>
+    <p style="margin:0 0 16px;color:#666;">Via de adviestool · reageer binnen 24 uur</p>
+    <table style="border-collapse:collapse;font-size:15px;">
+      ${r('Naam', escHtml(b.naam || '—'))}
+      ${r('E-mail', escHtml(b.email || '—'))}
+      ${r('Telefoon', escHtml(b.telefoon || '—'))}
+      ${r('Pakket', escHtml(b.pakket || '—'))}
+      ${r('Uren per week', escHtml(b.uren || '—'))}
+      ${r('Rijdt wedstrijden', escHtml(b.wedstrijden || '—'))}
+    </table>
+    <p style="margin:16px 0 4px;color:#666;">Doel of grootste frustratie:</p>
+    <p style="margin:0;padding:10px 14px;border-radius:6px;background:#f5f5f5;font-size:15px;">${escHtml(b.doel || '—')}</p>
+  </div>`);
 }
 
-// ---- Na de proefweek: week 2 wazig, betaalblok erover ----
-function muurHtml(d) {
-  const t = d.tests[0];
-  const zwak = (t?.balans || []).find((b) => b.opvallend);
-  const echt = sessiesHtml({ ...d, testNodig: null, gedaanDezeWeek: [] });
-  return `<div class="blok opslot">
-    <div class="wazig" aria-hidden="true">${echt}</div>
-    <div class="muur"><div class="muurkaart">
-      <div class="eyebrow" style="justify-content:center">Je proefweek zit erop</div>
-      <h2 style="margin-bottom:8px">Week 2 staat voor je klaar</h2>
-      <p class="muted klein">${t ? `Je startte met een Rompscore van <b style="color:var(--white)">${t.score}</b>.${zwak ? ` Je ${zwak.naam.toLowerCase()} is ${zwak.pct}% zwakker ${zwak.zwakker}.` : ''} ` : ''}Vanaf hier wordt het elke week zwaarder.</p>
-      <div class="prijs">&euro;49</div>
-      <div class="klein muted">eenmalig, voor de rest van de 12 weken</div>
-      <ul>
-        <li>Nog 33 sessies, elke week net iets zwaarder</li>
-        <li>Je romptest in week 4, 8 en 12, met grafiek</li>
-        <li>Je plan past zich aan als het ergens slechter gaat</li>
-        <li>Direct antwoord op je vragen over de oefeningen</li>
-      </ul>
-      <a class="knop breed" href="${esc(d.koopUrl)}">Ga door met week 2</a>
-      <p class="klein muted" style="margin-top:12px">Betaal met hetzelfde mailadres, dan gaat deze pagina vanzelf open en blijft alles staan.</p>
-      <p class="klein muted" style="margin-top:8px">Gaat je Rompscore in 12 weken niet omhoog, dan krijg je je geld terug.</p>
-    </div></div>
+// Volledige inschrijving via de begeleiding-inschrijfpagina's
+// (/trainingsbegeleiding-inschrijven/ en de premium-variant). Toont alle
+// ingevulde velden zodat Michel de aanvraag meteen kan verwerken.
+function interneBegeleidingHtml(b) {
+  const r = (label, val) => `<tr><td style="padding:5px 16px 5px 0;color:#666;vertical-align:top;white-space:nowrap;">${label}</td><td style="padding:5px 0;font-weight:700;">${escHtml(val || '—')}</td></tr>`;
+  const blok = (label, val) => val ? `<p style="margin:16px 0 4px;color:#666;">${label}</p><p style="margin:0;padding:10px 14px;border-radius:6px;background:#f5f5f5;font-size:15px;white-space:pre-wrap;">${escHtml(val)}</p>` : '';
+  return naarHtmlEntities(`
+  <div style="font-family:Arial,sans-serif;color:#111;line-height:1.6;">
+    <h2 style="margin:0 0 4px;">🚴 Nieuwe inschrijving trainingsbegeleiding</h2>
+    <p style="margin:0 0 16px;color:#666;">${escHtml(b.pakket || 'Begeleiding')} · reageer binnen 24 uur</p>
+    <table style="border-collapse:collapse;font-size:15px;">
+      ${r('Naam', b.naam)}
+      ${r('E-mail', b.email)}
+      ${r('Telefoon', b.telefoon)}
+      ${r('Geboortedatum', b.geboortedatum)}
+      ${r('Adres', b.adres)}
+      ${r('Postcode', b.postcode)}
+      ${r('Woonplaats', b.woonplaats)}
+      ${r('Pakket', b.pakket)}
+      ${r('Meetmethode', b.meetmethode)}
+      ${r('Omslagpunt/FTP', b.ftp)}
+      ${r('Trainingen per week', b.frequentie)}
+      ${r('Uren per week', b.uren)}
+      ${r('Rijdt wedstrijden', b.wedstrijden)}
+      ${r('Cadeaubon', b.cadeaubon)}
+      ${r('Gevonden via', b.gevonden)}
+    </table>
+    ${blok('Doel:', b.doel)}
+    ${blok('Opmerkingen:', b.opmerkingen)}
+  </div>`);
+}
+
+function bevestigingHtml(naam, pakket) {
+  const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
+  const pakketTxt = pakket ? `voor <strong>${escHtml(pakket)}</strong> ` : '';
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 14px;">Goed dat je deze stap zet. Je aanvraag ${pakketTxt}is binnen.</p>
+    <p style="font-size:15px;margin:0 0 14px;">Ik neem persoonlijk contact met je op voor een <strong>intakegesprek</strong>. Daarin nemen we je doelen door, kijk ik naar je huidige training en bespreken we hoe we samen aan de slag gaan. Je hoeft nu verder niets te doen.</p>
+    <p style="font-size:15px;margin:0 0 18px;">Wil je alvast iets kwijt over je situatie of je doelen? Reageer gewoon op deze mail, ik lees alles zelf.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
+// Onboarding-mail voor een nieuwe begeleidingsklant. Bevestigt de
+// inschrijving en geeft meteen de vliegende start: TrainingPeaks aanmaken,
+// Michel als coach koppelen, en het eigen toestel of app (Garmin, Wahoo,
+// Zwift, Rouvy) koppelen en synchroniseren. Onderaan een overzicht van de
+// inschrijving zodat de klant ziet wat is doorgegeven.
+function onboardingBegeleidingHtml(b) {
+  const veiligeNaam = escHtml((b.naam || '').trim() || 'renner');
+  const stap = (nr, titel) =>
+    `<tr><td style="padding:0 12px 0 0;vertical-align:top;"><div style="width:30px;height:30px;border-radius:50%;background:#FF6B00;color:#fff;font-weight:800;font-size:15px;text-align:center;line-height:30px;">${nr}</div></td><td style="padding:0 0 2px;"><p style="margin:0;font-size:16px;font-weight:800;color:#1a1a1a;">${titel}</p></td></tr>`;
+
+  // Overzichtsregel: alleen tonen wat is ingevuld.
+  const r = (label, val) => val ? `<tr><td style="padding:4px 16px 4px 0;color:#777;vertical-align:top;white-space:nowrap;">${label}</td><td style="padding:4px 0;color:#1a1a1a;font-weight:600;">${escHtml(val)}</td></tr>` : '';
+
+  const koppelBlok = (naam, stappen) => `
+    <div style="border:1px solid #eee;border-radius:10px;padding:16px 18px;margin:0 0 12px;">
+      <p style="margin:0 0 8px;font-size:15px;font-weight:800;color:#1a1a1a;">${naam}</p>
+      <ol style="margin:0;padding-left:18px;font-size:14px;color:#444;line-height:1.6;">
+        ${stappen.map(s => `<li style="margin:0 0 4px;">${s}</li>`).join('')}
+      </ol>
+    </div>`;
+
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:600px;">
+    <p style="font-size:16px;margin:0 0 14px;">Beste ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 14px;">Bedankt voor je inschrijving en je interesse in trainingsbegeleiding. Wat leuk dat je erbij komt. Hieronder zet ik precies op een rij hoe we een vliegende start maken, zodat alles klaarstaat voor onze eerste belafspraak.</p>
+
+    <table style="border-collapse:collapse;margin:22px 0 6px;"><tbody>
+      ${stap('1', 'Maak je gratis TrainingPeaks account aan')}
+    </tbody></table>
+    <p style="font-size:15px;margin:0 0 12px;">Download de app en maak een gratis account aan:</p>
+    <p style="margin:0 0 18px;">
+      <a href="${TP_ANDROID}" style="display:inline-block;background:#0d0d0d;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:11px 18px;border-radius:8px;margin:0 8px 8px 0;">Android downloaden</a>
+      <a href="${TP_APPLE}" style="display:inline-block;background:#0d0d0d;color:#fff;text-decoration:none;font-weight:700;font-size:14px;padding:11px 18px;border-radius:8px;margin:0 0 8px 0;">Apple downloaden</a>
+    </p>
+
+    <table style="border-collapse:collapse;margin:14px 0 6px;"><tbody>
+      ${stap('2', 'Koppel mij als jouw coach')}
+    </tbody></table>
+    <p style="font-size:15px;margin:0 0 12px;">Is je account gelukt? Klik dan op de knop hieronder, dan accepteer je mij als coach in TrainingPeaks:</p>
+    <p style="margin:0 0 18px;">
+      <a href="${TP_COACH_LINK}" style="display:inline-block;background:#FF6B00;color:#fff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 28px;border-radius:8px;">Koppel Michel als coach</a>
+    </p>
+
+    <table style="border-collapse:collapse;margin:14px 0 10px;"><tbody>
+      ${stap('3', 'Koppel je fietscomputer of app')}
+    </tbody></table>
+    <p style="font-size:15px;margin:0 0 14px;">TrainingPeaks is de spil. Koppel je toestel of app er één keer aan, dan verschijnen je geplande trainingen automatisch op je apparaat en komen je gereden ritten vanzelf terug in TrainingPeaks. Kies wat jij gebruikt:</p>
+
+    ${koppelBlok('Garmin', [
+      'Maak (of gebruik) je gratis Garmin Connect account.',
+      'Ga in TrainingPeaks naar je accountinstellingen en kies bij de koppelingen Garmin Connect. Log in en geef toestemming.',
+      'Je geplande trainingen verschijnen dan via Garmin Connect op je Garmin, en je ritten uploaden vanzelf terug naar TrainingPeaks.'
+    ])}
+    ${koppelBlok('Wahoo', [
+      'Open de Wahoo app (ELEMNT) op je telefoon.',
+      'Ga naar de instellingen en kies Authorized Apps, oftewel gekoppelde apps.',
+      'Koppel TrainingPeaks en log in. Je geplande trainingen staan dan klaar op je Wahoo en je ritten komen terug in TrainingPeaks.'
+    ])}
+    ${koppelBlok('Zwift', [
+      'Ga in Zwift naar Settings en dan Connections.',
+      'Koppel TrainingPeaks en geef toestemming.',
+      'Je trainingen uit TrainingPeaks staan dan in Zwift onder Workouts, en je ritten synchroniseren terug naar TrainingPeaks.'
+    ])}
+    ${koppelBlok('Rouvy', [
+      'Open Rouvy en ga naar je profiel en dan de instellingen of Connections.',
+      'Koppel TrainingPeaks en geef toestemming.',
+      'Je geplande trainingen synchroniseren dan naar Rouvy en je ritten weer terug naar TrainingPeaks.'
+    ])}
+
+    <p style="font-size:15px;margin:18px 0 14px;">Heb je de afgelopen weken of maanden al trainingsdata geregistreerd? Upload die dan in je TrainingPeaks account, dan zie ik meteen waar je nu staat. Heb je dat niet, geen probleem, dat bespreken we samen zodat je alsnog een goede start maakt.</p>
+
+    <p style="font-size:15px;margin:0 0 14px;">Ik neem zo snel mogelijk contact met je op, binnen 1 tot 3 werkdagen, om onze eerste belafspraak in te plannen. Ik kijk ernaar uit om je te mogen begeleiden. Heb je nog vragen, reageer gerust op deze mail.</p>
+
+    <p style="font-size:14px;margin:18px 0 0;color:#555;">Met vriendelijke groet,<br><strong style="color:#1a1a1a;">Michel Kreder</strong><br>06 39771314<br><a href="https://www.michelkredercoaching.nl" style="color:#FF6B00;">www.michelkredercoaching.nl</a></p>
+
+    <div style="margin:26px 0 0;padding:20px 22px;background:#f6f6f6;border-radius:10px;">
+      <p style="margin:0 0 10px;font-size:13px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#888;">Overzicht van je inschrijving</p>
+      <table style="border-collapse:collapse;font-size:14px;"><tbody>
+        ${r('Naam', b.naam)}
+        ${r('Geboortedatum', b.geboortedatum)}
+        ${r('Adres', b.adres)}
+        ${r('Postcode', b.postcode)}
+        ${r('Woonplaats', b.woonplaats)}
+        ${r('Telefoon', b.telefoon)}
+        ${r('E-mail', b.email)}
+        ${r('Pakket', b.pakket)}
+        ${r('Vermogen of hartslag', b.meetmethode)}
+        ${r('Omslagpunt/FTP', b.ftp)}
+        ${r('Trainingen per week', b.frequentie)}
+        ${r('Uren per week', b.uren)}
+        ${r('Doel', b.doel)}
+        ${r('Opmerkingen', b.opmerkingen)}
+        ${r('Cadeaubon', b.cadeaubon)}
+        ${r('Gevonden via', b.gevonden)}
+      </tbody></table>
+    </div>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
+// Afleveringsmail van De Proeftraining. Past zich aan op meetmethode: bij vermogen
+// draait het om FTP, bij hartslag om het omslagpunt. Sinds de knip (proeftraining
+// is nu alleen de test, geen TrainingPeaks-koppeling meer) is dit een korte mail
+// zonder handmatige vervolgstap voor Michel. Bewust zonder pitch op het schema:
+// het Startprotocol eindigt zelf al met de stap naar Het Startpakket.
+function proeftrainingHtml(naam, pdfUrl, meetmethode) {
+  const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
+  const isVermogen = meetmethode !== 'hartslag';
+  const waarde  = isVermogen ? 'FTP' : 'omslagpunt';
+
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 18px;">Je Startprotocol staat klaar. Daarin staat de test waarmee je je eigen ${waarde} bepaalt, en de zones die daarbij horen. Geen account nodig, geen koppeling: gewoon een stuk weg en twaalf minuten.</p>
+
+    <p style="margin:4px 0 22px;">
+      <a href="${escHtml(pdfUrl)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Download het Startprotocol</a>
+    </p>
+
+    <div style="margin:22px 0;padding:22px;background:#0d0d0d;border-radius:12px;">
+      <p style="font-size:12px;font-weight:800;color:#ff6b1a;letter-spacing:1.5px;margin:0 0 10px;text-transform:uppercase;">Nog één ding</p>
+      <p style="font-size:18px;line-height:1.4;color:#ffffff;margin:0 0 8px;font-weight:800;">Rijd hem op een dag dat je fris bent.</p>
+      <p style="font-size:14px;color:#c8c8c8;margin:0;">Niet als afsluiter van een drukke week en niet de dag na een zware rit. De test is kort maar fel, dus je haalt er alleen iets uit als je benen er zin in hebben. Twijfel je tussen vandaag en overmorgen, kies dan overmorgen.</p>
+    </div>
+
+    <p style="font-size:15px;margin:0 0 14px;">Kom je er niet uit? Reageer gewoon op deze mail, ik help je op weg.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
+// Afleveringsmail van de zesuur-schema-pdf. Kort en zonder pitch, de duw naar
+// de analyse zit al in de pdf zelf (het invulblad met de blanco zones).
+function zesuurHtml(naam, pdfUrl) {
+  const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 18px;">Hier is je schema, als pdf om te printen of op je telefoon te bewaren. Ik heb er twee dingen bij gezet: wat ik zou schrappen uit een gemiddelde week, en een invulblad voor je eigen zones.</p>
+    <p style="margin:4px 0 18px;">
+      <a href="${escHtml(pdfUrl)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Download je schema</a>
+    </p>
+    <p style="font-size:15px;margin:0 0 14px;">Rijd 'm op gevoel, dat werkt prima. Wil je 'm liever op een getal rijden, dan staat in de pdf hoe je snel aan je eigen FTP of omslagpunt komt.</p>
+    <p style="font-size:14px;margin:0 0 4px;">Vragen? Reageer gewoon op deze mail, ik lees alles zelf.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
+// Afleveringsmail van de bandenspanning-kaart. Kort houden: de kaart doet zelf
+// het werk en linkt onderaan door naar de analyse. Geen pitch in de mail, die
+// zit in de Mailchimp-journey op de tag 'bandenspanning-pdf'.
+function bandenspanningHtml(naam, pdfUrl, adv) {
+  const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
+  if (adv) return bandenAdviesHtml(veiligeNaam, pdfUrl, adv);
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 18px;">Hier is je bandenspanning-kaart. Op de eerste bladzijde zoek je je gewicht en je bandbreedte op en lees je je druk af voor voor en achter, in bar en in psi. Op de tweede staan de correcties voor nat wegdek, ruw asfalt en tubeless, plus de grenzen die je nooit moet overschrijden.</p>
+    <p style="margin:4px 0 18px;">
+      <a href="${escHtml(pdfUrl)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Download je kaart</a>
+    </p>
+    <p style="font-size:15px;margin:0 0 14px;">Print 'm uit en hang 'm bij je pomp, dan hoef je nooit meer te gokken. Begin bij de waarde uit de tabel en verander daarna met stapjes van 0,2 bar tegelijk, telkens op dezelfde route.</p>
+    <p style="font-size:14px;margin:0 0 4px;">Vragen? Reageer gewoon op deze mail, ik lees alles zelf.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
+// Variant met de uitkomst van de calculator: hun eigen druk bovenaan, het
+// oordeel, de tips en de kaart als naslag. Zelfde inhoud als op de pagina, zodat
+// ze het terugvinden als ze bij de pomp staan.
+function bandenAdviesHtml(veiligeNaam, pdfUrl, adv) {
+  const nl1 = (n) => n.toFixed(1).replace('.', ',');
+  const fiets = adv.type === 'gravel' ? 'gravelfiets' : 'racefiets';
+  const nu = adv.nuVoor != null && adv.nuAchter != null
+    ? `<p style="margin:12px 0 0;font-size:13px;color:#6d6862;">Nu rijd je ${nl1(adv.nuVoor)} voor en ${nl1(adv.nuAchter)} achter.</p>` : '';
+  const tips = adv.tips.map(t => `
+    <p style="font-size:15px;margin:0 0 4px;"><strong style="color:${t.waarschuwing ? '#c0392b' : '#1a1a1a'};">${escHtml(t.kop)}</strong></p>
+    <p style="font-size:15px;margin:0 0 16px;">${escHtml(t.tekst)}</p>`).join('');
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 18px;">Hier is je bandenspanning, uitgerekend voor jouw ${fiets}: ${adv.gewicht} kg op ${adv.breedte} mm, ${adv.tubeless ? 'tubeless' : 'met binnenband'}. Je fiets, kleding, helm en bidons zitten er al in, samen zo'n 10,5 kg.</p>
+    <div style="border:1px solid #e3ded6;border-left:4px solid #ff6b1a;padding:16px 20px;margin:0 0 20px;">
+      <p style="margin:0 0 12px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#ff6b1a;font-weight:700;">Jouw startdruk</p>
+      <p style="margin:0 0 6px;font-size:16px;">Voorband: <b>${nl1(adv.voor)} bar</b> <span style="color:#6d6862;">(${adv.voorPsi} psi)</span></p>
+      <p style="margin:0;font-size:16px;">Achterband: <b>${nl1(adv.achter)} bar</b> <span style="color:#6d6862;">(${adv.achterPsi} psi)</span></p>
+      ${nu}
+    </div>
+    <p style="font-size:15px;margin:0 0 20px;"><strong>${escHtml(adv.oordeel)}</strong></p>
+    ${tips}
+    <p style="font-size:15px;margin:4px 0 14px;">De volledige kaart met alle gewichten en breedtes en de correcties voor elk weer staat hier, handig om bij je pomp te hangen:</p>
+    <p style="margin:4px 0 18px;">
+      <a href="${escHtml(pdfUrl)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Download de kaart</a>
+    </p>
+    <p style="font-size:14px;margin:0 0 4px;">Vragen? Reageer gewoon op deze mail, ik lees alles zelf.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
+// Afleveringsmail van de Core-proefweek. Kort: de pagina doet het werk, het
+// aanbod zit in de Mailchimp-journey op de tags 'core-gratis' en 'core-proef-klaar'.
+function coreGratisHtml(naam, url, betaald) {
+  const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    ${betaald ? `<p style="font-size:15px;margin:0 0 18px;">Je hebt het Core-programma al. Hier is je persoonlijke link nog een keer.</p>` : `
+    <p style="font-size:15px;margin:0 0 14px;">Je proefweek van het Core-programma staat klaar. Geen demo, maar gewoon week 1 van het echte programma.</p>
+    <p style="font-size:15px;margin:0 0 14px;">Je beantwoordt eerst een paar vragen, zodat de oefeningen passen bij jouw klachten. Dan doe je je starttest, en daarna de drie sessies van week 1. Leg je telefoon op de grond en druk op start: de pagina telt af en zegt wanneer je wisselt.</p>`}
+    <p style="margin:4px 0 18px;">
+      <a href="${escHtml(url)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">${betaald ? 'Naar mijn Core-programma' : 'Start mijn proefweek'}</a>
+    </p>
+    ${betaald ? '' : `<p style="font-size:15px;margin:0 0 14px;">Bewaar deze mail, de link is persoonlijk. Let bij je starttest op het verschil tussen je linker- en rechterkant bij de zijplank. Dat zie je vaak terug in een scheve zit op de fiets.</p>`}
+    <p style="font-size:14px;margin:0 0 4px;">Twijfel je over een oefening? Op je pagina kun je je vraag stellen.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
+// Afleveringsmail van de Afvalkaart. Kort, geen pitch: de kaart doet zelf het
+// werk en het aanbod komt in de journey op de tag 'afvalkaart-pdf'.
+function afvalkaartHtml(naam, pdfUrl, richtlijn, belemmering) {
+  const hoi = naam ? `Hoi ${String(naam).trim().split(' ')[0]},` : 'Hoi,';
+  const zwaarste = richtlijn && richtlijn.zwaarsteDag
+    ? `<p style="margin:0 0 6px;">Je zwaarste dag: <b>${richtlijn.zwaarsteDag} kcal</b>${
+        richtlijn.zwaarsteOmschrijving ? `, bij ${richtlijn.zwaarsteOmschrijving}` : ''}</p>` : '';
+  const blok = richtlijn ? `
+    <div style="border:1px solid #e3ded6;border-left:4px solid #ff6b1a;padding:16px 20px;margin:0 0 20px;">
+      <p style="margin:0 0 12px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#ff6b1a;font-weight:700;">Jouw startrichtlijn</p>
+      <p style="margin:0 0 6px;">Rustdag: <b>${richtlijn.rustdag} kcal</b></p>
+      <p style="margin:0 0 6px;">Trainingsdag: <b>${richtlijn.trainingsdag} kcal</b> gemiddeld</p>
+      ${zwaarste}
+      <p style="margin:0 0 12px;">Eiwit: <b>${richtlijn.eiwit} gram per dag</b>, elke dag hetzelfde</p>
+      <p style="margin:0;font-size:13px;color:#6d6862;">Startrichtlijn op basis van ${richtlijn.gewicht} kg en je antwoorden, geen voedingsadvies. Je lengte en leeftijd vragen we hier niet, en die schuiven je getallen.</p>
+    </div>` : '';
+  // Het persoonlijke stuk: het antwoord op de belemmering die hij zelf heeft
+  // aangeklikt. Dit is wat van een algemene kaart een persoonlijke mail maakt.
+  const bel = belemmering ? `
+    <div style="background:#faf8f5;border:1px solid #e3ded6;padding:18px 20px;margin:0 0 22px;">
+      <p style="margin:0 0 10px;font-size:17px;font-weight:700;">${escHtml(belemmering.kop)}</p>
+      <p style="margin:0 0 12px;">${escHtml(belemmering.tekst)}</p>
+      <p style="margin:0;"><b>Wat je deze week doet:</b> ${escHtml(belemmering.actie)}</p>
+    </div>` : '';
+  return `
+  <div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.7;color:#1a1a1a;max-width:560px;">
+    <p style="margin:0 0 18px;">${hoi}</p>
+    ${blok}
+    ${bel}
+    <p style="margin:0 0 18px;">Hier is je Afvalkaart. Op de eerste bladzijde zoek je je gewicht en je trainingsuren op, en lees je af wat je eet op een rustdag en wat op een trainingsdag. Dat verschil is het hele punt: op de dag dat je traint eet je meer, niet minder.</p>
+    <p style="margin:0 0 18px;">Daarna staan de grammen koolhydraten per uur op de fiets, de drie regels waar het meestal misgaat, en een ruiltabel zodat je niets hoeft af te wegen wat je niet wil afwegen.</p>
+    <p style="margin:0 0 22px;"><a href="${pdfUrl}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;text-decoration:none;font-weight:bold;display:inline-block;">Open je Afvalkaart</a></p>
+    <p style="margin:0 0 14px;">En als er iets niet klopt met jouw situatie, reageer gewoon op deze mail. Schrijf even wat je rijdt en waar je op vastloopt, dan denk ik met je mee. Ik lees alles zelf.</p>
+    <p style="margin:0;">Michel</p>
   </div>`;
 }
 
-// ---- Sessies ----
-function sessiesHtml(d) {
-  const slot = d.testNodig === 0;
-  return `<div class="blok"><h2>Deze week${d.herhaling ? ' <span class="muted klein" style="font-family:DM Sans">(herhaling, lichtere varianten)</span>' : ''}</h2><div class="sessies">
-    ${d.sessies.map((s) => {
-      const klaar = d.gedaanDezeWeek.includes(s.letter);
-      return `<div class="sessie ${klaar ? 'gedaan' : ''}">
-        <div class="boven"><div style="display:flex;gap:14px;align-items:center"><div class="letter">${s.letter}</div>
-          <div><div class="titel">${esc(s.naam)}</div><div class="meta">${s.minuten} min &middot; ${s.werk}s werk, ${s.rust}s rust &middot; ${s.rondes} rondes${s.finisher ? ' + finisher' : ''}</div></div></div>
-          ${klaar ? '<div class="vink">Gedaan</div>' : ''}</div>
-        <div class="oefrij">${s.oefeningen.map((o) => `<div class="oefmini"><div data-anim="${o.id}"></div><span>${esc(o.naam)}${o.perKant ? ' (L+R)' : ''}</span></div>`).join('')}</div>
-        <div class="onder"><button class="knop ${klaar ? 'leeg' : ''} breed" data-actie="start" data-letter="${s.letter}" ${slot ? 'disabled' : ''}>${slot ? 'Eerst je starttest' : klaar ? 'Nog een keer doen' : 'Start sessie ' + s.letter}</button></div>
-      </div>`;
-    }).join('')}</div></div>`;
+// Afleveringsmail van de schema-uitkomst (route 'schema': het Piek-advies uit
+// de 9-vragen-keuzehulp, en het schema-advies uit de adviestool). Direct
+// verstuurd in plaats van via de Mailchimp-journey, zodat het advies altijd
+// in de mailbox staat, ook als iemand de pagina sluit of de keuzehulp/
+// adviestool later nog een keer doet (elke poging krijgt zijn eigen mail,
+// zie [[keuzehulp-directe-mail]]). Geen korting hier: de kh10-code komt nog
+// via mail 5 in de bestaande nurture-journey, dat blijft ongewijzigd.
+function schemaAdviesHtml(naam, schemaName, schemaUrl) {
+  const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 18px;">Op basis van je antwoorden past dit schema het beste bij jou:</p>
+    <p style="font-size:20px;font-weight:800;margin:0 0 18px;">${escHtml(schemaName)}</p>
+    <p style="margin:4px 0 22px;">
+      <a href="${escHtml(schemaUrl)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Bekijk je schema</a>
+    </p>
+    <p style="font-size:15px;margin:0 0 14px;">Vraag over je advies? Reageer gewoon op deze mail, ik lees alles zelf.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
 }
 
-function tipsHtml(d) {
-  const tips = [];
-  if (d.doel && d.doel.tip) tips.push(d.doel.tip);
-  if (d.weektip) tips.push(d.weektip);
-  if (d.week === 1) tips.push(...d.intakeTips);
-  if (!tips.length) return '';
-  return `<div class="blok"><h2>Tip van de week</h2>${tips.map((t) => `<div class="tip">${esc(t)}</div>`).join('')}</div>`;
-}
-
-// ---- Voortgang ----
-function lijnGrafiek(series, opts) {
-  // series: [{naam, kleur, punten:[{x, y}]}], x-as = weken 0..12
-  const W = 600, H = 220, L = 34, R = 12, T = 14, B = 28;
-  const max = opts.max, sx = (x) => L + (W - L - R) * x / 12, sy = (y) => T + (H - T - B) * (1 - y / max);
-  let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
-  for (const g of opts.raster) s += `<line x1="${L}" x2="${W - R}" y1="${sy(g)}" y2="${sy(g)}" stroke="rgba(255,255,255,.07)"/><text x="${L - 6}" y="${sy(g) + 4}" text-anchor="end" font-size="11" fill="rgba(245,243,239,.45)">${g}</text>`;
-  for (const w of [0, 4, 8, 12]) s += `<text x="${sx(w)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="rgba(245,243,239,.45)">wk ${w}</text>`;
-  for (const se of series) {
-    if (!se.punten.length) continue;
-    s += `<polyline fill="none" stroke="${se.kleur}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="${se.punten.map((p) => sx(p.x) + ',' + sy(p.y)).join(' ')}"/>`;
-    for (const p of se.punten) s += `<circle cx="${sx(p.x)}" cy="${sy(p.y)}" r="5" fill="${se.kleur}"/><text x="${sx(p.x)}" y="${sy(p.y) - 10}" text-anchor="middle" font-size="12" font-weight="700" fill="${se.kleur}">${p.y}</text>`;
-  }
-  return s + '</svg>';
-}
-function voortgangHtml(d) {
-  const vak = d.vakjes, rijen = ['A', 'B', 'C'].map((l) => vak.filter((v) => v.letter === l).map((v) =>
-    `<div class="vakje ${v.gedaan ? 'aan' : ''} ${v.week === d.week && !d.klaar ? 'nu' : ''}" title="Week ${v.week} sessie ${l}"></div>`).join('')).join('');
-  const eerste = d.tests[0], laatste = d.tests[d.tests.length - 1];
-  const verschil = eerste && laatste && laatste !== eerste ? laatste.score - eerste.score : null;
-  const balans = (laatste?.balans || []).filter((b) => b.opvallend);
-  const totaal = vak.filter((v) => v.gedaan).length;
-  return `<div class="blok"><h2>Je voortgang</h2><div class="kaart">
-    <div class="cijfers">
-      <div class="cijfer"><span>Sessies</span><b>${totaal}<span style="font-size:15px;color:var(--muted)"> / 36</span></b></div>
-      <div class="cijfer"><span>Rompscore</span><b>${laatste ? laatste.score : '–'}</b></div>
-      <div class="cijfer"><span>Sinds start</span><b class="${verschil > 0 ? 'op' : ''}">${verschil != null ? (verschil > 0 ? '+' : '') + verschil : '–'}</b></div>
+// Afleveringsmail van de Startpakket-uitkomst. Zelfde sp19-uur-korting die de
+// uitkomstpagina zelf ook toont, nu ook direct in de mail zodat het advies +
+// de korting altijd binnenkomen, ongeacht hoe vaak iemand de keuzehulp doet.
+function startpakketAdviesHtml(naam, checkoutUrl, verloopTijdNL) {
+  const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 18px;">Op basis van je antwoorden past Het Startpakket het beste bij jou: een test in week 1 zodat je precies weet waar je staat, en vier weken opbouw daarna.</p>
+    <div style="margin:0 0 20px;padding:18px 20px;background:#f6f6f6;border-radius:10px;">
+      <p style="margin:0 0 4px;font-size:14px;color:#777;">Eenmalige korting voor jou</p>
+      <p style="margin:0;font-size:22px;font-weight:800;">€14,95 <span style="font-size:15px;font-weight:600;color:#999;text-decoration:line-through;">€19,95</span></p>
+      <p style="margin:6px 0 0;font-size:13px;color:#999;">Geldig tot ${escHtml(verloopTijdNL)}</p>
     </div>
-    <div class="vakjes">${rijen}</div>
-    <div class="weeklabels">${[...Array(12)].map((_, i) => `<div>${i + 1}</div>`).join('')}</div>
-    <div class="badges">${d.badges.map((b) => `<div class="badge ${b.verdiend ? 'aan' : ''}" title="${esc(b.tekst)}"><div class="ic">${b.fase}</div><div class="nm">${esc(b.naam)}</div><div class="klein muted">${b.verdiend ? 'Verdiend' : 'Week ' + b.fase * 3}</div></div>`).join('')}</div>
-    ${d.tests.length ? `<h3 style="margin:22px 0 6px;font-size:15px">Rompscore</h3><div class="grafiek">${lijnGrafiek([{ kleur: '#FF6B1A', punten: d.tests.map((t) => ({ x: t.moment, y: t.score })) }], { max: 100, raster: [0, 50, 100] })}</div>
-      ${balans.length ? balans.map((b) => `<div class="tip" style="margin-top:10px">Je ${b.naam.toLowerCase()} is ${b.pct}% zwakker ${b.zwakker}. Begin oefeningen per kant met die kant. Dat zie je vaak terug in een scheve zit op de fiets.</div>`).join('') : ''}` : ''}
-    ${d.meters.length ? `<h3 style="margin:22px 0 6px;font-size:15px">Klachten op de fiets <span class="muted klein" style="font-weight:400">(lager is beter)</span></h3><div class="grafiek">${lijnGrafiek([
-        { kleur: '#FF6B1A', punten: d.meters.map((m) => ({ x: m.moment, y: m.onderrug })) },
-        { kleur: '#8ab4ff', punten: d.meters.map((m) => ({ x: m.moment, y: m.nek })) }], { max: 10, raster: [0, 5, 10] })}</div>
-      <p class="klein muted"><span style="color:#FF6B1A">&#9679;</span> onderrug &nbsp; <span style="color:#8ab4ff">&#9679;</span> nek en schouders</p>` : ''}
-  </div></div>`;
+    <p style="margin:4px 0 22px;">
+      <a href="${escHtml(checkoutUrl)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Start nu voor €14,95</a>
+    </p>
+    <p style="font-size:15px;margin:0 0 14px;">Vraag over je advies? Reageer gewoon op deze mail, ik lees alles zelf.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
 }
 
-// ---- Doel ----
-function doelHtml(d) {
-  const g = d.doel;
-  let uitleg = '';
-  if (g) {
-    const datum = new Date(g.startDatum).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
-    if (g.dagenTotDoel < 0) uitleg = 'Dit doel ligt achter je. Zet een nieuw doel om weer af te tellen.';
-    else if (!g.nuBeginnen) uitleg = `Ideale start was ${datum}: dan valt week 12 precies vlak voor je doel. Ben je al begonnen? Prima, je bent dan juist eerder sterk. Herhaal na week 12 de laatste fase tot je doel.`;
-    else if (g.haalbareWeken < 12) uitleg = `Je haalt ${g.haalbareWeken} van de 12 weken voor je doel. Geen probleem: elke week maakt je stabieler. In de week voor je doel wordt je programma vanzelf lichter.`;
-    else uitleg = 'Je zit precies goed: week 12 valt vlak voor je doel.';
+// Linkt naar het-startpakket.html i.p.v. rechtstreeks naar /checkout/: een
+// koude klik vanuit een mail-client (geen site-sessie/referrer) op een kant-
+// en-klare add-to-cart-link bleek terug te bouncen naar de Startpakket-
+// pagina in plaats van door te zetten naar de checkout (getest 14-09-2026).
+// Via de landingspagina zelf werkt de add-to-cart-link wel altijd; het-
+// startpakket.html stuurt zichzelf meteen door naar de juiste checkout-link
+// zodra 'm ?meetmethode= ziet, dus het voelt voor de klant nog steeds als
+// één klik.
+function bouwStartpakketCheckoutUrl(meetmethode, spToken) {
+  let url = 'https://michelkredercoaching.nl/het-startpakket/';
+  if (meetmethode === 'vermogen' || meetmethode === 'hartslag') {
+    url += '?meetmethode=' + meetmethode;
   }
-  return `<div class="blok"><h2>Je doel</h2><div class="kaart" id="doel">
-    ${g ? `<p><b>${esc(g.naam)}</b> &middot; ${new Date(g.datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}${g.dagenTotDoel >= 0 ? ` &middot; nog ${g.dagenTotDoel} dagen` : ''}</p><p class="muted klein" style="margin:6px 0 14px">${uitleg}</p>` : '<p class="muted klein" style="margin-bottom:12px">Train je naar een rit of wedstrijd toe? Dan tel ik af en past je programma zich aan in de laatste week ervoor.</p>'}
-    <div class="rij2"><input type="text" id="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60" value="${g ? esc(g.naam) : ''}"><input type="date" id="doelDatum" value="${g ? g.datum : ''}"></div>
-    <div style="display:flex;gap:8px;margin-top:10px"><button class="knop" data-actie="doel">${g ? 'Wijzig doel' : 'Zet doel'}</button>${g ? '<button class="knop leeg" data-actie="doelwis">Wis</button>' : ''}</div>
-    <div class="fout" id="doelfout"></div></div></div>`;
+  if (spToken) url += (url.indexOf('?') > -1 ? '&' : '?') + 'sp=' + encodeURIComponent(spToken);
+  url += (url.indexOf('?') > -1 ? '&' : '?') + 'utm_source=keuzehulp&utm_medium=email&utm_campaign=uitkomst';
+  return url;
 }
 
-function vervolgHtml(d) {
-  return `<div class="blok kaart"><h2>Na week 12 doorgaan?</h2>
-    ${d.doorgaan ? '<p>Genoteerd. Je hoort het zodra er een vervolg klaarstaat.</p>'
-      : `<p class="muted klein" style="margin-bottom:12px">Ik denk na over een vervolg met elke vier weken een nieuw blok. Zou je dat willen? Je zit nergens aan vast.</p><button class="knop leeg" data-actie="doorgaan">Ja, laat het me weten</button>`}</div>`;
+// Tag eerst weghalen en dan opnieuw zetten: alleen een NIEUW geplaatste tag
+// triggert een journey, ook bij contacten die de keuzehulp eerder deden.
+async function hertag(base, headers, hash, tag) {
+  await fetch(`${base}/members/${hash}/tags`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ tags: [{ name: tag, status: 'inactive' }] }),
+    signal: AbortSignal.timeout(10000),
+  });
+  await fetch(`${base}/members/${hash}/tags`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ tags: [{ name: tag, status: 'active' }] }),
+    signal: AbortSignal.timeout(10000),
+  });
 }
 
-// Kleine kaart op de pagina; de chat zelf is het Core-coach-paneel.
-function vraagHtml(d) {
-  return `<div class="blok"><div class="kaart" style="display:flex;gap:14px;align-items:center">
-    <div class="cc-av" style="width:52px;height:52px">${avatarSvg()}</div>
-    <div style="flex:1"><b>Twijfel je over een oefening?</b><div class="klein muted">Je Core-coach kent je plan en je klachten en antwoordt direct, dag en nacht.</div></div>
-    <button class="knop" data-actie="coach" style="font-size:17px;padding:10px 14px 8px">Vraag</button></div></div>`;
-}
-
-// ===========================================================================
-// ACTIES
-// ===========================================================================
-const keuzes = { onderrug: null, nek: null };
-const klokken = {};
-document.addEventListener('change', (e) => {
-  if (e.target.name === 'klacht') {
-    const geen = e.target.value === 'geen' && e.target.checked;
-    document.querySelectorAll('input[name=klacht]').forEach((i) => { if (geen ? i.value !== 'geen' : i.value === 'geen' && e.target.checked) i.checked = false; });
-    $('#rugvraag').style.display = $('input[name=klacht][value=onderrug]').checked ? '' : 'none';
-  }
-});
-document.addEventListener('click', async (e) => {
-  const k = e.target.closest('[data-actie]'); if (!k) return;
-  const actie = k.dataset.actie;
-
-  if (actie === 'intake') {
-    const klachten = [...document.querySelectorAll('input[name=klacht]:checked')].map((i) => i.value).filter((v) => v !== 'geen');
-    const geen = $('input[name=klacht][value=geen]').checked;
-    const vlag = $('input[name=vlag]:checked')?.value, erv = $('input[name=ervaring]:checked')?.value;
-    const rug = $('input[name=rug]:checked')?.value;
-    const fout = $('#intakefout');
-    if (!klachten.length && !geen) return (fout.textContent = 'Vink bij vraag 1 iets aan, of kies "nergens last van".');
-    if (klachten.includes('onderrug') && !rug) return (fout.textContent = 'Geef aan hoe erg je onderrug is.');
-    if (!vlag) return (fout.textContent = 'Beantwoord vraag 2 even.');
-    if (!erv) return (fout.textContent = 'Kies bij vraag 3 je ervaring.');
-    k.disabled = true; k.textContent = 'Plan maken...';
-    const j = await post('intake', { klachten, rugErnst: rug, rodeVlag: vlag === 'ja', ervaring: erv, zwaarsteDag: $('select[name=dag]').value,
-      doelNaam: $('input[name=doelNaam]').value.trim(), doelDatum: $('input[name=doelDatum]').value });
-    if (!j.ok) { k.disabled = false; k.textContent = 'Maak mijn plan'; fout.textContent = j.fout || 'Mislukt.'; }
-    else window.scrollTo({ top: 0, behavior: 'smooth' });
+export default async function handler(req, res) {
+  zetCors(req, res);
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (req.method !== 'POST')    return res.status(405).json({ ok: false, fout: 'alleen POST' });
+  if (!MC_KEY || !MC_LIST || !MC_DC) {
+    console.error('Keuzehulp: Mailchimp-config ontbreekt');
+    return res.status(500).json({ ok: false, fout: 'configuratie ontbreekt' });
   }
 
-  if (actie === 'klok') {
-    const id = k.dataset.id, invoer = $(`input[data-uitslag="${id}"]`);
-    if (klokken[id]) { clearInterval(klokken[id].iv); delete klokken[id]; k.classList.remove('loopt'); k.textContent = 'Opnieuw'; piep(660, .15); return; }
-    const start = Date.now(); invoer.value = 0; k.classList.add('loopt'); k.textContent = 'Stop'; piep(880, .2);
-    klokken[id] = { iv: setInterval(() => { invoer.value = Math.floor((Date.now() - start) / 1000); }, 250) };
+  const b = req.body || {};
+  const email = String(b.email || '').trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return res.status(400).json({ ok: false, fout: 'ongeldig e-mailadres' });
   }
-  if (actie === 'test') {
-    const uitslag = {}; let leeg = false;
-    for (const t of S.testDefinities) { const v = $(`input[data-uitslag="${t.id}"]`).value; if (v === '') leeg = true; uitslag[t.id] = Number(v); }
-    if (leeg) return ($('#testfout').textContent = 'Vul alle tests in. Lukt een houding helemaal niet, vul dan 0 in.');
-    Object.values(klokken).forEach((x) => clearInterval(x.iv));
-    const j = await post('test', { uitslag });
-    if (!j.ok) $('#testfout').textContent = j.fout || 'Mislukt.'; else melding('Test opgeslagen. Je Rompscore staat in je voortgang.');
-  }
-  if (actie === 'schaal') {
-    keuzes[k.dataset.naam] = Number(k.dataset.waarde);
-    k.parentElement.querySelectorAll('button').forEach((b) => b.classList.toggle('aan', b === k));
-  }
-  if (actie === 'meter') {
-    if (keuzes.onderrug == null || keuzes.nek == null) return ($('#meterfout').textContent = 'Kies voor allebei een cijfer.');
-    const j = await post('meter', keuzes);
-    if (!j.ok) $('#meterfout').textContent = j.fout || 'Mislukt.'; else { keuzes.onderrug = keuzes.nek = null; melding('Opgeslagen.'); }
-  }
-  if (actie === 'reactie') {
-    k.parentElement.querySelectorAll('button').forEach((b) => (b.disabled = true));
-    const j = await post('weekklaar', { reactie: k.dataset.waarde });
-    if (!j.ok) { melding(j.fout || 'Mislukt.'); k.parentElement.querySelectorAll('button').forEach((b) => (b.disabled = false)); return; }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    if (j.nieuwBadge) toonBadge(j.nieuwBadge); else melding(j.melding, 4500);
-  }
-  if (actie === 'start') startSpeler(S.sessies.find((s) => s.letter === k.dataset.letter));
-  if (actie === 'doel' || actie === 'doelwis') {
-    const j = actie === 'doelwis' ? await post('doel', { wis: true }) : await post('doel', { naam: $('#doelNaam').value.trim(), datum: $('#doelDatum').value });
-    if (!j.ok) $('#doelfout').textContent = j.fout || 'Mislukt.'; else melding(actie === 'doelwis' ? 'Doel gewist.' : 'Doel staat erin.');
-  }
-  if (actie === 'groenlicht') {
-    if (!$('#groenlicht').checked) return ($('#groenfout').textContent = 'Vink eerst aan dat je groen licht hebt.');
-    const j = await post('groenlicht', { bevestig: true });
-    if (!j.ok) $('#groenfout').textContent = j.fout || 'Mislukt.'; else { melding('Je programma staat open. Je begint een niveau lichter.', 4500); window.scrollTo({ top: 0, behavior: 'smooth' }); }
-  }
-  if (actie === 'doorgaan') { await post('doorgaan', {}); melding('Genoteerd, dank je.'); }
-  if (actie === 'coach') coachOpen(true);
-});
 
-function toonBadge(b) {
-  const o = document.createElement('div'); o.className = 'speler'; o.style.background = 'rgba(5,5,5,.96)';
-  o.innerHTML = `<div class="midden"><div class="soort">Fase ${b.fase} rond</div><div class="naam" style="font-size:56px;color:#FF6B1A">${esc(b.naam)}</div>
-    <p class="cue" style="margin:10px 0 24px">${esc(b.tekst)}</p><button class="knop">Door naar week ${S.week}</button></div>`;
-  o.querySelector('button').onclick = () => o.remove();
-  document.body.appendChild(o); piep(660, .15); setTimeout(() => piep(990, .3), 170);
-}
+  const route = b.route === 'coaching'            ? 'coaching'
+              : b.route === 'begeleiding'         ? 'begeleiding'
+              : b.route === 'gratis-training'     ? 'gratis-training'
+              : b.route === 'zesuur'              ? 'zesuur'
+              : b.route === 'bandenspanning'     ? 'bandenspanning'
+              : b.route === 'core-gratis'         ? 'core-gratis'
+              : b.route === 'afvalkaart'          ? 'afvalkaart'
+              : b.route === 'analyse-advies'      ? 'analyse-advies'
+              : b.route === 'startpakket-advies'  ? 'startpakket-advies'
+              : b.route === 'winter10'            ? 'winter10'
+              : b.route === 'startpakket-popup'   ? 'startpakket-popup'
+              :                                     'schema';
 
-// ===========================================================================
-// GELUID
-// ===========================================================================
-let ac = null;
-function piep(freq = 880, duur = .12, vol = .25) {
-  try {
-    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
-    const o = ac.createOscillator(), g = ac.createGain();
-    o.frequency.value = freq; o.type = 'sine';
-    g.gain.setValueAtTime(vol, ac.currentTime); g.gain.exponentialRampToValueAtTime(.001, ac.currentTime + duur);
-    o.connect(g).connect(ac.destination); o.start(); o.stop(ac.currentTime + duur);
-  } catch {}
-}
+  // Meta melden dat hier een lead binnenkwam. Hier en niet bij elk van de tien
+  // return-punten verderop: het mailadres is geldig en de route staat vast, dus
+  // dit ís de lead. Fail-safe, want een Meta-storing mag een inschrijving nooit
+  // tegenhouden.
+  try { await stuurMetaLead(req, b, email, route); }
+  catch (e) { console.error('Meta Lead wierp een fout (genegeerd):', e); }
 
-// ===========================================================================
-// SPELER: meetrainen met de timer
-// ===========================================================================
-function bouwStappen(s) {
-  const st = [];
-  for (const w of s.warmingUp) {
-    if (w.perKant) { st.push({ soort: 'warm', id: w.id, naam: w.naam, cue: w.cue, sec: 20, kant: 'Links' }); st.push({ soort: 'warm', id: w.id, naam: w.naam, cue: w.cue, sec: 20, kant: 'Rechts' }); }
-    else st.push({ soort: 'warm', id: w.id, naam: w.naam, cue: w.cue, sec: 40 });
+  // Proeftraining: bepaal meteen welke variant van het Startprotocol deze bezoeker
+  // krijgt, zodat we niet eerst een contact aanmaken en daarna alsnog stuklopen
+  // op een ontbrekende URL.
+  const gtMeetmethode = b.meetmethode === 'hartslag' ? 'hartslag' : 'vermogen';
+  const gtDownloadUrl = gtMeetmethode === 'hartslag' ? SP_PDF_HARTSLAG : SP_PDF_VERMOGEN;
+  if (route === 'gratis-training' && !gtDownloadUrl) {
+    console.error('Proeftraining: Startprotocol-URL ontbreekt voor meetmethode', gtMeetmethode);
+    return res.status(500).json({ ok: false, fout: 'download nog niet ingesteld' });
   }
-  for (let r = 1; r <= s.rondes; r++) {
-    s.oefeningen.forEach((o, i) => {
-      const extra = { id: o.id, naam: o.naam, cue: o.cue, ronde: r };
-      if (o.perKant) {
-        st.push({ soort: 'werk', ...extra, sec: s.werk, kant: 'Links' });
-        st.push({ soort: 'wissel', ...extra, sec: 5, kant: 'Wissel naar rechts' });
-        st.push({ soort: 'werk', ...extra, sec: s.werk, kant: 'Rechts' });
-      } else st.push({ soort: 'werk', ...extra, sec: s.werk });
-      const laatste = r === s.rondes && i === s.oefeningen.length - 1;
-      if (!laatste) {
-        const volgende = s.oefeningen[(i + 1) % s.oefeningen.length];
-        st.push({ soort: 'rust', id: volgende.id, naam: 'Rust', cue: '', sec: s.rust, straks: volgende.naam + (i === s.oefeningen.length - 1 ? ` (ronde ${r + 1})` : '') });
-      }
+
+  const hash = crypto.createHash('md5').update(email).digest('hex');
+  const base = `https://${MC_DC}.api.mailchimp.com/3.0/lists/${MC_LIST}`;
+  const auth = 'Basic ' + Buffer.from('any:' + MC_KEY).toString('base64');
+  const headers = { Authorization: auth, 'Content-Type': 'application/json' };
+
+  // Merge-velden: alleen meesturen wat is ingevuld, zodat we bestaande
+  // waarden niet per ongeluk leegmaken bij een tweede inschrijving.
+  const merge = {};
+  if (b.naam)        merge.FNAME     = String(b.naam).trim().replace(/\b\p{L}/gu, c => c.toUpperCase());
+  if (b.schema)      merge.SCHEMA    = String(b.schema);
+  if (b.schemaUrl)   merge.SCHURL    = String(b.schemaUrl);
+  if (b.registratie) merge.REGISTR   = String(b.registratie);
+  if (b.ftpkennis)   merge.FTPKENNIS = String(b.ftpkennis);
+  if (b.meetmethode) merge.MEETMETH  = String(b.meetmethode);
+
+  // Kortingstoken voor mail 5 — alleen voor de schema-route; coaching-leads
+  // horen geen schemakorting te krijgen terwijl Michel ze belt.
+  if (route === 'schema') {
+    const korting = maakKeuzehulpKorting(email);
+    if (korting.token) {
+      merge.KHTOKEN    = korting.token;
+      merge.KHDEADLINE = korting.deadlineNL;
+    }
+  }
+
+  // Coaching-route: pakket + terugkeer-link voor de adviesmail
+  // (*|KHPAKKET|* en *|KHPURL|* in de coaching-journey).
+  if (route === 'coaching') {
+    if (b.pakket)    merge.KHPAKKET = String(b.pakket);
+    if (b.pakketUrl) merge.KHPURL   = String(b.pakketUrl);
+  }
+
+  // Gratis-training: meetmethode altijd vastleggen, zodat de journey erop
+  // kan vertakken (vermogen of hartslag).
+  if (route === 'gratis-training') merge.MEETMETH = gtMeetmethode;
+
+  // Bandenspanning-calculator (05-10-2026): wat iemand invulde gaat als
+  // merge-velden mee, zodat de vervolgmails zijn eigen getallen kunnen noemen
+  // en de journey op weg/gravel kan splitsen. Zonder geldige invoer (oude
+  // pagina, of velden leeg) blijft het gewoon de kaart zonder advies.
+  // Core-proefweek: dossier nu al maken, zodat de persoonlijke link als
+  // merge-veld CORELINK in Mailchimp komt. De journey-mails linken daarnaar.
+  const coreProef = route === 'core-gratis' ? await maakProef({ email, naam: b.naam }) : null;
+  if (coreProef) merge.CORELINK = coreProef.link;
+
+  const bandenAdv = route === 'bandenspanning' ? bandenAdvies(leesInvoer(b)) : null;
+  if (bandenAdv) {
+    const nl1 = (n) => n == null ? '' : n.toFixed(1).replace('.', ',');
+    merge.BTYPE    = bandenAdv.type === 'gravel' ? 'Gravel' : 'Racefiets';
+    merge.BGEWICHT = String(bandenAdv.gewicht);
+    merge.BBREEDTE = String(bandenAdv.breedte);
+    merge.BTUBE    = bandenAdv.tubeless ? 'Tubeless' : 'Binnenband';
+    merge.BVOOR    = nl1(bandenAdv.voor);
+    merge.BACHTER  = nl1(bandenAdv.achter);
+    if (bandenAdv.nuVoor != null) merge.BNUVOOR  = nl1(bandenAdv.nuVoor);
+    if (bandenAdv.nuAchter != null) merge.BNUACHTER = nl1(bandenAdv.nuAchter);
+    merge.BSTATUS  = bandenAdv.status;
+  }
+
+  // Begeleiding-inschrijving: pakket vastleggen + meetmethode, zodat Michel
+  // in Mailchimp ziet welk pakket en (indien ingevuld) waarop iemand traint.
+  if (route === 'begeleiding') {
+    if (b.pakket)      merge.KHPAKKET = String(b.pakket);
+    if (b.meetmethode) merge.MEETMETH = String(b.meetmethode);
+  }
+
+  // Winterprogramma-mailvangst: token als merge-veld, zodat de Mailchimp-
+  // automation op TAG_WINTER10 'm direct in de kortingsmail kan zetten.
+  let winterKorting = { token: '', deadlineNL: '', verlooptOm: 0 };
+  if (route === 'winter10') {
+    winterKorting = maakWinterKorting(email);
+    if (winterKorting.token) {
+      merge.WKTOKEN    = winterKorting.token;
+      merge.WKDEADLINE = winterKorting.deadlineNL;
+    }
+  }
+
+  // Startpakket-popup-mailvangst: zelfde opzet, eigen merge-velden.
+  let startpakketPopupKorting = { token: '', deadlineNL: '', verlooptOm: 0 };
+  if (route === 'startpakket-popup') {
+    startpakketPopupKorting = maakStartpakketPopupKorting(email);
+    if (startpakketPopupKorting.token) {
+      merge.SKTOKEN    = startpakketPopupKorting.token;
+      merge.SKDEADLINE = startpakketPopupKorting.deadlineNL;
+    }
+  }
+
+  // ===== Kritieke stap: keuzehulp-advies + korting direct mailen, vóór alle
+  // Mailchimp-calls. De mail heeft geen Mailchimp-data nodig (schema/token
+  // zijn puur lokaal berekend, geen netwerkcall), dus door 'm hier al te
+  // versturen hangt de bezorging niet af van hoe traag Mailchimp is. Eerder
+  // stond dit ná de upsert + 2x hertag (5 sequentiële Mailchimp-calls); die
+  // opeenstapeling at kennelijk genoeg tijd op dat de Resend-aanroep erna
+  // steevast timede (Vercel-logs 15-09-2026, drie keer op rij "Resend
+  // exception: TimeoutError"). Zie [[keuzehulp-directe-mail]] in memory.
+  let spKorting = { token: '', verlooptOm: 0 };
+  if (route === 'startpakket-advies') {
+    spKorting = maakStartpakketKorting(email);
+    const checkoutUrl = bouwStartpakketCheckoutUrl(b.meetmethode, spKorting.token);
+    const verloopTijdNL = spKorting.verlooptOm
+      ? new Date(spKorting.verlooptOm).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' }) + ' uur'
+      : '';
+    await stuurMail({
+      from: AFZENDER, to: email, reply_to: REPLY_TO,
+      subject: 'Je advies: Het Startpakket (+ eenmalige korting)',
+      html: startpakketAdviesHtml(b.naam, checkoutUrl, verloopTijdNL),
+    });
+  } else if (route === 'schema' && b.schema) {
+    await stuurMail({
+      from: AFZENDER, to: email, reply_to: REPLY_TO,
+      subject: `Je trainingsschema-advies: ${b.schema}`,
+      html: schemaAdviesHtml(b.naam, b.schema, b.schemaUrl || ''),
     });
   }
-  if (s.finisher) {
-    st.push({ soort: 'rust', id: 'plank', naam: 'Rust', sec: 60, straks: 'Finisher: maximale plank' });
-    st.push({ soort: 'finisher', id: 'plank', naam: 'Finisher: maximale plank', cue: 'Houd je plank zo lang als je hem goed kunt houden. Druk op stop zodra je houding breekt.', sec: 0 });
+
+  try {
+    // 1) Contact toevoegen of bijwerken (PUT = upsert).
+    const upsert = (velden) => fetch(`${base}/members/${hash}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({
+        email_address: email,
+        status_if_new: 'subscribed',
+        ...(Object.keys(velden).length ? { merge_fields: velden } : {}),
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    let lid = await upsert(merge);
+    if (!lid.ok && (merge.KHPAKKET || merge.KHPURL || merge.WKTOKEN || merge.WKDEADLINE || merge.SKTOKEN || merge.SKDEADLINE || merge.BTYPE || merge.CORELINK)) {
+      // Vangnet: bestaan deze merge-velden (nog) niet in Mailchimp, dan
+      // weigert de API de hele upsert. Liever het contact binnen zonder
+      // die velden dan de lead kwijt.
+      const detail = await lid.text().catch(() => '');
+      console.error('Keuzehulp: upsert met extra velden faalde, retry zonder:', lid.status, detail);
+      const { KHPAKKET, KHPURL, WKTOKEN, WKDEADLINE, SKTOKEN, SKDEADLINE,
+              BTYPE, BGEWICHT, BBREEDTE, BTUBE, BVOOR, BACHTER, BNUVOOR, BNUACHTER, BSTATUS, CORELINK, ...rest } = merge;
+      lid = await upsert(rest);
+    }
+    if (!lid.ok) {
+      const detail = await lid.text().catch(() => '');
+      console.error('Keuzehulp: lid upsert faalde:', lid.status, detail);
+      return res.status(502).json({ ok: false, fout: 'mailchimp weigerde het adres' });
+    }
+
+    // 2) Journey-tag per route.
+    const tag = route === 'coaching'           ? TAG_COACHING
+              : route === 'begeleiding'        ? TAG_BEGELEIDING
+              : route === 'gratis-training'    ? TAG_GRATIS
+              : route === 'zesuur'             ? TAG_ZESUUR
+              : route === 'bandenspanning'    ? TAG_BANDEN
+              : route === 'core-gratis'        ? TAG_CORE_GRATIS
+              : route === 'afvalkaart'         ? TAG_AFVALKAART
+              : route === 'analyse-advies'     ? TAG_KEUZEHULP_ANALYSE
+              : route === 'startpakket-advies' ? TAG_KEUZEHULP_STARTPAKKET
+              : route === 'winter10'           ? TAG_WINTER10
+              : route === 'startpakket-popup'  ? TAG_STARTPAKKET_POPUP
+              :                                  TAG_SCHEMA;
+    await hertag(base, headers, hash, tag);
+
+    // De Mailchimp-journey "Keuzehulp 9 vragen" (id 2208) trigt op de
+    // gedeelde tag TAG_SCHEMA ('keuzehulp-gedaan'). Mailchimp staat maar 3
+    // trigger-tags per journey toe, en we hebben inmiddels 4 uitkomsten
+    // (schema, startpakket, analyse, coaching) — dus geen losse trigger per
+    // uitkomst in de UI, maar hier één gedeelde tag die we bovenop de eigen
+    // uitkomst-tag zetten. Zo komt iedereen dezelfde journey in en kan die
+    // journey zelf verderop nog op de specifieke tag splitsen.
+    const KEUZEHULP_JOURNEY_ROUTES = ['coaching', 'analyse-advies', 'startpakket-advies'];
+    if (KEUZEHULP_JOURNEY_ROUTES.includes(route)) {
+      await hertag(base, headers, hash, TAG_SCHEMA);
+    }
+
+    // 2b) Proeftraining: het juiste Startprotocol meteen mailen (bevestigt het adres)
+    //     en teruggeven aan de pagina voor een directe download.
+    if (route === 'gratis-training') {
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: 'Je proeftraining staat klaar',
+        html: proeftrainingHtml(b.naam, gtDownloadUrl, gtMeetmethode),
+      });
+      // Geen interne notificatie meer: sinds de knip (proeftraining = alleen de
+      // test, geen TrainingPeaks-koppeling) is er geen handmatige stap voor
+      // Michel meer bij een gratis-training-lead.
+      console.log('Proeftraining OK:', email, '| meetmethode:', gtMeetmethode);
+      // downloadUrl en pdfUrl wijzen allebei naar het Startprotocol, zodat de
+      // huidige pagina blijft werken zolang die nog niet opnieuw geplakt is.
+      // fitUrl geven we bewust niet meer mee: het .fit-bestand is vervallen.
+      // sp19-token: eenmalige uur-korting op Het Startpakket, de pagina
+      // gebruikt spVerlooptOm om zelf een aftelklok te tonen.
+      const spKorting = maakStartpakketKorting(email);
+      return res.status(200).json({
+        ok: true,
+        downloadUrl: gtDownloadUrl,
+        pdfUrl: gtDownloadUrl,
+        meetmethode: gtMeetmethode,
+        spToken: spKorting.token,
+        spVerlooptOm: spKorting.verlooptOm,
+      });
+    }
+
+    // 2c) Zesuur: de schema-pdf meteen mailen (bevestigt het adres) en de
+    //     downloadUrl teruggeven aan de pagina voor een directe download,
+    //     zonder handmatige stap voor Michel (geen TrainingPeaks-koppeling
+    //     nodig zoals bij de proeftraining).
+    if (route === 'zesuur') {
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: 'Je 6-uur-schema staat klaar',
+        html: zesuurHtml(b.naam, ZESUUR_PDF),
+      });
+      console.log('Zesuur OK:', email);
+      return res.status(200).json({ ok: true, downloadUrl: ZESUUR_PDF });
+    }
+
+    // 2c-2) Bandenspanning: kaart mailen (bevestigt het adres) en de
+    //     downloadUrl teruggeven zodat de pagina 'm meteen kan tonen.
+    if (route === 'bandenspanning') {
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: bandenAdv
+          ? `Jouw bandenspanning: ${bandenAdv.voor.toFixed(1).replace('.', ',')} voor, ${bandenAdv.achter.toFixed(1).replace('.', ',')} achter`
+          : 'Je bandenspanning-kaart staat klaar',
+        html: bandenspanningHtml(b.naam, BANDEN_PDF, bandenAdv),
+      });
+      console.log('Bandenspanning OK:', email, bandenAdv
+        ? `| ${bandenAdv.type} ${bandenAdv.gewicht}kg ${bandenAdv.breedte}mm ${bandenAdv.tubeless ? 'tubeless' : 'binnenband'} | ${bandenAdv.status}`
+        : '| zonder calculator');
+      return res.status(200).json({ ok: true, downloadUrl: BANDEN_PDF, advies: bandenAdv });
+    }
+
+    // 2c-2b) Core-leadmagnet: de link naar de gratis mini-sessie mailen en
+    //     teruggeven, zodat de pagina meteen kan doorlinken.
+    if (route === 'core-gratis') {
+      const proef = coreProef;
+      // Wie al betaald heeft, krijgt geen proefmail maar gewoon zijn eigen link.
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: proef.betaald ? 'Je link naar je Core-programma' : 'Je gratis proefweek staat klaar',
+        html: coreGratisHtml(b.naam, proef.link, proef.betaald),
+      });
+      console.log('Core-gratis OK:', email, proef.nieuw ? '| nieuwe proef' : '| bestond al');
+      return res.status(200).json({ ok: true, link: proef.link });
+    }
+
+    // 2c-3) Afvalkaart: kaart mailen en de downloadUrl teruggeven, zelfde
+    //     patroon als de bandenspanning-kaart.
+    if (route === 'afvalkaart') {
+      // De mini-check: uit vier vragen komt een startrichtlijn. Bewust met
+      // dezelfde motor als het betaalde programma, zodat iemand die later
+      // koopt geen andere getallen ziet dan hier.
+      const richtlijn = persoonlijkeRichtlijn({
+        geslacht: b.geslacht === 'vrouw' ? 'vrouw' : 'man',
+        gewicht: Number(b.gewicht),
+        urenklasse: URENKLASSEN.some(u => u.waarde === b.urenklasse) ? b.urenklasse : '4-8',
+        werk: ['zittend', 'actief', 'zwaar'].includes(b.werk) ? b.werk : 'zittend'
+      });
+      // Vraag 5: waar loopt deze renner op vast. Stuurt de berekening NIET aan,
+      // maar bepaalt wel welk stuk advies hij te zien krijgt en op welke tag hij
+      // in Mailchimp belandt, zodat de mails daarna over zijn probleem gaan.
+      const belemmering = belemmeringAdvies(b.belemmering);
+      if (belemmering) {
+        try { await hertag(base, headers, hash, belemmering.tag); }
+        catch (e) { console.error('Belemmering-tag mislukt (genegeerd):', e); }
+      }
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: richtlijn ? 'Je richtlijn en je Afvalkaart' : 'Je Afvalkaart staat klaar',
+        html: afvalkaartHtml(b.naam, AFVALKAART_PDF, richtlijn, belemmering),
+      });
+      console.log('Afvalkaart OK:', email, richtlijn ? `| ${richtlijn.gewicht}kg ${richtlijn.urenklasse}` : '| zonder richtlijn', belemmering ? `| ${belemmering.sleutel}` : '');
+      return res.status(200).json({ ok: true, downloadUrl: AFVALKAART_PDF, richtlijn, belemmering });
+    }
+
+    // 2d) Keuzehulp-uitkomst 'analyse': geen mail nodig, de pagina linkt zelf
+    //     door naar de externe Strava-analyse. Alleen tag + contact vastleggen.
+    if (route === 'analyse-advies') {
+      console.log('Keuzehulp-analyse OK:', email);
+      return res.status(200).json({ ok: true, analyseUrl: ANALYSE_URL });
+    }
+
+    // 2e) Keuzehulp-uitkomst 'startpakket': zelfde sp19-uur-korting als de
+    //     gratis-training-route, zodat de uitkomstpagina meteen een aftelklok
+    //     en €14,95 kan tonen. Sinds de directe-mail-aanpak (zie
+    //     [[keuzehulp-directe-mail]]) sturen we het advies + de korting ook
+    //     meteen naar de mailbox, onafhankelijk van de Mailchimp-journey.
+    if (route === 'startpakket-advies') {
+      // De mail is al verstuurd (zie hierboven, vóór de Mailchimp-calls) met
+      // ditzelfde token, dus hier alleen nog de tags/response afhandelen.
+      console.log('Keuzehulp-startpakket OK:', email);
+      return res.status(200).json({
+        ok: true,
+        spToken: spKorting.token,
+        spVerlooptOm: spKorting.verlooptOm,
+      });
+    }
+
+    // 2e-2) Keuzehulp-uitkomst 'schema' (default route, en expliciet vanuit
+    //     adviestool.html): het schema-advies is al direct gemaild (zie
+    //     hierboven, vóór de Mailchimp-calls), alleen als er ook echt een
+    //     schema was meegegeven — andere/oudere aanroepen zonder route vallen
+    //     anders óók in deze tak en hebben geen b.schema.
+    if (route === 'schema' && b.schema) {
+      console.log('Keuzehulp-schema OK:', email);
+      return res.status(200).json({ ok: true });
+    }
+
+    // 2f) Winterprogramma-mailvangst: geen mail nodig, de landingspagina
+    //     toont zelf de code + vervaldatum, en de Mailchimp-automation op
+    //     TAG_WINTER10 herinnert er de dagen erna nog aan (*|WKTOKEN|*).
+    if (route === 'winter10') {
+      console.log('Winterprogramma-vangst OK:', email);
+      return res.status(200).json({
+        ok: true,
+        wkToken: winterKorting.token,
+        wkVerlooptOm: winterKorting.verlooptOm,
+      });
+    }
+
+    // 2g) Startpakket-popup-mailvangst: zelfde opzet als winter10, geen mail,
+    //     de pagina en straks de Mailchimp-automation doen de rest.
+    if (route === 'startpakket-popup') {
+      console.log('Startpakket-popup-vangst OK:', email);
+      return res.status(200).json({
+        ok: true,
+        skToken: startpakketPopupKorting.token,
+        skVerlooptOm: startpakketPopupKorting.verlooptOm,
+      });
+    }
+
+    // 3) Coaching-inschrijving: notificatie naar Michel + bevestiging naar de lead.
+    //    (De e-mailpoort eerder in de flow stuurt geen `inschrijving`, alleen
+    //    het begeleidingsformulier doet dat — dus geen dubbele mails.)
+    if (route === 'coaching' && String(b.inschrijving || '') === 'ja') {
+      await stuurMail({
+        from: AFZENDER, to: INTERNE_MAIL,
+        reply_to: email,
+        subject: `🚴 Coaching-aanvraag: ${String(b.naam || email)} · ${String(b.pakket || 'adviestool')}`,
+        html: interneCoachingHtml(b),
+      });
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: 'Je aanvraag is binnen — we plannen een intakegesprek',
+        html: bevestigingHtml(b.naam, b.pakket),
+      });
+    }
+
+    // 3b) Volledige begeleiding-inschrijving: alle gegevens naar Michel +
+    //     warme bevestiging naar de klant. Zelfde mailpatroon als coaching,
+    //     maar met het complete inschrijfformulier.
+    if (route === 'begeleiding') {
+      await stuurMail({
+        from: AFZENDER, to: INTERNE_MAIL,
+        reply_to: email,
+        subject: `🚴 Inschrijving begeleiding: ${String(b.naam || email)} · ${String(b.pakket || 'begeleiding')}`,
+        html: interneBegeleidingHtml(b),
+      });
+      await stuurMail({
+        from: AFZENDER, to: email, reply_to: REPLY_TO,
+        subject: 'Welkom bij Michel Kreder Coaching, zo maken we een vliegende start',
+        html: onboardingBegeleidingHtml({ ...b, email }),
+      });
+    }
+
+    console.log('Keuzehulp OK:', email, '| route:', route, '| schema:', b.schema || '-', '| inschrijving:', b.inschrijving || '-');
+    return res.status(200).json({ ok: true });
+  } catch (e) {
+    console.error('Keuzehulp: Mailchimp faalde:', e);
+    return res.status(502).json({ ok: false, fout: 'mailchimp niet bereikbaar' });
   }
-  const c = s.coolDown;
-  st.push({ soort: 'cool', id: c.id, naam: c.naam, cue: c.cue, sec: c.perKant, kant: 'Links' });
-  st.push({ soort: 'cool', id: c.id, naam: c.naam, cue: c.cue, sec: c.perKant, kant: 'Rechts' });
-  return st;
 }
-
-const SOORT = { warm: 'Warming-up', werk: 'Werk', wissel: 'Wissel', rust: 'Rust', finisher: 'Finisher', cool: 'Cooling-down' };
-let speler = null;
-
-async function startSpeler(sessie) {
-  const stappen = bouwStappen(sessie);
-  const totaal = stappen.reduce((n, s) => n + s.sec, 0);
-  const el = document.createElement('div'); el.className = 'speler';
-  el.innerHTML = `<div class="balk"><div class="t">Sessie ${sessie.letter} &middot; ${esc(sessie.naam)}</div><button class="sluit" data-sp="stop">Stoppen</button></div>
-    <div class="voortgang"><i></i></div>
-    <div class="midden"><div class="soort"></div><div class="naam"></div><div class="kant"></div><div class="beeld"></div><div class="klok"></div><div class="cue"></div><div class="straks"></div></div>
-    <div class="bediening"><button data-sp="terug" aria-label="Vorige">&#9664;&#9664;</button><button class="hoofd" data-sp="pauze">Pauze</button><button data-sp="verder" aria-label="Volgende">&#9654;&#9654;</button></div>`;
-  document.body.appendChild(el);
-  document.body.style.overflow = 'hidden';
-  let wakeLock = null;
-  try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {}
-  speler = { sessie, stappen, totaal, i: -1, over: 0, pauze: false, el, stopAnim: null, laatsteTik: 0, iv: null, finisherStart: 0, finisherSec: 0, wakeLock };
-  piep(880, .2);
-  naarStap(0);
-  speler.iv = setInterval(tik, 200);
-  el.addEventListener('click', spelerKlik);
-}
-
-function naarStap(i) {
-  const sp = speler; if (!sp) return;
-  if (i >= sp.stappen.length) return klaarSpeler();
-  sp.i = Math.max(0, i);
-  const st = sp.stappen[sp.i];
-  sp.over = st.sec; sp.laatsteTik = Date.now();
-  const el = sp.el;
-  const soortEl = $('.soort', el); soortEl.textContent = SOORT[st.soort] + (st.ronde ? ` · ronde ${st.ronde} van ${sp.sessie.rondes}` : '');
-  soortEl.classList.toggle('rust', st.soort === 'rust' || st.soort === 'wissel');
-  $('.naam', el).textContent = st.soort === 'rust' ? 'Rust' : st.naam;
-  $('.kant', el).textContent = st.kant || '';
-  $('.cue', el).textContent = st.cue || '';
-  $('.straks', el).textContent = st.straks ? 'Straks: ' + st.straks : '';
-  const beeld = $('.beeld', el); beeld.classList.toggle('gedimd', st.soort === 'rust');
-  if (sp.stopAnim) sp.stopAnim();
-  sp.stopAnim = A[st.id] ? F.speel(beeld, A[st.id]) : null;
-  if (st.soort === 'finisher') { sp.finisherStart = Date.now(); $('[data-sp=pauze]', el).textContent = 'Stop'; }
-  else $('[data-sp=pauze]', el).textContent = sp.pauze ? 'Verder' : 'Pauze';
-  if (st.soort === 'werk' || st.soort === 'finisher') piep(990, .25);
-  toonKlok();
-}
-
-function toonKlok() {
-  const sp = speler, st = sp.stappen[sp.i];
-  const sec = st.soort === 'finisher' ? Math.floor((Date.now() - sp.finisherStart) / 1000) : Math.ceil(sp.over);
-  $('.klok', sp.el).textContent = st.soort === 'finisher' ? sec : (sec >= 60 ? Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0') : sec);
-  const gedaan = sp.stappen.slice(0, sp.i).reduce((n, s) => n + s.sec, 0) + (st.sec - sp.over);
-  $('.voortgang i', sp.el).style.width = Math.min(100, gedaan / sp.totaal * 100) + '%';
-}
-
-function tik() {
-  const sp = speler; if (!sp) return;
-  const st = sp.stappen[sp.i], nuMs = Date.now(), dt = (nuMs - sp.laatsteTik) / 1000; sp.laatsteTik = nuMs;
-  if (st.soort === 'finisher') return toonKlok();
-  if (sp.pauze) return;
-  const voor = Math.ceil(sp.over);
-  sp.over -= dt;
-  const na = Math.ceil(sp.over);
-  if (na !== voor && na <= 3 && na >= 1) piep(660, .1);
-  if (sp.over <= 0) return naarStap(sp.i + 1);
-  toonKlok();
-}
-
-function spelerKlik(e) {
-  const k = e.target.closest('[data-sp]'); if (!k || !speler) return;
-  const sp = speler, st = sp.stappen[sp.i];
-  if (k.dataset.sp === 'pauze') {
-    if (st.soort === 'finisher') { sp.finisherSec = Math.floor((Date.now() - sp.finisherStart) / 1000); piep(660, .2); return naarStap(sp.i + 1); }
-    sp.pauze = !sp.pauze; k.textContent = sp.pauze ? 'Verder' : 'Pauze';
-  }
-  if (k.dataset.sp === 'verder') naarStap(sp.i + 1);
-  if (k.dataset.sp === 'terug') naarStap(sp.over < st.sec - 2 ? sp.i : sp.i - 1);
-  if (k.dataset.sp === 'stop') { if (confirm('Sessie stoppen? Hij wordt dan niet afgevinkt.')) sluitSpeler(); }
-}
-
-function sluitSpeler() {
-  const sp = speler; if (!sp) return;
-  clearInterval(sp.iv); if (sp.stopAnim) sp.stopAnim();
-  try { sp.wakeLock?.release(); } catch {}
-  sp.el.remove(); document.body.style.overflow = ''; speler = null;
-}
-
-async function klaarSpeler() {
-  const sp = speler;
-  clearInterval(sp.iv); if (sp.stopAnim) sp.stopAnim();
-  piep(660, .15); setTimeout(() => piep(880, .15), 160); setTimeout(() => piep(1100, .3), 320);
-  const finisher = sp.finisherSec;
-  $('.midden', sp.el).innerHTML = `<div class="soort">Sessie ${sp.sessie.letter} klaar</div><div class="naam" style="font-size:52px">Goed gedaan</div>
-    ${finisher ? `<p class="cue">Je finisher: <b>${finisher} seconden</b> plank.</p>` : ''}
-    <p class="cue" style="margin-top:8px">Sessie afvinken...</p>`;
-  $('.bediening', sp.el).innerHTML = '';
-  const j = await post('afvink', { letter: sp.sessie.letter, finisher });
-  $('.midden .cue:last-child', sp.el).textContent = j.ok
-    ? (S.weekRond ? 'Afgevinkt. Je kunt deze week nu afsluiten.' : `Afgevinkt. Nog ${S.nodigVoorWeek - S.gedaanDezeWeek.length} sessie tot je de week kunt afsluiten.`)
-    : 'Afvinken lukte niet. Probeer het straks opnieuw vanaf je pagina.';
-  $('.bediening', sp.el).innerHTML = '<button class="hoofd" data-sp="klaar">Terug naar mijn pagina</button>';
-  sp.el.addEventListener('click', (e) => { if (e.target.closest('[data-sp=klaar]')) sluitSpeler(); });
-}
-
-// ===========================================================================
-// CORE-COACH: de chat. Staat buiten #app, zodat hij niet verdwijnt als de
-// pagina opnieuw getekend wordt.
-// ===========================================================================
-const CC_NAAM = 'Core-coach';
-const CC_SNEL = ['Ik voel het in mijn onderrug', 'Dit is te zwaar, wat nu?', 'Mag dit op mijn rustdag?', 'Hoe doe ik de zijplank goed?', 'Ik heb spierpijn, doorgaan?'];
-let ccBezig = false;
-function avatarSvg() { return A['birddog'] ? F.still(A['birddog'], 'links', 1) : ''; }
-function coachBouw() {
-  if ($('#ccPaneel')) return;
-  document.body.insertAdjacentHTML('beforeend', `
-    <button class="cc-fab" id="ccFab" aria-label="Vraag je ${CC_NAAM}"><span class="cc-av">${avatarSvg()}</span>Vraag je coach</button>
-    <div class="cc-paneel" id="ccPaneel" role="dialog" aria-label="${CC_NAAM}">
-      <div class="cc-kop"><span class="cc-av">${avatarSvg()}</span>
-        <div><div class="nm">${CC_NAAM}<span class="ai">AI</span></div><div class="st">Getraind op Michels methode &middot; antwoordt direct</div></div>
-        <button class="x" id="ccSluit" aria-label="Sluiten">&times;</button></div>
-      <div class="cc-lijst" id="ccLijst"></div>
-      <div class="cc-chips" id="ccChips">${CC_SNEL.map((v) => `<button>${esc(v)}</button>`).join('')}</div>
-      <div class="cc-invoer"><textarea id="ccTekst" rows="1" placeholder="Stel je vraag..."></textarea><button id="ccStuur" aria-label="Versturen">&#10148;</button></div>
-      <div class="cc-voet">Bij pijn of een medische vraag krijg je geen advies, maar het verzoek om het te laten checken.</div>
-    </div>`);
-  $('#ccFab').onclick = () => coachOpen(true);
-  $('#ccSluit').onclick = () => coachOpen(false);
-  $('#ccStuur').onclick = () => coachStuur($('#ccTekst').value);
-  $('#ccChips').onclick = (e) => { const b = e.target.closest('button'); if (b) coachStuur(b.textContent); };
-  const ta = $('#ccTekst');
-  ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(120, ta.scrollHeight) + 'px'; });
-  ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); coachStuur(ta.value); } });
-}
-function coachOpen(aan) {
-  coachBouw();
-  $('#ccPaneel').classList.toggle('open', aan);
-  $('#ccFab').style.display = aan ? 'none' : '';
-  if (aan) { coachLijst(); setTimeout(() => $('#ccTekst').focus(), 50); }
-}
-function coachLijst(typen) {
-  const l = $('#ccLijst'); if (!l) return;
-  const voornaam = (S.naam || '').split(' ')[0];
-  const welkom = `Hoi${voornaam ? ' ' + esc(voornaam) : ''}! Ik ben je ${CC_NAAM}. Ik ken je plan, je week en je klachten. Twijfel je over een oefening, is iets te zwaar of voel je ergens iets? Vraag het gewoon.`;
-  const tijd = (op) => new Date(op).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-  l.innerHTML = `<div class="cc-b coach">${welkom}</div>` + S.berichten.map((b) => b.van === 'klant'
-      ? `<div style="align-self:flex-end;max-width:86%;text-align:right"><div class="cc-b ik" style="max-width:100%">${esc(b.tekst)}</div><div class="cc-tijd">${tijd(b.op)}</div></div>`
-      : `<div style="align-self:flex-start;max-width:86%"><div class="cc-b coach ${b.medisch ? 'let' : ''}" style="max-width:100%">${esc(b.tekst)}</div><div class="cc-tijd">${b.van === 'michel' ? 'Michel' : CC_NAAM} &middot; ${tijd(b.op)}</div></div>`).join('')
-    + (typen ? `<div class="cc-b ik" style="align-self:flex-end">${esc(typen)}</div><div class="cc-typen"><i></i><i></i><i></i></div>` : '');
-  $('#ccChips').style.display = S.berichten.length ? 'none' : '';
-  l.scrollTop = l.scrollHeight;
-}
-async function coachStuur(tekst) {
-  tekst = String(tekst || '').trim();
-  if (ccBezig || tekst.length < 3) return;
-  ccBezig = true; $('#ccStuur').disabled = true; $('#ccTekst').value = ''; $('#ccTekst').style.height = '';
-  $('#ccChips').style.display = 'none';
-  coachLijst(tekst);
-  const j = await post('vraag', { tekst });
-  ccBezig = false; $('#ccStuur').disabled = false;
-  if (!j.ok) { coachLijst(); $('#ccLijst').insertAdjacentHTML('beforeend', `<div class="cc-b coach">${esc(j.melding || j.fout || 'Dat lukte even niet. Probeer het zo opnieuw.')}</div>`); }
-  else coachLijst();
-}
-
-laad().then(() => { if (S && !S.intakeNodig && !S.geblokkeerd) coachBouw(); });
-</script>
-</body>
-</html>
