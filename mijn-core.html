@@ -72,6 +72,14 @@
   input[type=text], input[type=date], input[type=time], input[type=number], select, textarea { width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,.14); border-radius:5px; padding:12px 13px; color:var(--white); -webkit-appearance:none; appearance:none; min-height:46px; }
   input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-and-time-value { text-align:left; color:var(--white); }
   input:focus, select:focus, textarea:focus { outline:none; border-color:var(--accent); }
+  /* Datumveld: iOS toont een leeg datumveld als zwart vlak. Daarom een eigen
+     vakje met tekst, met de echte datumkiezer onzichtbaar eroverheen. */
+  .datum { position:relative; display:flex; align-items:center; gap:8px; min-height:46px; padding:12px 13px; background:var(--surface2); border:1px solid rgba(255,255,255,.14); border-radius:5px; color:var(--white); }
+  .datum .tekst { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .datum .tekst.leeg { color:rgba(245,243,239,.4); }
+  .datum svg { flex-shrink:0; }
+  .datum input { position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; padding:0; margin:0; min-height:0; cursor:pointer; }
+  .datum:focus-within { border-color:var(--accent); }
   textarea { min-height:90px; resize:vertical; }
   .rij2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   /* Sessies */
@@ -205,6 +213,9 @@
 <script src="/core-programma/animaties.js"></script>
 <script>
 const API = '/api/core';
+// Intern heten de sessies A, B en C (zo staat het in de opgeslagen voortgang).
+// De deelnemer ziet 1, 2 en 3.
+const NR = { A: 1, B: 2, C: 3 };
 const token = new URLSearchParams(location.search).get('t') || '';
 let S = null;                  // laatste stand van de server
 const $ = (s, r = document) => r.querySelector(s);
@@ -288,6 +299,23 @@ function kopHtml(d) {
     <div class="sub">${sub}</div>${doel}</div>`;
 }
 
+// ---- Datumveld (zie CSS .datum) ----
+function datumTekst(v) {
+  if (!v) return 'Kies een datum';
+  const d = new Date(v + 'T12:00:00');
+  return isNaN(d) ? v : d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+function datumVeld(attr, waarde) {
+  const icoon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF6B1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
+  return `<label class="datum"><span class="tekst ${waarde ? '' : 'leeg'}">${datumTekst(waarde)}</span>${icoon}<input type="date" ${attr} value="${waarde || ''}" min="${new Date().toISOString().slice(0, 10)}"></label>`;
+}
+document.addEventListener('input', (e) => {
+  if (e.target.matches('.datum input')) {
+    const t = e.target.parentElement.querySelector('.tekst');
+    t.textContent = datumTekst(e.target.value); t.classList.toggle('leeg', !e.target.value);
+  }
+});
+
 // ---- Intake ----
 function intakeHtml() {
   const optie = (naam, waarde, tekst, type = 'radio') => `<label class="optie"><input type="${type}" name="${naam}" value="${waarde}"><span>${tekst}</span></label>`;
@@ -307,7 +335,7 @@ function intakeHtml() {
     <div class="vraag"><div class="v">4. Op welke dag rijd je meestal je zwaarste training?</div>
       <select name="dag"><option value="">Wisselt, geen vaste dag</option><option value="ma">Maandag</option><option value="di">Dinsdag</option><option value="wo">Woensdag</option><option value="do">Donderdag</option><option value="vr">Vrijdag</option><option value="za">Zaterdag</option><option value="zo">Zondag</option></select></div>
     <div class="vraag"><div class="v">Train je naar iets toe? <span class="muted" style="font-weight:400">(mag je overslaan)</span></div>
-      <div class="rij2"><input type="text" name="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60"><input type="date" name="doelDatum"></div></div>
+      <div class="rij2"><input type="text" name="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60">${datumVeld('name="doelDatum"', '')}</div></div>
     <button class="knop breed" data-actie="intake">Maak mijn plan</button><div class="fout" id="intakefout"></div></div>`;
 }
 
@@ -377,11 +405,11 @@ function sessiesHtml(d) {
     ${d.sessies.map((s) => {
       const klaar = d.gedaanDezeWeek.includes(s.letter);
       return `<div class="sessie ${klaar ? 'gedaan' : ''}">
-        <div class="boven"><div style="display:flex;gap:14px;align-items:center"><div class="letter">${s.letter}</div>
+        <div class="boven"><div style="display:flex;gap:14px;align-items:center"><div class="letter">${NR[s.letter]}</div>
           <div><div class="titel">${esc(s.naam)}</div><div class="meta">${s.minuten} min &middot; ${s.werk}s werk, ${s.rust}s rust &middot; ${s.rondes} rondes${s.finisher ? ' + finisher' : ''}</div></div></div>
           ${klaar ? '<div class="vink">Gedaan</div>' : ''}</div>
         <div class="oefrij">${s.oefeningen.map((o) => `<div class="oefmini"><div data-anim="${o.id}"></div><span>${esc(o.naam)}${o.perKant ? ' (L+R)' : ''}</span></div>`).join('')}</div>
-        <div class="onder"><button class="knop ${klaar ? 'leeg' : ''} breed" data-actie="start" data-letter="${s.letter}" ${slot ? 'disabled' : ''}>${slot ? 'Eerst je starttest' : klaar ? 'Nog een keer doen' : 'Start sessie ' + s.letter}</button></div>
+        <div class="onder"><button class="knop ${klaar ? 'leeg' : ''} breed" data-actie="start" data-letter="${s.letter}" ${slot ? 'disabled' : ''}>${slot ? 'Eerst je starttest' : klaar ? 'Nog een keer doen' : 'Start sessie ' + NR[s.letter]}</button></div>
       </div>`;
     }).join('')}</div></div>`;
 }
@@ -412,7 +440,7 @@ function lijnGrafiek(series, opts) {
 }
 function voortgangHtml(d) {
   const vak = d.vakjes, rijen = ['A', 'B', 'C'].map((l) => vak.filter((v) => v.letter === l).map((v) =>
-    `<div class="vakje ${v.gedaan ? 'aan' : ''} ${v.week === d.week && !d.klaar ? 'nu' : ''}" title="Week ${v.week} sessie ${l}"></div>`).join('')).join('');
+    `<div class="vakje ${v.gedaan ? 'aan' : ''} ${v.week === d.week && !d.klaar ? 'nu' : ''}" title="Week ${v.week} sessie ${NR[l]}"></div>`).join('')).join('');
   const eerste = d.tests[0], laatste = d.tests[d.tests.length - 1];
   const verschil = eerste && laatste && laatste !== eerste ? laatste.score - eerste.score : null;
   const balans = (laatste?.balans || []).filter((b) => b.opvallend);
@@ -480,13 +508,13 @@ function doelHtml(d) {
   if (g) {
     const datum = new Date(g.startDatum).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
     if (g.dagenTotDoel < 0) uitleg = 'Dit doel ligt achter je. Zet een nieuw doel om weer af te tellen.';
-    else if (!g.nuBeginnen) uitleg = `Ideale start was ${datum}: dan valt week 12 precies vlak voor je doel. Ben je al begonnen? Prima, je bent dan juist eerder sterk. Herhaal na week 12 de laatste fase tot je doel.`;
+    else if (!g.nuBeginnen) uitleg = `Ideale start: ${datum}. Dan valt week 12 precies vlak voor je doel. Begin je eerder? Ook goed, dan ben je juist eerder sterk. Herhaal na week 12 de laatste fase tot je doel.`;
     else if (g.haalbareWeken < 12) uitleg = `Je haalt ${g.haalbareWeken} van de 12 weken voor je doel. Geen probleem: elke week maakt je stabieler. In de week voor je doel wordt je programma vanzelf lichter.`;
     else uitleg = 'Je zit precies goed: week 12 valt vlak voor je doel.';
   }
   return `<div class="blok"><h2>Je doel</h2><div class="kaart" id="doel">
     ${g ? `<p><b>${esc(g.naam)}</b> &middot; ${new Date(g.datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}${g.dagenTotDoel >= 0 ? ` &middot; nog ${g.dagenTotDoel} dagen` : ''}</p><p class="muted klein" style="margin:6px 0 14px">${uitleg}</p>` : '<p class="muted klein" style="margin-bottom:12px">Train je naar een rit of wedstrijd toe? Dan tel ik af en past je programma zich aan in de laatste week ervoor.</p>'}
-    <div class="rij2"><input type="text" id="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60" value="${g ? esc(g.naam) : ''}"><input type="date" id="doelDatum" value="${g ? g.datum : ''}"></div>
+    <div class="rij2"><input type="text" id="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60" value="${g ? esc(g.naam) : ''}">${datumVeld('id="doelDatum"', g ? g.datum : '')}</div>
     <div style="display:flex;gap:8px;margin-top:10px"><button class="knop" data-actie="doel">${g ? 'Wijzig doel' : 'Zet doel'}</button>${g ? '<button class="knop leeg" data-actie="doelwis">Wis</button>' : ''}</div>
     <div class="fout" id="doelfout"></div></div></div>`;
 }
@@ -661,7 +689,7 @@ async function startSpeler(sessie) {
   const stappen = bouwStappen(sessie);
   const totaal = stappen.reduce((n, s) => n + s.sec, 0);
   const el = document.createElement('div'); el.className = 'speler';
-  el.innerHTML = `<div class="balk"><div class="t">Sessie ${sessie.letter} &middot; ${esc(sessie.naam)}</div><button class="sluit" data-sp="stop">Stoppen</button></div>
+  el.innerHTML = `<div class="balk"><div class="t">Sessie ${NR[sessie.letter]} &middot; ${esc(sessie.naam)}</div><button class="sluit" data-sp="stop">Stoppen</button></div>
     <div class="voortgang"><i></i></div>
     <div class="midden"><div class="soort"></div><div class="naam"></div><div class="kant"></div><div class="beeld"></div><div class="klok"></div><div class="cue"></div><div class="straks"></div></div>
     <div class="bediening"><button data-sp="terug" aria-label="Vorige">&#9664;&#9664;</button><button class="hoofd" data-sp="pauze">Pauze</button><button data-sp="verder" aria-label="Volgende">&#9654;&#9654;</button></div>`;
@@ -743,7 +771,7 @@ async function klaarSpeler() {
   clearInterval(sp.iv); if (sp.stopAnim) sp.stopAnim();
   piep(660, .15); setTimeout(() => piep(880, .15), 160); setTimeout(() => piep(1100, .3), 320);
   const finisher = sp.finisherSec;
-  $('.midden', sp.el).innerHTML = `<div class="soort">Sessie ${sp.sessie.letter} klaar</div><div class="naam" style="font-size:52px">Goed gedaan</div>
+  $('.midden', sp.el).innerHTML = `<div class="soort">Sessie ${NR[sp.sessie.letter]} klaar</div><div class="naam" style="font-size:52px">Goed gedaan</div>
     ${finisher ? `<p class="cue">Je finisher: <b>${finisher} seconden</b> plank.</p>` : ''}
     <p class="cue" style="margin-top:8px">Sessie afvinken...</p>`;
   $('.bediening', sp.el).innerHTML = '';
