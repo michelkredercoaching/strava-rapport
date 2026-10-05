@@ -570,7 +570,13 @@ function berekenStats(activiteiten90, alleActiviteiten, athlete, streamMap = {})
   // een onmogelijk hoog getal beschadigt de rest. Deze grenzen gelden daarom op
   // twee plekken: de weergave (John-case, 17-09-2026, zie WATT PER KILO verderop)
   // en de FTP-input zodra er een lang venster meedoet (Bram-case, 28-09-2026).
-  const KORT_PLAFOND_PER_KG = { 60: 8.5, 300: 6.5 };
+  //
+  // 1 min van 8,5 naar 11,0 W/kg (Koen-case, 05-10-2026): bij 69 kg lag het
+  // plafond op 585W, en zijn echte op-één-na-beste minuut ooit viel eruit. Het
+  // rapport meldde toen "niet voluit gereden". Een snelle amateur haalt 9-10 W/kg
+  // over een minuut; Johns glitch (11,1 W/kg) valt er nog altijd buiten. De 1 min
+  // draagt alleen de weergave, niet de FTP zodra er een lang venster ligt.
+  const KORT_PLAFOND_PER_KG = { 60: 11.0, 300: 6.5 };
 
   let heeftPowerStream = false;
   let aantalRittenMetStream = 0;
