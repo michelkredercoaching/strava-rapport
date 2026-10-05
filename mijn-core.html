@@ -154,7 +154,8 @@
   .cc-kop .ai { font-family:'DM Sans',sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.12em; color:var(--muted); border:1px solid rgba(255,255,255,.2); border-radius:4px; padding:1px 5px; }
   .cc-kop .st { font-size:12px; color:var(--muted); margin-top:3px; display:flex; align-items:center; gap:6px; }
   .cc-kop .st::before { content:''; width:7px; height:7px; border-radius:50%; background:var(--groen); }
-  .cc-kop .x { margin-left:auto; background:none; border:none; color:var(--muted); font-size:26px; line-height:1; cursor:pointer; padding:4px 6px; }
+  /* Het kruisje is vervangen door de Terug-knop links. */
+  .cc-kop .x { display:none; }
   .cc-lijst { flex:1; overflow-y:auto; padding:16px 14px 8px; display:flex; flex-direction:column; gap:10px; }
   .cc-b { max-width:86%; padding:10px 13px; border-radius:14px; font-size:14.5px; line-height:1.55; white-space:pre-wrap; }
   .cc-b.ik { align-self:flex-end; background:var(--accent); color:#0A0A0A; border-bottom-right-radius:4px; }
@@ -173,7 +174,10 @@
   .cc-invoer button { width:44px; height:44px; border-radius:50%; border:none; background:var(--accent); color:#0A0A0A; font-size:20px; cursor:pointer; flex-shrink:0; }
   .cc-invoer button:disabled { opacity:.45; }
   .cc-voet { font-size:10.5px; color:rgba(245,243,239,.4); text-align:center; padding:0 14px 8px; }
-  @media (max-width:560px) { .cc-paneel { right:0; bottom:0; width:100vw; height:100dvh; border-radius:0; border:none; } }
+  /* Op de telefoon schermvullend, en onder de statusbalk (app-modus op iPhone). */
+  @media (max-width:560px) { .cc-paneel { right:0; bottom:0; width:100vw; height:100dvh; border-radius:0; border:none; padding-top:env(safe-area-inset-top); } }
+  .cc-terug { background:none; border:none; color:var(--white); font-size:15px; font-weight:600; display:flex; align-items:center; gap:4px; padding:6px 8px 6px 0; cursor:pointer; flex-shrink:0; }
+  .cc-terug span { color:var(--accent); font-size:22px; line-height:1; }
 
   /* ===== Speler ===== */
   .speler { position:fixed; inset:0; background:#050505; z-index:50; display:flex; flex-direction:column; padding:max(14px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); }
@@ -814,7 +818,7 @@ function coachBouw() {
   document.body.insertAdjacentHTML('beforeend', `
     <button class="cc-fab" id="ccFab" aria-label="Vraag je ${CC_NAAM}"><span class="cc-av">${avatarSvg()}</span>Vraag je coach</button>
     <div class="cc-paneel" id="ccPaneel" role="dialog" aria-label="${CC_NAAM}">
-      <div class="cc-kop"><span class="cc-av">${avatarSvg()}</span>
+      <div class="cc-kop"><button class="cc-terug" id="ccTerug" aria-label="Terug"><span>&#8249;</span>Terug</button><span class="cc-av">${avatarSvg()}</span>
         <div><div class="nm">${CC_NAAM}<span class="ai">AI</span></div><div class="st">Getraind op Michels methode &middot; antwoordt direct</div></div>
         <button class="x" id="ccSluit" aria-label="Sluiten">&times;</button></div>
       <div class="cc-lijst" id="ccLijst"></div>
@@ -824,18 +828,28 @@ function coachBouw() {
     </div>`);
   $('#ccFab').onclick = () => coachOpen(true);
   $('#ccSluit').onclick = () => coachOpen(false);
+  $('#ccTerug').onclick = () => coachOpen(false);
   $('#ccStuur').onclick = () => coachStuur($('#ccTekst').value);
   $('#ccChips').onclick = (e) => { const b = e.target.closest('button'); if (b) coachStuur(b.textContent); };
   const ta = $('#ccTekst');
   ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(120, ta.scrollHeight) + 'px'; });
   ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); coachStuur(ta.value); } });
 }
+// Openen zet een stap in de geschiedenis, zodat de terugknop of terugveeg van
+// de telefoon de chat sluit in plaats van de pagina te verlaten.
 function coachOpen(aan) {
   coachBouw();
+  const open = $('#ccPaneel').classList.contains('open');
+  if (aan && !open) history.pushState({ coach: 1 }, '');
+  if (!aan && open && history.state && history.state.coach) { history.back(); return; }
+  coachZet(aan);
+}
+function coachZet(aan) {
   $('#ccPaneel').classList.toggle('open', aan);
   $('#ccFab').style.display = aan ? 'none' : '';
   if (aan) { coachLijst(); setTimeout(() => $('#ccTekst').focus(), 50); }
 }
+window.addEventListener('popstate', () => { const p = $('#ccPaneel'); if (p && p.classList.contains('open')) coachZet(false); });
 function coachLijst(typen) {
   const l = $('#ccLijst'); if (!l) return;
   const voornaam = (S.naam || '').split(' ')[0];
