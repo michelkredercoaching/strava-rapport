@@ -43,6 +43,7 @@
 //   MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID, PP_TOKEN_SECRET, RESEND_API_KEY
 import crypto from 'node:crypto';
 import { persoonlijkeRichtlijn, URENKLASSEN, belemmeringAdvies } from '../lib/voeding.js';
+import { leesInvoer, bandenAdvies } from '../lib/bandendruk.js';
 
 const MC_KEY  = process.env.MAILCHIMP_API_KEY;      // ...-usXX
 const MC_LIST = process.env.MAILCHIMP_LIST_ID;
@@ -565,8 +566,9 @@ function zesuurHtml(naam, pdfUrl) {
 // Afleveringsmail van de bandenspanning-kaart. Kort houden: de kaart doet zelf
 // het werk en linkt onderaan door naar de analyse. Geen pitch in de mail, die
 // zit in de Mailchimp-journey op de tag 'bandenspanning-pdf'.
-function bandenspanningHtml(naam, pdfUrl) {
+function bandenspanningHtml(naam, pdfUrl, adv) {
   const veiligeNaam = escHtml((naam || '').split(' ')[0] || 'daar');
+  if (adv) return bandenAdviesHtml(veiligeNaam, pdfUrl, adv);
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
     <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
@@ -575,6 +577,39 @@ function bandenspanningHtml(naam, pdfUrl) {
       <a href="${escHtml(pdfUrl)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Download je kaart</a>
     </p>
     <p style="font-size:15px;margin:0 0 14px;">Print 'm uit en hang 'm bij je pomp, dan hoef je nooit meer te gokken. Begin bij de waarde uit de tabel en verander daarna met stapjes van 0,2 bar tegelijk, telkens op dezelfde route.</p>
+    <p style="font-size:14px;margin:0 0 4px;">Vragen? Reageer gewoon op deze mail, ik lees alles zelf.</p>
+    <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
+  </div>`;
+  return naarHtmlEntities(html);
+}
+
+// Variant met de uitkomst van de calculator: hun eigen druk bovenaan, het
+// oordeel, de tips en de kaart als naslag. Zelfde inhoud als op de pagina, zodat
+// ze het terugvinden als ze bij de pomp staan.
+function bandenAdviesHtml(veiligeNaam, pdfUrl, adv) {
+  const nl1 = (n) => n.toFixed(1).replace('.', ',');
+  const fiets = adv.type === 'gravel' ? 'gravelfiets' : 'racefiets';
+  const nu = adv.nuVoor != null && adv.nuAchter != null
+    ? `<p style="margin:12px 0 0;font-size:13px;color:#6d6862;">Nu rijd je ${nl1(adv.nuVoor)} voor en ${nl1(adv.nuAchter)} achter.</p>` : '';
+  const tips = adv.tips.map(t => `
+    <p style="font-size:15px;margin:0 0 4px;"><strong style="color:${t.waarschuwing ? '#c0392b' : '#1a1a1a'};">${escHtml(t.kop)}</strong></p>
+    <p style="font-size:15px;margin:0 0 16px;">${escHtml(t.tekst)}</p>`).join('');
+  const html = `
+  <div style="font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;line-height:1.65;max-width:560px;">
+    <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
+    <p style="font-size:15px;margin:0 0 18px;">Hier is je bandenspanning, uitgerekend voor jouw ${fiets}: ${adv.gewicht} kg op ${adv.breedte} mm, ${adv.tubeless ? 'tubeless' : 'met binnenband'}.</p>
+    <div style="border:1px solid #e3ded6;border-left:4px solid #ff6b1a;padding:16px 20px;margin:0 0 20px;">
+      <p style="margin:0 0 12px;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;color:#ff6b1a;font-weight:700;">Jouw startdruk</p>
+      <p style="margin:0 0 6px;font-size:16px;">Voorband: <b>${nl1(adv.voor)} bar</b> <span style="color:#6d6862;">(${adv.voorPsi} psi)</span></p>
+      <p style="margin:0;font-size:16px;">Achterband: <b>${nl1(adv.achter)} bar</b> <span style="color:#6d6862;">(${adv.achterPsi} psi)</span></p>
+      ${nu}
+    </div>
+    <p style="font-size:15px;margin:0 0 20px;"><strong>${escHtml(adv.oordeel)}</strong></p>
+    ${tips}
+    <p style="font-size:15px;margin:4px 0 14px;">De volledige kaart met alle gewichten en breedtes en de correcties voor elk weer staat hier, handig om bij je pomp te hangen:</p>
+    <p style="margin:4px 0 18px;">
+      <a href="${escHtml(pdfUrl)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">Download de kaart</a>
+    </p>
     <p style="font-size:14px;margin:0 0 4px;">Vragen? Reageer gewoon op deze mail, ik lees alles zelf.</p>
     <p style="font-size:14px;margin:18px 0 0;color:#666;">Sterke kilometers,<br><strong style="color:#1a1a1a;">Michel</strong><br>Michel Kreder Coaching</p>
   </div>`;
@@ -779,6 +814,24 @@ export default async function handler(req, res) {
   // kan vertakken (vermogen of hartslag).
   if (route === 'gratis-training') merge.MEETMETH = gtMeetmethode;
 
+  // Bandenspanning-calculator (05-10-2026): wat iemand invulde gaat als
+  // merge-velden mee, zodat de vervolgmails zijn eigen getallen kunnen noemen
+  // en de journey op weg/gravel kan splitsen. Zonder geldige invoer (oude
+  // pagina, of velden leeg) blijft het gewoon de kaart zonder advies.
+  const bandenAdv = route === 'bandenspanning' ? bandenAdvies(leesInvoer(b)) : null;
+  if (bandenAdv) {
+    const nl1 = (n) => n == null ? '' : n.toFixed(1).replace('.', ',');
+    merge.BTYPE    = bandenAdv.type === 'gravel' ? 'Gravel' : 'Racefiets';
+    merge.BGEWICHT = String(bandenAdv.gewicht);
+    merge.BBREEDTE = String(bandenAdv.breedte);
+    merge.BTUBE    = bandenAdv.tubeless ? 'Tubeless' : 'Binnenband';
+    merge.BVOOR    = nl1(bandenAdv.voor);
+    merge.BACHTER  = nl1(bandenAdv.achter);
+    if (bandenAdv.nuVoor != null) merge.BNUVOOR  = nl1(bandenAdv.nuVoor);
+    if (bandenAdv.nuAchter != null) merge.BNUACHTER = nl1(bandenAdv.nuAchter);
+    merge.BSTATUS  = bandenAdv.status;
+  }
+
   // Begeleiding-inschrijving: pakket vastleggen + meetmethode, zodat Michel
   // in Mailchimp ziet welk pakket en (indien ingevuld) waarop iemand traint.
   if (route === 'begeleiding') {
@@ -848,13 +901,14 @@ export default async function handler(req, res) {
       signal: AbortSignal.timeout(10000),
     });
     let lid = await upsert(merge);
-    if (!lid.ok && (merge.KHPAKKET || merge.KHPURL || merge.WKTOKEN || merge.WKDEADLINE || merge.SKTOKEN || merge.SKDEADLINE)) {
+    if (!lid.ok && (merge.KHPAKKET || merge.KHPURL || merge.WKTOKEN || merge.WKDEADLINE || merge.SKTOKEN || merge.SKDEADLINE || merge.BTYPE)) {
       // Vangnet: bestaan deze merge-velden (nog) niet in Mailchimp, dan
       // weigert de API de hele upsert. Liever het contact binnen zonder
       // die velden dan de lead kwijt.
       const detail = await lid.text().catch(() => '');
       console.error('Keuzehulp: upsert met extra velden faalde, retry zonder:', lid.status, detail);
-      const { KHPAKKET, KHPURL, WKTOKEN, WKDEADLINE, SKTOKEN, SKDEADLINE, ...rest } = merge;
+      const { KHPAKKET, KHPURL, WKTOKEN, WKDEADLINE, SKTOKEN, SKDEADLINE,
+              BTYPE, BGEWICHT, BBREEDTE, BTUBE, BVOOR, BACHTER, BNUVOOR, BNUACHTER, BSTATUS, ...rest } = merge;
       lid = await upsert(rest);
     }
     if (!lid.ok) {
@@ -936,11 +990,15 @@ export default async function handler(req, res) {
     if (route === 'bandenspanning') {
       await stuurMail({
         from: AFZENDER, to: email, reply_to: REPLY_TO,
-        subject: 'Je bandenspanning-kaart staat klaar',
-        html: bandenspanningHtml(b.naam, BANDEN_PDF),
+        subject: bandenAdv
+          ? `Jouw bandenspanning: ${bandenAdv.voor.toFixed(1).replace('.', ',')} voor, ${bandenAdv.achter.toFixed(1).replace('.', ',')} achter`
+          : 'Je bandenspanning-kaart staat klaar',
+        html: bandenspanningHtml(b.naam, BANDEN_PDF, bandenAdv),
       });
-      console.log('Bandenspanning OK:', email);
-      return res.status(200).json({ ok: true, downloadUrl: BANDEN_PDF });
+      console.log('Bandenspanning OK:', email, bandenAdv
+        ? `| ${bandenAdv.type} ${bandenAdv.gewicht}kg ${bandenAdv.breedte}mm ${bandenAdv.tubeless ? 'tubeless' : 'binnenband'} | ${bandenAdv.status}`
+        : '| zonder calculator');
+      return res.status(200).json({ ok: true, downloadUrl: BANDEN_PDF, advies: bandenAdv });
     }
 
     // 2c-3) Afvalkaart: kaart mailen en de downloadUrl teruggeven, zelfde
