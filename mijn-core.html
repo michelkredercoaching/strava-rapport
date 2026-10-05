@@ -197,6 +197,21 @@
   .speler .klok { font-family:'Bebas Neue',sans-serif; font-size:clamp(70px,22vw,120px); line-height:.9; letter-spacing:.02em; }
   .speler .cue { color:rgba(245,243,239,.78); max-width:460px; margin-top:6px; font-size:15px; }
   .speler .straks { color:var(--muted); font-size:13px; margin-top:8px; min-height:1.3em; }
+  .speler .uitleg { max-width:460px; width:100%; text-align:left; margin-top:10px; font-size:14px; color:rgba(245,243,239,.85); }
+  .speler .uitleg:empty { display:none; }
+  .speler .uitleg ol { margin:0; padding-left:20px; }
+  .speler .uitleg li { margin-bottom:3px; }
+  .speler .uitleg .kop { font-size:11px; font-weight:700; letter-spacing:.15em; text-transform:uppercase; color:var(--accent); margin-bottom:6px; }
+  .speler .uitleg .waarom { margin-top:8px; color:var(--muted); font-size:13px; }
+  .speler .uitleg.klein { font-size:13px; color:rgba(245,243,239,.65); }
+  .speler .uitleg.klein .kop { display:none; }
+  .uitlegknop { background:none; border:none; color:var(--accent); font-size:13px; font-weight:600; cursor:pointer; padding:0 18px 12px; }
+  .uitleglijst { padding:0 18px 14px; display:none; }
+  .uitleglijst.open { display:block; }
+  .uitleglijst .oef { border-top:1px solid rgba(255,255,255,.08); padding:10px 0; font-size:14px; }
+  .uitleglijst .oef b { display:block; margin-bottom:4px; }
+  .uitleglijst ol { margin:0; padding-left:20px; color:rgba(245,243,239,.85); }
+  .uitleglijst .waarom { color:var(--muted); font-size:13px; margin-top:4px; }
   .speler .bediening { display:flex; justify-content:center; gap:10px; }
   .speler .bediening button { min-width:64px; padding:14px 16px; border-radius:6px; border:1px solid rgba(255,255,255,.2); background:var(--surface); color:var(--white); cursor:pointer; font-weight:600; }
   .speler .bediening button.hoofd { background:var(--accent); color:#0A0A0A; border-color:var(--accent); min-width:120px; font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.05em; }
@@ -423,6 +438,8 @@ function sessiesHtml(d) {
           <div><div class="titel">${esc(s.naam)}</div><div class="meta">${s.minuten} min &middot; ${s.werk}s werk, ${s.rust}s rust &middot; ${s.rondes} rondes${s.finisher ? ' + finisher' : ''}</div></div></div>
           ${klaar ? '<div class="vink">Gedaan</div>' : ''}</div>
         <div class="oefrij">${s.oefeningen.map((o) => `<div class="oefmini"><div data-anim="${o.id}"></div><span>${esc(o.naam)}${o.perKant ? ' (L+R)' : ''}</span></div>`).join('')}</div>
+        <button class="uitlegknop" data-actie="uitleg">Bekijk de oefeningen</button>
+        <div class="uitleglijst">${s.oefeningen.map((o) => `<div class="oef"><b>${esc(o.naam)}${o.perKant ? ' (links en rechts)' : ''}</b><ol>${(o.stappen || []).map((z) => `<li>${esc(z)}</li>`).join('')}</ol>${o.waarom ? `<div class="waarom">Waarom: ${esc(o.waarom)}</div>` : ''}</div>`).join('')}</div>
         <div class="onder"><button class="knop ${klaar ? 'leeg' : ''} breed" data-actie="start" data-letter="${s.letter}" ${slot ? 'disabled' : ''}>${slot ? 'Eerst je starttest' : klaar ? 'Nog een keer doen' : 'Start sessie ' + NR[s.letter]}</button></div>
       </div>`;
     }).join('')}</div></div>`;
@@ -617,6 +634,10 @@ document.addEventListener('click', async (e) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
     if (j.nieuwBadge) toonBadge(j.nieuwBadge); else melding(j.melding, 4500);
   }
+  if (actie === 'uitleg') {
+    const open = k.nextElementSibling.classList.toggle('open');
+    k.textContent = open ? 'Verberg de uitleg' : 'Bekijk de oefeningen';
+  }
   if (actie === 'start') startSpeler(S.sessies.find((s) => s.letter === k.dataset.letter));
   if (actie === 'doel' || actie === 'doelwis') {
     const j = actie === 'doelwis' ? await post('doel', { wis: true }) : await post('doel', { naam: $('#doelNaam').value.trim(), datum: $('#doelDatum').value });
@@ -676,12 +697,13 @@ function piep(freq = 880, duur = .12, vol = .25) {
 function bouwStappen(s) {
   const st = [];
   for (const w of s.warmingUp) {
-    if (w.perKant) { st.push({ soort: 'warm', id: w.id, naam: w.naam, cue: w.cue, sec: 20, kant: 'Links' }); st.push({ soort: 'warm', id: w.id, naam: w.naam, cue: w.cue, sec: 20, kant: 'Rechts' }); }
-    else st.push({ soort: 'warm', id: w.id, naam: w.naam, cue: w.cue, sec: 40 });
+    const wu = { soort: 'warm', id: w.id, naam: w.naam, cue: w.cue, stappen: w.stappen };
+    if (w.perKant) { st.push({ ...wu, sec: 20, kant: 'Links' }); st.push({ ...wu, sec: 20, kant: 'Rechts' }); }
+    else st.push({ ...wu, sec: 40 });
   }
   for (let r = 1; r <= s.rondes; r++) {
     s.oefeningen.forEach((o, i) => {
-      const extra = { id: o.id, naam: o.naam, cue: o.cue, ronde: r };
+      const extra = { id: o.id, naam: o.naam, cue: o.cue, ronde: r, stappen: o.stappen, waarom: o.waarom };
       if (o.perKant) {
         st.push({ soort: 'werk', ...extra, sec: s.werk, kant: 'Links' });
         st.push({ soort: 'wissel', ...extra, sec: 5, kant: 'Wissel naar rechts' });
@@ -690,7 +712,7 @@ function bouwStappen(s) {
       const laatste = r === s.rondes && i === s.oefeningen.length - 1;
       if (!laatste) {
         const volgende = s.oefeningen[(i + 1) % s.oefeningen.length];
-        st.push({ soort: 'rust', id: volgende.id, naam: 'Rust', cue: '', sec: s.rust, straks: volgende.naam + (i === s.oefeningen.length - 1 ? ` (ronde ${r + 1})` : '') });
+        st.push({ soort: 'rust', id: volgende.id, naam: 'Rust', cue: '', sec: s.rust, stappen: volgende.stappen, waarom: volgende.waarom, straks: volgende.naam + (i === s.oefeningen.length - 1 ? ` (ronde ${r + 1})` : '') });
       }
     });
   }
@@ -699,8 +721,8 @@ function bouwStappen(s) {
     st.push({ soort: 'finisher', id: 'plank', naam: 'Finisher: maximale plank', cue: 'Houd je plank zo lang als je hem goed kunt houden. Druk op stop zodra je houding breekt.', sec: 0 });
   }
   const c = s.coolDown;
-  st.push({ soort: 'cool', id: c.id, naam: c.naam, cue: c.cue, sec: c.perKant, kant: 'Links' });
-  st.push({ soort: 'cool', id: c.id, naam: c.naam, cue: c.cue, sec: c.perKant, kant: 'Rechts' });
+  st.push({ soort: 'cool', id: c.id, naam: c.naam, cue: c.cue, stappen: c.stappen, sec: c.perKant, kant: 'Links' });
+  st.push({ soort: 'cool', id: c.id, naam: c.naam, cue: c.cue, stappen: c.stappen, sec: c.perKant, kant: 'Rechts' });
   return st;
 }
 
@@ -713,7 +735,7 @@ async function startSpeler(sessie) {
   const el = document.createElement('div'); el.className = 'speler';
   el.innerHTML = `<div class="balk"><div class="t">Sessie ${NR[sessie.letter]} &middot; ${esc(sessie.naam)}</div><button class="sluit" data-sp="stop">Stoppen</button></div>
     <div class="voortgang"><i></i></div>
-    <div class="midden"><div class="soort"></div><div class="naam"></div><div class="kant"></div><div class="beeld"></div><div class="klok"></div><div class="cue"></div><div class="straks"></div></div>
+    <div class="midden"><div class="soort"></div><div class="naam"></div><div class="kant"></div><div class="beeld"></div><div class="klok"></div><div class="cue"></div><div class="straks"></div><div class="uitleg"></div></div>
     <div class="bediening"><button data-sp="terug" aria-label="Vorige">&#9664;&#9664;</button><button class="hoofd" data-sp="pauze">Pauze</button><button data-sp="verder" aria-label="Volgende">&#9654;&#9654;</button></div>`;
   document.body.appendChild(el);
   document.body.style.overflow = 'hidden';
@@ -739,6 +761,17 @@ function naarStap(i) {
   $('.kant', el).textContent = st.kant || '';
   $('.cue', el).textContent = st.cue || '';
   $('.straks', el).textContent = st.straks ? 'Straks: ' + st.straks : '';
+  const uitleg = $('.uitleg', el), lijst = (st.stappen || []).map((z) => '<li>' + esc(z) + '</li>').join('');
+  const eerste = st.ronde === 1 || ['warm', 'cool'].includes(st.soort);
+  if (st.soort === 'rust' && lijst) {
+    uitleg.className = 'uitleg';
+    uitleg.innerHTML = '<div class="kop">Zo doe je hem</div><ol>' + lijst + '</ol>' + (st.waarom ? '<div class="waarom">Waarom: ' + esc(st.waarom) + '</div>' : '');
+  } else if ((st.soort === 'werk' || st.soort === 'warm' || st.soort === 'cool') && eerste && lijst) {
+    uitleg.className = 'uitleg klein';
+    uitleg.innerHTML = '<ol>' + lijst + '</ol>';
+  } else uitleg.innerHTML = '';
+  // De stappen zeggen al wat de cue zegt; in ronde 1 de cue weglaten.
+  if (uitleg.innerHTML && st.soort !== 'rust') $('.cue', el).textContent = '';
   const beeld = $('.beeld', el); beeld.classList.toggle('gedimd', st.soort === 'rust');
   if (sp.stopAnim) sp.stopAnim();
   sp.stopAnim = A[st.id] ? F.speel(beeld, A[st.id]) : null;
