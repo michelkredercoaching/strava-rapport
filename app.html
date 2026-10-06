@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MKC | Michel Kreder Coaching</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0A0A0A">
+<link rel="manifest" href="/app.webmanifest">
+<link rel="apple-touch-icon" href="/app-iconen/icoon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MKC">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+  /* De all-in-1 app (06-10-2026), stap 2 van APP-STAPPENPLAN.md.
+     Zelfde huisstijl als de homepage: Bebas Neue + DM Sans, zwart met oranje.
+     Gegevens komen uit /api/app; de Core-app zelf blijft mijn-core.html. */
+  :root { --black:#0A0A0A; --off:#111; --surface:#161616; --surface2:#1c1c1c; --border:rgba(255,255,255,0.08);
+    --white:#F5F3EF; --muted:rgba(245,243,239,0.6); --accent:#FF6B1A; --accent-dim:rgba(255,107,26,0.12); --groen:#4CC38A; }
+  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+  html { background:var(--black); }
+  body { font-family:'DM Sans',sans-serif; background:var(--black); color:var(--white); -webkit-font-smoothing:antialiased; line-height:1.55; min-height:100vh;
+    padding:calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 40px); }
+  .wrap { max-width:560px; margin:0 auto; }
+  a { color:inherit; }
+  .kop { display:flex; align-items:center; justify-content:space-between; padding:8px 2px 22px; }
+  .logo { font-family:'Bebas Neue',sans-serif; font-size:32px; letter-spacing:.06em; line-height:1; }
+  .logo span { color:var(--accent); }
+  .uit { font-size:12.5px; color:var(--muted); background:none; border:0; text-decoration:underline; cursor:pointer; font-family:inherit; }
+  .groet { font-family:'Bebas Neue',sans-serif; font-size:clamp(40px,11vw,56px); line-height:.92; text-transform:uppercase; margin-bottom:8px; }
+  .groet em { font-style:normal; color:var(--accent); }
+  .intro { font-size:15px; color:var(--muted); margin-bottom:24px; }
+  .label { display:inline-flex; align-items:center; gap:8px; font-size:10.5px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); margin-bottom:10px; }
+  .label::before { content:''; width:16px; height:1px; background:var(--accent); }
+
+  /* Kaarten */
+  .kaarten { display:grid; gap:14px; }
+  .kaart { background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden; position:relative; }
+  .kaart.actief { border-color:rgba(255,107,26,.45); background:linear-gradient(180deg, rgba(255,107,26,.08), var(--surface) 55%); }
+  .kaart-in { padding:20px 20px 20px; }
+  .kaart h2 { font-family:'Bebas Neue',sans-serif; font-size:34px; line-height:.95; text-transform:uppercase; margin-bottom:6px; }
+  .kaart p { font-size:14.5px; color:rgba(245,243,239,.78); }
+  .kaart .tag { position:absolute; top:16px; right:16px; font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; padding:4px 9px; border-radius:3px; }
+  .tag.open { color:var(--groen); border:1px solid rgba(76,195,138,.45); }
+  .tag.slot { color:var(--muted); border:1px solid rgba(255,255,255,.15); }
+  .tag.oranje { color:var(--black); background:var(--accent); }
+  .knop { display:block; width:100%; text-align:center; background:var(--accent); color:#0A0A0A; text-decoration:none; border:0; cursor:pointer;
+    font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.06em; text-transform:uppercase; padding:14px 18px 11px; border-radius:4px; margin-top:16px; }
+  .knop.leeg { background:transparent; color:var(--white); border:1px solid rgba(255,255,255,.2); }
+  .klein { font-size:12.5px; color:var(--muted); margin-top:10px; }
+  .cijfers { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:16px 0 4px; }
+  .cijfer { background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:10px 10px 8px; }
+  .cijfer span { display:block; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .cijfer b { font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1.05; font-weight:400; }
+  .cijfer b em { font-style:normal; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:700; color:var(--groen); margin-left:4px; }
+  .volgende { display:grid; grid-template-columns:42% 1fr; gap:12px; align-items:center; margin-top:14px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:10px 12px; }
+  .volgende svg { width:100%; height:auto; display:block; }
+  .volgende .w { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:700; }
+  .volgende .n { font-weight:600; font-size:15px; margin:2px 0 4px; }
+  .volgende .m { font-size:12.5px; color:var(--muted); }
+  .balk { height:6px; background:rgba(255,255,255,.08); border-radius:3px; overflow:hidden; margin-top:14px; }
+  .balk i { display:block; height:100%; background:var(--accent); }
+
+  /* Op slot: echte inhoud wazig, slot erover */
+  .wazig { position:relative; }
+  .wazig .achter { filter:blur(5px) grayscale(.5); opacity:.45; pointer-events:none; user-select:none; }
+  .wazig .slotje { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; text-align:center; padding:12px; }
+  .slotje svg { width:26px; height:26px; color:var(--white); }
+  .slotje b { font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:.04em; }
+  .nepgrafiek { height:86px; margin-top:14px; border-radius:6px; background:linear-gradient(180deg, rgba(255,107,26,.15), transparent); position:relative; overflow:hidden; }
+  .nepgrafiek svg { width:100%; height:100%; display:block; }
+
+  .binnenkort { opacity:.8; }
+  .binnenkort h2 { color:rgba(245,243,239,.85); }
+
+  /* Beginscherm-kaart */
+  .appkaart { display:flex; gap:14px; align-items:flex-start; background:var(--surface); border:1px solid rgba(255,107,26,.4); border-radius:8px; padding:14px; margin-bottom:18px; position:relative; }
+  .appkaart img { width:52px; height:52px; border-radius:12px; flex-shrink:0; }
+  .appkaart b { display:block; margin-bottom:2px; }
+  .appkaart .stap { font-size:13.5px; color:var(--muted); }
+  .appkaart .x { position:absolute; top:6px; right:10px; background:none; border:0; color:var(--muted); font-size:22px; cursor:pointer; }
+  .deelicoon { width:15px; height:17px; vertical-align:-3px; }
+  .appkaart .knop { width:auto; display:inline-block; font-size:17px; padding:8px 14px 6px; margin-top:8px; }
+
+  /* Inloggen */
+  .login { padding-top:8vh; }
+  .login h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(46px,13vw,64px); line-height:.92; text-transform:uppercase; margin-bottom:12px; }
+  .login h1 em { font-style:normal; color:var(--accent); }
+  .login p { color:var(--muted); font-size:15px; margin-bottom:22px; }
+  .login input { width:100%; background:var(--surface); border:1px solid rgba(255,255,255,.14); color:var(--white); font-family:inherit; font-size:16px; padding:15px 16px; border-radius:4px; }
+  .login input:focus { outline:none; border-color:var(--accent); }
+  .melding { font-size:14px; margin-top:14px; color:var(--muted); }
+  .melding.goed { color:var(--groen); }
+  .melding.fout { color:#ff8a5c; }
+  .laden { text-align:center; padding:30vh 0; color:var(--muted); }
+  .voet { text-align:center; font-size:12px; color:rgba(245,243,239,.35); margin-top:30px; }
+  .voet a { color:rgba(245,243,239,.5); }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="laden">Even laden...</div></div>
+
+<script src="/core-programma/spierkaart.js"></script>
+<script>
+const API = '/api/app';
+const OPSLAG = 'mkc_app_t';
+const $ = (s) => document.querySelector(s);
+const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const SLOT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+const SITE = 'https://michelkredercoaching.nl';
+let D = null;
+
+function leesToken() { try { return localStorage.getItem(OPSLAG) || ''; } catch (e) { return ''; } }
+function bewaarToken(t) { try { localStorage.setItem(OPSLAG, t); } catch (e) {} }
+function wisToken() { try { localStorage.removeItem(OPSLAG); } catch (e) {} }
+
+// ---- Beginscherm ----
+let installPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; if (D) teken(); });
+function isApp() { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
+function appHtml() {
+  let weg = false; try { weg = localStorage.getItem('mkcAppWeg') === '1'; } catch (e) {}
+  const telefoon = window.matchMedia('(pointer: coarse)').matches;
+  if (isApp() || weg || !telefoon) return '';
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const deel = '<svg class="deelicoon" viewBox="0 0 15 17" fill="none" stroke="#FF6B1A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 1v10M4 4.5 7.5 1 11 4.5M3 7.5H1.5v8h12v-8H12"/></svg>';
+  const uitleg = installPrompt
+    ? '<button class="knop" data-actie="installeer">Zet op beginscherm</button>'
+    : ios ? `<div class="stap">Tik onderaan in Safari op ${deel} en kies <b style="display:inline;color:var(--white)">Zet op beginscherm</b>.</div>`
+          : '<div class="stap">Open het menu van je browser (&#8942;) en kies <b style="display:inline;color:var(--white)">Toevoegen aan startscherm</b>.</div>';
+  return `<div class="appkaart"><img src="/app-iconen/icoon-180.png" alt="">
+    <div><b>Zet MKC op je beginscherm</b><div class="stap">Dan open je alles met één tik, als app.</div>${uitleg}</div>
+    <button class="x" data-actie="appweg" aria-label="Sluiten">&times;</button></div>`;
+}
+
+// ---- Inloggen ----
+function loginHtml(melding, soort) {
+  return `<div class="login">
+    <div class="logo" style="margin-bottom:28px">MKC<span>.</span></div>
+    <h1>Log in op <em>je app.</em></h1>
+    <p>Je Core-app, je Strava-analyse en je tools op één plek. Vul het mailadres in waarmee je iets bij me deed, dan krijg je een inloglink. Geen wachtwoord nodig.</p>
+    <form id="loginForm"><input type="email" id="loginMail" placeholder="Je e-mailadres" autocomplete="email" required>
+      <button class="knop" type="submit" id="loginKnop">Stuur mijn inloglink</button></form>
+    <div class="melding ${soort || ''}" id="loginMelding">${melding ? esc(melding) : ''}</div>
+    <p class="klein" style="margin-top:28px">Nog niets bij me gedaan? <a href="${SITE}/core-gratis/" style="color:#FF6B1A">Start gratis met week 1 van de Core-app</a>, dan krijg je meteen toegang.</p>
+  </div>`;
+}
+function toonLogin(melding, soort) {
+  $('#app').innerHTML = loginHtml(melding, soort);
+  $('#loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = $('#loginMail').value.trim(), knop = $('#loginKnop'), m = $('#loginMelding');
+    knop.disabled = true; knop.textContent = 'Even versturen...';
+    try {
+      const r = await fetch(API + '?actie=login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+      const j = await r.json();
+      m.className = 'melding ' + (j.ok ? 'goed' : 'fout');
+      m.textContent = j.ok ? j.bericht : (j.fout || 'Dat lukte niet. Probeer het zo nog eens.');
+    } catch { m.className = 'melding fout'; m.textContent = 'Verbinding mislukt. Probeer het zo nog eens.'; }
+    knop.disabled = false; knop.textContent = 'Stuur mijn inloglink';
+  });
+}
+
+// ---- Kaarten ----
+function coreKaart(c) {
+  if (!c) {
+    return `<div class="kaart"><div class="kaart-in"><span class="tag oranje">Gratis week</span>
+      <div class="label">Core-app</div><h2>Sterk tot de laatste km</h2>
+      <p>12 weken core op maat, thuis zonder gewichten. Train mee op de timer en zie je Rompscore stijgen.</p>
+      <div class="wazig" style="margin-top:14px"><div class="achter"><div class="cijfers"><div class="cijfer"><span>Week</span><b>3/12</b></div><div class="cijfer"><span>Rompscore</span><b>66</b></div><div class="cijfer"><span>Sessies</span><b>2/3</b></div></div></div>
+        <div class="slotje">${SLOT}<b>Week 1 is gratis</b></div></div>
+      <a class="knop" href="${SITE}/core-gratis/">Start je gratis week</a></div></div>`;
+  }
+  const K = window.CoreSpierkaart;
+  if (c.intakeNodig) {
+    return `<div class="kaart actief"><div class="kaart-in"><span class="tag open">Open</span><div class="label">Core-app</div>
+      <h2>Je plan staat klaar</h2><p>Begin met een paar korte vragen over je klachten, dan stem ik je oefeningen af.</p>
+      <a class="knop" href="${esc(c.link)}">Start met je intake</a></div></div>`;
+  }
+  if (c.opSlot) {
+    return `<div class="kaart actief"><div class="kaart-in"><span class="tag oranje">Proefweek klaar</span><div class="label">Core-app</div>
+      <h2>Week 2 staat klaar</h2><p>Je proefweek zit erop. Ga door en alles wat je deed blijft staan.</p>
+      ${c.rompscore != null ? `<div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore}</b></div><div class="cijfer"><span>Weken</span><b>1/12</b></div><div class="cijfer"><span>Prijs</span><b>&euro;49</b></div></div>` : ''}
+      <a class="knop" href="${esc(c.link)}">Ga door met week 2</a></div></div>`;
+  }
+  const winst = c.rompscore != null && c.startScore != null && c.rompscore > c.startScore ? `<em>+${c.rompscore - c.startScore}</em>` : '';
+  const pct = Math.min(100, Math.round(((c.week - 1) / 12) * 100 + (c.gedaan / Math.max(1, c.frequentie)) * (100 / 12)));
+  const v = c.volgende;
+  const kaartje = v && K ? `<div class="volgende"><div>${K.svg(K.vanSessie(v.oefeningen), { labels: false })}</div>
+      <div><div class="w">Volgende: sessie ${'ABCD'.indexOf(v.letter) + 1}</div><div class="n">${esc(v.naam)}</div>
+      <div class="m">${v.minuten} min &middot; ${esc(K.namenLijst(K.vanSessie(v.oefeningen)).hoofd.slice(0, 3).join(', '))}</div></div></div>` : '';
+  return `<div class="kaart actief"><div class="kaart-in"><span class="tag open">${c.klaar ? 'Afgerond' : 'Actief'}</span>
+    <div class="label">Core-app</div>
+    <h2>${c.klaar ? 'Programma afgerond' : `Week ${c.week} van 12`}</h2>
+    <p>${c.klaar ? 'Twaalf weken gedaan. Kijk in je app naar je grafiek.' : `Fase ${c.fase}: ${esc(c.faseNaam)} &middot; ${c.gedaan} van ${c.frequentie} sessies gedaan`}</p>
+    <div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore != null ? c.rompscore : '&ndash;'}${winst}</b></div>
+      <div class="cijfer"><span>Week</span><b>${c.week}/12</b></div><div class="cijfer"><span>Gedaan</span><b>${c.afgerond}</b></div></div>
+    <div class="balk"><i style="width:${c.klaar ? 100 : pct}%"></i></div>
+    ${c.klaar ? '' : kaartje}
+    <a class="knop" href="${esc(c.link)}">${c.klaar ? 'Open je Core-app' : v ? `Verder met sessie ${'ABCD'.indexOf(v.letter) + 1}` : 'Open je Core-app'}</a></div></div>`;
+}
+
+function nepGrafiek() {
+  return `<div class="nepgrafiek"><svg viewBox="0 0 300 86" preserveAspectRatio="none"><polyline fill="none" stroke="#FF6B1A" stroke-width="3" points="0,70 40,62 80,66 120,48 160,52 200,34 240,30 300,14"/></svg></div>`;
+}
+
+function afvalKaart() {
+  return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Binnenkort</span>
+    <div class="label">Afvalprogramma</div><h2>Lichter, zonder in te leveren</h2>
+    <p>Je eigen richtlijn per dag, wekelijkse bijsturing en je gewicht in een grafiek. Afvallen zonder dat je watts zakken.</p>
+    <div class="wazig"><div class="achter"><div class="cijfers"><div class="cijfer"><span>Rustdag</span><b>1950</b></div><div class="cijfer"><span>Trainingsdag</span><b>2850</b></div><div class="cijfer"><span>Deze week</span><b>-0,4</b></div></div>${nepGrafiek()}</div>
+      <div class="slotje">${SLOT}<b>Binnenkort</b></div></div>
+    <a class="knop leeg" href="${SITE}/afvalcheck/">Doe alvast de gratis afvalcheck</a></div></div>`;
+}
+
+function analyseKaart(a) {
+  if (a) {
+    const meet = a.meet === 'hartslag' ? 'op hartslag' : 'op vermogen';
+    const hoofd = a.meet === 'hartslag' && a.omslag ? `<div class="cijfer"><span>Omslagpunt</span><b>${esc(a.omslag)}</b></div>` : `<div class="cijfer"><span>FTP</span><b>${a.ftp ? esc(a.ftp) + '<em style="color:var(--muted)">W</em>' : '&ndash;'}</b></div>`;
+    return `<div class="kaart actief"><div class="kaart-in"><span class="tag open">Gekocht</span>
+      <div class="label">Strava-analyse</div><h2>Waar je staat</h2>
+      <p>Je analyse ${a.datum ? 'van ' + esc(a.datum) + ' ' : ''}${meet}. Het volledige rapport staat als pdf in je mail.</p>
+      <div class="cijfers">${hoofd}<div class="cijfer" style="grid-column:span 2"><span>Rennerstype</span><b style="font-size:22px">${esc(a.type || '–')}</b></div></div>
+      ${a.advies ? `<p class="klein">Mijn advies voor jou: <b style="color:var(--white)">${esc(a.advies)}</b></p>` : ''}
+      <a class="knop leeg" href="${SITE}/strava-analyse/">Doe een nieuwe analyse</a>
+      <p class="klein">Na een paar weken trainen zie je zo of je FTP gestegen is.</p></div></div>`;
+  }
+  return `<div class="kaart"><div class="kaart-in"><span class="tag slot">Op slot</span>
+    <div class="label">Strava-analyse</div><h2>Weet waar je staat</h2>
+    <p>Koppel je Strava en zie in een paar minuten je FTP, je sterke en zwakke punten en wat het meeste oplevert.</p>
+    <div class="wazig"><div class="achter"><div class="cijfers"><div class="cijfer"><span>FTP</span><b>241</b></div><div class="cijfer"><span>W/kg</span><b>3,4</b></div><div class="cijfer"><span>Score</span><b>78</b></div></div>${nepGrafiek()}</div>
+      <div class="slotje">${SLOT}<b>Ontgrendel voor &euro;29</b></div></div>
+    <a class="knop" href="${SITE}/strava-analyse/">Ontgrendel je analyse</a></div></div>`;
+}
+
+function pacingKaart() {
+  return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Coming soon</span>
+    <div class="label">Pacingplan</div><h2>Je granfondo of gravelfondo, slim ingedeeld</h2>
+    <p>Hoe hard je per klim, per strook en per uur kunt rijden zonder stuk te gaan, berekend uit je eigen ritten. Voor granfondo's op de weg en gravelfondo's. Komt eraan.</p></div></div>`;
+}
+
+function bandenKaart(heeft) {
+  return `<div class="kaart"><div class="kaart-in"><span class="tag open">Gratis</span>
+    <div class="label">Tool</div><h2>Bandenspanning</h2>
+    <p>De juiste spanning voor jouw gewicht, bandbreedte en ondergrond, voor racefiets en gravel.${heeft ? ' Je hebt je kaart al, maar wissel je van band, reken hem dan opnieuw uit.' : ''}</p>
+    <a class="knop leeg" href="${SITE}/bandenspanning/">Bereken je spanning</a></div></div>`;
+}
+
+function teken() {
+  const d = D, voornaam = String(d.naam || '').trim().split(' ')[0];
+  $('#app').innerHTML = `<div class="kop"><div class="logo">MKC<span>.</span></div><button class="uit" data-actie="uitloggen">Uitloggen</button></div>
+    ${appHtml()}
+    <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
+    <p class="intro">Je programma's, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>
+    <div class="kaarten">${coreKaart(d.core)}${analyseKaart(d.analyse)}${afvalKaart()}${pacingKaart()}${bandenKaart(d.banden)}</div>
+    <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
+}
+
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-actie]'); if (!k) return;
+  const actie = k.dataset.actie;
+  if (actie === 'uitloggen') { wisToken(); D = null; toonLogin('Je bent uitgelogd.'); }
+  if (actie === 'appweg') { try { localStorage.setItem('mkcAppWeg', '1'); } catch (e) {} teken(); }
+  if (actie === 'installeer' && installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; teken(); }); }
+});
+
+async function start() {
+  const p = new URLSearchParams(location.search);
+  // Inloglink uit de mail (?t=) of doorklik vanuit de Core-app (?ct=).
+  if (p.get('t')) bewaarToken(p.get('t'));
+  if (p.get('ct')) {
+    try {
+      const r = await fetch(API + '?actie=vancore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ct: p.get('ct') }) });
+      const j = await r.json(); if (j.ok && j.t) bewaarToken(j.t);
+    } catch (e) {}
+  }
+  if (p.get('t') || p.get('ct')) history.replaceState(null, '', location.pathname);
+  const t = leesToken();
+  if (!t) return toonLogin();
+  try {
+    const r = await fetch(API + '?actie=overzicht&t=' + encodeURIComponent(t));
+    const j = await r.json();
+    if (!j.ok) { wisToken(); return toonLogin(j.fout, 'fout'); }
+    D = j; teken();
+  } catch { $('#app').innerHTML = '<div class="laden">Verbinding mislukt. Probeer het zo nog eens.</div>'; }
+}
+start();
+</script>
+</body>
+</html>
