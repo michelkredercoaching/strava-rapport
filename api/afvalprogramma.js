@@ -26,10 +26,10 @@
 import crypto from 'node:crypto';
 import {
   berekenPlan, wekelijkseBijsturing, pasBijsturingToe,
-  controleerVeiligheid, weekGemiddelden, DAGTYPES
+  controleerVeiligheid, weekGemiddelden, DAGTYPES, buikverschil, vraagOmtrek
 } from '../lib/voeding.js';
 import { VRAGEN, bepaalNiveau, niveauSamenvatting, NIVEAUS } from '../lib/niveau.js';
-import { voorbeelddag, ritVoeding, ruiltabel, BLOK } from '../lib/porties.js';
+import { voorbeelddag, ritVoeding, ruiltabel, BLOK, gewoonteVanDeWeek } from '../lib/porties.js';
 import { dagSuggesties, ruilVanDeWeek } from '../lib/recepten.js';
 
 const SECRET       = process.env.PP_TOKEN_SECRET || '';
@@ -240,6 +240,20 @@ function klantBeeld(d) {
   const start = gemiddelden[0]?.gewicht ?? d.intake?.gewicht ?? null;
   const nu = gemiddelden[gemiddelden.length - 1]?.gewicht ?? start;
   const dezeWeek = metingen.filter(m => m.week === week);
+
+  // Welke drie eetkeuzes we deze week laten zien hangt af van wat er gebeurde.
+  // Staat het stil, dan zet je verzadiging en eiwit bovenaan. Gaat het te
+  // hard, dan juist de makkelijk weg te eten opties. Lukt het eten niet, dan
+  // is dat bijna altijd de avond, en de oplossing zit overdag.
+  const laatste = (d.bijsturingen || []).slice(-1)[0];
+  const laatsteCheckin = metingen.filter(m => (m.soort || 'checkin') === 'checkin').slice(-1)[0];
+  const situatie =
+    laatsteCheckin?.etenGelukt === 'nee' ? 'avond'
+    : ['stilstand', 'stil-eten-lukt-niet', 'gaat-omhoog', 'iets-traag'].includes(laatste?.regel) ? 'stilstand'
+    : ['te-snel', 'veel-te-snel'].includes(laatste?.regel) ? 'tesnel'
+    : 'normaal';
+  const profiel = d.intake?.voorkeur || {};
+
   return {
     naam: d.naam || '',
     status: d.status,
@@ -253,7 +267,7 @@ function klantBeeld(d) {
       // De vertaling naar echt eten komt uit lib/porties.js, dus de pagina
       // rekent zelf niets uit en kan nooit afwijken van het plan.
       week: d.plan.week.map(dag => {
-        const porties = voorbeelddag(dag);
+        const porties = voorbeelddag(dag, profiel, situatie);
         return {
           ...dag, porties,
           fiets: dag.type === 'rust' ? null
@@ -263,6 +277,11 @@ function klantBeeld(d) {
       })
     } : null,
     ruilTip: ruilVanDeWeek(week),
+    gewoonte: gewoonteVanDeWeek(week),
+    // Buikomtrek stuurt het plan niet bij, maar laat wel zien wat er gebeurt
+    // in de weken waarin de weegschaal stilstaat.
+    omtrek: buikverschil(metingen),
+    omtrekGevraagd: vraagOmtrek(week),
     ruilen: { blok: BLOK, kh: ruiltabel('kh'), eiwit: ruiltabel('eiwit'), vet: ruiltabel('vet'), fiets: ruiltabel('fiets') },
     intakeNodig: !d.plan,
     startgewicht: start,
@@ -387,6 +406,18 @@ async function routeIntake(req, res) {
     streefgewicht: Number(body.streefgewicht),
     werk: ['zittend', 'actief', 'zwaar'].includes(body.werk) ? body.werk : 'zittend',
     ftp: Number.isFinite(Number(body.ftp)) && Number(body.ftp) > 0 ? Number(body.ftp) : null,
+    // Optioneel. Rond je navel, 's ochtends, ontspannen uitgeademd. Stuurt
+    // het plan niet bij, maar vangt wel de weken waarin de weegschaal
+    // stilstaat terwijl er toch vet af gaat.
+    buikomtrek: Number.isFinite(Number(body.buikomtrek)) && Number(body.buikomtrek) >= 50 && Number(body.buikomtrek) <= 200
+      ? Math.round(Number(body.buikomtrek) * 10) / 10 : null,
+    // Bepaalt welke drie keuzes iemand per eetmoment te zien krijgt. Geen
+    // apart dieet, alleen een filter: wat je niet eet laat je niet zien.
+    voorkeur: {
+      vegetarisch: !!body.vegetarisch,
+      geenZuivel: !!body.geenZuivel,
+      weinigTijd: !!body.weinigTijd
+    },
     medisch: {
       diabetes: !!body.diabetes, zwanger: !!body.zwanger, eetstoornis: !!body.eetstoornis
     },
@@ -424,6 +455,7 @@ async function routeIntake(req, res) {
   // want dan zat er een gat tussen week 0 en week 3 dat er nooit was.
   d.metingen = [{
     week: huidigeWeek(d), gewicht: invoer.gewicht,
+    buikomtrek: invoer.buikomtrek ?? undefined,
     gevoel: 'goed', etenGelukt: 'ja', soort: 'checkin', op: new Date().toISOString()
   }];
   await bewaarDossier(d);
@@ -472,9 +504,12 @@ async function routeCheckin(req, res) {
     return res.status(200).json({ ok: true, alleenGewicht: true, ...klantBeeld(d) });
   }
 
+  const omtrek = Number(body.buikomtrek);
   const meting = {
     week,
     gewicht: Math.round(gewicht * 10) / 10,
+    buikomtrek: Number.isFinite(omtrek) && omtrek >= 50 && omtrek <= 200
+      ? Math.round(omtrek * 10) / 10 : undefined,
     gevoel: ['goed', 'wisselend', 'slecht'].includes(body.gevoel) ? body.gevoel : 'goed',
     etenGelukt: ['ja', 'meestal', 'nee'].includes(body.etenGelukt) ? body.etenGelukt : 'meestal',
     soort: 'checkin',
