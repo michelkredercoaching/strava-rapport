@@ -416,7 +416,7 @@ async function routeNieuw(req, res) {
   if (body.order) await redis(['SET', `core:order:${body.order}`, id, 'EX', String(BEWAAR_S)]);
 
   const link = linkVoor(id);
-  await mail({ naar: email, onderwerp: upgrade ? 'Je hele Core-programma staat open' : begeleiding ? 'Het Core-programma hoort nu bij je begeleiding' : 'Je Core-programma staat klaar',
+  await mail({ naar: email, onderwerp: upgrade ? 'Je hele Core-app staat open' : begeleiding ? 'De Core-app hoort nu bij je begeleiding' : 'Je Core-app staat klaar',
     html: upgrade ? openHtml(d, link) : welkomHtml(d, link, begeleiding), antwoordNaar: INTERN_NAAR });
   // Zelf toegevoegd vanuit het coachscherm: geen meldingsmail aan jezelf.
   if (begeleiding) return res.status(200).json({ ok: true, id, link, begeleiding: true });
@@ -812,10 +812,10 @@ function welkomHtml(d, link, begeleiding) {
   return `<div style="${STIJL}">
     <p>${hoi(d)}</p>
     ${begeleiding
-      ? '<p>Vanaf nu hoort het Core-programma bij je begeleiding, zonder extra kosten. Twaalf weken, 2, 3 of 4 korte sessies per week, en elke week net iets zwaarder. Plan de sessies op je rustige dagen, dan stem ik je fietstrainingen erop af.</p>'
-      : '<p>Welkom bij het Core-programma. Twaalf weken, 2, 3 of 4 korte sessies per week (jij kiest), en elke week net iets zwaarder.</p>'}
+      ? '<p>Vanaf nu hoort de Core-app bij je begeleiding, zonder extra kosten. Twaalf weken, 2, 3 of 4 korte sessies per week, en elke week net iets zwaarder. Plan de sessies op je rustige dagen, dan stem ik je fietstrainingen erop af.</p>'
+      : '<p>Welkom in de Core-app. Twaalf weken, 2, 3 of 4 korte sessies per week (jij kiest), en elke week net iets zwaarder.</p>'}
     <p>Dit is je eigen pagina. Bewaar deze mail, want de link is persoonlijk:</p>
-    <p><a href="${link}" style="${KNOP}">Naar mijn Core-programma</a></p>
+    <p><a href="${link}" style="${KNOP}">Open mijn Core-app</a></p>
     <p><b>Eerst doe je de intake.</b> Een paar korte vragen, onder andere of je last hebt van je onderrug, nek of knie. Daarop stem ik je oefeningen af.</p>
     <p><b>Daarna je starttest.</b> Een paar houdgrepen met de stopwatch op je pagina. Die herhaal je in week 4, 8 en 12, zodat je zwart op wit ziet wat het oplevert.</p>
     <p>Leg je telefoon bij de sessies gewoon op de grond. De pagina telt af en zegt wanneer je wisselt.</p>
@@ -825,7 +825,7 @@ function welkomHtml(d, link, begeleiding) {
 function openHtml(d, link) {
   return `<div style="${STIJL}">
     <p>${hoi(d)}</p>
-    <p>Je hele Core-programma staat open. Alles wat je in je proefweek deed, staat er nog: je intake, je starttest en je afgevinkte sessies.</p>
+    <p>Je hele Core-app staat open. Alles wat je in je proefweek deed, staat er nog: je intake, je starttest en je afgevinkte sessies.</p>
     <p><a href="${link}" style="${KNOP}">Door naar week ${d.week}</a></p>
     <p>Vanaf nu krijg je elke maandag je week in je mail. Twijfel je over een oefening? Stel je vraag op je pagina, je krijgt direct antwoord.</p>
     <p>Sterke kilometers,<br>Michel</p>
