@@ -166,6 +166,11 @@ function tekenIntake() {
         <div class="wk">Vul dit eenmalig in, dan staat je plan klaar</div></div>
     </div>
 
+    ${D.startDatum && D.week === 0 ? `
+    <div class="blok"><div class="gedaan">
+      <b>Je programma start op ${datum(D.startDatum)}.</b><br>Vul dit nu vast in, dan staat je plan klaar op de dag dat het begint. Tot die tijd hoef je niets aan je eten te veranderen.
+    </div></div>` : ''}
+
     <div class="stap">
       <h2>Jij<small>Hier reken ik je energiebehoefte mee uit.</small></h2>
       <div class="kaart">
