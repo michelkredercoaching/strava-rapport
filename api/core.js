@@ -342,6 +342,34 @@ function klantBeeld(d) {
   };
 }
 
+// ---- Voor de app-startpagina (api/app.js, 06-10-2026) ----------------------
+// Korte samenvatting van iemands Core-dossier op mailadres. Geeft null als er
+// geen dossier is. Alleen wat de startpagina nodig heeft, nooit het dossier.
+export async function coreVoorEmail(email) {
+  if (!email) return null;
+  const d = await dossierVoorEmail(String(email).toLowerCase());
+  if (!d) return null;
+  const b = klantBeeld(d);
+  const tests = b.tests || [];
+  return {
+    link: linkVoor(d.id), naam: b.naam,
+    betaald: b.betaald, opSlot: b.opSlot, intakeNodig: b.intakeNodig, klaar: b.klaar,
+    week: b.week, fase: b.fase, faseNaam: b.faseNaam,
+    gedaan: b.gedaanDezeWeek.length, frequentie: b.frequentie, afgerond: b.afgerond,
+    startScore: tests[0] ? tests[0].score : null,
+    rompscore: tests.length ? tests[tests.length - 1].score : null,
+    volgende: (() => { const s = b.sessies.find((x) => !b.gedaanDezeWeek.includes(x.letter)); return s ? { letter: s.letter, naam: s.naam, minuten: s.minuten, oefeningen: s.oefeningen.map((o) => o.id) } : null; })()
+  };
+}
+// Mailadres achter een Core-link. Zo kan iemand vanuit de Core-app in één tik
+// naar de startpagina, zonder opnieuw in te loggen.
+export async function emailVoorCoreToken(token) {
+  const id = leesCoreToken(token);
+  if (!id) return null;
+  const d = await haalDossier(id);
+  return d && d.email ? String(d.email).toLowerCase() : null;
+}
+
 // ===========================================================================
 // ROUTES
 // ===========================================================================
