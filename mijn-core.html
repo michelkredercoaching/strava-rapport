@@ -101,6 +101,27 @@
   .oefmini svg { max-width:100%; max-height:58px; width:auto; height:auto; display:block; }
   .oefmini span { display:block; font-size:10.5px; line-height:1.3; color:var(--muted); padding:3px 3px 2px; }
   .sessie .onder { padding:0 18px 16px; }
+  /* Stap 1 app (06-10-2026): grotere oefeningtegels, spierkaart, vrijspelen */
+  .oefmini { flex:0 0 136px; }
+  .oefmini > div { height:80px; }
+  .oefmini svg { max-height:80px; }
+  .oefmini span { font-size:11.5px; color:rgba(245,243,239,.8); }
+  .spierblok { display:grid; grid-template-columns:46% 1fr; gap:14px; align-items:center; padding:2px 18px 14px; }
+  .spierblok svg { width:100%; height:auto; display:block; }
+  .spierblok .spierkop { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-bottom:6px; }
+  .spierblok .spier { display:inline-block; font-size:12.5px; padding:3px 9px; border-radius:20px; margin:0 5px 5px 0; background:var(--accent-dim); color:var(--white); border:1px solid rgba(255,107,26,.35); }
+  .spierblok .helpt { font-size:12.5px; color:var(--muted); line-height:1.45; margin-top:4px; }
+  .sessie.opslot { position:relative; }
+  .sessie.opslot .oefrij, .sessie.opslot .spierblok { filter:blur(3px) grayscale(.6); opacity:.5; pointer-events:none; }
+  .sessie.opslot .uitlegknop { display:none; }
+  .slotlabel { display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); }
+  .slotlabel svg { width:16px; height:16px; flex-shrink:0; }
+  .sessie.nieuwopen { animation:ontgrendel 1.6s ease-out 1; border-color:var(--accent); }
+  @keyframes ontgrendel { 0% { box-shadow:0 0 0 0 rgba(255,107,26,.7); } 70% { box-shadow:0 0 0 14px rgba(255,107,26,0); } 100% { box-shadow:0 0 0 0 rgba(255,107,26,0); } }
+  .ontgrendeld { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); }
+  .speler .spieren { font-size:13px; color:rgba(245,243,239,.7); margin-top:6px; }
+  .speler .spieren b { color:var(--accent); font-weight:600; }
+  
   /* Voortgang */
   .vakjes { display:grid; grid-template-columns:repeat(12, 1fr); gap:4px; }
   .vakje { aspect-ratio:1; border-radius:3px; background:var(--surface2); border:1px solid var(--border); }
@@ -234,6 +255,7 @@
 
 <script src="/core-programma/figuur.js"></script>
 <script src="/core-programma/animaties.js"></script>
+<script src="/core-programma/spierkaart.js"></script>
 <script>
 const API = '/api/core';
 // Intern heten de sessies A, B en C (zo staat het in de opgeslagen voortgang).
@@ -427,20 +449,40 @@ function muurHtml(d) {
 }
 
 // ---- Sessies ----
+// Vrijspelen (06-10-2026): sessies gaan op volgorde open. De eerste die nog
+// niet gedaan is, is open; de rest daarna zit op slot tot de vorige af is.
+// Al gedaan blijft open ("nog een keer doen"). Puur motivatie op de pagina:
+// de server telt gewoon mee welke sessie je afvinkt.
+let nieuwOpen = null; // letter die net ontgrendeld is, voor het oplichten
+const SLOT_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+function spierHtml(oefeningen) {
+  const K = window.CoreSpierkaart; if (!K) return '';
+  const kaart = K.vanSessie(oefeningen.map((o) => o.id));
+  const n = K.namenLijst(kaart);
+  if (!n.hoofd.length && !n.mee.length) return '';
+  return `<div class="spierblok"><div>${K.svg(kaart)}</div><div><div class="spierkop">Dit train je</div>${n.hoofd.map((x) => `<span class="spier">${esc(x)}</span>`).join('')}${n.mee.length ? `<div class="helpt">Helpt mee: ${n.mee.map(esc).join(', ').toLowerCase()}</div>` : ''}</div></div>`;
+}
 function sessiesHtml(d) {
   const slot = d.testNodig === 0;
+  const eersteOpen = d.sessies.findIndex((s) => !d.gedaanDezeWeek.includes(s.letter));
   return `<div class="blok"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px"><h2 style="margin:0">Deze week${d.herhaling ? ' <span class="muted klein" style="font-family:DM Sans">(herhaling, lichtere varianten)</span>' : ''}</h2>
     <div class="freqkeuze" title="Hoe vaak per week">${[2, 3, 4].map((f) => `<button data-actie="freq" data-f="${f}" class="${d.frequentie === f ? 'aan' : ''}">${f}x</button>`).join('')}</div></div><div class="sessies">
-    ${d.sessies.map((s) => {
+    ${d.sessies.map((s, i) => {
       const klaar = d.gedaanDezeWeek.includes(s.letter);
-      return `<div class="sessie ${klaar ? 'gedaan' : ''}">
+      const opslot = !klaar && eersteOpen >= 0 && i > eersteOpen;
+      const vorige = d.sessies[i - 1];
+      const knop = slot ? '<button class="knop breed" disabled>Eerst je starttest</button>'
+        : opslot ? `<div class="slotlabel">${SLOT_SVG}Gaat open als je sessie ${NR[vorige.letter]} hebt gedaan</div>`
+        : `<button class="knop ${klaar ? 'leeg' : ''} breed" data-actie="start" data-letter="${s.letter}">${klaar ? 'Nog een keer doen' : 'Start sessie ' + NR[s.letter]}</button>`;
+      return `<div class="sessie ${klaar ? 'gedaan' : ''} ${opslot ? 'opslot' : ''} ${nieuwOpen === s.letter ? 'nieuwopen' : ''}">
         <div class="boven"><div style="display:flex;gap:14px;align-items:center"><div class="letter">${NR[s.letter]}</div>
           <div><div class="titel">${esc(s.naam)}</div><div class="meta">${s.minuten} min &middot; ${s.werk}s werk, ${s.rust}s rust &middot; ${s.rondes} rondes${s.finisher ? ' + finisher' : ''}</div></div></div>
-          ${klaar ? '<div class="vink">Gedaan</div>' : ''}</div>
+          ${klaar ? '<div class="vink">Gedaan</div>' : nieuwOpen === s.letter ? '<div class="ontgrendeld">Ontgrendeld</div>' : opslot ? `<div class="slotlabel" style="color:var(--muted)">${SLOT_SVG}</div>` : ''}</div>
+        ${spierHtml(s.oefeningen)}
         <div class="oefrij">${s.oefeningen.map((o) => `<div class="oefmini"><div data-anim="${o.id}"></div><span>${esc(o.naam)}${o.perKant ? ' (L+R)' : ''}</span></div>`).join('')}</div>
         <button class="uitlegknop" data-actie="uitleg">Bekijk de oefeningen</button>
         <div class="uitleglijst">${s.oefeningen.map((o) => `<div class="oef"><b>${esc(o.naam)}${o.perKant ? ' (links en rechts)' : ''}</b><ol>${(o.stappen || []).map((z) => `<li>${esc(z)}</li>`).join('')}</ol>${o.waarom ? `<div class="waarom">Waarom: ${esc(o.waarom)}</div>` : ''}</div>`).join('')}</div>
-        <div class="onder"><button class="knop ${klaar ? 'leeg' : ''} breed" data-actie="start" data-letter="${s.letter}" ${slot ? 'disabled' : ''}>${slot ? 'Eerst je starttest' : klaar ? 'Nog een keer doen' : 'Start sessie ' + NR[s.letter]}</button></div>
+        <div class="onder">${knop}</div>
       </div>`;
     }).join('')}</div></div>`;
 }
@@ -735,7 +777,7 @@ async function startSpeler(sessie) {
   const el = document.createElement('div'); el.className = 'speler';
   el.innerHTML = `<div class="balk"><div class="t">Sessie ${NR[sessie.letter]} &middot; ${esc(sessie.naam)}</div><button class="sluit" data-sp="stop">Stoppen</button></div>
     <div class="voortgang"><i></i></div>
-    <div class="midden"><div class="soort"></div><div class="naam"></div><div class="kant"></div><div class="beeld"></div><div class="klok"></div><div class="cue"></div><div class="straks"></div><div class="uitleg"></div></div>
+    <div class="midden"><div class="soort"></div><div class="naam"></div><div class="kant"></div><div class="beeld"></div><div class="spieren"></div><div class="klok"></div><div class="cue"></div><div class="straks"></div><div class="uitleg"></div></div>
     <div class="bediening"><button data-sp="terug" aria-label="Vorige">&#9664;&#9664;</button><button class="hoofd" data-sp="pauze">Pauze</button><button data-sp="verder" aria-label="Volgende">&#9654;&#9654;</button></div>`;
   document.body.appendChild(el);
   document.body.style.overflow = 'hidden';
@@ -759,6 +801,9 @@ function naarStap(i) {
   soortEl.classList.toggle('rust', st.soort === 'rust' || st.soort === 'wissel');
   $('.naam', el).textContent = st.soort === 'rust' ? 'Rust' : st.naam;
   $('.kant', el).textContent = st.kant || '';
+  // Wat deze oefening traint, alleen tijdens het werk (bij rust gaat het om straks).
+  const K = window.CoreSpierkaart, sp_n = K && st.soort === 'werk' ? K.namenLijst(K.vanOefening(st.id)) : null;
+  $('.spieren', el).innerHTML = sp_n && sp_n.hoofd.length ? 'Je traint: <b>' + sp_n.hoofd.map(esc).join(', ') + '</b>' + (sp_n.mee.length ? ' &middot; ' + sp_n.mee.map(esc).join(', ').toLowerCase() : '') : '';
   $('.cue', el).textContent = st.cue || '';
   $('.straks', el).textContent = st.straks ? 'Straks: ' + st.straks : '';
   const uitleg = $('.uitleg', el), lijst = (st.stappen || []).map((z) => '<li>' + esc(z) + '</li>').join('');
@@ -819,6 +864,7 @@ function sluitSpeler() {
   clearInterval(sp.iv); if (sp.stopAnim) sp.stopAnim();
   try { sp.wakeLock?.release(); } catch {}
   sp.el.remove(); document.body.style.overflow = ''; speler = null;
+  if (nieuwOpen) { teken(); const kaart = document.querySelector('.sessie.nieuwopen'); if (kaart) kaart.scrollIntoView({ behavior: 'smooth', block: 'center' }); const n = nieuwOpen; setTimeout(() => { if (nieuwOpen === n) { nieuwOpen = null; } }, 2500); }
 }
 
 async function klaarSpeler() {
@@ -831,9 +877,12 @@ async function klaarSpeler() {
     <p class="cue" style="margin-top:8px">Sessie afvinken...</p>`;
   $('.bediening', sp.el).innerHTML = '';
   const j = await post('afvink', { letter: sp.sessie.letter, finisher });
-  $('.midden .cue:last-child', sp.el).textContent = j.ok
-    ? (S.weekRond ? 'Afgevinkt. Je kunt deze week nu afsluiten.' : `Afgevinkt. Nog ${S.nodigVoorWeek - S.gedaanDezeWeek.length} sessie tot je de week kunt afsluiten.`)
+  // Welke sessie gaat er nu open? De eerste die deze week nog niet gedaan is.
+  const volgende = j.ok && S.sessies ? S.sessies.find((s) => !S.gedaanDezeWeek.includes(s.letter)) : null;
+  $('.midden .cue:last-child', sp.el).innerHTML = j.ok
+    ? (volgende ? `<span style="color:#FF6B1A;font-weight:700">Sessie ${NR[volgende.letter]} is ontgrendeld.</span><br>` : '') + esc(S.weekRond ? 'Afgevinkt. Je kunt deze week nu afsluiten.' : `Afgevinkt. Nog ${S.nodigVoorWeek - S.gedaanDezeWeek.length} sessie tot je de week kunt afsluiten.`)
     : 'Afvinken lukte niet. Probeer het straks opnieuw vanaf je pagina.';
+  if (volgende) { nieuwOpen = volgende.letter; setTimeout(() => piep(1320, .18), 500); }
   $('.bediening', sp.el).innerHTML = '<button class="hoofd" data-sp="klaar">Terug naar mijn pagina</button>';
   sp.el.addEventListener('click', (e) => { if (e.target.closest('[data-sp=klaar]')) sluitSpeler(); });
 }
