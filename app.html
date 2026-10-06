@@ -7,7 +7,7 @@
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0A0A0A">
 <link rel="manifest" href="/app.webmanifest">
-<link rel="apple-touch-icon" href="/app-iconen/icoon-180.png">
+<link rel="apple-touch-icon" href="/icoon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="MKC">
@@ -130,7 +130,7 @@ function appHtml() {
     ? '<button class="knop" data-actie="installeer">Zet op beginscherm</button>'
     : ios ? `<div class="stap">Tik onderaan in Safari op ${deel} en kies <b style="display:inline;color:var(--white)">Zet op beginscherm</b>.</div>`
           : '<div class="stap">Open het menu van je browser (&#8942;) en kies <b style="display:inline;color:var(--white)">Toevoegen aan startscherm</b>.</div>';
-  return `<div class="appkaart"><img src="/app-iconen/icoon-180.png" alt="">
+  return `<div class="appkaart"><img src="/icoon-180.png" alt="">
     <div><b>Zet MKC op je beginscherm</b><div class="stap">Dan open je alles met één tik, als app.</div>${uitleg}</div>
     <button class="x" data-actie="appweg" aria-label="Sluiten">&times;</button></div>`;
 }
