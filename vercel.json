@@ -25,6 +25,10 @@
     {
       "source": "/mijn-core",
       "destination": "/mijn-core.html"
+    },
+    {
+      "source": "/app",
+      "destination": "/app.html"
     }
   ],
   "crons": [
