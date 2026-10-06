@@ -357,6 +357,34 @@ async function stuurMail(payload) {
   } catch (e) { console.error('Resend exception:', e); return false; }
 }
 
+// ===== Welke routes mailen zelf via Resend (06-10-2026) =====
+// Resend Free = 100 mails per dag, en die liep vol door de bandenspanning-
+// calculator. Daarom mailt alleen die route niet meer zelf: de uitkomst +
+// pdf staat op de pagina en de Mailchimp-journey op 'bandenspanning-pdf'
+// stuurt de eerste mail, met een link terug naar die uitkomst. De andere
+// routes mailen nog wel via Resend (de keuzehulp bewust, zie
+// [[keuzehulp-directe-mail]]). De Strava-analyse mailt via
+// lib/lever-rapport.js en valt hier niet onder.
+//
+// Aanpassen: zet een route in deze lijst om hem weer via Resend te laten
+// mailen, of zet in Vercel de variabele RESEND_ROUTES (komma-gescheiden,
+// bijv. "coaching,begeleiding"); die gaat dan voor. Een route die NIET in
+// de lijst staat, krijgt geen mail via Resend.
+// Alle routes: schema, startpakket-advies, gratis-training, zesuur,
+// bandenspanning, core-gratis, afvalkaart, coaching, begeleiding.
+const RESEND_ROUTES = new Set(
+  (process.env.RESEND_ROUTES || 'schema,startpakket-advies,gratis-training,zesuur,core-gratis,afvalkaart,coaching,begeleiding')
+    .split(',').map(s => s.trim()).filter(Boolean)
+);
+
+async function stuurLeadMail(route, payload) {
+  if (!RESEND_ROUTES.has(route)) {
+    console.log('Resend uit voor route', route, '-> geen mail', '|', payload.subject);
+    return false;
+  }
+  return stuurMail(payload);
+}
+
 function interneCoachingHtml(b) {
   const r = (label, val) => `<tr><td style="padding:4px 16px 4px 0;color:#666;">${label}</td><td style="padding:4px 0;font-weight:700;">${val}</td></tr>`;
   return naarHtmlEntities(`
@@ -633,7 +661,7 @@ function coreGratisHtml(naam, url, betaald) {
     <p style="font-size:16px;margin:0 0 14px;">Hi ${veiligeNaam},</p>
     ${betaald ? `<p style="font-size:15px;margin:0 0 18px;">Je hebt het Core-programma al. Hier is je persoonlijke link nog een keer.</p>` : `
     <p style="font-size:15px;margin:0 0 14px;">Je proefweek van het Core-programma staat klaar. Geen demo, maar gewoon week 1 van het echte programma.</p>
-    <p style="font-size:15px;margin:0 0 14px;">Je beantwoordt eerst een paar vragen, zodat de oefeningen passen bij jouw klachten. Dan doe je je starttest, en daarna de drie sessies van week 1. Leg je telefoon op de grond en druk op start: de pagina telt af en zegt wanneer je wisselt.</p>`}
+    <p style="font-size:15px;margin:0 0 14px;">Je beantwoordt eerst een paar vragen, zodat de oefeningen passen bij jouw klachten. Dan doe je je starttest, en daarna de sessies van week 1. Leg je telefoon op de grond en druk op start: de pagina telt af en zegt wanneer je wisselt.</p>`}
     <p style="margin:4px 0 18px;">
       <a href="${escHtml(url)}" style="display:inline-block;background:#ff6b1a;color:#ffffff;text-decoration:none;font-weight:800;font-size:16px;padding:14px 30px;border-radius:8px;">${betaald ? 'Naar mijn Core-programma' : 'Start mijn proefweek'}</a>
     </p>
@@ -772,6 +800,17 @@ export default async function handler(req, res) {
   }
 
   const b = req.body || {};
+
+  // Alleen terugrekenen, zonder mailadres: de link in de Mailchimp-mail
+  // stuurt iemand terug naar /bandenspanning/ met zijn invoer in de URL, en
+  // de pagina haalt hier opnieuw zijn advies op. Geen contact, geen tag,
+  // geen Meta-lead.
+  if (b.route === 'bandenspanning-bekijk') {
+    const advies = bandenAdvies(leesInvoer(b));
+    if (!advies) return res.status(400).json({ ok: false, fout: 'ongeldige invoer' });
+    return res.status(200).json({ ok: true, advies, downloadUrl: BANDEN_PDF });
+  }
+
   const email = String(b.email || '').trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return res.status(400).json({ ok: false, fout: 'ongeldig e-mailadres' });
@@ -909,13 +948,13 @@ export default async function handler(req, res) {
     const verloopTijdNL = spKorting.verlooptOm
       ? new Date(spKorting.verlooptOm).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' }) + ' uur'
       : '';
-    await stuurMail({
+    await stuurLeadMail(route, {
       from: AFZENDER, to: email, reply_to: REPLY_TO,
       subject: 'Je advies: Het Startpakket (+ eenmalige korting)',
       html: startpakketAdviesHtml(b.naam, checkoutUrl, verloopTijdNL),
     });
   } else if (route === 'schema' && b.schema) {
-    await stuurMail({
+    await stuurLeadMail(route, {
       from: AFZENDER, to: email, reply_to: REPLY_TO,
       subject: `Je trainingsschema-advies: ${b.schema}`,
       html: schemaAdviesHtml(b.naam, b.schema, b.schemaUrl || ''),
@@ -981,7 +1020,7 @@ export default async function handler(req, res) {
     // 2b) Proeftraining: het juiste Startprotocol meteen mailen (bevestigt het adres)
     //     en teruggeven aan de pagina voor een directe download.
     if (route === 'gratis-training') {
-      await stuurMail({
+      await stuurLeadMail(route, {
         from: AFZENDER, to: email, reply_to: REPLY_TO,
         subject: 'Je proeftraining staat klaar',
         html: proeftrainingHtml(b.naam, gtDownloadUrl, gtMeetmethode),
@@ -1011,7 +1050,7 @@ export default async function handler(req, res) {
     //     zonder handmatige stap voor Michel (geen TrainingPeaks-koppeling
     //     nodig zoals bij de proeftraining).
     if (route === 'zesuur') {
-      await stuurMail({
+      await stuurLeadMail(route, {
         from: AFZENDER, to: email, reply_to: REPLY_TO,
         subject: 'Je 6-uur-schema staat klaar',
         html: zesuurHtml(b.naam, ZESUUR_PDF),
@@ -1023,7 +1062,7 @@ export default async function handler(req, res) {
     // 2c-2) Bandenspanning: kaart mailen (bevestigt het adres) en de
     //     downloadUrl teruggeven zodat de pagina 'm meteen kan tonen.
     if (route === 'bandenspanning') {
-      await stuurMail({
+      await stuurLeadMail(route, {
         from: AFZENDER, to: email, reply_to: REPLY_TO,
         subject: bandenAdv
           ? `Jouw bandenspanning: ${bandenAdv.voor.toFixed(1).replace('.', ',')} voor, ${bandenAdv.achter.toFixed(1).replace('.', ',')} achter`
@@ -1041,7 +1080,7 @@ export default async function handler(req, res) {
     if (route === 'core-gratis') {
       const proef = coreProef;
       // Wie al betaald heeft, krijgt geen proefmail maar gewoon zijn eigen link.
-      await stuurMail({
+      await stuurLeadMail(route, {
         from: AFZENDER, to: email, reply_to: REPLY_TO,
         subject: proef.betaald ? 'Je link naar je Core-programma' : 'Je gratis proefweek staat klaar',
         html: coreGratisHtml(b.naam, proef.link, proef.betaald),
@@ -1070,7 +1109,7 @@ export default async function handler(req, res) {
         try { await hertag(base, headers, hash, belemmering.tag); }
         catch (e) { console.error('Belemmering-tag mislukt (genegeerd):', e); }
       }
-      await stuurMail({
+      await stuurLeadMail(route, {
         from: AFZENDER, to: email, reply_to: REPLY_TO,
         subject: richtlijn ? 'Je richtlijn en je Afvalkaart' : 'Je Afvalkaart staat klaar',
         html: afvalkaartHtml(b.naam, AFVALKAART_PDF, richtlijn, belemmering),
@@ -1139,13 +1178,13 @@ export default async function handler(req, res) {
     //    (De e-mailpoort eerder in de flow stuurt geen `inschrijving`, alleen
     //    het begeleidingsformulier doet dat — dus geen dubbele mails.)
     if (route === 'coaching' && String(b.inschrijving || '') === 'ja') {
-      await stuurMail({
+      await stuurLeadMail(route, {
         from: AFZENDER, to: INTERNE_MAIL,
         reply_to: email,
         subject: `🚴 Coaching-aanvraag: ${String(b.naam || email)} · ${String(b.pakket || 'adviestool')}`,
         html: interneCoachingHtml(b),
       });
-      await stuurMail({
+      await stuurLeadMail(route, {
         from: AFZENDER, to: email, reply_to: REPLY_TO,
         subject: 'Je aanvraag is binnen — we plannen een intakegesprek',
         html: bevestigingHtml(b.naam, b.pakket),
@@ -1156,13 +1195,13 @@ export default async function handler(req, res) {
     //     warme bevestiging naar de klant. Zelfde mailpatroon als coaching,
     //     maar met het complete inschrijfformulier.
     if (route === 'begeleiding') {
-      await stuurMail({
+      await stuurLeadMail(route, {
         from: AFZENDER, to: INTERNE_MAIL,
         reply_to: email,
         subject: `🚴 Inschrijving begeleiding: ${String(b.naam || email)} · ${String(b.pakket || 'begeleiding')}`,
         html: interneBegeleidingHtml(b),
       });
-      await stuurMail({
+      await stuurLeadMail(route, {
         from: AFZENDER, to: email, reply_to: REPLY_TO,
         subject: 'Welkom bij Michel Kreder Coaching, zo maken we een vliegende start',
         html: onboardingBegeleidingHtml({ ...b, email }),
