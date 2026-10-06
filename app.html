@@ -6,7 +6,7 @@
 <title>MKC | Michel Kreder Coaching</title>
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#0A0A0A">
-<link rel="manifest" href="/app.webmanifest">
+<link rel="manifest" href="/app.webmanifest" id="manifestLink">
 <link rel="apple-touch-icon" href="/icoon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -113,8 +113,17 @@ const SITE = 'https://michelkredercoaching.nl';
 let D = null;
 
 function leesToken() { try { return localStorage.getItem(OPSLAG) || ''; } catch (e) { return ''; } }
-function bewaarToken(t) { try { localStorage.setItem(OPSLAG, t); } catch (e) {} }
-function wisToken() { try { localStorage.removeItem(OPSLAG); } catch (e) {} }
+function bewaarToken(t) { try { localStorage.setItem(OPSLAG, t); } catch (e) {} zetLoginInApp(t); }
+// iPhone: een app op het beginscherm heeft eigen opslag. Daarom zit de login
+// ook in de adresbalk en in een persoonlijk manifest; zet je de app op je
+// beginscherm terwijl je ingelogd bent, dan gaat je login mee.
+function zetLoginInApp(t) {
+  if (!t) return;
+  try { history.replaceState(null, '', location.pathname + '?t=' + encodeURIComponent(t)); } catch (e) {}
+  const m = document.getElementById('manifestLink');
+  if (m) m.href = API + '?actie=manifest&t=' + encodeURIComponent(t);
+}
+function wisToken() { try { localStorage.removeItem(OPSLAG); } catch (e) {} try { history.replaceState(null, '', location.pathname); } catch (e) {} const m = document.getElementById('manifestLink'); if (m) m.href = '/app.webmanifest'; }
 
 // ---- Beginscherm ----
 let installPrompt = null;
@@ -140,26 +149,43 @@ function loginHtml(melding, soort) {
   return `<div class="login">
     <div class="logo" style="margin-bottom:28px">MKC<span>.</span></div>
     <h1>Log in op <em>je app.</em></h1>
-    <p>Je Core-app, je Strava-analyse en je tools op één plek. Vul het mailadres in waarmee je iets bij me deed, dan krijg je een inloglink. Geen wachtwoord nodig.</p>
+    <p>Je Core-app, je Strava-analyse en je tools op één plek. Vul het mailadres in waarmee je iets bij me deed, dan krijg je een inlogcode. Geen wachtwoord nodig.</p>
     <form id="loginForm"><input type="email" id="loginMail" placeholder="Je e-mailadres" autocomplete="email" required>
-      <button class="knop" type="submit" id="loginKnop">Stuur mijn inloglink</button></form>
+      <button class="knop" type="submit" id="loginKnop">Stuur mijn inlogcode</button></form>
+    <form id="codeForm" style="display:none;margin-top:18px"><input type="text" id="loginCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 cijfers uit de mail" style="letter-spacing:6px;font-size:22px;text-align:center">
+      <button class="knop" type="submit" id="codeKnop">Log in</button>
+      <p class="klein" style="text-align:center"><a href="#" id="opnieuw" style="color:#FF6B1A">Nieuwe code sturen</a></p></form>
     <div class="melding ${soort || ''}" id="loginMelding">${melding ? esc(melding) : ''}</div>
     <p class="klein" style="margin-top:28px">Nog niets bij me gedaan? <a href="${SITE}/core-gratis/" style="color:#FF6B1A">Start gratis met week 1 van de Core-app</a>, dan krijg je meteen toegang.</p>
   </div>`;
 }
 function toonLogin(melding, soort) {
   $('#app').innerHTML = loginHtml(melding, soort);
-  $('#loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = $('#loginMail').value.trim(), knop = $('#loginKnop'), m = $('#loginMelding');
+  const m = $('#loginMelding');
+  const vraagCode = async () => {
+    const email = $('#loginMail').value.trim(), knop = $('#loginKnop');
     knop.disabled = true; knop.textContent = 'Even versturen...';
     try {
       const r = await fetch(API + '?actie=login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
       const j = await r.json();
       m.className = 'melding ' + (j.ok ? 'goed' : 'fout');
       m.textContent = j.ok ? j.bericht : (j.fout || 'Dat lukte niet. Probeer het zo nog eens.');
+      if (j.ok) { $('#codeForm').style.display = 'block'; $('#loginCode').focus(); }
     } catch { m.className = 'melding fout'; m.textContent = 'Verbinding mislukt. Probeer het zo nog eens.'; }
-    knop.disabled = false; knop.textContent = 'Stuur mijn inloglink';
+    knop.disabled = false; knop.textContent = 'Stuur mijn inlogcode';
+  };
+  $('#loginForm').addEventListener('submit', (e) => { e.preventDefault(); vraagCode(); });
+  $('#opnieuw').addEventListener('click', (e) => { e.preventDefault(); vraagCode(); });
+  $('#codeForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const knop = $('#codeKnop'); knop.disabled = true; knop.textContent = 'Even kijken...';
+    try {
+      const r = await fetch(API + '?actie=verifieer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: $('#loginMail').value.trim(), code: $('#loginCode').value }) });
+      const j = await r.json();
+      if (j.ok && j.t) { bewaarToken(j.t); return laadOverzicht(); }
+      m.className = 'melding fout'; m.textContent = j.fout || 'Dat lukte niet.';
+    } catch { m.className = 'melding fout'; m.textContent = 'Verbinding mislukt. Probeer het zo nog eens.'; }
+    knop.disabled = false; knop.textContent = 'Log in';
   });
 }
 
@@ -237,8 +263,8 @@ function analyseKaart(a) {
 
 function pacingKaart() {
   return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Coming soon</span>
-    <div class="label">Pacingplan</div><h2>Je granfondo of gravelfondo, slim ingedeeld</h2>
-    <p>Hoe hard je per klim, per strook en per uur kunt rijden zonder stuk te gaan, berekend uit je eigen ritten. Voor granfondo's op de weg en gravelfondo's. Komt eraan.</p></div></div>`;
+    <div class="label">Pacingplan</div><h2>Je grote tocht, slim ingedeeld</h2>
+    <p>Hoe hard je per klim, per strook en per uur kunt rijden zonder stuk te gaan, berekend uit je eigen ritten. Voor granfondo's, gravelfondo's en toertochten zoals de Amstel Gold Race of Luik-Bastenaken-Luik. Komt eraan.</p></div></div>`;
 }
 
 function bandenKaart(heeft) {
@@ -266,9 +292,21 @@ document.addEventListener('click', (e) => {
   if (actie === 'installeer' && installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; teken(); }); }
 });
 
+async function laadOverzicht() {
+  const t = leesToken();
+  if (!t) return toonLogin();
+  zetLoginInApp(t);
+  try {
+    const r = await fetch(API + '?actie=overzicht&t=' + encodeURIComponent(t));
+    const j = await r.json();
+    if (!j.ok) { wisToken(); return toonLogin(j.fout, 'fout'); }
+    D = j; teken();
+  } catch { $('#app').innerHTML = '<div class="laden">Verbinding mislukt. Probeer het zo nog eens.</div>'; }
+}
+
 async function start() {
   const p = new URLSearchParams(location.search);
-  // Inloglink uit de mail (?t=) of doorklik vanuit de Core-app (?ct=).
+  // Login uit de mail-knop of de app-start (?t=), of doorklik vanuit de Core-app (?ct=).
   if (p.get('t')) bewaarToken(p.get('t'));
   if (p.get('ct')) {
     try {
@@ -276,15 +314,7 @@ async function start() {
       const j = await r.json(); if (j.ok && j.t) bewaarToken(j.t);
     } catch (e) {}
   }
-  if (p.get('t') || p.get('ct')) history.replaceState(null, '', location.pathname);
-  const t = leesToken();
-  if (!t) return toonLogin();
-  try {
-    const r = await fetch(API + '?actie=overzicht&t=' + encodeURIComponent(t));
-    const j = await r.json();
-    if (!j.ok) { wisToken(); return toonLogin(j.fout, 'fout'); }
-    D = j; teken();
-  } catch { $('#app').innerHTML = '<div class="laden">Verbinding mislukt. Probeer het zo nog eens.</div>'; }
+  return laadOverzicht();
 }
 start();
 </script>
