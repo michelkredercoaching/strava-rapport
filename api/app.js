@@ -14,6 +14,12 @@
 //   GET  overzicht ?t=       -> wat deze persoon heeft: Core, analyse, enz.
 //   POST vancore  { ct }     -> ruilt een Core-link in voor een app-token,
 //                               zodat je vanuit de Core-app direct binnen bent.
+//   POST verifieer { email, code } -> inloggen met de 6 cijfers uit de mail.
+//                               Nodig op de iPhone: een app op het beginscherm
+//                               heeft eigen opslag en een link opent altijd in
+//                               Safari, dus daar kom je alleen met de code in.
+//   GET  manifest  ?t=       -> persoonlijk manifest met de login in start_url,
+//                               zodat de app op je beginscherm ingelogd blijft.
 //
 // Bronnen per onderdeel:
 //   Core-app        Redis via api/core.js (coreVoorEmail)
@@ -96,22 +102,25 @@ async function mcLid(email) {
 const heeftTag = (lid, naam) => !!(lid && (lid.tags || []).some((t) => t.name === naam));
 
 // ---- Mail ----------------------------------------------------------------------
-async function stuurInlogmail(email, naam, link) {
+async function stuurInlogmail(email, naam, link, code) {
   if (!RESEND_KEY) { console.error('Geen RESEND_API_KEY'); return false; }
   const voornaam = String(naam || '').trim().split(' ')[0];
   const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.7;color:#1a1a1a;max-width:560px">
     <p>${voornaam ? 'Hoi ' + esc(voornaam) : 'Hoi'},</p>
-    <p>Hier is je inloglink voor de MKC-app. Met één tik ben je binnen, je hoeft geen wachtwoord te onthouden.</p>
-    <p style="margin:26px 0"><a href="${esc(link)}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Open mijn app</a></p>
-    <p>Zet de app daarna op je beginscherm, dan hoef je deze mail niet meer te zoeken.</p>
+    <p>Je inlogcode voor de MKC-app:</p>
+    <p style="font-size:34px;font-weight:700;letter-spacing:8px;margin:6px 0 18px;color:#0a0a0a">${esc(code)}</p>
+    <p>Vul deze code in de app in. Hij werkt een kwartier.</p>
+    <p>Of open de app direct met deze knop:</p>
+    <p style="margin:20px 0 26px"><a href="${esc(link)}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Open mijn app</a></p>
+    <p style="color:#555;font-size:14px">Staat de app al op je beginscherm? Gebruik dan de code, want de knop opent in je browser.</p>
     <p style="color:#777;font-size:13px">Heb je dit niet aangevraagd? Dan kun je deze mail negeren, er gebeurt verder niets.</p>
     <p>Sportieve groet,<br>Michel</p></div>`;
   try {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: AFZENDER, to: email, subject: 'Je inloglink voor de MKC-app', html }),
+      body: JSON.stringify({ from: AFZENDER, to: email, subject: `Je inlogcode voor de MKC-app: ${code}`, html }),
       signal: AbortSignal.timeout(10000)
     });
     return r.ok;
@@ -133,6 +142,8 @@ export default async function handler(req, res) {
     if (actie === 'login') return await routeLogin(req, res);
     if (actie === 'overzicht') return await routeOverzicht(req, res);
     if (actie === 'vancore') return await routeVanCore(req, res);
+    if (actie === 'verifieer') return await routeVerifieer(req, res);
+    if (actie === 'manifest') return routeManifest(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -145,7 +156,7 @@ async function routeLogin(req, res) {
   const body = await leesBody(req);
   const email = String(body.email || '').trim().toLowerCase();
   if (!geldigMail(email)) return res.status(400).json({ ok: false, fout: 'Vul een geldig e-mailadres in.' });
-  const antwoord = { ok: true, bericht: 'Als dit adres bij ons bekend is, staat er binnen een minuut een inloglink in je mail.' };
+  const antwoord = { ok: true, bericht: 'Als dit adres bij ons bekend is, staat er binnen een minuut een mail met je inlogcode.' };
 
   // Rem: één inlogmail per adres per minuut.
   const rem = await redis(['SET', `app:login:${email}`, '1', 'NX', 'EX', '60']);
@@ -155,7 +166,11 @@ async function routeLogin(req, res) {
   const bekend = !!core || (lid && lid.status && lid.status !== 'archived');
   if (bekend) {
     const naam = (core && core.naam) || (lid && lid.merge_fields && lid.merge_fields.FNAME) || '';
-    await stuurInlogmail(email, naam, `${APP_URL}?t=${maakAppToken(email)}`);
+    // 6 cijfers, een kwartier geldig. Nieuwe aanvraag = nieuwe code, pogingen op 0.
+    const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
+    await redis(['SET', `app:code:${email}`, code, 'EX', '900']);
+    await redis(['DEL', `app:pogingen:${email}`]);
+    await stuurInlogmail(email, naam, `${APP_URL}?t=${maakAppToken(email)}`, code);
   }
   return res.status(200).json(antwoord);
 }
@@ -187,4 +202,45 @@ async function routeVanCore(req, res) {
   const email = await emailVoorCoreToken(String(body.ct || ''));
   if (!email) return res.status(401).json({ ok: false, fout: 'Deze link werkt niet meer.' });
   return res.status(200).json({ ok: true, t: maakAppToken(email) });
+}
+
+async function routeVerifieer(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = String(body.email || '').trim().toLowerCase();
+  const code = String(body.code || '').replace(/D/g, '');
+  if (!geldigMail(email) || code.length !== 6) return res.status(400).json({ ok: false, fout: 'Vul je mailadres en de 6 cijfers uit de mail in.' });
+  // Maximaal 5 pogingen per code, anders kun je hem raden.
+  const p = await redis(['INCR', `app:pogingen:${email}`]);
+  if (p.ok && p.result === 1) await redis(['EXPIRE', `app:pogingen:${email}`, '900']);
+  if (p.ok && p.result > 5) return res.status(429).json({ ok: false, fout: 'Te vaak geprobeerd. Vraag een nieuwe code aan.' });
+  const r = await redis(['GET', `app:code:${email}`]);
+  const goed = r.ok && r.result && String(r.result).length === 6
+    && crypto.timingSafeEqual(Buffer.from(String(r.result)), Buffer.from(code));
+  if (!goed) return res.status(401).json({ ok: false, fout: 'Deze code klopt niet of is verlopen.' });
+  await redis(['DEL', `app:code:${email}`]);
+  await redis(['DEL', `app:pogingen:${email}`]);
+  return res.status(200).json({ ok: true, t: maakAppToken(email) });
+}
+
+// Persoonlijk manifest: de login zit in start_url. Zet je de app op je
+// beginscherm terwijl je ingelogd bent, dan opent hij voortaan ingelogd.
+function routeManifest(req, res) {
+  const t = String(req.query?.t || '');
+  const geldig = !!leesAppToken(t);
+  res.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+  res.setHeader('Cache-Control', 'private, max-age=86400');
+  return res.status(200).send(JSON.stringify({
+    name: 'MKC, Michel Kreder Coaching', short_name: 'MKC', lang: 'nl',
+    description: 'Je Core-app, Strava-analyse en tools van Michel Kreder Coaching op één plek.',
+    start_url: geldig ? `/app?t=${encodeURIComponent(t)}` : '/app',
+    scope: '/', id: '/app',
+    display: 'standalone', orientation: 'portrait',
+    background_color: '#0A0A0A', theme_color: '#0A0A0A',
+    icons: [
+      { src: '/icoon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: '/icoon-512.png', sizes: '512x512', type: 'image/png' },
+      { src: '/icoon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+    ]
+  }));
 }
