@@ -232,17 +232,18 @@ function coreKaart(c) {
       <a class="knop" href="${esc(c.link)}">Ga door met week 2</a></div></div>`;
   }
   const winst = c.rompscore != null && c.startScore != null && c.rompscore > c.startScore ? `<em>+${c.rompscore - c.startScore}</em>` : '';
-  const pct = Math.min(100, Math.round(((c.week - 1) / 12) * 100 + (c.gedaan / Math.max(1, c.frequentie)) * (100 / 12)));
+  const wib = c.weekInBlok || c.week, blok = c.blok || 1;
+  const pct = Math.min(100, Math.round(((wib - 1) / 12) * 100 + (c.gedaan / Math.max(1, c.frequentie)) * (100 / 12)));
   const v = c.volgende;
   const kaartje = v && K ? `<div class="volgende"><div>${K.svg(K.vanSessie(v.oefeningen), { labels: false })}</div>
       <div><div class="w">Volgende: sessie ${'ABCD'.indexOf(v.letter) + 1}</div><div class="n">${esc(v.naam)}</div>
       <div class="m">${v.minuten} min &middot; ${esc(K.namenLijst(K.vanSessie(v.oefeningen)).hoofd.slice(0, 3).join(', '))}</div></div></div>` : '';
   return `<div class="kaart actief"><div class="kaart-in"><span class="tag open">${c.klaar ? 'Afgerond' : 'Actief'}</span>
     <div class="label">Core-app</div>
-    <h2>${c.klaar ? 'Programma afgerond' : `Week ${c.week} van 12`}</h2>
-    <p>${c.klaar ? 'Twaalf weken gedaan. Kijk in je app naar je grafiek.' : `Fase ${c.fase}: ${esc(c.faseNaam)} &middot; ${c.gedaan} van ${c.frequentie} sessies gedaan`}</p>
+    <h2>${c.klaar ? 'Programma afgerond' : `Week ${wib} van 12`}</h2>
+    <p>${c.klaar ? 'Twaalf weken gedaan. Kijk in je app naar je grafiek.' : `${blok > 1 ? 'Blok ' + blok + ' &middot; ' : ''}Fase ${c.fase}: ${esc(c.faseNaam)} &middot; ${c.gedaan} van ${c.frequentie} sessies gedaan`}</p>
     <div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore != null ? c.rompscore : '&ndash;'}${winst}</b></div>
-      <div class="cijfer"><span>Week</span><b>${c.week}/12</b></div><div class="cijfer"><span>Gedaan</span><b>${c.afgerond}</b></div></div>
+      <div class="cijfer"><span>${blok > 1 ? 'Blok' : 'Week'}</span><b>${blok > 1 ? blok : wib + '/12'}</b></div><div class="cijfer"><span>Gedaan</span><b>${c.afgerond}</b></div></div>
     <div class="balk"><i style="width:${c.klaar ? 100 : pct}%"></i></div>
     ${c.klaar ? '' : kaartje}
     <a class="knop" href="${esc(c.link)}">${c.klaar ? 'Open je Core-app' : v ? `Verder met sessie ${'ABCD'.indexOf(v.letter) + 1}` : 'Open je Core-app'}</a></div></div>`;
