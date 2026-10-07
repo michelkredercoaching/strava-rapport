@@ -154,7 +154,10 @@ async function bewaarNieuw(d) {
   await redis(['SET', `core:email:${d.email}`, d.id, 'EX', String(BEWAAR_S)]);
 }
 // Dossiers zonder betaald-veld komen uit de webhook: die zijn betaald.
-const isBetaald = (d) => d.betaald !== false;
+// Sinds het lidmaatschap van de MKC-app (07-10-2026) kan toegang ook tot een
+// datum lopen: d.lidTot (ISO). Wie eerder eenmalig betaalde heeft geen lidTot
+// en houdt dus gewoon toegang.
+const isBetaald = (d) => d.betaald !== false && (!d.lidTot || Date.now() < Date.parse(d.lidTot));
 
 // Proefweek starten, of de bestaande link teruggeven. Aangeroepen vanuit
 // api/keuzehulp-inschrijving.js. Mailt zelf niets, dat doet die route.
@@ -361,6 +364,30 @@ export async function coreVoorEmail(email) {
     volgende: (() => { const s = b.sessies.find((x) => !b.gedaanDezeWeek.includes(x.letter)); return s ? { letter: s.letter, naam: s.naam, minuten: s.minuten, oefeningen: s.oefeningen.map((o) => o.id) } : null; })()
   };
 }
+// Lidmaatschap van de MKC-app (api/lid.js): zet of verleng toegang tot `tot`.
+// Bestaat er nog geen dossier, dan wordt het aangemaakt en gaat de welkomstmail
+// met de link de deur uit. Wie eerder eenmalig betaalde, houdt die toegang:
+// daar zetten we geen einddatum op.
+export async function zetLidmaatschap({ email, naam, tot }) {
+  email = String(email || '').toLowerCase();
+  if (!email || !tot) return null;
+  let d = await dossierVoorEmail(email);
+  let nieuw = false;
+  if (!d) {
+    d = nieuwDossier({ email, naam, betaald: true, bron: 'lid' });
+    d.lidTot = tot; d.lidSinds = nu();
+    await bewaarNieuw(d); nieuw = true;
+  } else {
+    const eenmalig = d.betaald !== false && !d.lidTot && d.bron !== 'proef' && d.bron !== 'lid';
+    if (!eenmalig) { d.betaald = true; d.lidTot = tot; if (!d.lidSinds) d.lidSinds = nu(); if (d.bron === 'proef') d.bron = 'lid'; }
+    if (!d.naam && naam) d.naam = String(naam).slice(0, 80);
+    await bewaarDossier(d);
+  }
+  await mcTag(email, 'core-klant');
+  if (nieuw) await mail({ naar: email, onderwerp: 'Je Core-app staat klaar', html: welkomHtml(d, linkVoor(d.id), false), antwoordNaar: INTERN_NAAR });
+  return { id: d.id, link: linkVoor(d.id), nieuw };
+}
+
 // Mailadres achter een Core-link. Zo kan iemand vanuit de Core-app in één tik
 // naar de startpagina, zonder opnieuw in te loggen.
 export async function emailVoorCoreToken(token) {
