@@ -221,8 +221,11 @@ async function routeWebhook(req, res) {
           metadata: { email: lidEmail }
         })
       });
-      if (!s.ok) { await redis(['DEL', `lid:betaling:${id}`]); return res.status(500).send('abonnement mislukt'); }
-      lid.customerId = p.customerId; lid.subscriptionId = s.j.id; lid.status = 'actief';
+      // Lukt het abonnement niet (bv. geen incasso-machtiging), dan heeft de
+      // klant wel betaald: de eerste maand gaat gewoon open en Michel krijgt
+      // een mail om het abonnement handmatig te regelen.
+      if (!s.ok) await meldIntern(`ABONNEMENT MISLUKT - ${lidEmail}`, `${lidEmail} betaalde de eerste maand (${id}), maar Mollie maakte geen abonnement aan: ${JSON.stringify(s.j).slice(0, 300)}. De eerste maand staat open. Regel het abonnement in Mollie of neem contact op.`);
+      lid.customerId = p.customerId; lid.subscriptionId = s.ok ? s.j.id : null; lid.status = 'actief';
       lid.sinds = lid.sinds || betaaldOp;
       lid.tot = plusDagen(start, SPELING_DAGEN).toISOString();
       await redis(['SET', `lid:klant:${p.customerId}`, lidEmail]);
