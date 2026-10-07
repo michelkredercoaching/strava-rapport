@@ -1,425 +1,321 @@
-<!DOCTYPE html>
-<html lang="nl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>MKC | Michel Kreder Coaching</title>
-<meta name="robots" content="noindex">
-<meta name="theme-color" content="#0A0A0A">
-<link rel="manifest" href="/app.webmanifest" id="manifestLink">
-<link rel="apple-touch-icon" href="/icoon-180.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="MKC">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
-<style>
-  /* De all-in-1 app (06-10-2026), stap 2 van APP-STAPPENPLAN.md.
-     Zelfde huisstijl als de homepage: Bebas Neue + DM Sans, zwart met oranje.
-     Gegevens komen uit /api/app; de Core-app zelf blijft mijn-core.html. */
-  :root { --black:#0A0A0A; --off:#111; --surface:#161616; --surface2:#1c1c1c; --border:rgba(255,255,255,0.08);
-    --white:#F5F3EF; --muted:rgba(245,243,239,0.6); --accent:#FF6B1A; --accent-dim:rgba(255,107,26,0.12); --groen:#4CC38A; }
-  *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-  html { background:var(--black); }
-  body { font-family:'DM Sans',sans-serif; background:var(--black); color:var(--white); -webkit-font-smoothing:antialiased; line-height:1.55; min-height:100vh;
-    padding:calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 40px); }
-  .wrap { max-width:560px; margin:0 auto; }
-  a { color:inherit; }
-  .kop { display:flex; align-items:center; justify-content:space-between; padding:8px 2px 22px; }
-  .logo { font-family:'Bebas Neue',sans-serif; font-size:32px; letter-spacing:.06em; line-height:1; }
-  .logo span { color:var(--accent); }
-  .uit { font-size:12.5px; color:var(--muted); background:none; border:0; text-decoration:underline; cursor:pointer; font-family:inherit; }
-  .groet { font-family:'Bebas Neue',sans-serif; font-size:clamp(40px,11vw,56px); line-height:.92; text-transform:uppercase; margin-bottom:8px; }
-  .groet em { font-style:normal; color:var(--accent); }
-  .intro { font-size:15px; color:var(--muted); margin-bottom:24px; }
-  .label { display:inline-flex; align-items:center; gap:8px; font-size:10.5px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); margin-bottom:10px; }
-  .label::before { content:''; width:16px; height:1px; background:var(--accent); }
+// /api/lid.js
+// ---------------------------------------------------------------------------
+// Lidmaatschap van de MKC-app: €19 per maand, automatische incasso via Mollie
+// (besluit Michel 07-10-2026). Geen garantie, wel maandelijks opzegbaar.
+// Zie APP-STAPPENPLAN.md.
+//
+// Zo werkt het bij Mollie:
+//   1. Eerste betaling met sequenceType 'first' (iDEAL). Daarmee geeft de klant
+//      een machtiging voor SEPA-incasso. VEREIST: SEPA-incasso staat aan in het
+//      Mollie-dashboard, anders maakt Mollie geen machtiging aan.
+//   2. Is die betaald, dan maakt de webhook een abonnement aan: elke maand €19,
+//      eerste incasso een maand na vandaag.
+//   3. Elke incasso komt weer via de webhook binnen. Betaald = toegang een maand
+//      verlengen. Mislukt = status 'achterstand', toegang loopt nog 5 dagen door.
+//
+// Toegang tot de Core-app loopt via d.lidTot in het Core-dossier (api/core.js,
+// zetLidmaatschap). Wie eerder eenmalig betaalde, houdt die toegang.
+//
+// Redis:
+//   lid:<email>        JSON { status, customerId, subscriptionId, tot, sinds, naam }
+//   lid:betaling:<id>  '1'  al verwerkt (Mollie kan een webhook vaker sturen)
+//
+// Routes (?actie=):
+//   POST start     { t }   -> app-token; geeft de Mollie-betaallink terug
+//   POST webhook   id=...  -> Mollie (form-encoded); verwerkt eerste en maandbetalingen
+//   GET  status    ?t=     -> { lid } voor de app
+//   POST opzeggen  { t }   -> stopt het abonnement, toegang loopt tot de betaalde datum
+//
+// Env: MOLLIE_API_KEY, PP_TOKEN_SECRET, UPSTASH_REDIS_REST_URL/TOKEN,
+//      MAILCHIMP_API_KEY/MAILCHIMP_LIST_ID (tag mkc-lid), APP_URL (optioneel)
+import crypto from 'crypto';
+import { zetLidmaatschap } from './core.js';
+import { maakMollieFactuur } from '../lib/mollie-factuur.js';
 
-  /* Kaarten */
-  .kaarten { display:grid; gap:14px; }
-  .kaart { background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden; position:relative; }
-  .kaart.actief { border-color:rgba(255,107,26,.45); background:linear-gradient(180deg, rgba(255,107,26,.08), var(--surface) 55%); }
-  .kaart-in { padding:20px 20px 20px; }
-  .kaart h2 { font-family:'Bebas Neue',sans-serif; font-size:34px; line-height:.95; text-transform:uppercase; margin-bottom:6px; }
-  .kaart p { font-size:14.5px; color:rgba(245,243,239,.78); }
-  .kaart .tag { position:absolute; top:16px; right:16px; font-size:10px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; padding:4px 9px; border-radius:3px; }
-  .tag.open { color:var(--groen); border:1px solid rgba(76,195,138,.45); }
-  .tag.slot { color:var(--muted); border:1px solid rgba(255,255,255,.15); }
-  .tag.oranje { color:var(--black); background:var(--accent); }
-  .knop { display:block; width:100%; text-align:center; background:var(--accent); color:#0A0A0A; text-decoration:none; border:0; cursor:pointer;
-    font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.06em; text-transform:uppercase; padding:14px 18px 11px; border-radius:4px; margin-top:16px; }
-  .knop.leeg { background:transparent; color:var(--white); border:1px solid rgba(255,255,255,.2); }
-  .klein { font-size:12.5px; color:var(--muted); margin-top:10px; }
-  .cijfers { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:16px 0 4px; }
-  .cijfer { background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:10px 10px 8px; }
-  .cijfer span { display:block; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
-  .cijfer b { font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1.05; font-weight:400; }
-  .cijfer b em { font-style:normal; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:700; color:var(--groen); margin-left:4px; }
-  .volgende { display:grid; grid-template-columns:42% 1fr; gap:12px; align-items:center; margin-top:14px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:10px 12px; }
-  .volgende svg { width:100%; height:auto; display:block; }
-  .volgende .w { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:700; }
-  .volgende .n { font-weight:600; font-size:15px; margin:2px 0 4px; }
-  .volgende .m { font-size:12.5px; color:var(--muted); }
-  .balk { height:6px; background:rgba(255,255,255,.08); border-radius:3px; overflow:hidden; margin-top:14px; }
-  .balk i { display:block; height:100%; background:var(--accent); }
+const MOLLIE_KEY  = process.env.MOLLIE_API_KEY || '';
+const SECRET      = process.env.PP_TOKEN_SECRET || '';
+const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || process.env.KV_REST_API_URL;
+const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+const MC_KEY      = process.env.MAILCHIMP_API_KEY || '';
+const MC_LIST     = process.env.MAILCHIMP_LIST_ID || '';
+const APP_URL     = process.env.APP_URL || 'https://rapport.michelkredercoaching.nl/app';
+const WEBHOOK_URL = 'https://rapport.michelkredercoaching.nl/api/lid?actie=webhook';
+const BEDRAG      = '19.00';
+const OMSCHRIJVING = 'MKC-app lidmaatschap';
+const SPELING_DAGEN = 5;     // na een mislukte incasso blijft de app nog zo lang open
 
-  /* Op slot: echte inhoud wazig, slot erover */
-  .wazig { position:relative; }
-  .wazig .achter { filter:blur(5px) grayscale(.5); opacity:.45; pointer-events:none; user-select:none; }
-  .wazig .slotje { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; text-align:center; padding:12px; }
-  .slotje svg { width:26px; height:26px; color:var(--white); }
-  .slotje b { font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:.04em; }
-  .nepgrafiek { height:86px; margin-top:14px; border-radius:6px; background:linear-gradient(180deg, rgba(255,107,26,.15), transparent); position:relative; overflow:hidden; }
-  .nepgrafiek svg { width:100%; height:100%; display:block; }
-
-  .beheer { display:flex; justify-content:space-between; align-items:center; gap:10px; background:#1d1408; border:1px dashed rgba(255,107,26,.5); border-radius:6px; padding:8px 10px; margin-bottom:16px; font-size:12px; color:var(--accent); font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
-  .beheer button { background:transparent; border:1px solid rgba(255,255,255,.15); color:var(--muted); font-family:inherit; font-size:12px; padding:5px 10px; cursor:pointer; }
-  .beheer button.aan { background:var(--accent); color:#0A0A0A; border-color:var(--accent); }
-  .lidblok { border:1px solid rgba(255,107,26,.55); background:linear-gradient(160deg, rgba(255,107,26,.16), var(--surface) 60%); border-radius:8px; padding:20px; margin-bottom:6px; }
-  .lidblok h2 { font-family:'Bebas Neue',sans-serif; font-size:32px; line-height:.95; text-transform:uppercase; margin:2px 0 8px; }
-  .lidblok .prijs { font-family:'Bebas Neue',sans-serif; font-size:46px; line-height:1; }
-  .lidblok .prijs small { font-family:'DM Sans',sans-serif; font-size:14px; color:var(--muted); margin-left:4px; }
-  .lidblok ul { list-style:none; margin:12px 0 4px; display:grid; gap:7px; }
-  .lidblok li { display:flex; gap:10px; font-size:14.5px; color:rgba(245,243,239,.85); }
-  .lidblok li::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--accent); flex-shrink:0; margin-top:8px; }
-  .lidrij { display:flex; justify-content:space-between; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px 16px; font-size:14px; }
-  .lidrij b { color:var(--groen); }
-  .lidrij.waarschuw b { color:#ff8a5c; }
-  .lidrij button { background:none; border:0; color:var(--muted); text-decoration:underline; font-family:inherit; font-size:13px; cursor:pointer; }
-  .groepkop { font-size:11px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin:26px 2px 10px; }
-  .groepkop:first-of-type { margin-top:4px; }
-  .binnenkort { opacity:.8; }
-  .binnenkort h2 { color:rgba(245,243,239,.85); }
-
-  /* Beginscherm-kaart */
-  .appkaart { display:flex; gap:14px; align-items:flex-start; background:var(--surface); border:1px solid rgba(255,107,26,.4); border-radius:8px; padding:14px; margin-bottom:18px; position:relative; }
-  .appkaart img { width:52px; height:52px; border-radius:12px; flex-shrink:0; }
-  .appkaart b { display:block; margin-bottom:2px; }
-  .appkaart .stap { font-size:13.5px; color:var(--muted); }
-  .appkaart .x { position:absolute; top:6px; right:10px; background:none; border:0; color:var(--muted); font-size:22px; cursor:pointer; }
-  .deelicoon { width:15px; height:17px; vertical-align:-3px; }
-  .appkaart .knop { width:auto; display:inline-block; font-size:17px; padding:8px 14px 6px; margin-top:8px; }
-
-  /* Inloggen */
-  .login { padding-top:8vh; }
-  .login h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(46px,13vw,64px); line-height:.92; text-transform:uppercase; margin-bottom:12px; }
-  .login h1 em { font-style:normal; color:var(--accent); }
-  .login p { color:var(--muted); font-size:15px; margin-bottom:22px; }
-  .login input { width:100%; background:var(--surface); border:1px solid rgba(255,255,255,.14); color:var(--white); font-family:inherit; font-size:16px; padding:15px 16px; border-radius:4px; }
-  .login input:focus { outline:none; border-color:var(--accent); }
-  .melding { font-size:14px; margin-top:14px; color:var(--muted); }
-  .melding.goed { color:var(--groen); }
-  .melding.fout { color:#ff8a5c; }
-  .laden { text-align:center; padding:30vh 0; color:var(--muted); }
-  .voet { text-align:center; font-size:12px; color:rgba(245,243,239,.35); margin-top:30px; }
-  .voet a { color:rgba(245,243,239,.5); }
-</style>
-</head>
-<body>
-<div class="wrap" id="app"><div class="laden">Even laden...</div></div>
-
-<script src="/core-programma/spierkaart.js"></script>
-<script>
-const API = '/api/app';
-const OPSLAG = 'mkc_app_t';
-const $ = (s) => document.querySelector(s);
-const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const SLOT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
-const SITE = 'https://michelkredercoaching.nl';
-// Analyse kopen = direct naar de checkout met product 12131 in het mandje (de
-// korte checkout uit checkout-analyse-minimaal.php), niet via de productpagina.
-const ANALYSE_KOOP = SITE + '/checkout/?add-to-cart=12131';
-let BEKIJK = 'klant'; // beheerweergave: 'klant' of 'alles'
-let D = null;
-
-function leesToken() { try { return localStorage.getItem(OPSLAG) || ''; } catch (e) { return ''; } }
-function bewaarToken(t) { try { localStorage.setItem(OPSLAG, t); } catch (e) {} zetLoginInApp(t); }
-// iPhone: een app op het beginscherm heeft eigen opslag. Daarom zit de login
-// ook in de adresbalk en in een persoonlijk manifest; zet je de app op je
-// beginscherm terwijl je ingelogd bent, dan gaat je login mee.
-function zetLoginInApp(t) {
-  if (!t) return;
-  try { history.replaceState(null, '', location.pathname + '?t=' + encodeURIComponent(t)); } catch (e) {}
-  const m = document.getElementById('manifestLink');
-  if (m) m.href = API + '?actie=manifest&t=' + encodeURIComponent(t);
+// ---- Token (zelfde als api/app.js) --------------------------------------------
+function handtekening(payload) {
+  return crypto.createHmac('sha256', SECRET).update(payload).digest('hex').slice(0, 20);
 }
-function wisToken() { try { localStorage.removeItem(OPSLAG); } catch (e) {} try { history.replaceState(null, '', location.pathname); } catch (e) {} const m = document.getElementById('manifestLink'); if (m) m.href = '/app.webmanifest'; }
-
-// ---- Beginscherm ----
-let installPrompt = null;
-window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; if (D) teken(); });
-function isApp() { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
-function appHtml() {
-  let weg = false; try { weg = localStorage.getItem('mkcAppWeg') === '1'; } catch (e) {}
-  const telefoon = window.matchMedia('(pointer: coarse)').matches;
-  if (isApp() || weg || !telefoon) return '';
-  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
-  const deel = '<svg class="deelicoon" viewBox="0 0 15 17" fill="none" stroke="#FF6B1A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 1v10M4 4.5 7.5 1 11 4.5M3 7.5H1.5v8h12v-8H12"/></svg>';
-  const uitleg = installPrompt
-    ? '<button class="knop" data-actie="installeer">Zet op beginscherm</button>'
-    : ios ? `<div class="stap">Tik onderaan in Safari op ${deel} en kies <b style="display:inline;color:var(--white)">Zet op beginscherm</b>.</div>`
-          : '<div class="stap">Open het menu van je browser (&#8942;) en kies <b style="display:inline;color:var(--white)">Toevoegen aan startscherm</b>.</div>';
-  return `<div class="appkaart"><img src="/icoon-180.png" alt="">
-    <div><b>Zet MKC op je beginscherm</b><div class="stap">Dan open je alles met één tik, als app.</div>${uitleg}</div>
-    <button class="x" data-actie="appweg" aria-label="Sluiten">&times;</button></div>`;
+function leesAppToken(token) {
+  if (!SECRET || !token || typeof token !== 'string' || token.length > 400) return null;
+  let tekst;
+  try { tekst = Buffer.from(token, 'base64url').toString('utf8'); } catch { return null; }
+  const delen = tekst.split('|');
+  if (delen.length !== 4 || delen[0] !== 'app') return null;
+  const [, email, expStr, sig] = delen;
+  const goed = handtekening(`app|${email}|${expStr}`);
+  const a = Buffer.from(String(sig)), b = Buffer.from(goed);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  if (!/^\d+$/.test(expStr) || Date.now() > Number(expStr)) return null;
+  return email;
 }
 
-// ---- Inloggen ----
-function loginHtml(melding, soort) {
-  return `<div class="login">
-    <div class="logo" style="margin-bottom:28px">MKC<span>.</span></div>
-    <h1>Log in op <em>je app.</em></h1>
-    <p>Je Core-app, je Strava-analyse en je tools op één plek. Vul het mailadres in waarmee je iets bij me deed, dan krijg je een inlogcode. Geen wachtwoord nodig.</p>
-    <form id="loginForm"><input type="email" id="loginMail" placeholder="Je e-mailadres" autocomplete="email" required>
-      <button class="knop" type="submit" id="loginKnop">Stuur mijn inlogcode</button></form>
-    <form id="codeForm" style="display:none;margin-top:18px"><input type="text" id="loginCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 cijfers uit de mail" style="letter-spacing:6px;font-size:22px;text-align:center">
-      <button class="knop" type="submit" id="codeKnop">Log in</button>
-      <p class="klein" style="text-align:center"><a href="#" id="opnieuw" style="color:#FF6B1A">Nieuwe code sturen</a></p></form>
-    <div class="melding ${soort || ''}" id="loginMelding">${melding ? esc(melding) : ''}</div>
-    <p class="klein" style="margin-top:28px">Nog niets bij me gedaan? <a href="${SITE}/core-gratis/" style="color:#FF6B1A">Start gratis met week 1 van de Core-app</a>, dan krijg je meteen toegang.</p>
-  </div>`;
+// ---- Redis -------------------------------------------------------------------
+async function redis(cmd) {
+  if (!REDIS_URL || !REDIS_TOKEN) return { ok: false };
+  try {
+    const r = await fetch(REDIS_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${REDIS_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(cmd)
+    });
+    if (!r.ok) return { ok: false };
+    return { ok: true, result: (await r.json()).result };
+  } catch { return { ok: false }; }
 }
-function toonLogin(melding, soort) {
-  $('#app').innerHTML = loginHtml(melding, soort);
-  const m = $('#loginMelding');
-  const vraagCode = async () => {
-    const email = $('#loginMail').value.trim(), knop = $('#loginKnop');
-    knop.disabled = true; knop.textContent = 'Even versturen...';
-    try {
-      const r = await fetch(API + '?actie=login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
-      const j = await r.json();
-      m.className = 'melding ' + (j.ok ? 'goed' : 'fout');
-      m.textContent = j.ok ? j.bericht : (j.fout || 'Dat lukte niet. Probeer het zo nog eens.');
-      if (j.ok) { $('#codeForm').style.display = 'block'; $('#loginCode').focus(); }
-    } catch { m.className = 'melding fout'; m.textContent = 'Verbinding mislukt. Probeer het zo nog eens.'; }
-    knop.disabled = false; knop.textContent = 'Stuur mijn inlogcode';
-  };
-  $('#loginForm').addEventListener('submit', (e) => { e.preventDefault(); vraagCode(); });
-  $('#opnieuw').addEventListener('click', (e) => { e.preventDefault(); vraagCode(); });
-  $('#codeForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const knop = $('#codeKnop'); knop.disabled = true; knop.textContent = 'Even kijken...';
-    try {
-      const r = await fetch(API + '?actie=verifieer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: $('#loginMail').value.trim(), code: $('#loginCode').value }) });
-      const j = await r.json();
-      if (j.ok && j.t) { bewaarToken(j.t); return laadOverzicht(); }
-      m.className = 'melding fout'; m.textContent = j.fout || 'Dat lukte niet.';
-    } catch { m.className = 'melding fout'; m.textContent = 'Verbinding mislukt. Probeer het zo nog eens.'; }
-    knop.disabled = false; knop.textContent = 'Log in';
+async function haalLid(email) {
+  const r = await redis(['GET', `lid:${email}`]);
+  if (!r.ok || !r.result) return null;
+  try { return JSON.parse(r.result); } catch { return null; }
+}
+async function bewaarLid(email, lid) {
+  lid.gewijzigd = new Date().toISOString();
+  return redis(['SET', `lid:${email}`, JSON.stringify(lid)]);
+}
+
+// ---- Mollie --------------------------------------------------------------------
+async function mollie(pad, opties = {}) {
+  const r = await fetch(`https://api.mollie.com/v2${pad}`, {
+    ...opties,
+    headers: { Authorization: `Bearer ${MOLLIE_KEY}`, 'Content-Type': 'application/json', ...(opties.headers || {}) },
+    signal: AbortSignal.timeout(15000)
   });
+  const j = r.status === 204 ? {} : await r.json().catch(() => ({}));
+  if (!r.ok) { console.error('Mollie', r.status, pad, JSON.stringify(j).slice(0, 300)); return { ok: false, status: r.status, j }; }
+  return { ok: true, j };
 }
 
-// ---- Kaarten ----
-function coreKaart(c) {
-  if (!c) {
-    return `<div class="kaart"><div class="kaart-in"><span class="tag oranje">Gratis week</span>
-      <div class="label">Core-app</div><h2>Sterk tot de laatste km</h2>
-      <p>12 weken core op maat, thuis zonder gewichten. Train mee op de timer en zie je Rompscore stijgen.</p>
-      <div class="wazig" style="margin-top:14px"><div class="achter"><div class="cijfers"><div class="cijfer"><span>Week</span><b>3/12</b></div><div class="cijfer"><span>Rompscore</span><b>66</b></div><div class="cijfer"><span>Sessies</span><b>2/3</b></div></div></div>
-        <div class="slotje">${SLOT}<b>Week 1 is gratis</b></div></div>
-      <a class="knop" href="${SITE}/core-gratis/">Start je gratis week</a></div></div>`;
-  }
-  const K = window.CoreSpierkaart;
-  if (c.intakeNodig) {
-    return `<div class="kaart actief"><div class="kaart-in"><span class="tag open">Open</span><div class="label">Core-app</div>
-      <h2>Je plan staat klaar</h2><p>Begin met een paar korte vragen over je klachten, dan stem ik je oefeningen af.</p>
-      <a class="knop" href="${esc(c.link)}">Start met je intake</a></div></div>`;
-  }
-  if (c.opSlot) {
-    return `<div class="kaart actief"><div class="kaart-in"><span class="tag oranje">Proefweek klaar</span><div class="label">Core-app</div>
-      <h2>Week 2 staat klaar</h2><p>Je proefweek zit erop. Ga door en alles wat je deed blijft staan.</p>
-      ${c.rompscore != null ? `<div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore}</b></div><div class="cijfer"><span>Weken</span><b>1/12</b></div><div class="cijfer"><span>Prijs</span><b>&euro;49</b></div></div>` : ''}
-      <a class="knop" href="${esc(c.link)}">Ga door met week 2</a></div></div>`;
-  }
-  const winst = c.rompscore != null && c.startScore != null && c.rompscore > c.startScore ? `<em>+${c.rompscore - c.startScore}</em>` : '';
-  const wib = c.weekInBlok || c.week, blok = c.blok || 1;
-  const pct = Math.min(100, Math.round(((wib - 1) / 12) * 100 + (c.gedaan / Math.max(1, c.frequentie)) * (100 / 12)));
-  const v = c.volgende;
-  const kaartje = v && K ? `<div class="volgende"><div>${K.svg(K.vanSessie(v.oefeningen), { labels: false })}</div>
-      <div><div class="w">Volgende: sessie ${'ABCD'.indexOf(v.letter) + 1}</div><div class="n">${esc(v.naam)}</div>
-      <div class="m">${v.minuten} min &middot; ${esc(K.namenLijst(K.vanSessie(v.oefeningen)).hoofd.slice(0, 3).join(', '))}</div></div></div>` : '';
-  return `<div class="kaart actief"><div class="kaart-in"><span class="tag open">${c.klaar ? 'Afgerond' : 'Actief'}</span>
-    <div class="label">Core-app</div>
-    <h2>${c.klaar ? 'Programma afgerond' : `Week ${wib} van 12`}</h2>
-    <p>${c.klaar ? 'Twaalf weken gedaan. Kijk in je app naar je grafiek.' : `${blok > 1 ? 'Blok ' + blok + ' &middot; ' : ''}Fase ${c.fase}: ${esc(c.faseNaam)} &middot; ${c.gedaan} van ${c.frequentie} sessies gedaan`}</p>
-    <div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore != null ? c.rompscore : '&ndash;'}${winst}</b></div>
-      <div class="cijfer"><span>${blok > 1 ? 'Blok' : 'Week'}</span><b>${blok > 1 ? blok : wib + '/12'}</b></div><div class="cijfer"><span>Gedaan</span><b>${c.afgerond}</b></div></div>
-    <div class="balk"><i style="width:${c.klaar ? 100 : pct}%"></i></div>
-    ${c.klaar ? '' : kaartje}
-    <a class="knop" href="${esc(c.link)}">${c.klaar ? 'Open je Core-app' : v ? `Verder met sessie ${'ABCD'.indexOf(v.letter) + 1}` : 'Open je Core-app'}</a></div></div>`;
-}
-
-function nepGrafiek() {
-  return `<div class="nepgrafiek"><svg viewBox="0 0 300 86" preserveAspectRatio="none"><polyline fill="none" stroke="#FF6B1A" stroke-width="3" points="0,70 40,62 80,66 120,48 160,52 200,34 240,30 300,14"/></svg></div>`;
-}
-
-function afvalKaart() {
-  return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Binnenkort</span>
-    <div class="label">Afvalprogramma</div><h2>Lichter, zonder in te leveren</h2>
-    <p>Je eigen richtlijn per dag, wekelijkse bijsturing en je gewicht in een grafiek. Afvallen zonder dat je watts zakken.</p>
-    <div class="wazig"><div class="achter"><div class="cijfers"><div class="cijfer"><span>Rustdag</span><b>1950</b></div><div class="cijfer"><span>Trainingsdag</span><b>2850</b></div><div class="cijfer"><span>Deze week</span><b>-0,4</b></div></div>${nepGrafiek()}</div>
-      <div class="slotje">${SLOT}<b>Binnenkort</b></div></div>
-    <a class="knop leeg" href="${SITE}/afvalcheck/">Doe alvast de gratis afvalcheck</a></div></div>`;
-}
-
-function analyseKaart(a) {
-  if (a) {
-    const meet = a.meet === 'hartslag' ? 'op hartslag' : 'op vermogen';
-    const hoofd = a.meet === 'hartslag' && a.omslag ? `<div class="cijfer"><span>Omslagpunt</span><b>${esc(a.omslag)}</b></div>` : `<div class="cijfer"><span>FTP</span><b>${a.ftp ? esc(a.ftp) + '<em style="color:var(--muted)">W</em>' : '&ndash;'}</b></div>`;
-    return `<div class="kaart actief"><div class="kaart-in"><span class="tag open">Gekocht</span>
-      <div class="label">Strava-analyse</div><h2>Waar je staat</h2>
-      <p>Je analyse ${a.datum ? 'van ' + esc(a.datum) + ' ' : ''}${meet}. Het volledige rapport staat als pdf in je mail.</p>
-      <div class="cijfers">${hoofd}<div class="cijfer" style="grid-column:span 2"><span>Rennerstype</span><b style="font-size:22px">${esc(a.type || '–')}</b></div></div>
-      ${a.advies ? `<p class="klein">Mijn advies voor jou: <b style="color:var(--white)">${esc(a.advies)}</b></p>` : ''}
-      <a class="knop leeg" href="${ANALYSE_KOOP}">Doe een nieuwe analyse</a>
-      <p class="klein">Na een paar weken trainen zie je zo of je FTP gestegen is.</p></div></div>`;
-  }
-  return `<div class="kaart"><div class="kaart-in"><span class="tag slot">Op slot</span>
-    <div class="label">Strava-analyse</div><h2>Weet waar je staat</h2>
-    <p>Koppel je Strava en zie in een paar minuten je FTP, je sterke en zwakke punten en wat het meeste oplevert.</p>
-    <div class="wazig"><div class="achter"><div class="cijfers"><div class="cijfer"><span>FTP</span><b>241</b></div><div class="cijfer"><span>W/kg</span><b>3,4</b></div><div class="cijfer"><span>Score</span><b>78</b></div></div>${nepGrafiek()}</div>
-      <div class="slotje">${SLOT}<b>Ontgrendel voor &euro;29</b></div></div>
-    <a class="knop" href="${ANALYSE_KOOP}">Ontgrendel je analyse</a></div></div>`;
-}
-
-function pacingKaart() {
-  return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Coming soon</span>
-    <div class="label">Pacingplan</div><h2>Je grote tocht, slim ingedeeld</h2>
-    <p>Hoe hard je per klim, per strook en per uur kunt rijden zonder stuk te gaan, berekend uit je eigen ritten. Voor granfondo's, gravelfondo's en toertochten zoals de Amstel Gold Race of Luik-Bastenaken-Luik. Komt eraan.</p></div></div>`;
-}
-
-function bandenKaart(heeft) {
-  return `<div class="kaart"><div class="kaart-in"><span class="tag open">Gratis</span>
-    <div class="label">Tool</div><h2>Bandenspanning</h2>
-    <p>De juiste spanning voor jouw gewicht, bandbreedte en ondergrond, voor racefiets en gravel.${heeft ? ' Je hebt je kaart al, maar wissel je van band, reken hem dan opnieuw uit.' : ''}</p>
-    <a class="knop leeg" href="${SITE}/bandenspanning/">Bereken je spanning</a></div></div>`;
-}
-
-// Volgorde (besluit Michel 06-10-2026): eerst wat actief is of gratis te gebruiken,
-// dan wat je kunt ontgrendelen, onderaan wat nog moet komen. Met tussenkopjes.
-function kaartenHtml(d) {
-  if (d.beheer && BEKIJK === 'alles') d = voorbeeldData(d);
-  const actief = [], ontgrendel = [];
-  (d.core ? actief : ontgrendel).push(coreKaart(d.core));
-  (d.analyse ? actief : ontgrendel).push(analyseKaart(d.analyse));
-  actief.push(bandenKaart(d.banden));
-  const groep = (titel, kaarten) => kaarten.length ? `<div class="groepkop">${titel}</div><div class="kaarten">${kaarten.join('')}</div>` : '';
-  return groep('Actief', actief) + groep('Ontgrendelen', ontgrendel) + groep('Binnenkort', [afvalKaart(), pacingKaart()]);
-}
-
-// Beheerweergave (alleen voor Michels eigen adressen, zie BEHEER in api/app.js):
-// alles open met voorbeeldcijfers, zodat je ziet hoe elke kaart er straks uitziet.
-function voorbeeldData(d) {
-  return { ...d,
-    core: d.core || { link: '#', naam: d.naam, betaald: true, opSlot: false, intakeNodig: false, klaar: false, week: 3, fase: 1, faseNaam: 'Fundament', gedaan: 1, frequentie: 3, afgerond: 7, startScore: 52, rompscore: 66, volgende: { letter: 'B', naam: 'Zijkant en rotatie', minuten: 11, oefeningen: ['zijplank-knieen', 'birddog', 'bridge', 'deadbug-gebogen'] } },
-    analyse: d.analyse || { datum: '01-10-2026', ftp: '248', meet: 'vermogen', type: 'Klimmer', omslag: '', advies: 'Opbouw 12-wekenplan' },
-    banden: true };
-}
-function beheerHtml(d) {
-  if (!d.beheer) return '';
-  return `<div class="beheer"><span>Beheerweergave</span><div><button data-actie="bekijk" data-w="klant" class="${BEKIJK === 'klant' ? 'aan' : ''}">Als klant</button><button data-actie="bekijk" data-w="alles" class="${BEKIJK === 'alles' ? 'aan' : ''}">Alles open</button></div></div>`;
-}
-
-// ---- Lidmaatschap MKC-app (07-10-2026): €19 per maand via Mollie ----
-const LID_LIJST = ['De Core-app, doorlopend: na elke 12 weken een nieuw blok', 'Je Core-coach: direct antwoord op je vragen', 'Straks ook de slimme bandenspanning: je fietsen en het weer van vandaag', 'Maandelijks opzegbaar'];
-function lidPitchHtml() {
-  return `<div class="lidblok"><div class="label">MKC-app</div><h2>Word lid</h2>
-    <div class="prijs">&euro;19<small>per maand</small></div>
-    <ul>${LID_LIJST.map((x) => `<li>${x}</li>`).join('')}</ul>
-    <button class="knop" data-actie="wordlid">Word lid</button>
-    <p class="klein">Je betaalt de eerste maand met iDEAL. Daarna wordt elke maand automatisch &euro;19 afgeschreven. Opzeggen kan altijd, hier in de app.</p></div>`;
-}
-function lidStatusHtml(l) {
-  if (!l || l.status === 'geen' || l.status === 'nieuw') return '';
-  if (l.status === 'actief') return `<div class="lidrij"><span><b>Lid</b> &middot; volgende afschrijving rond ${esc(datumNl(l.tot, -5))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
-  if (l.status === 'achterstand') return `<div class="lidrij waarschuw"><span><b>Betaling mislukt</b> &middot; je app blijft open tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid">Betaling bijwerken</button></div>`;
-  if (l.status === 'opgezegd' && l.open) return `<div class="lidrij"><span>Opgezegd &middot; je kunt nog alles gebruiken tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid">Opnieuw lid</button></div>`;
-  return '';
-}
-function datumNl(iso, dagenErbij = 0) {
-  if (!iso) return '';
-  const d = new Date(iso); d.setDate(d.getDate() + dagenErbij);
-  return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
-}
-function isLid(d) { const l = d.lid || {}; return (l.status === 'actief' || l.status === 'achterstand' || l.status === 'opgezegd') && l.open; }
-
-function teken() {
-  const d = D, voornaam = String(d.naam || '').trim().split(' ')[0];
-  $('#app').innerHTML = `<div class="kop"><div class="logo">MKC<span>.</span></div><button class="uit" data-actie="uitloggen">Uitloggen</button></div>
-    ${beheerHtml(d)}${appHtml()}
-    <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
-    <p class="intro">Je programma's, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>
-    ${isLid(d) || !(d.lidOpen || d.beheer) ? '' : `<div class="groepkop">MKC-app</div>${lidPitchHtml()}`}
-    ${kaartenHtml(d)}
-    ${isLid(d) ? `<div class="groepkop">Mijn lidmaatschap</div>${lidStatusHtml(d.lid)}` : ''}
-    <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
-}
-
-document.addEventListener('click', (e) => {
-  const k = e.target.closest('[data-actie]'); if (!k) return;
-  const actie = k.dataset.actie;
-  if (actie === 'bekijk') { BEKIJK = k.dataset.w; teken(); }
-  if (actie === 'wordlid') wordLid(k);
-  if (actie === 'opzeggen') zegOp(k);
-  if (actie === 'uitloggen') { wisToken(); D = null; toonLogin('Je bent uitgelogd.'); }
-  if (actie === 'appweg') { try { localStorage.setItem('mkcAppWeg', '1'); } catch (e) {} teken(); }
-  if (actie === 'installeer' && installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; teken(); }); }
-});
-
-async function wordLid(knop) {
-  knop.disabled = true; const oud = knop.textContent; knop.textContent = 'Even naar iDEAL...';
+// ---- Mailchimp-tag (fail-safe) -------------------------------------------------
+async function mcTag(email, tag, aan = true) {
+  if (!MC_KEY || !MC_LIST) return;
   try {
-    const r = await fetch('/api/lid?actie=start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: D && D.naam }) });
-    const j = await r.json();
-    if (j.ok && j.url) { location.href = j.url; return; }
-    if (j.ok && j.alLid) { return laadOverzicht(); }
-    alert(j.fout || 'Dat lukte niet. Probeer het zo nog eens.');
-  } catch { alert('Verbinding mislukt. Probeer het zo nog eens.'); }
-  knop.disabled = false; knop.textContent = oud;
-}
-async function zegOp(knop) {
-  if (!confirm('Weet je het zeker? Je kunt alles blijven gebruiken tot het einde van de maand waarvoor je betaald hebt.')) return;
-  knop.disabled = true;
-  try {
-    const r = await fetch('/api/lid?actie=opzeggen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken() }) });
-    const j = await r.json();
-    if (!j.ok) alert(j.fout || 'Opzeggen lukte niet.');
-  } catch { alert('Verbinding mislukt.'); }
-  laadOverzicht();
+    const dc = MC_KEY.split('-')[1];
+    const hash = crypto.createHash('md5').update(email).digest('hex');
+    await fetch(`https://${dc}.api.mailchimp.com/3.0/lists/${MC_LIST}/members/${hash}/tags`, {
+      method: 'POST',
+      headers: { Authorization: 'Basic ' + Buffer.from('any:' + MC_KEY).toString('base64'), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tags: [{ name: tag, status: aan ? 'active' : 'inactive' }] }),
+      signal: AbortSignal.timeout(8000)
+    });
+  } catch (e) { console.error('Mailchimp-tag mislukt (genegeerd):', e); }
 }
 
-async function laadOverzicht() {
-  const t = leesToken();
-  if (!t) return toonLogin();
-  zetLoginInApp(t);
-  try {
-    const r = await fetch(API + '?actie=overzicht&t=' + encodeURIComponent(t));
-    const j = await r.json();
-    if (!j.ok) { wisToken(); return toonLogin(j.fout, 'fout'); }
-    D = j; teken();
-  } catch { $('#app').innerHTML = '<div class="laden">Verbinding mislukt. Probeer het zo nog eens.</div>'; }
+// ---- Datums ----------------------------------------------------------------------
+const dag = (d) => new Date(d).toISOString().slice(0, 10);
+function plusMaand(van) {
+  const d = new Date(van);
+  const doel = new Date(d); doel.setMonth(d.getMonth() + 1);
+  if (doel.getDate() !== d.getDate()) doel.setDate(0);   // 31 jan -> 28/29 feb
+  return doel;
+}
+function plusDagen(van, n) { const d = new Date(van); d.setDate(d.getDate() + n); return d; }
+
+// ---- Helpers -------------------------------------------------------------------
+async function leesBody(req) {
+  if (req.body && typeof req.body === 'object') return req.body;
+  const tekst = typeof req.body === 'string' ? req.body : '';
+  try { return JSON.parse(tekst || '{}'); } catch { return Object.fromEntries(new URLSearchParams(tekst)); }
+}
+function lidBeeld(lid) {
+  if (!lid) return { status: 'geen' };
+  const open = lid.tot && Date.now() < Date.parse(lid.tot);
+  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, bedrag: BEDRAG };
 }
 
-async function start() {
-  const p = new URLSearchParams(location.search);
-  // Login uit de mail-knop of de app-start (?t=), of doorklik vanuit de Core-app (?ct=).
-  if (p.get('t')) bewaarToken(p.get('t'));
-  if (p.get('ct')) {
-    try {
-      const r = await fetch(API + '?actie=vancore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ct: p.get('ct') }) });
-      const j = await r.json(); if (j.ok && j.t) bewaarToken(j.t);
-    } catch (e) {}
+// Kan Mollie al maandelijks incasseren? Zolang SEPA-incasso niet is goedgekeurd
+// staat directdebit niet in de recurring-methodes; dan houden we de lid-knop
+// verborgen, zodat niemand betaalt zonder dat er een abonnement kan komen.
+// Gaat vanzelf open zodra Mollie goedkeurt (10 min cache).
+let incassoCache = { tot: 0, open: false };
+async function lidOpen() {
+  if (!MOLLIE_KEY) return false;
+  if (Date.now() < incassoCache.tot) return incassoCache.open;
+  const m = await mollie('/methods?sequenceType=recurring');
+  const open = m.ok && ((m.j._embedded && m.j._embedded.methods) || []).some((x) => x.id === 'directdebit');
+  incassoCache = { tot: Date.now() + (m.ok ? 10 : 1) * 60 * 1000, open };
+  return open;
+}
+
+// ---- Routes ----------------------------------------------------------------------
+export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
+  const actie = String(req.query?.actie || '');
+  try {
+    if (actie === 'webhook') return await routeWebhook(req, res);
+    if (actie === 'start') return await routeStart(req, res);
+    if (actie === 'status') return await routeStatus(req, res);
+    if (actie === 'opzeggen') return await routeOpzeggen(req, res);
+    return res.status(400).json({ ok: false, fout: 'onbekende actie' });
+  } catch (e) {
+    console.error('lid fout:', e);
+    return res.status(500).json({ ok: false, fout: 'serverfout' });
   }
-  if (p.get('lid') === 'terug') {
-    $('#app').innerHTML = '<div class="laden">Bedankt! Je betaling wordt verwerkt...</div>';
-    for (let i = 0; i < 8; i++) {
-      await new Promise((r) => setTimeout(r, 1500));
-      try { const s = await (await fetch('/api/lid?actie=status&t=' + encodeURIComponent(leesToken()))).json(); if (s.ok && s.lid && s.lid.status === 'actief') break; } catch (e) {}
+}
+
+async function routeStart(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  if (!MOLLIE_KEY) return res.status(500).json({ ok: false, fout: 'Betalen lukt nu even niet.' });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email) return res.status(401).json({ ok: false, fout: 'Log eerst opnieuw in.' });
+
+  let lid = await haalLid(email) || {};
+  if (lid.status === 'actief' && lid.subscriptionId) return res.status(200).json({ ok: true, alLid: true });
+  if (!(await lidOpen())) return res.status(503).json({ ok: false, fout: 'Lid worden kan over een paar dagen. We regelen nog even de maandelijkse betaling.' });
+
+  // Eén Mollie-klant per mailadres, hergebruiken bij opnieuw lid worden.
+  if (!lid.customerId) {
+    const k = await mollie('/customers', { method: 'POST', body: JSON.stringify({ name: String(body.naam || '').slice(0, 80) || email, email, metadata: { bron: 'mkc-app' } }) });
+    if (!k.ok) return res.status(502).json({ ok: false, fout: 'Betalen lukt nu even niet. Probeer het zo nog eens.' });
+    lid.customerId = k.j.id;
+    lid.naam = String(body.naam || '').slice(0, 80);
+    lid.status = lid.status || 'nieuw';
+    await bewaarLid(email, lid);
+  }
+
+  const p = await mollie('/payments', {
+    method: 'POST',
+    body: JSON.stringify({
+      amount: { currency: 'EUR', value: BEDRAG },
+      description: `${OMSCHRIJVING}, eerste maand`,
+      customerId: lid.customerId,
+      sequenceType: 'first',
+      // Login mee terug: wie in de app op zijn beginscherm begon, komt na de bank
+      // vaak in Safari uit, en die heeft eigen opslag (zie api/app.js).
+      redirectUrl: `${APP_URL}?lid=terug&t=${encodeURIComponent(String(body.t))}`,
+      webhookUrl: WEBHOOK_URL,
+      metadata: { email, soort: 'lid-eerste' }
+    })
+  });
+  if (!p.ok) return res.status(502).json({ ok: false, fout: 'Betalen lukt nu even niet. Probeer het zo nog eens.' });
+  return res.status(200).json({ ok: true, url: p.j._links && p.j._links.checkout && p.j._links.checkout.href });
+}
+
+// Mollie stuurt alleen een id. We halen de betaling zelf op, dus een vervalste
+// aanroep kan niets openzetten.
+async function routeWebhook(req, res) {
+  const body = await leesBody(req);
+  const id = String(body.id || req.query?.id || '');
+  if (!/^tr_[A-Za-z0-9]+$/.test(id)) return res.status(200).send('ok');
+  const b = await mollie(`/payments/${id}`);
+  if (!b.ok) return res.status(500).send('fout');     // Mollie probeert het later opnieuw
+  const p = b.j;
+  const email = String((p.metadata && p.metadata.email) || '').toLowerCase();
+
+  // Abonnementsincasso's hebben geen metadata van ons; dan vinden we het lid
+  // via de klant-id die we bij de start bewaarden.
+  const lidEmail = email || await emailVoorKlant(p.customerId);
+  if (!lidEmail) { console.error('Webhook zonder te herleiden lid:', id); return res.status(200).send('ok'); }
+  const lid = await haalLid(lidEmail) || {};
+
+  if (p.status === 'paid') {
+    const nieuw = await redis(['SET', `lid:betaling:${id}`, '1', 'NX', 'EX', String(60 * 60 * 24 * 400)]);
+    if (nieuw.ok && nieuw.result !== 'OK') return res.status(200).send('al verwerkt');
+    const betaaldOp = p.paidAt || new Date().toISOString();
+
+    if (p.sequenceType === 'first') {
+      // Eerste maand binnen: abonnement aanmaken, eerste incasso over een maand.
+      const start = plusMaand(betaaldOp);
+      const s = await mollie(`/customers/${p.customerId}/subscriptions`, {
+        method: 'POST',
+        body: JSON.stringify({
+          amount: { currency: 'EUR', value: BEDRAG }, interval: '1 month',
+          startDate: dag(start), description: OMSCHRIJVING, webhookUrl: WEBHOOK_URL,
+          metadata: { email: lidEmail }
+        })
+      });
+      // Lukt het abonnement niet (bv. geen incasso-machtiging), dan heeft de
+      // klant wel betaald: de eerste maand gaat gewoon open en Michel krijgt
+      // een mail om het abonnement handmatig te regelen.
+      if (!s.ok) await meldIntern(`ABONNEMENT MISLUKT - ${lidEmail}`, `${lidEmail} betaalde de eerste maand (${id}), maar Mollie maakte geen abonnement aan: ${JSON.stringify(s.j).slice(0, 300)}. De eerste maand staat open. Regel het abonnement in Mollie of neem contact op.`);
+      lid.customerId = p.customerId; lid.subscriptionId = s.ok ? s.j.id : null; lid.status = 'actief';
+      lid.sinds = lid.sinds || betaaldOp;
+      lid.tot = plusDagen(start, SPELING_DAGEN).toISOString();
+      await redis(['SET', `lid:klant:${p.customerId}`, lidEmail]);
+    } else {
+      // Maandincasso binnen: een maand verlengen vanaf de huidige einddatum.
+      const basis = lid.tot && Date.parse(lid.tot) > Date.now() ? plusDagen(lid.tot, -SPELING_DAGEN) : new Date(betaaldOp);
+      lid.tot = plusDagen(plusMaand(basis), SPELING_DAGEN).toISOString();
+      if (lid.status !== 'opgezegd') lid.status = 'actief';
     }
+    await bewaarLid(lidEmail, lid);
+    await zetLidmaatschap({ email: lidEmail, naam: lid.naam, tot: lid.tot });
+    await mcTag(lidEmail, 'mkc-lid');
+    // Factuur via Mollie Invoicing, zelfde route en schakelaar als de analyse
+    // (MOLLIE_FACTUUR=aan). Fail-safe: de toegang staat al open, een factuurfout
+    // mag niets blokkeren. Geen adres bekend: Mollie krijgt de placeholder uit
+    // lib/mollie-factuur.js, prima voor een vereenvoudigde factuur onder €100.
+    if ((process.env.MOLLIE_FACTUUR || '').toLowerCase() === 'aan') {
+      try {
+        const maand = new Date(betaaldOp).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
+        const f = await maakMollieFactuur({ naam: lid.naam || lidEmail.split('@')[0], email: lidEmail, bedrag: (p.amount && p.amount.value) || BEDRAG, betaalId: id, omschrijving: `${OMSCHRIJVING}, ${maand}` });
+        if (!f.ok) { console.error('Factuur lidmaatschap mislukt:', lidEmail, id, f.fout); await meldIntern(`FACTUUR MISLUKT - lidmaatschap - ${lidEmail}`, `Automatische factuur voor ${id} (${lidEmail}) mislukte: ${f.fout || 'onbekende fout'}. De toegang staat wel open. Maak de factuur even handmatig aan in Mollie.`); }
+      } catch (e) { console.error('Factuur lidmaatschap fout:', e); }
+    }
+    return res.status(200).send('ok');
   }
-  return laadOverzicht();
+
+  if (['failed', 'expired', 'canceled'].includes(p.status) && p.sequenceType === 'recurring') {
+    // Incasso mislukt: lid blijft tot de einddatum (met speling) toegang houden.
+    lid.status = 'achterstand';
+    await bewaarLid(lidEmail, lid);
+  }
+  return res.status(200).send('ok');
 }
-start();
-</script>
-</body>
-</html>
+
+// Interne melding naar Michel (alleen bij iets wat handwerk vraagt).
+async function meldIntern(onderwerp, tekst) {
+  const key = process.env.RESEND_API_KEY; if (!key) return;
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: 'michel.kredercoaching@gmail.com', subject: onderwerp, html: `<p style="font-family:Arial,sans-serif">${tekst}</p>` }),
+      signal: AbortSignal.timeout(8000)
+    });
+  } catch (e) { console.error('Interne mail mislukt:', e); }
+}
+
+async function emailVoorKlant(customerId) {
+  if (!customerId) return null;
+  const r = await redis(['GET', `lid:klant:${customerId}`]);
+  return r.ok && r.result ? String(r.result) : null;
+}
+
+async function routeStatus(req, res) {
+  const email = leesAppToken(String(req.query?.t || ''));
+  if (!email) return res.status(401).json({ ok: false });
+  return res.status(200).json({ ok: true, lid: lidBeeld(await haalLid(email)) });
+}
+
+async function routeOpzeggen(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email) return res.status(401).json({ ok: false, fout: 'Log eerst opnieuw in.' });
+  const lid = await haalLid(email);
+  if (!lid || !lid.subscriptionId) return res.status(400).json({ ok: false, fout: 'Je hebt geen lopend lidmaatschap.' });
+  const r = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'DELETE' });
+  if (!r.ok && r.status !== 404 && r.status !== 422) return res.status(502).json({ ok: false, fout: 'Opzeggen lukte nu even niet. Probeer het zo nog eens.' });
+  lid.status = 'opgezegd'; lid.opgezegdOp = new Date().toISOString(); lid.subscriptionId = null;
+  // Toegang loopt tot de betaalde datum, zonder de speling van een mislukte incasso.
+  if (lid.tot) lid.tot = plusDagen(lid.tot, -SPELING_DAGEN).toISOString();
+  await bewaarLid(email, lid);
+  await zetLidmaatschap({ email, naam: lid.naam, tot: lid.tot });
+  await mcTag(email, 'mkc-lid', false);
+  return res.status(200).json({ ok: true, lid: lidBeeld(lid) });
+}
+
+export { lidOpen, lidBeeld, haalLid };
