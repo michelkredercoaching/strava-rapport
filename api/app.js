@@ -35,7 +35,7 @@
 //      MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID (= de Keuzehulp-lijst), APP_URL (optioneel)
 import crypto from 'crypto';
 import { coreVoorEmail, emailVoorCoreToken } from './core.js';
-import { lidBeeld, haalLid } from './lid.js';
+import { lidBeeld, haalLid, lidOpen } from './lid.js';
 
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || process.env.KV_REST_API_URL;
@@ -181,7 +181,7 @@ async function routeLogin(req, res) {
 async function routeOverzicht(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email) return res.status(401).json({ ok: false, fout: 'Je inloglink is verlopen. Vraag hieronder een nieuwe aan.' });
-  const [core, lid, lidmaatschap] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email)]);
+  const [core, lid, lidmaatschap, kanLid] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen()]);
   const mf = (lid && lid.merge_fields) || {};
   const analyse = heeftTag(lid, 'power-profile-koper') ? {
     datum: mf.RAPDAT || '', ftp: mf.FTP || '', meet: mf.MEETMETH || '', type: mf.RENTYPE || '',
@@ -192,6 +192,7 @@ async function routeOverzicht(req, res) {
     email,
     beheer: BEHEER.includes(email),
     lid: lidBeeld(lidmaatschap),
+    lidOpen: kanLid,
     naam: (core && core.naam) || mf.FNAME || '',
     core,
     analyse,
