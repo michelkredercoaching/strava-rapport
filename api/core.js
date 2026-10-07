@@ -42,6 +42,7 @@ import {
   WEEKTIPS, besteStart, FASES, WEKEN as WEEKTABEL, letters, nodigVoorWeek, frequentie, startniveau,
   weekRij, blokVan, BLOK_WEKEN, BLOKTIPS
 } from '../lib/core.js';
+import { meldMedisch } from '../lib/meld-medisch.js';
 
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || process.env.KV_REST_API_URL;
@@ -703,6 +704,9 @@ async function routeVraag(req, res) {
   const antwoord = { id: crypto.randomBytes(4).toString('hex'), van: 'coach', tekst: a?.tekst || STORING_ANTWOORD, op: nu(), medisch: bericht.medisch, storing: !a };
   d.berichten = berichten.concat(bericht, antwoord);
   await bewaarDossier(d);
+  // Medisch: Michel krijgt een seintje, zodat hij zelf contact kan opnemen.
+  if (bericht.medisch) await meldMedisch({ email: d.email, naam: d.naam, bron: 'core-coach', vraag: tekst, coreId: d.id,
+    extra: `Core-app blok ${blokVan(d.week)}, week ${weekRij(d.week).weekInBlok}. Klachten bij de intake: ${((d.intake && d.intake.klachten) || []).join(', ') || 'geen'}.` });
   return res.status(200).json({ ok: true, ...klantBeeld(d) });
 }
 
