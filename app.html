@@ -72,7 +72,7 @@
   .nepgrafiek { height:86px; margin-top:14px; border-radius:6px; background:linear-gradient(180deg, rgba(255,107,26,.15), transparent); position:relative; overflow:hidden; }
   .nepgrafiek svg { width:100%; height:100%; display:block; }
 
-  .beheer { display:flex; justify-content:space-between; align-items:center; gap:10px; background:#1d1408; border:1px dashed rgba(255,107,26,.5); border-radius:6px; padding:8px 10px; margin-bottom:16px; font-size:12px; color:var(--accent); font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  .beheer { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px 10px; background:#1d1408; border:1px dashed rgba(255,107,26,.5); border-radius:6px; padding:8px 10px; margin-bottom:16px; font-size:12px; color:var(--accent); font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
   .beheer button { background:transparent; border:1px solid rgba(255,255,255,.15); color:var(--muted); font-family:inherit; font-size:12px; padding:5px 10px; cursor:pointer; }
   .beheer button.aan { background:var(--accent); color:#0A0A0A; border-color:var(--accent); }
   .lidblok { border:1px solid rgba(255,107,26,.55); background:linear-gradient(160deg, rgba(255,107,26,.16), var(--surface) 60%); border-radius:8px; padding:20px; margin-bottom:6px; }
@@ -225,7 +225,7 @@ const SITE = 'https://michelkredercoaching.nl';
 // Analyse kopen = direct naar de checkout met product 12131 in het mandje (de
 // korte checkout uit checkout-analyse-minimaal.php), niet via de productpagina.
 const ANALYSE_KOOP = SITE + '/checkout/?add-to-cart=12131';
-let BEKIJK = 'klant'; // beheerweergave: 'klant' of 'alles'
+let BEKIJK = 'klant'; // beheerweergave: 'nieuw' (niet-lid, nog niets gekocht), 'klant' (je eigen account) of 'alles'
 let D = null;
 
 function leesToken() { try { return localStorage.getItem(OPSLAG) || ''; } catch (e) { return ''; } }
@@ -678,7 +678,7 @@ function voorbeeldData(d) {
 }
 function beheerHtml(d) {
   if (!d.beheer) return '';
-  return `<div class="beheer"><span>Beheerweergave</span><div><button data-actie="bekijk" data-w="klant" class="${BEKIJK === 'klant' ? 'aan' : ''}">Als klant</button><button data-actie="bekijk" data-w="alles" class="${BEKIJK === 'alles' ? 'aan' : ''}">Alles open</button></div></div>`;
+  return `<div class="beheer"><span>Beheerweergave</span><div><button data-actie="bekijk" data-w="nieuw" class="${BEKIJK === 'nieuw' ? 'aan' : ''}">Niet-lid</button><button data-actie="bekijk" data-w="klant" class="${BEKIJK === 'klant' ? 'aan' : ''}">Als klant</button><button data-actie="bekijk" data-w="alles" class="${BEKIJK === 'alles' ? 'aan' : ''}">Alles open</button></div></div>`;
 }
 
 // ---- Lidmaatschap MKC-app (07-10-2026): €19 per maand via Mollie ----
@@ -704,8 +704,12 @@ function datumNl(iso, dagenErbij = 0) {
 }
 function isLid(d) { const l = d.lid || {}; return (l.status === 'actief' || l.status === 'achterstand' || l.status === 'opgezegd') && l.open; }
 
+// Beheer "Niet-lid": zo ziet iemand de app die net binnenkomt, zonder Core,
+// analyse of lidmaatschap. Alleen de weergave, er verandert niets op de server.
+function alsNieuw(d) { return { ...d, core: null, analyse: null, banden: false, bandenSlim: false, bandenProfiel: null, lid: { status: 'geen' } }; }
+function zicht() { return D && D.beheer && BEKIJK === 'nieuw' ? alsNieuw(D) : D; }
 function teken() {
-  const d = D, voornaam = String(d.naam || '').trim().split(' ')[0];
+  const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `<div class="kop"><div class="logo">MKC<span>.</span></div><button class="uit" data-actie="uitloggen">Uitloggen</button></div>
     ${beheerHtml(d)}${appHtml()}
     <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
@@ -762,7 +766,7 @@ async function zegOp(knop) {
 const CC_NAAM = 'MKC-coach';
 const CC_SNEL = ['Hoe bepaal ik mijn FTP?', 'Ik ben altijd moe, wat doe ik fout?', 'Hoe train ik met weinig tijd?', 'Wat eet ik op een lange rit?', 'Hoe past core naast mijn fietstraining?'];
 let CC = { berichten: null, bezig: false };
-const ccMag = () => !!(D && D.bandenSlim && (isLid(D) || (D.beheer && BEKIJK === 'alles')));
+const ccMag = () => { const d = zicht(); return !!(d && d.bandenSlim && (isLid(d) || (d.beheer && BEKIJK === 'alles'))); };
 function coachBouw() {
   if (document.getElementById('ccPaneel')) return;
   document.body.insertAdjacentHTML('beforeend', `
