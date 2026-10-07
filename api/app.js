@@ -156,6 +156,7 @@ export default async function handler(req, res) {
     if (actie === 'plaats') return await routePlaats(req, res);
     if (actie === 'bandvraag') return await routeBandVraag(req, res);
     if (actie === 'coach') return await routeCoach(req, res);
+    if (actie === 'opvolgen') return await routeOpvolgen(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -511,9 +512,36 @@ async function routeCoach(req, res) {
   ).slice(-60);
   await redis(['SET', `app:coach:${email}`, JSON.stringify(nieuw)]);
   if (medisch) {
-    const core = await coreVoorEmail(email);
-    await meldMedisch({ email, naam: (core && core.naam) || '', bron: 'mkc-coach', vraag: tekst,
+    const [core, mc] = await Promise.all([coreVoorEmail(email), mcLid(email)]);
+    await meldMedisch({ email, naam: (core && core.naam) || (mc && mc.merge_fields && mc.merge_fields.FNAME) || '', bron: 'mkc-coach', vraag: tekst,
       extra: core ? `Doet de Core-app: blok ${core.blok || 1}, week ${core.weekInBlok || core.week}.` : 'Doet de Core-app niet.' });
   }
   return res.status(200).json({ ok: true, berichten: nieuw.slice(-30) });
+}
+
+// ===========================================================================
+// OPVOLGEN (alleen Michel, 07-10-2026): de medische meldingen uit
+// lib/meld-medisch.js als lijst in de app, met status per melding.
+//   GET  opvolgen ?t=                 -> { meldingen }  (laatste 100)
+//   POST opvolgen { t, id, status }   -> status: open | gemaild | afgehandeld
+// Redis: opvolgen:medisch (lijst, nieuwste eerst), opvolgen:statussen (JSON)
+// ===========================================================================
+async function routeOpvolgen(req, res) {
+  const body = req.method === 'POST' ? await leesBody(req) : {};
+  const email = leesAppToken(String(req.method === 'POST' ? body.t : req.query?.t || ''));
+  if (!email || !BEHEER.includes(email)) return res.status(403).json({ ok: false });
+  const st = await redis(['GET', 'opvolgen:statussen']);
+  let statussen = {};
+  try { statussen = JSON.parse((st.ok && st.result) || '{}') || {}; } catch { statussen = {}; }
+  if (req.method === 'POST') {
+    const id = String(body.id || '').slice(0, 20), status = String(body.status || '');
+    if (!id || !['open', 'gemaild', 'afgehandeld'].includes(status)) return res.status(400).json({ ok: false });
+    statussen[id] = { status, op: new Date().toISOString() };
+    await redis(['SET', 'opvolgen:statussen', JSON.stringify(statussen)]);
+  }
+  const l = await redis(['LRANGE', 'opvolgen:medisch', '0', '99']);
+  const meldingen = ((l.ok && l.result) || []).map((x) => { try { return JSON.parse(x); } catch { return null; } })
+    .filter(Boolean)
+    .map((m) => ({ ...m, status: (m.id && statussen[m.id] && statussen[m.id].status) || 'open' }));
+  return res.status(200).json({ ok: true, meldingen });
 }
