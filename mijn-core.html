@@ -317,7 +317,7 @@ function teken() {
     if (d.testNodig != null && d.testNodig !== 0) h += testHtml(d, false);
     if (!d.betaald && !d.opSlot) h += `<div class="proefbalk"><span><b>Proefweek.</b> Week 1 is gratis. Doe je starttest en je sessies, dan zie je meteen wat het programma met je doet.</span></div>`;
     if (d.opSlot) h += muurHtml(d);
-    else if (d.klaar) h += `<div class="blok kaart accent"><h2>Alle 12 weken rond</h2><p>Knap gedaan. ${d.testNodig === 12 ? 'Doe hierboven je eindtest en kijk wat het je heeft opgeleverd.' : 'Je eindtest staat in je voortgang hieronder.'}</p></div>`;
+    else if (d.klaar) h += `<div class="blok kaart accent"><h2>Alle 12 weken rond</h2><p>Knap gedaan. ${d.testNodig === 12 ? 'Doe hierboven je eindtest en kijk wat het je heeft opgeleverd.' : 'Je eindtest staat in je voortgang hieronder.'}</p>${d.magDoorlopen ? '' : `<p style="margin-top:10px">Wil je verder? Blok 2 begint een stap zwaarder, met je voortgang erbij. Doorgaan doe je als lid van de MKC-app: &euro;19 per maand, maandelijks opzegbaar.</p><a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word lid en ga door met blok 2</a>`}</div>`;
     else {
       if (d.weekRond) h += weekklaarHtml(d);
       h += sessiesHtml(d);
@@ -326,7 +326,7 @@ function teken() {
     h += voortgangHtml(d);
     if (!d.opSlot) h += agendaHtml(d);
     h += doelHtml(d);
-    if (d.vervolgVraag) h += vervolgHtml(d);
+    if (d.vervolgVraag && !d.magDoorlopen && d.week <= 12) h += vervolgHtml(d);
     h += vraagHtml(d);
   }
   h += `<p class="klein muted" style="margin-top:30px">Voel je pijn tijdens een oefening (niet hetzelfde als vermoeidheid)? Stop die oefening en sla hem over. Laat het Michel weten via de vraagknop.</p>`;
@@ -340,12 +340,12 @@ function kopHtml(d) {
   const doel = d.doel && d.doel.dagenTotDoel > 0
     ? `<div class="pil">${esc(d.doel.naam)} &middot; nog <b>${d.doel.wekenTotDoel >= 1 ? d.doel.wekenTotDoel + ' weken' : d.doel.dagenTotDoel + ' dagen'}</b></div>` : '';
   const sub = d.intakeNodig ? 'Eerst een paar korte vragen, dan staat je plan klaar.'
-    : d.klaar ? 'Programma afgerond.' : d.opSlot ? 'Proefweek afgerond. Week 1 zit erop.' : `Fase ${d.fase}: ${esc(d.faseNaam)} &middot; ${d.gedaanDezeWeek.length} van ${d.frequentie} sessies gedaan`;
+    : d.klaar ? 'Programma afgerond.' : d.opSlot ? (d.week > 12 ? 'Blok 1 rond. Blok 2 staat voor je klaar.' : 'Proefweek afgerond. Week 1 zit erop.') : `${d.blok > 1 ? 'Blok ' + d.blok + ' &middot; ' : ''}Fase ${d.fase}: ${esc(d.faseNaam)} &middot; ${d.gedaanDezeWeek.length} van ${d.frequentie} sessies gedaan`;
   // Terug naar de MKC-startpagina (/app). ?ct= ruilt deze Core-link in voor een
   // app-login, zodat je niet opnieuw hoeft in te loggen.
   const naarApp = `<a class="naarapp" href="/app?ct=${encodeURIComponent(token)}">&#8592; Alle onderdelen</a>`;
   return `${naarApp}<div class="kop"><div class="eyebrow">Mijn Core${d.naam ? ' &middot; ' + esc(d.naam.split(' ')[0]) : ''}</div>
-    <h1>${d.intakeNodig ? 'Welkom' : d.klaar ? 'Klaar!' : 'Week ' + d.week + ' van 12'}</h1>
+    <h1>${d.intakeNodig ? 'Welkom' : d.klaar ? 'Klaar!' : 'Week ' + (d.weekInBlok || d.week) + ' van 12'}</h1>
     <div class="sub">${sub}</div>${doel}</div>`;
 }
 
@@ -429,6 +429,7 @@ function weekklaarHtml(d) {
 
 // ---- Na de proefweek: week 2 wazig, betaalblok erover ----
 function muurHtml(d) {
+  if (d.week > 12) return blokMuurHtml(d);
   const t = d.tests[0];
   const zwak = (t?.balans || []).find((b) => b.opvallend);
   const echt = sessiesHtml({ ...d, testNodig: null, gedaanDezeWeek: [] });
@@ -451,6 +452,16 @@ function muurHtml(d) {
       <p class="klein muted" style="margin-top:8px">Gaat je Rompscore in 12 weken niet omhoog, dan krijg je je geld terug.</p>
     </div></div>
   </div>`;
+}
+
+// Na week 12, nog geen lid: uitnodiging voor blok 2 via de MKC-app.
+function blokMuurHtml(d) {
+  const eerste = d.tests[0], laatste = d.tests[d.tests.length - 1];
+  const winst = eerste && laatste && laatste !== eerste ? laatste.score - eerste.score : null;
+  return `<div class="blok kaart accent"><div class="eyebrow">Blok 1 rond</div><h2>Ga door met blok 2</h2>
+    <p>${winst != null ? `Je Rompscore ging van <b>${eerste.score}</b> naar <b>${laatste.score}</b> (${winst > 0 ? '+' : ''}${winst}). ` : ''}Blok 2 heeft dezelfde opbouw, maar elke oefening begint een stap zwaarder. Je voortgang en je grafiek lopen gewoon door.</p>
+    <p style="margin-top:10px">Doorgaan doe je als lid van de MKC-app: &euro;19 per maand, maandelijks opzegbaar.</p>
+    <a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word lid en ga door</a></div>`;
 }
 
 // ---- Sessies ----
@@ -504,10 +515,14 @@ function tipsHtml(d) {
 function lijnGrafiek(series, opts) {
   // series: [{naam, kleur, punten:[{x, y}]}], x-as = weken 0..12
   const W = 600, H = 220, L = 34, R = 12, T = 14, B = 28;
-  const max = opts.max, sx = (x) => L + (W - L - R) * x / 12, sy = (y) => T + (H - T - B) * (1 - y / max);
+  // De x-as groeit mee met doorlopende blokken: minimaal 12 weken, daarna per 4.
+  const xs = series.flatMap((se) => se.punten.map((p) => p.x));
+  const maxX = Math.max(12, Math.ceil(Math.max(0, ...xs) / 4) * 4);
+  const stap = maxX <= 24 ? 4 : maxX <= 48 ? 8 : 12;
+  const max = opts.max, sx = (x) => L + (W - L - R) * x / maxX, sy = (y) => T + (H - T - B) * (1 - y / max);
   let s = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
   for (const g of opts.raster) s += `<line x1="${L}" x2="${W - R}" y1="${sy(g)}" y2="${sy(g)}" stroke="rgba(255,255,255,.07)"/><text x="${L - 6}" y="${sy(g) + 4}" text-anchor="end" font-size="11" fill="rgba(245,243,239,.45)">${g}</text>`;
-  for (const w of [0, 4, 8, 12]) s += `<text x="${sx(w)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="rgba(245,243,239,.45)">wk ${w}</text>`;
+  for (let w = 0; w <= maxX; w += stap) s += `<text x="${sx(w)}" y="${H - 8}" text-anchor="middle" font-size="11" fill="rgba(245,243,239,.45)">wk ${w}</text>`;
   for (const se of series) {
     if (!se.punten.length) continue;
     s += `<polyline fill="none" stroke="${se.kleur}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="${se.punten.map((p) => sx(p.x) + ',' + sy(p.y)).join(' ')}"/>`;
@@ -522,14 +537,14 @@ function voortgangHtml(d) {
   const verschil = eerste && laatste && laatste !== eerste ? laatste.score - eerste.score : null;
   const balans = (laatste?.balans || []).filter((b) => b.opvallend);
   const totaal = vak.filter((v) => v.gedaan).length;
-  return `<div class="blok"><h2>Je voortgang</h2><div class="kaart">
+  return `<div class="blok"><h2>Je voortgang${d.blok > 1 ? ' <span class="muted klein" style="font-family:DM Sans">blok ' + d.blok + '</span>' : ''}</h2><div class="kaart">
     <div class="cijfers">
       <div class="cijfer"><span>Sessies</span><b>${totaal}<span style="font-size:15px;color:var(--muted)"> / ${vak.length}</span></b></div>
       <div class="cijfer"><span>Rompscore</span><b>${laatste ? laatste.score : '–'}</b></div>
       <div class="cijfer"><span>Sinds start</span><b class="${verschil > 0 ? 'op' : ''}">${verschil != null ? (verschil > 0 ? '+' : '') + verschil : '–'}</b></div>
     </div>
     <div class="vakjes">${rijen}</div>
-    <div class="weeklabels">${[...Array(12)].map((_, i) => `<div>${i + 1}</div>`).join('')}</div>
+    <div class="weeklabels">${[...Array(12)].map((_, i) => `<div>${(d.blokStart || 0) + i + 1}</div>`).join('')}</div>
     <div class="badges">${d.badges.map((b) => `<div class="badge ${b.verdiend ? 'aan' : ''}" title="${esc(b.tekst)}"><div class="ic">${b.fase}</div><div class="nm">${esc(b.naam)}</div><div class="klein muted">${b.verdiend ? 'Verdiend' : 'Week ' + b.fase * 3}</div></div>`).join('')}</div>
     ${d.tests.length ? `<h3 style="margin:22px 0 6px;font-size:15px">Rompscore</h3><div class="grafiek">${lijnGrafiek([{ kleur: '#FF6B1A', punten: d.tests.map((t) => ({ x: t.moment, y: t.score })) }], { max: 100, raster: [0, 50, 100] })}</div>
       ${balans.length ? balans.map((b) => `<div class="tip" style="margin-top:10px">Je ${b.naam.toLowerCase()} is ${b.pct}% zwakker ${b.zwakker}. Begin oefeningen per kant met die kant. Dat zie je vaak terug in een scheve zit op de fiets.</div>`).join('') : ''}` : ''}
