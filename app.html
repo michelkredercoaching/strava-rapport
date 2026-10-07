@@ -225,6 +225,18 @@
   .opv-k { background:transparent; border:1px solid rgba(255,255,255,.2); color:var(--white); font-family:inherit; font-size:12.5px; padding:6px 10px; border-radius:4px; cursor:pointer; text-decoration:none; }
   .opv-k.oranje { background:var(--accent); border-color:var(--accent); color:#0A0A0A; font-weight:700; }
   .opv-status { margin-left:auto; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  /* Bandengeheugen */
+  .sb-geheugen { margin-top:10px; background:rgba(76,195,138,.08); border:1px solid rgba(76,195,138,.35); border-radius:6px; padding:10px 12px; font-size:14px; color:rgba(245,243,239,.88); }
+  .sb-geheugen.bij { background:rgba(255,107,26,.08); border-color:rgba(255,107,26,.35); }
+  .sb-geheugen small { display:block; color:var(--muted); font-size:12px; margin-top:3px; }
+  .sb-rijd { margin-top:12px; }
+  .sb-rijd .knop { font-size:17px; padding:10px 14px 8px; }
+  .sb-bewaard { margin-top:12px; font-size:13.5px; color:var(--groen); }
+  .sb-oordeel { background:var(--surface2); border:1px solid rgba(255,107,26,.45); border-radius:8px; padding:12px; margin:14px 0 4px; }
+  .sb-oordeel b { display:block; font-size:15px; margin-bottom:2px; }
+  .sb-oordeel .w { font-size:12.5px; color:var(--muted); margin-bottom:10px; }
+  .sb-oordeel .bt-keuze button { font-size:13.5px; }
+  .sb-oordeel .sb-link { margin-top:8px; }
   .voet { text-align:center; font-size:12px; color:rgba(245,243,239,.35); margin-top:30px; }
   .voet a { color:rgba(245,243,239,.5); }
 </style>
@@ -342,8 +354,8 @@ function coreKaart(c) {
   if (c.opSlot) {
     return `<div class="kaart actief"><div class="kaart-in"><span class="tag oranje">Proefweek klaar</span><div class="label">Core-app</div>
       <h2>Week 2 staat klaar</h2><p>Je proefweek zit erop. Ga door en alles wat je deed blijft staan.</p>
-      ${c.rompscore != null ? `<div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore}</b></div><div class="cijfer"><span>Weken</span><b>1/12</b></div><div class="cijfer"><span>Prijs</span><b>&euro;49</b></div></div>` : ''}
-      <a class="knop" href="${esc(c.link)}">Ga door met week 2</a></div></div>`;
+      ${c.rompscore != null ? `<div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore}</b></div><div class="cijfer"><span>Weken</span><b>1/12</b></div><div class="cijfer"><span>Prijs</span><b>${D && D.lidOpen ? '&euro;19<em style="color:var(--muted)">/mnd</em>' : '&euro;49'}</b></div></div>` : ''}
+      ${D && D.lidOpen ? '<button class="knop" data-actie="naarlid">Word lid en ga door</button>' : `<a class="knop" href="${esc(c.link)}">Ga door met week 2</a>`}</div></div>`;
   }
   const winst = c.rompscore != null && c.startScore != null && c.rompscore > c.startScore ? `<em>+${c.rompscore - c.startScore}</em>` : '';
   const wib = c.weekInBlok || c.week, blok = c.blok || 1;
@@ -443,7 +455,7 @@ let BT_LIB = null;
 // eigen plek, ondergrond, en een vraagknop. Rekent met dezelfde formule als de
 // gratis versie; daarbovenop alleen de vaste regels van de kaart (nat -0,3,
 // kasseien -0,5, glad +0,3, los grind -0,3, tassen +0,4) en de kou-correctie.
-const SB = { profiel: null, weer: null, weerFout: '', bewerk: false, zoek: [], antwoord: '', vraagBezig: false, vraag: '' };
+const SB = { ritten: null, profiel: null, weer: null, weerFout: '', bewerk: false, zoek: [], antwoord: '', vraagBezig: false, vraag: '' };
 const SB_KEUZE = 'mkcBandenKeuze';
 function sbKeuze() { try { return JSON.parse(localStorage.getItem(SB_KEUZE) || '{}'); } catch (e) { return {}; } }
 function sbBewaarKeuze(k) { try { localStorage.setItem(SB_KEUZE, JSON.stringify({ ...sbKeuze(), ...k })); } catch (e) {} }
@@ -468,7 +480,18 @@ function sbReken(f) {
   const corr = (nat ? -0.3 : 0) + grond[2];
   const min = f.type === 'gravel' ? 1.3 : 2.5, max = f.hookless ? BT_LIB.HOOKLESS_MAX : 99;
   const r1 = (x) => Math.round(x * 10) / 10;
-  const voor = r1(Math.min(max, Math.max(min, a.voor + corr))), achter = r1(Math.min(max, Math.max(min, a.achter + corr)));
+  const klem = (x) => r1(Math.min(max, Math.max(min, x)));
+  let voor = klem(a.voor + corr), achter = klem(a.achter + corr);
+  // Geheugen: reed je eerder op deze fiets onder vergelijkbaar weer en gaf je
+  // een oordeel, dan wint dat van de formule. Te hard of te zacht = 0,2 bar bij.
+  const berekend = { voor, achter };
+  const eerder = sbGeheugen(f, nat, grond[0], SB.weer ? SB.weer.temp : null);
+  let geheugen = null;
+  if (eerder) {
+    const stap = eerder.oordeel === 'hard' ? -0.2 : eerder.oordeel === 'zacht' ? 0.2 : 0;
+    voor = klem(eerder.voor + stap); achter = klem(eerder.achter + stap);
+    geheugen = { ...eerder, stap, berekend };
+  }
   // Kou: lucht krimpt. Pomp je binnen (20 graden) en rijd je in de kou, dan
   // zakt de druk. Gaslaw op absolute druk, met de laagste temperatuur van de
   // komende uren.
@@ -481,7 +504,39 @@ function sbReken(f) {
   if (nat) redenen.push('nat wegdek, 0,3 bar eraf voor grip');
   if (grond[2]) redenen.push(`${grond[1].toLowerCase()}, ${BT_LIB.nl(Math.abs(grond[2]))} bar ${grond[2] < 0 ? 'eraf' : 'erbij'}`);
   if (f.hookless && (a.achter + corr) > max) redenen.push('hookless velg, nooit boven 5,0 bar');
-  return { voor, achter, binnenV, binnenA, temp, redenen, nat, grond };
+  return { voor, achter, binnenV, binnenA, temp, redenen, nat, grond, geheugen };
+}
+
+// Laatste rit met oordeel op deze fiets, zelfde wegdek en ondergrond, en een
+// temperatuur die hooguit 5 graden scheelt.
+function sbGeheugen(f, nat, grond, temp) {
+  return (SB.ritten || []).find((r) => r.fiets === f.id && ['goed', 'hard', 'zacht'].includes(r.oordeel) && !!r.nat === !!nat && r.grond === grond
+    && (temp == null || r.temp == null || Math.abs(r.temp - temp) <= 5)) || null;
+}
+const sbDatum = (op) => new Date(op).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+const sbWeerTekst = (r) => [r.temp != null ? r.temp + '&deg;' : '', r.nat ? 'nat' : 'droog'].filter(Boolean).join(' en ');
+function sbVerborgen() { try { return JSON.parse(localStorage.getItem('mkcRitWeg') || '[]'); } catch (e) { return []; } }
+// Een rit zonder oordeel, minstens een uur oud: vraag hoe het reed.
+function sbOordeelHtml() {
+  const weg = sbVerborgen();
+  const r = (SB.ritten || []).find((x) => !x.oordeel && Date.now() - Date.parse(x.op) > 3600000 && Date.now() - Date.parse(x.op) < 14 * 86400000 && !weg.includes(x.id));
+  if (!r) return '';
+  return `<div class="sb-oordeel"><b>Hoe reed je ${esc(r.fietsNaam || 'fiets')} op ${sbDatum(r.op)}?</b>
+    <div class="w">${sbWeerTekst(r)} &middot; ${BT_LIB ? BT_LIB.nl(r.voor) : r.voor} voor, ${BT_LIB ? BT_LIB.nl(r.achter) : r.achter} achter</div>
+    <div class="bt-keuze"><button type="button" data-sb="oordeel" data-id="${r.id}" data-w="zacht">Te zacht</button><button type="button" data-sb="oordeel" data-id="${r.id}" data-w="goed">Precies goed</button><button type="button" data-sb="oordeel" data-id="${r.id}" data-w="hard">Te hard</button></div>
+    <button type="button" class="sb-link" data-sb="ritweg" data-id="${r.id}">Niet gereden</button></div>`;
+}
+function sbGeheugenHtml(u) {
+  const g = u.geheugen; if (!g) return '';
+  const nl = BT_LIB.nl, oud = `${nl(g.voor)} voor en ${nl(g.achter)} achter`;
+  if (g.oordeel === 'goed') return `<div class="sb-geheugen">Bij ${sbWeerTekst(g)} reed je op ${sbDatum(g.op)} ${oud}, en dat was precies goed. Dit is dus jouw spanning.<small>Volgens de berekening zou het ${nl(g.berekend.voor)} en ${nl(g.berekend.achter)} zijn.</small></div>`;
+  return `<div class="sb-geheugen bij">Op ${sbDatum(g.op)} (${sbWeerTekst(g)}) vond je ${oud} te ${g.oordeel === 'hard' ? 'hard' : 'zacht'}. Daarom nu 0,2 bar ${g.oordeel === 'hard' ? 'minder' : 'meer'}.<small>Rijd het en zeg daarna weer hoe het voelde, dan wordt het steeds preciezer.</small></div>`;
+}
+function sbRijdHtml(f, u) {
+  const vandaag = new Date().toISOString().slice(0, 10);
+  const al = (SB.ritten || []).find((r) => r.fiets === f.id && String(r.op).slice(0, 10) === vandaag && r.voor === u.voor && r.achter === u.achter);
+  if (al) return '<div class="sb-bewaard">&#10003; Bewaard. Na je rit vraag ik hoe het reed.</div>';
+  return '<div class="sb-rijd"><button type="button" class="knop leeg" data-sb="rijd">Ik rijd hiermee</button><p class="klein">Dan vraag ik na je rit hoe het reed en onthoud ik het voor de volgende keer met dit weer.</p></div>';
 }
 
 function sbWeerHtml() {
@@ -520,6 +575,7 @@ function sbBewerkHtml() {
 
 function slimBandenKaart() {
   if (!SB.profiel) SB.profiel = (D && D.bandenProfiel) || { gewicht: null, plaats: null, fietsen: [] };
+  if (!SB.ritten) SB.ritten = (D && D.bandenRitten) || [];
   const p = SB.profiel;
   if (p.fietsen.length === 0 && !SB.bewerk) {
     // Eerste keer: neem over wat iemand al in de gratis versie invulde.
@@ -535,8 +591,11 @@ function slimBandenKaart() {
   const grond = f ? SB_GROND[f.type].map((g) => `<button type="button" data-sb="grond" data-w="${g[0]}" class="${uit && uit.grond[0] === g[0] ? 'aan' : ''}">${g[1]}</button>`).join('') : '';
   const res = !uit ? '<p class="klein">Vul je gewicht in bij je fietsen.</p>' : `<div class="bt-uit"><div><span>Voor</span><b>${BT_LIB.nl(uit.voor)}</b><small>bar &middot; ${BT_LIB.psi(uit.voor)} psi</small></div><div><span>Achter</span><b>${BT_LIB.nl(uit.achter)}</b><small>bar &middot; ${BT_LIB.psi(uit.achter)} psi</small></div></div>
     ${uit.binnenA != null ? `<div class="sb-kou">Het wordt ${uit.temp}&deg;. Pomp je binnen, pomp dan <b>${BT_LIB.nl(uit.binnenV)} voor en ${BT_LIB.nl(uit.binnenA)} achter</b>. Buiten krimpt de lucht en zit je precies goed.</div>` : ''}
-    ${uit.redenen.length ? `<p class="klein">Meegerekend: ${uit.redenen.join(', ')}.</p>` : ''}`;
+    ${sbGeheugenHtml(uit)}
+    ${uit.redenen.length ? `<p class="klein">Meegerekend: ${uit.redenen.join(', ')}.</p>` : ''}
+    ${sbRijdHtml(f, uit)}`;
   return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
+    ${sbOordeelHtml()}
     ${sbWeerHtml()}
     <div class="sb-chips">${chips}</div>
     <div class="bt-keuze sb-grond">${grond}</div>
@@ -590,6 +649,19 @@ document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-sb]'); if (!k) return;
   const a = k.dataset.sb, i = Number(k.dataset.i), p = SB.profiel;
   if (a === 'fiets') { sbBewaarKeuze({ fiets: k.dataset.id }); SB.antwoord = ''; return sbTeken(); }
+  if (a === 'rijd' || a === 'oordeel') {
+    const f = sbFiets(), u = sbReken(f);
+    const body = a === 'rijd'
+      ? { t: leesToken(), rit: { fiets: f.id, fietsNaam: f.naam, voor: u.voor, achter: u.achter, temp: SB.weer ? SB.weer.temp : null, nat: u.nat, grond: u.grond[0] } }
+      : { t: leesToken(), id: k.dataset.id, oordeel: k.dataset.w };
+    k.disabled = true;
+    try {
+      const j = await (await fetch(`${API}?actie=bandenritten`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+      if (j.ok) { SB.ritten = j.ritten; if (D) D.bandenRitten = j.ritten; } else alert(j.fout || 'Bewaren lukte niet.');
+    } catch (e) { alert('Verbinding mislukt.'); }
+    return sbTeken();
+  }
+  if (a === 'ritweg') { const w = sbVerborgen(); w.push(k.dataset.id); try { localStorage.setItem('mkcRitWeg', JSON.stringify(w.slice(-50))); } catch (e) {} return sbTeken(); }
   if (a === 'grond') { const f = sbFiets(); sbBewaarKeuze({ ['grond_' + f.type]: k.dataset.w }); return sbTeken(); }
   if (a === 'nat') { const w = k.dataset.w === 'true'; sbBewaarKeuze({ natHand: SB.weer && w === !!SB.weer.nat ? null : w }); return sbTeken(); }
   if (a === 'bewerk') { SB.bewerk = true; return sbTeken(); }
