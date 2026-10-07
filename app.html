@@ -111,6 +111,21 @@
   .melding.goed { color:var(--groen); }
   .melding.fout { color:#ff8a5c; }
   .laden { text-align:center; padding:30vh 0; color:var(--muted); }
+  /* Bandenspanning in de app */
+  .bt { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:14px 0 4px; }
+  .bt label { display:block; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+  .bt input, .bt select { width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,.14); color:var(--white); font-family:inherit; font-size:16px; padding:10px 10px; border-radius:4px; -webkit-appearance:none; appearance:none; }
+  .bt input:focus, .bt select:focus { outline:none; border-color:var(--accent); }
+  .bt-keuze { display:flex; gap:6px; grid-column:1 / -1; }
+  .bt-keuze button { flex:1; background:var(--surface2); border:1px solid rgba(255,255,255,.14); color:var(--muted); font-family:inherit; font-size:13.5px; padding:9px 6px; border-radius:4px; cursor:pointer; }
+  .bt-keuze button.aan { border-color:var(--accent); color:var(--white); background:rgba(255,107,26,.12); }
+  .bt-uit { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+  .bt-uit div { background:var(--surface2); border:1px solid rgba(255,107,26,.35); border-radius:6px; padding:10px 12px 8px; }
+  .bt-uit span { display:block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .bt-uit b { font-family:'Bebas Neue',sans-serif; font-size:40px; line-height:1; font-weight:400; }
+  .bt-uit small { font-size:12.5px; color:var(--muted); margin-left:4px; }
+  .bt-slim { margin-top:14px; padding-top:12px; border-top:1px solid var(--border); font-size:13.5px; color:var(--muted); }
+  .bt-slim b { color:var(--white); }
   .voet { text-align:center; font-size:12px; color:rgba(245,243,239,.35); margin-top:30px; }
   .voet a { color:rgba(245,243,239,.5); }
 </style>
@@ -288,21 +303,67 @@ function pacingKaart() {
     <p>Hoe hard je per klim, per strook en per uur kunt rijden zonder stuk te gaan, berekend uit je eigen ritten. Voor granfondo's, gravelfondo's en toertochten zoals de Amstel Gold Race of Luik-Bastenaken-Luik. Komt eraan.</p></div></div>`;
 }
 
-function bandenKaart(heeft) {
-  return `<div class="kaart"><div class="kaart-in"><span class="tag open">Gratis</span>
-    <div class="label">Tool</div><h2>Bandenspanning</h2>
-    <p>De juiste spanning voor jouw gewicht, bandbreedte en ondergrond, voor racefiets en gravel.${heeft ? ' Je hebt je kaart al, maar wissel je van band, reken hem dan opnieuw uit.' : ''}</p>
-    <a class="knop leeg" href="${SITE}/bandenspanning/">Bereken je spanning</a></div></div>`;
+// Bandenspanning staat altijd bovenaan (besluit Michel 07-10-2026): de gratis
+// tool die je elke rit kunt gebruiken, dus de reden om de app te openen. Rekent
+// in de browser met dezelfde formule als de calculator en de kaart
+// (/lib/bandendruk.js als module geladen, één bron van waarheid).
+const BT_OPSLAG = 'mkcBanden';
+function btLees() { try { return JSON.parse(localStorage.getItem(BT_OPSLAG) || '{}'); } catch (e) { return {}; } }
+function btBewaar(v) { try { localStorage.setItem(BT_OPSLAG, JSON.stringify(v)); } catch (e) {} }
+const BT_BREEDTES = { weg: [23, 25, 26, 28, 30, 32], gravel: [35, 38, 40, 42, 45, 47, 50] };
+const btWaarden = () => ({ type: 'weg', breedte: 28, tubeless: false, nat: false, ...btLees() });
+function bandenKaart(d) {
+  const v = btWaarden();
+  const knop = (veld, waarde, tekst) => `<button type="button" data-bt="${veld}" data-w="${waarde}" class="${String(v[veld]) === String(waarde) ? 'aan' : ''}">${tekst}</button>`;
+  const slim = isLid(d) ? '' : `<div class="bt-slim"><b>Met de MKC-app slimmer:</b> je fietsen bewaard en het weer van vandaag automatisch meegerekend. Nat wegdek, kou of kasseien, je ziet meteen wat je pompt.</div>`;
+  return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag open">Gratis</span>
+    <div class="label">Bandenspanning</div><h2>Wat pomp je vandaag?</h2>
+    <p>Jouw gewicht en band, direct de juiste spanning voor en achter.</p>
+    <div class="bt">
+      <div class="bt-keuze">${knop('type', 'weg', 'Racefiets')}${knop('type', 'gravel', 'Gravel')}</div>
+      <div><label for="btGewicht">Je gewicht (kg)</label><input id="btGewicht" type="number" inputmode="numeric" min="40" max="150" placeholder="bijv. 78" value="${esc(v.gewicht || '')}"></div>
+      <div><label for="btBreedte">Bandbreedte</label><select id="btBreedte">${BT_BREEDTES[v.type].map((b) => `<option value="${b}" ${Number(v.breedte) === b ? 'selected' : ''}>${b} mm</option>`).join('')}</select></div>
+      <div class="bt-keuze">${knop('tubeless', 'false', 'Binnenband')}${knop('tubeless', 'true', 'Tubeless')}</div>
+      <div class="bt-keuze">${knop('nat', 'false', 'Droog')}${knop('nat', 'true', 'Nat wegdek')}</div>
+    </div>
+    <div id="btUit"></div>${slim}</div></div>`;
 }
+let BT_LIB = null;
+async function btReken() {
+  const uit = document.getElementById('btUit'); if (!uit) return;
+  const v = btWaarden();
+  if (!(Number(v.gewicht) >= 40 && Number(v.gewicht) <= 150)) { uit.innerHTML = '<p class="klein">Vul je gewicht in, dan zie je je spanning.</p>'; return; }
+  try { BT_LIB = BT_LIB || await import('/lib/bandendruk.js'); } catch (e) { uit.innerHTML = '<p class="klein">Rekenen lukt nu even niet.</p>'; return; }
+  const a = BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: v.type, gewicht: v.gewicht, breedte: v.breedte, tubeless: v.tubeless ? 'tubeless' : 'binnenband' }));
+  if (!a) { uit.innerHTML = ''; return; }
+  // Nat wegdek: 0,3 bar eraf, dezelfde regel als op de kaart en in de tips.
+  const min = v.type === 'gravel' ? 1.3 : 2.5, eraf = v.nat ? 0.3 : 0;
+  const voor = Math.max(min, a.voor - eraf), achter = Math.max(min, a.achter - eraf);
+  uit.innerHTML = `<div class="bt-uit"><div><span>Voor</span><b>${BT_LIB.nl(voor)}</b><small>bar &middot; ${BT_LIB.psi(voor)} psi</small></div><div><span>Achter</span><b>${BT_LIB.nl(achter)}</b><small>bar &middot; ${BT_LIB.psi(achter)} psi</small></div></div>
+    <p class="klein">${v.nat ? 'Nat wegdek: 0,3 bar minder voor meer grip. ' : ''}${achter > BT_LIB.HOOKLESS_MAX ? 'Hookless velg? Ga nooit boven de 5,0 bar.' : ''}</p>`;
+}
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-bt]'); if (!k) return;
+  const v = btLees(), veld = k.dataset.bt, w = k.dataset.w;
+  if (veld === 'type') { if (v.type !== w) v.breedte = w === 'gravel' ? 40 : 28; v.type = w; if (w === 'gravel' && v.tubeless === undefined) v.tubeless = true; }
+  else v[veld] = w === 'true';
+  btBewaar(v); teken();
+});
+document.addEventListener('input', (e) => {
+  if (e.target.id !== 'btGewicht' && e.target.id !== 'btBreedte') return;
+  const v = btLees();
+  if (e.target.id === 'btGewicht') v.gewicht = e.target.value; else v.breedte = Number(e.target.value);
+  btBewaar(v); btReken();
+});
 
-// Volgorde (besluit Michel 06-10-2026): eerst wat actief is of gratis te gebruiken,
-// dan wat je kunt ontgrendelen, onderaan wat nog moet komen. Met tussenkopjes.
+// Volgorde (besluit Michel 07-10-2026): bovenaan de gratis bandenspanning, dan
+// het lidmaatschap (voor niet-leden), dan wat actief is, wat je kunt
+// ontgrendelen en onderaan wat nog moet komen. Met tussenkopjes.
 function kaartenHtml(d) {
   if (d.beheer && BEKIJK === 'alles') d = voorbeeldData(d);
   const actief = [], ontgrendel = [];
   (d.core ? actief : ontgrendel).push(coreKaart(d.core));
   (d.analyse ? actief : ontgrendel).push(analyseKaart(d.analyse));
-  actief.push(bandenKaart(d.banden));
   const groep = (titel, kaarten) => kaarten.length ? `<div class="groepkop">${titel}</div><div class="kaarten">${kaarten.join('')}</div>` : '';
   return groep('Actief', actief) + groep('Ontgrendelen', ontgrendel) + groep('Binnenkort', [afvalKaart(), pacingKaart()]);
 }
@@ -349,10 +410,12 @@ function teken() {
     ${beheerHtml(d)}${appHtml()}
     <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
     <p class="intro">Je programma's, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>
-    ${isLid(d) ? '' : `<div class="groepkop">MKC-app</div>${lidPitchHtml()}`}
+    <div class="groepkop">Vandaag</div><div class="kaarten">${bandenKaart(d)}</div>
+    ${isLid(d) || !(d.lidOpen || d.beheer) ? '' : `<div class="groepkop">Meer uit de app</div>${lidPitchHtml()}`}
     ${kaartenHtml(d)}
     ${isLid(d) ? `<div class="groepkop">Mijn lidmaatschap</div>${lidStatusHtml(d.lid)}` : ''}
     <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
+  btReken();
 }
 
 document.addEventListener('click', (e) => {
