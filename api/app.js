@@ -38,6 +38,7 @@
 import crypto from 'crypto';
 import { coreVoorEmail, emailVoorCoreToken } from './core.js';
 import { lidBeeld, haalLid, lidOpen } from './lid.js';
+import { COACH_KENNIS, COACH_REGELS } from '../lib/coach-kennis.js';
 
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || process.env.KV_REST_API_URL;
@@ -153,6 +154,7 @@ export default async function handler(req, res) {
     if (actie === 'weer') return await routeWeer(req, res);
     if (actie === 'plaats') return await routePlaats(req, res);
     if (actie === 'bandvraag') return await routeBandVraag(req, res);
+    if (actie === 'coach') return await routeCoach(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -417,4 +419,95 @@ async function routeBandVraag(req, res) {
   } catch {
     return res.status(502).json({ ok: false, fout: 'Even geen antwoord. Probeer het zo nog eens.' });
   }
+}
+
+// ===========================================================================
+// MKC-COACH (lidmaatschap stap 4, 07-10-2026): één AI-coach voor de hele app.
+// Kent de Core-voortgang, de Strava-analyse en de fietsen van deze renner, en
+// Michels methode uit lib/coach-kennis.js. Alleen voor leden (en Michel).
+//   GET  coach ?t=            -> { berichten }  (laatste 30)
+//   POST coach { t, tekst }   -> stelt een vraag, geeft { berichten }
+// Redis: app:coach:<email> (JSON-lijst), teller app:coachvraag:<email>:<datum>
+// ===========================================================================
+const COACH_PER_DAG = 25;
+const COACH_MEDISCH = 'Dit ga ik niet op afstand beantwoorden, daar is je lijf te belangrijk voor. Stop met wat pijn doet en laat het checken door je huisarts of fysiotherapeut, zeker als het uitstraalt, je tintelingen voelt, het erger wordt of als het om je hart, ademhaling of duizeligheid gaat. Is dat in orde, dan denk ik graag mee over hoe je weer opbouwt.';
+const COACH_MEDISCH_WOORDEN = /(uit\s*stra+l|tintel|doof|gevoelloos|hernia|ischias|operatie|geopereerd|zwanger|scherpe pijn|stekende pijn|bloed|nachtelijke pijn|verlamd|krachtverlies|koorts|gebroken|breuk|pijn op (de|mijn) borst|borstpijn|hartklop|hartritme|duizel|flauw|benauwd|medicijn)/i;
+const COACH_STORING = 'Ik kan je vraag nu even niet beantwoorden. Probeer het over een paar minuten nog eens.';
+
+async function haalCoachBerichten(email) {
+  const r = await redis(['GET', `app:coach:${email}`]);
+  if (!r.ok || !r.result) return [];
+  try { const l = JSON.parse(r.result); return Array.isArray(l) ? l : []; } catch { return []; }
+}
+
+async function coachContext(email) {
+  const [core, lid, banden] = await Promise.all([coreVoorEmail(email), mcLid(email), haalBandenProfiel(email)]);
+  const mf = (lid && lid.merge_fields) || {};
+  const regels = [];
+  const naam = (core && core.naam) || mf.FNAME || '';
+  if (naam) regels.push(`Naam: ${String(naam).split(' ')[0]}.`);
+  if (core) {
+    if (core.intakeNodig) regels.push('Core-app: gestart, intake nog niet gedaan.');
+    else regels.push(`Core-app: blok ${core.blok || 1}, week ${core.weekInBlok || core.week} van 12, fase ${core.fase || '?'}, ${core.gedaan || 0} van ${core.frequentie || '?'} sessies deze week gedaan, ${core.afgerond || 0} weken afgerond.${core.startScore ? ` Rompscore start ${core.startScore}` : ''}${core.rompscore ? `, laatste ${core.rompscore}` : ''}.`);
+  } else regels.push('Core-app: niet gestart.');
+  if ((lid && (lid.tags || []).some((t) => t.name === 'power-profile-koper'))) {
+    regels.push(`Strava-analyse (${mf.RAPDAT || 'datum onbekend'}): ${mf.MEETMETH === 'hartslag' ? `omslagpunt ${mf.OMSLAG || '?'} bpm` : `FTP ${mf.FTP || '?'} W`}, renner-type ${mf.RENTYPE || '?'}, geadviseerd schema ${mf.ADVSCHEMA || '?'}.`);
+  } else regels.push('Strava-analyse: niet gedaan.');
+  if (banden && banden.fietsen && banden.fietsen.length) {
+    regels.push(`Gewicht: ${banden.gewicht || '?'} kg. Fietsen: ${banden.fietsen.map((f) => `${f.naam} (${f.type === 'gravel' ? 'gravel' : 'racefiets'}, ${f.breedte} mm, ${f.tubeless ? 'tubeless' : 'binnenband'}${f.hookless ? ', hookless' : ''})`).join('; ')}.`);
+  }
+  return regels.join('\n');
+}
+
+async function routeCoach(req, res) {
+  if (req.method !== 'POST') {
+    const email = await slimEmail(req, res, req.query?.t); if (!email) return;
+    return res.status(200).json({ ok: true, berichten: (await haalCoachBerichten(email)).slice(-30) });
+  }
+  const body = await leesBody(req);
+  const email = await slimEmail(req, res, body.t); if (!email) return;
+  const tekst = String(body.tekst || '').trim().slice(0, 1000);
+  if (tekst.length < 3) return res.status(400).json({ ok: false, fout: 'Typ je vraag.' });
+  const datum = new Date().toISOString().slice(0, 10);
+  const n = await redis(['INCR', `app:coachvraag:${email}:${datum}`]);
+  if (n.ok && n.result === 1) await redis(['EXPIRE', `app:coachvraag:${email}:${datum}`, '90000']);
+  if (n.ok && n.result > COACH_PER_DAG) return res.status(429).json({ ok: false, fout: 'Je hebt vandaag al veel gevraagd. Morgen kun je weer verder.' });
+
+  const berichten = await haalCoachBerichten(email);
+  const nu = new Date().toISOString();
+  let antwoord = null, medisch = false;
+  if (COACH_MEDISCH_WOORDEN.test(tekst)) { antwoord = COACH_MEDISCH; medisch = true; }
+  else if (CLAUDE_KEY) {
+    try {
+      const context = await coachContext(email);
+      // De laatste paar beurten mee, zodat een vervolgvraag begrepen wordt.
+      const eerder = berichten.slice(-6).map((b) => ({ role: b.van === 'ik' ? 'user' : 'assistant', content: b.tekst }));
+      while (eerder.length && eerder[0].role !== 'user') eerder.shift();
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': CLAUDE_KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01', 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-opus-5-5', max_tokens: 3000, output_config: { effort: 'low' }, fallbacks: 'default',
+          system: `${COACH_KENNIS}\n\nOVER DEZE RENNER\n${context}\n\nREGELS\n${COACH_REGELS}`,
+          messages: [...eerder, { role: 'user', content: tekst }]
+        }),
+        signal: AbortSignal.timeout(40000)
+      });
+      if (!r.ok) console.error('coach Claude', r.status, await r.text());
+      else {
+        const j = await r.json();
+        if (j.stop_reason === 'refusal') { antwoord = COACH_MEDISCH; medisch = true; }
+        else {
+          const t = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
+          if (t.includes('[MEDISCH]')) { antwoord = COACH_MEDISCH; medisch = true; } else if (t) antwoord = t;
+        }
+      }
+    } catch (e) { console.error('coach fout:', e); }
+  }
+  const nieuw = berichten.concat(
+    { van: 'ik', tekst, op: nu },
+    { van: 'coach', tekst: antwoord || COACH_STORING, op: new Date().toISOString(), medisch, storing: !antwoord }
+  ).slice(-60);
+  await redis(['SET', `app:coach:${email}`, JSON.stringify(nieuw)]);
+  return res.status(200).json({ ok: true, berichten: nieuw.slice(-30) });
 }
