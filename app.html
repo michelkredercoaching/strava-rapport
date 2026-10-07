@@ -253,6 +253,31 @@
   .nak-correctie { font-size:14px; white-space:pre-wrap; background:rgba(76,195,138,.08); border-left:3px solid var(--groen); padding:6px 10px; border-radius:3px; margin-top:6px; }
   .nak-correctie small { display:block; font-size:11px; color:var(--groen); letter-spacing:.06em; margin-bottom:2px; }
   .nak-tekst { width:100%; margin-top:6px; background:var(--black); border:1px solid rgba(255,255,255,.18); color:var(--white); font-family:inherit; font-size:15px; padding:10px; border-radius:4px; resize:vertical; }
+  /* Vandaag rijden: tabbladen, kleding, ochtendbericht */
+  .vr-tabs { display:grid; grid-template-columns:1fr 1fr; gap:4px; background:var(--black); border:1px solid var(--border); border-radius:8px; padding:4px; margin:12px 0 12px; }
+  .vr-tabs button { background:none; border:0; color:var(--muted); font-family:'Bebas Neue',sans-serif; font-size:19px; letter-spacing:.05em; padding:8px 6px 6px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .vr-tabs button.aan { background:var(--accent); color:#0A0A0A; }
+  .tab-slot { width:14px; height:14px; }
+  .kl-plan { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
+  .kl-plan label { display:block; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+  .kl-plan select { width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,.14); color:var(--white); font-family:inherit; font-size:16px; padding:10px; border-radius:4px; }
+  .kl-gevoel { display:flex; align-items:baseline; gap:10px; margin:14px 0 6px; }
+  .kl-gevoel b { font-family:'Bebas Neue',sans-serif; font-size:44px; font-weight:400; line-height:1; color:var(--accent); }
+  .kl-gevoel span { font-size:14px; color:var(--muted); }
+  .kl-lijst { list-style:none; display:grid; gap:6px; margin:6px 0 10px; }
+  .kl-lijst li { display:flex; gap:10px; font-size:15px; background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:9px 12px; }
+  .kl-lijst li::before { content:''; width:7px; height:7px; border-radius:50%; background:var(--accent); flex-shrink:0; margin-top:7px; }
+  .kl-tips p { font-size:14px; color:rgba(245,243,239,.88); background:rgba(255,107,26,.07); border-left:3px solid var(--accent); border-radius:3px; padding:7px 10px; margin-bottom:6px; }
+  .sb-oordeel .w2 { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin:8px 0 6px; }
+  .push { margin-top:16px; padding-top:14px; border-top:1px solid var(--border); }
+  .push > b { font-size:15px; }
+  .push .knop { margin-top:8px; }
+  .push-dagen { display:flex; gap:3px; }
+  .push-dagen button { flex:1; background:var(--surface2); border:1px solid rgba(255,255,255,.14); color:var(--muted); font-family:inherit; font-size:12px; padding:10px 0; border-radius:4px; cursor:pointer; }
+  .push-dagen button.aan { border-color:var(--accent); color:var(--white); background:rgba(255,107,26,.14); }
+  .push-rij { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:8px; }
+  .push-aan { color:var(--groen); font-size:14px; font-weight:600; }
+  .push-rij .sb-link { margin-top:0; }
   .voet { text-align:center; font-size:12px; color:rgba(245,243,239,.35); margin-top:30px; }
   .voet a { color:rgba(245,243,239,.5); }
 </style>
@@ -467,8 +492,18 @@ function bandenKaart(d) {
       <div class="sb-kou">Het wordt 6&deg;. Pomp je binnen, pomp dan iets harder. Buiten zit je dan precies goed.</div></div>
     <div class="voor">${SLOT}<b>Weer, kou en je fietsen meegerekend</b><span>Nat wegdek, kasseien of een koude ochtend: de slimme versie past je spanning zelf aan.</span>
       ${kanLid ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met de MKC-app</button>' : '<span class="klein">Binnenkort in het lidmaatschap</span>'}</div></div>`;
+  const vtab = btLees().tab === 'kleding' ? 'kleding' : 'banden';
+  const vtabs = `<div class="vr-tabs"><button type="button" data-kl="vrijtab" data-w="banden" class="${vtab === 'banden' ? 'aan' : ''}">Banden</button><button type="button" data-kl="vrijtab" data-w="kleding" class="${vtab === 'kleding' ? 'aan' : ''}">Kleding ${SLOT.replace('<svg', '<svg class="tab-slot"')}</button></div>`;
+  if (vtab === 'kleding') return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag oranje">Lid</span>
+    <div class="label">Vandaag rijden</div><h2>Wat trek je aan?</h2>${vtabs}
+    <div class="bt-slot"><div class="achter">
+      <div class="sb-weer"><span><b>6&deg;</b> in jouw plaats &middot; wind 30 km/u</span></div>
+      <div class="kl-gevoel"><b>2&deg;</b><span>voelt het onderweg</span></div>
+      <ul class="kl-lijst"><li>Thermoshirt met lange mouwen</li><li>Thermobroek</li><li>Winterjack</li><li>Winterhandschoenen</li><li>Overschoenen</li></ul></div>
+    <div class="voor">${SLOT}<b>Wat trek je aan voor jouw rit?</b><span>Op basis van het weer tijdens je hele rit, wind en regen, hoe hard je rijdt en of je het snel koud hebt. Met Michels eigen kledingindeling uit 9 jaar prof.</span>
+      ${d.lidOpen || d.beheer ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met de MKC-app</button>' : '<span class="klein">Binnenkort in het lidmaatschap</span>'}</div></div></div></div>`;
   return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag open">Gratis</span>
-    <div class="label">Bandenspanning</div><h2>Wat pomp je vandaag?</h2>
+    <div class="label">Vandaag rijden</div><h2>Wat pomp je vandaag?</h2>${vtabs}
     <p>Jouw gewicht en band, direct de juiste spanning voor en achter.</p>
     <div class="bt">
       <div class="bt-keuze">${knop('type', 'weg', 'Racefiets')}${knop('type', 'gravel', 'Gravel')}</div>
@@ -572,11 +607,13 @@ function sbVerborgen() { try { return JSON.parse(localStorage.getItem('mkcRitWeg
 // Een rit zonder oordeel, minstens een uur oud: vraag hoe het reed.
 function sbOordeelHtml() {
   const weg = sbVerborgen();
-  const r = (SB.ritten || []).find((x) => !x.oordeel && Date.now() - Date.parse(x.op) > 3600000 && Date.now() - Date.parse(x.op) < 14 * 86400000 && !weg.includes(x.id));
+  const open = (x) => !x.oordeel || (x.kleding && !x.oordeelKleding);
+  const r = (SB.ritten || []).find((x) => open(x) && Date.now() - Date.parse(x.op) > 3600000 && Date.now() - Date.parse(x.op) < 14 * 86400000 && !weg.includes(x.id));
   if (!r) return '';
   return `<div class="sb-oordeel"><b>Hoe reed je ${esc(r.fietsNaam || 'fiets')} op ${sbDatum(r.op)}?</b>
     <div class="w">${sbWeerTekst(r)} &middot; ${BT_LIB ? BT_LIB.nl(r.voor) : r.voor} voor, ${BT_LIB ? BT_LIB.nl(r.achter) : r.achter} achter</div>
-    <div class="bt-keuze"><button type="button" data-sb="oordeel" data-id="${r.id}" data-w="zacht">Te zacht</button><button type="button" data-sb="oordeel" data-id="${r.id}" data-w="goed">Precies goed</button><button type="button" data-sb="oordeel" data-id="${r.id}" data-w="hard">Te hard</button></div>
+    ${!r.oordeel ? `<div class="w2">Je banden</div><div class="bt-keuze"><button type="button" data-sb="oordeel" data-id="${r.id}" data-w="zacht">Te zacht</button><button type="button" data-sb="oordeel" data-id="${r.id}" data-w="goed">Precies goed</button><button type="button" data-sb="oordeel" data-id="${r.id}" data-w="hard">Te hard</button></div>` : ''}
+    ${r.kleding && !r.oordeelKleding ? `<div class="w2">Je kleding${r.kleding.gevoel != null ? ` (voelde als ${r.kleding.gevoel}&deg;)` : ''}</div><div class="bt-keuze"><button type="button" data-sb="oordeel" data-soort="kleding" data-id="${r.id}" data-w="koud">Te koud</button><button type="button" data-sb="oordeel" data-soort="kleding" data-id="${r.id}" data-w="goed">Precies goed</button><button type="button" data-sb="oordeel" data-soort="kleding" data-id="${r.id}" data-w="warm">Te warm</button></div>` : ''}
     <button type="button" class="sb-link" data-sb="ritweg" data-id="${r.id}">Niet gereden</button></div>`;
 }
 function sbGeheugenHtml(u) {
@@ -588,8 +625,8 @@ function sbGeheugenHtml(u) {
 function sbRijdHtml(f, u) {
   const vandaag = new Date().toISOString().slice(0, 10);
   const al = (SB.ritten || []).find((r) => r.fiets === f.id && String(r.op).slice(0, 10) === vandaag && r.voor === u.voor && r.achter === u.achter);
-  if (al) return '<div class="sb-bewaard">&#10003; Bewaard. Na je rit vraag ik hoe het reed.</div>';
-  return '<div class="sb-rijd"><button type="button" class="knop leeg" data-sb="rijd">Ik rijd hiermee</button><p class="klein">Dan vraag ik na je rit hoe het reed en onthoud ik het voor de volgende keer met dit weer.</p></div>';
+  if (al) return '<div class="sb-bewaard">&#10003; Bewaard. Na je rit vraag ik hoe het was.</div>';
+  return '<div class="sb-rijd"><button type="button" class="knop leeg" data-sb="rijd">Ik rijd hiermee</button><p class="klein">Dan vraag ik na je rit hoe je banden en je kleding waren, en onthoud ik het voor de volgende keer.</p></div>';
 }
 
 function sbWeerHtml() {
@@ -637,7 +674,8 @@ function slimBandenKaart() {
     p.fietsen = [{ id: 'f' + Date.now().toString(36), naam: v.type === 'gravel' ? 'Gravelbike' : 'Racefiets', type: v.type, breedte: Number(v.breedte), tubeless: !!v.tubeless, hookless: false }];
     SB.bewerk = true;
   }
-  const kop = `<span class="tag oranje">Lid</span><div class="label">Bandenspanning</div><h2>Wat pomp je vandaag?</h2>`;
+  const tab = sbKeuze().tab === 'kleding' ? 'kleding' : 'banden';
+  const kop = `<span class="tag oranje">Lid</span><div class="label">Vandaag rijden</div><h2>${tab === 'kleding' && !SB.bewerk ? 'Wat trek je aan?' : 'Wat pomp je vandaag?'}</h2>`;
   if (SB.bewerk) return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}<p>Zet je fietsen erin. Dan hoef je straks alleen nog te kiezen op welke je rijdt.</p>${sbBewerkHtml()}</div></div>`;
   const f = sbFiets(), uit = sbReken(f), nat = sbNat();
   const chips = p.fietsen.map((x) => `<button type="button" data-sb="fiets" data-id="${x.id}" class="${f && x.id === f.id ? 'aan' : ''}">${esc(x.naam)} <small>${x.breedte}</small></button>`).join('');
@@ -647,9 +685,19 @@ function slimBandenKaart() {
     ${sbGeheugenHtml(uit)}
     ${uit.redenen.length ? `<p class="klein">Meegerekend: ${uit.redenen.join(', ')}.</p>` : ''}
     ${sbRijdHtml(f, uit)}`;
+  const tabs = `<div class="vr-tabs"><button type="button" data-kl="tab" data-w="banden" class="${tab === 'banden' ? 'aan' : ''}">Banden</button><button type="button" data-kl="tab" data-w="kleding" class="${tab === 'kleding' ? 'aan' : ''}">Kleding</button></div>`;
+  if (tab === 'kleding') return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
+    ${sbOordeelHtml()}
+    ${sbWeerHtml()}
+    ${tabs}
+    ${kledingTabHtml()}
+    ${uit && SB.weer ? sbRijdHtml(f, uit) : ''}
+    ${pushHtml()}
+    <button type="button" class="sb-link" data-sb="bewerk">Mijn fietsen en gewicht</button></div></div>`;
   return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${sbOordeelHtml()}
     ${sbWeerHtml()}
+    ${tabs}
     <div class="sb-chips">${chips}</div>
     <div class="bt-keuze sb-grond">${grond}</div>
     <div class="bt-keuze"><button type="button" data-sb="nat" data-w="false" class="${!nat ? 'aan' : ''}">Droog</button><button type="button" data-sb="nat" data-w="true" class="${nat ? 'aan' : ''}">Nat wegdek</button></div>
@@ -657,6 +705,7 @@ function slimBandenKaart() {
     <div class="sb-vraag"><label for="sbVraag">Vraag het je bandencoach</label>
       <div class="sb-rij"><input id="sbVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen de Ronde met kasseien" value="${esc(SB.vraag)}"><button type="button" class="knop" data-sb="vraag" ${SB.vraagBezig ? 'disabled' : ''}>${SB.vraagBezig ? '...' : 'Vraag'}</button></div>
       ${SB.antwoord ? `<div class="sb-antwoord">${opmaak(SB.antwoord)}</div>` : ''}</div>
+    ${pushHtml()}
     <button type="button" class="sb-link" data-sb="bewerk">Mijn fietsen en gewicht</button></div></div>`;
 }
 
@@ -683,7 +732,8 @@ async function sbBewaarProfiel(stil) {
   return false;
 }
 async function sbStart() {
-  await sbLaadLib();
+  await Promise.all([sbLaadLib(), klLaadLib()]);
+  pushLaad();
   sbTeken();
   if (SB.profiel && SB.profiel.plaats && !SB.weer) sbHaalWeer();
 }
@@ -705,8 +755,8 @@ document.addEventListener('click', async (e) => {
   if (a === 'rijd' || a === 'oordeel') {
     const f = sbFiets(), u = sbReken(f);
     const body = a === 'rijd'
-      ? { t: leesToken(), rit: { fiets: f.id, fietsNaam: f.naam, voor: u.voor, achter: u.achter, temp: SB.weer ? SB.weer.temp : null, nat: u.nat, grond: u.grond[0] } }
-      : { t: leesToken(), id: k.dataset.id, oordeel: k.dataset.w };
+      ? { t: leesToken(), rit: { fiets: f.id, fietsNaam: f.naam, voor: u.voor, achter: u.achter, temp: SB.weer ? SB.weer.temp : null, nat: u.nat, grond: u.grond[0], kleding: (() => { const a = klReken(); return a ? { gevoel: a.gevoel, band: a.band } : null; })() } }
+      : k.dataset.soort === 'kleding' ? { t: leesToken(), id: k.dataset.id, oordeelKleding: k.dataset.w } : { t: leesToken(), id: k.dataset.id, oordeel: k.dataset.w };
     k.disabled = true;
     try {
       const j = await (await fetch(`${API}?actie=bandenritten`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
@@ -826,7 +876,7 @@ function beheerHtml(d) {
 }
 
 // ---- Lidmaatschap MKC-app (07-10-2026): €19 per maand via Mollie ----
-const LID_LIJST = ['De Core-app, doorlopend: na elke 12 weken een nieuw blok', 'Onbeperkt vragen aan je eigen MKC-coach: kent je analyse, je Core en je fietsen', 'Slimme bandenspanning: je fietsen bewaard, het weer van vandaag meegerekend en een vraagknop', 'Maandelijks opzegbaar'];
+const LID_LIJST = ['De Core-app, doorlopend: na elke 12 weken een nieuw blok', 'Slimme bandenspanning: je fietsen, het weer van vandaag en een geheugen', 'Kledingadvies voor je rit, plus een ochtendbericht met weer, spanning en kleding', 'Onbeperkt vragen aan je eigen coach, met Michels kennis uit 9 jaar prof en zijn coachervaring', 'Maandelijks opzegbaar'];
 function lidPitchHtml() {
   return `<div class="lidblok"><div class="label">MKC-app</div><h2>Word lid</h2>
     <div class="prijs">&euro;19<small>per maand</small></div>
@@ -1109,6 +1159,129 @@ document.addEventListener('click', (e) => {
   if (a === 'annuleer') { NAK.bewerk = null; nakTeken(); }
   if (a === 'bewaar') { const t = document.getElementById('nakTekst').value.trim(); if (!t) return; NAK.bewerk = null; k.disabled = true; nakLaad(k.dataset.id, t); }
   if (a === 'wis') { NAK.bewerk = null; nakLaad(k.dataset.id, ''); }
+});
+
+// ---- Kledingadvies en ochtendbericht (07-10-2026, alleen leden) ----
+// Rekent met /lib/kleding.js (Michels eigen indeling uit zondagmail 5), met het
+// weer tijdens je rit (vertrek + duur, per uur van Open-Meteo).
+let KL_LIB = null;
+async function klLaadLib() { if (!KL_LIB) { try { KL_LIB = await import('/lib/kleding.js'); } catch (e) {} } }
+const KL_DUUR = [[1, '1 uur'], [1.5, '1,5 uur'], [2, '2 uur'], [3, '3 uur'], [4, '4 uur'], [5, '5 uur of meer']];
+function klKeuze() { const k = sbKeuze(); return { over: Number(k.klOver || 0), duur: Number(k.klDuur || 2), hard: !!k.klHard }; }
+// Het weer tijdens je rit uit de uurlijst.
+function klRitWeer(over, duur) {
+  const w = SB.weer; if (!w) return null;
+  const uren = w.uren || [];
+  const stuk = uren.slice(Math.floor(over), Math.ceil(over + duur) + 1);
+  if (!stuk.length) return { temp: w.laagste, start: w.temp, wind: w.wind, regen: w.nat || w.regenStraks };
+  return { temp: Math.min(...stuk.map((u) => u.temp)), start: stuk[0].temp, wind: Math.max(...stuk.map((u) => u.wind)), regen: (over < 1 && w.nat) || stuk.reduce((a, u) => a + u.regen, 0) >= 0.5 };
+}
+function klReken() {
+  if (!KL_LIB || !SB.weer) return null;
+  const k = klKeuze(), rw = klRitWeer(k.over, k.duur);
+  if (!rw) return null;
+  const a = KL_LIB.kledingAdvies({ temp: rw.temp, start: rw.start, wind: rw.wind, regen: rw.regen, intensiteit: k.hard ? 'hard' : 'rustig', kouType: (SB.profiel && SB.profiel.kouType) || 'normaal', bijstel: KL_LIB.kledingBijstel(SB.ritten || []), duurUur: k.duur });
+  return a ? { ...a, rw } : null;
+}
+function kledingTabHtml() {
+  if (!SB.weer) return '<p class="klein" style="margin-top:12px">Kies hierboven je plek, dan reken ik met het weer tijdens je rit.</p>';
+  const k = klKeuze(), uren = SB.weer.uren || [];
+  const vertrek = [`<option value="0" ${k.over === 0 ? 'selected' : ''}>Nu</option>`].concat(uren.slice(1, 11).map((u, i) => `<option value="${i + 1}" ${k.over === i + 1 ? 'selected' : ''}>${u.uur}:00</option>`)).join('');
+  const kt = (SB.profiel && SB.profiel.kouType) || 'normaal';
+  const a = klReken();
+  const uit = !a ? '<p class="klein">Even rekenen...</p>' : `
+    <div class="kl-gevoel"><b>${a.gevoel}&deg;</b><span>voelt het onderweg${a.rw.temp !== a.gevoel ? ` (het wordt ${a.rw.temp}&deg;)` : ''}</span></div>
+    <ul class="kl-lijst">${a.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+    ${a.tips.length ? `<div class="kl-tips">${a.tips.map((t) => `<p>${esc(t)}</p>`).join('')}</div>` : ''}
+    <p class="klein">${esc(a.regel)}${a.redenen.length ? ` Meegerekend: ${esc(a.redenen.join(', '))}.` : ''}</p>`;
+  return `<div class="kl-plan">
+      <div><label for="klOver">Vertrek</label><select id="klOver">${vertrek}</select></div>
+      <div><label for="klDuur">Hoe lang</label><select id="klDuur">${KL_DUUR.map(([v, t]) => `<option value="${v}" ${k.duur === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    </div>
+    <div class="bt-keuze"><button type="button" data-kl="hard" data-w="0" class="${!k.hard ? 'aan' : ''}">Rustige rit</button><button type="button" data-kl="hard" data-w="1" class="${k.hard ? 'aan' : ''}">Harde training</button></div>
+    <div class="bt-keuze"><button type="button" data-kl="kou" data-w="koud" class="${kt === 'koud' ? 'aan' : ''}">Snel koud</button><button type="button" data-kl="kou" data-w="normaal" class="${kt === 'normaal' ? 'aan' : ''}">Normaal</button><button type="button" data-kl="kou" data-w="warm" class="${kt === 'warm' ? 'aan' : ''}">Snel warm</button></div>
+    ${uit}`;
+}
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-kl]'); if (!k) return;
+  if (k.dataset.kl === 'hard') { sbBewaarKeuze({ klHard: k.dataset.w === '1' }); return sbTeken(); }
+  if (k.dataset.kl === 'kou') { SB.profiel.kouType = k.dataset.w; sbTeken(); await sbBewaarProfiel(true); }
+  if (k.dataset.kl === 'tab') { sbBewaarKeuze({ tab: k.dataset.w }); return sbTeken(); }
+  if (k.dataset.kl === 'vrijtab') { btBewaar({ ...btLees(), tab: k.dataset.w }); return teken(); }
+});
+document.addEventListener('change', (e) => {
+  if (e.target.id === 'klOver') { sbBewaarKeuze({ klOver: Number(e.target.value) }); sbTeken(); }
+  if (e.target.id === 'klDuur') { sbBewaarKeuze({ klDuur: Number(e.target.value) }); sbTeken(); }
+});
+
+// ---- Ochtendbericht ----
+let PUSH = { geladen: false, key: null, inst: null, bezig: false, melding: '' };
+const DAGNAMEN = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
+const PUSH_TIJDEN = ['06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '11:00', '12:00'];
+function pushKan() { return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window; }
+function iosZonderApp() { return /iPhone|iPad|iPod/.test(navigator.userAgent) && !isApp(); }
+async function pushLaad() {
+  if (PUSH.geladen) return; PUSH.geladen = true;
+  try { const j = await (await fetch(`${API}?actie=push&t=${encodeURIComponent(leesToken())}`)).json(); if (j.ok) { PUSH.key = j.publicKey; PUSH.inst = j.instelling; } } catch (e) {}
+  sbTeken();
+}
+function pushHtml() {
+  const i = PUSH.inst || { aan: false, tijd: '07:00', dagen: [0, 1, 2, 3, 4, 5, 6] };
+  let inhoud;
+  if (iosZonderApp()) inhoud = '<p class="klein">Zet de app eerst op je beginscherm (deel-knop, Zet op beginscherm). Daarna kun je hier je ochtendbericht aanzetten.</p>';
+  else if (!pushKan()) inhoud = '<p class="klein">Je browser ondersteunt geen meldingen. Open de app vanaf je beginscherm of in Chrome.</p>';
+  else if (!PUSH.key) inhoud = '<p class="klein">Het ochtendbericht gaat binnenkort open.</p>';
+  else inhoud = `
+    <div class="kl-plan"><div><label for="pushTijd">Tijd</label><select id="pushTijd">${PUSH_TIJDEN.map((t) => `<option ${i.tijd === t ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+      <div><label>Dagen</label><div class="push-dagen">${[1, 2, 3, 4, 5, 6, 0].map((d) => `<button type="button" data-push="dag" data-d="${d}" class="${i.dagen.includes(d) ? 'aan' : ''}">${DAGNAMEN[d]}</button>`).join('')}</div></div></div>
+    ${i.aan ? `<div class="push-rij"><span class="push-aan">&#10003; Staat aan</span><button type="button" class="opv-k" data-push="test" ${PUSH.bezig ? 'disabled' : ''}>Stuur nu een test</button><button type="button" class="sb-link" data-push="uit">Uitzetten</button></div>`
+      : `<button type="button" class="knop" data-push="aan" ${PUSH.bezig ? 'disabled' : ''}>${PUSH.bezig ? 'Even toestemming vragen...' : 'Zet mijn ochtendbericht aan'}</button>`}
+    ${PUSH.melding ? `<p class="klein">${esc(PUSH.melding)}</p>` : ''}`;
+  return `<div class="push"><b>Ochtendbericht</b><p class="klein" style="margin-top:2px">Elke rijdag een melding met het weer, je bandenspanning en wat je aantrekt.</p>${inhoud}</div>`;
+}
+function b64naarBytes(s) { const p = '='.repeat((4 - s.length % 4) % 4); const r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...r].map((c) => c.charCodeAt(0))); }
+async function pushOpslaan(extra) {
+  const i = PUSH.inst || {};
+  const j = await (await fetch(`${API}?actie=push`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), tijd: i.tijd, dagen: i.dagen, ...extra }) })).json();
+  if (j.ok) PUSH.inst = j.instelling; else PUSH.melding = j.fout || 'Opslaan lukte niet.';
+  return j.ok;
+}
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-push]'); if (!k) return;
+  const a = k.dataset.push;
+  PUSH.inst = PUSH.inst || { aan: false, tijd: '07:00', dagen: [0, 1, 2, 3, 4, 5, 6] };
+  PUSH.melding = '';
+  if (a === 'dag') {
+    const d = Number(k.dataset.d), l = PUSH.inst.dagen;
+    PUSH.inst.dagen = l.includes(d) ? l.filter((x) => x !== d) : l.concat(d);
+    if (PUSH.inst.aan) await pushOpslaan({}); return sbTeken();
+  }
+  if (a === 'aan') {
+    PUSH.bezig = true; sbTeken();
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      const toestemming = await Notification.requestPermission();
+      if (toestemming !== 'granted') { PUSH.melding = 'Je gaf geen toestemming voor meldingen. Dat kun je later aanpassen in de instellingen van je telefoon.'; }
+      else {
+        const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64naarBytes(PUSH.key) });
+        if (await pushOpslaan({ sub: sub.toJSON() })) PUSH.melding = 'Gelukt. Tik op "Stuur nu een test" om te zien hoe hij eruitziet.';
+      }
+    } catch (er) { PUSH.melding = 'Aanzetten lukte niet op dit toestel.'; }
+    PUSH.bezig = false; return sbTeken();
+  }
+  if (a === 'uit') { await pushOpslaan({ uit: true }); return sbTeken(); }
+  if (a === 'test') {
+    PUSH.bezig = true; sbTeken();
+    try { const j = await (await fetch(`${API}?actie=pushtest`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken() }) })).json(); PUSH.melding = j.ok ? 'Verstuurd. Je melding komt zo binnen.' : (j.fout || 'Versturen lukte niet.'); }
+    catch (er) { PUSH.melding = 'Verbinding mislukt.'; }
+    PUSH.bezig = false; return sbTeken();
+  }
+});
+document.addEventListener('change', async (e) => {
+  if (e.target.id !== 'pushTijd') return;
+  PUSH.inst = PUSH.inst || { aan: false, tijd: '07:00', dagen: [0, 1, 2, 3, 4, 5, 6] };
+  PUSH.inst.tijd = e.target.value;
+  if (PUSH.inst.aan) { await pushOpslaan({}); sbTeken(); }
 });
 
 async function laadOverzicht() {
