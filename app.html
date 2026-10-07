@@ -248,6 +248,11 @@
   .gratis-teller a { color:var(--accent); }
   .cc-lijst .gratis-teller { text-align:center; }
   .ai-verbruik { display:block; font-size:11px; letter-spacing:0; text-transform:none; color:var(--muted); font-weight:400; margin-top:2px; }
+  .nak { background:#0f1410; border-color:rgba(76,195,138,.4); }
+  .nak-antwoord { font-size:14px; color:rgba(245,243,239,.85); white-space:pre-wrap; margin:6px 0; }
+  .nak-correctie { font-size:14px; white-space:pre-wrap; background:rgba(76,195,138,.08); border-left:3px solid var(--groen); padding:6px 10px; border-radius:3px; margin-top:6px; }
+  .nak-correctie small { display:block; font-size:11px; color:var(--groen); letter-spacing:.06em; margin-bottom:2px; }
+  .nak-tekst { width:100%; margin-top:6px; background:var(--black); border:1px solid rgba(255,255,255,.18); color:var(--white); font-family:inherit; font-size:15px; padding:10px; border-radius:4px; resize:vertical; }
   .voet { text-align:center; font-size:12px; color:rgba(245,243,239,.35); margin-top:30px; }
   .voet a { color:rgba(245,243,239,.5); }
 </style>
@@ -852,7 +857,7 @@ function isNieuw(d) { return !d.core && !d.analyse && !isLid(d); }
 function teken() {
   const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `<div class="kop"><div class="logo">MKC<span>.</span></div><button class="uit" data-actie="uitloggen">Uitloggen</button></div>
-    ${beheerHtml(d)}${opvolgHtml()}
+    ${beheerHtml(d)}${opvolgHtml()}${nakijkHtml()}
     <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
     ${isNieuw(d) ? `<div class="welkom"><b>Zo werkt je app</b>
       <ol><li><span>1</span>Vul hieronder je gewicht en band in: je ziet meteen wat je pompt. Gratis, voor elke rit.</li>
@@ -1062,6 +1067,48 @@ document.addEventListener('click', (e) => {
   if (k.dataset.opv === 'klap') { OPV.open = !OPV.open; opvTeken(); if (OPV.open) opvLaad(); }
   if (k.dataset.opv === 'alles') { OPV.alles = !OPV.alles; opvTeken(); }
   if (k.dataset.opv === 'status') { k.disabled = true; opvLaad(k.dataset.id, k.dataset.s); }
+});
+
+// ---- Coach-antwoorden nakijken (alleen Michel) ----
+// Elk antwoord van de MKC-coach en de bandenvraag staat hier. Met "Zou ik anders
+// zeggen" schrijft Michel hoe hij het zelf zegt; dat gaat als voorbeeld mee in
+// volgende vragen (api/app.js actie=antwoorden).
+let NAK = { lijst: null, open: false, bewerk: null, aantal: 0 };
+function nakijkHtml() {
+  if (!D || !D.beheer) return '';
+  const l = NAK.lijst;
+  const kop = `<button type="button" class="opv-kop" data-nak="klap"><span><b>Coach-antwoorden nakijken</b> ${l === null ? '' : `<i>${l.length} recent &middot; ${NAK.aantal} correcties</i>`}</span><span>${NAK.open ? '&#9650;' : '&#9660;'}</span></button>`;
+  if (!NAK.open) return `<div class="opv nak" id="nakijk">${kop}</div>`;
+  const datum = (op) => new Date(op).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const rij = (a) => `<div class="opv-rij ${a.correctie ? 'afgehandeld-niet' : ''}">
+      <div class="opv-top"><b>${a.bron === 'bandvraag' ? 'Bandenvraag' : 'MKC-coach'}</b><span>${datum(a.op)} &middot; ${esc(a.email)}</span></div>
+      <div class="opv-vraag">${esc(a.vraag)}</div>
+      <div class="nak-antwoord">${opmaak(a.antwoord)}</div>
+      ${NAK.bewerk === a.id ? `<textarea class="nak-tekst" id="nakTekst" rows="5" placeholder="Zo zou ik het zeggen...">${esc(a.correctie || '')}</textarea>
+        <div class="opv-knoppen"><button type="button" class="opv-k oranje" data-nak="bewaar" data-id="${a.id}">Bewaar</button><button type="button" class="opv-k" data-nak="annuleer">Annuleer</button>${a.correctie ? `<button type="button" class="opv-k" data-nak="wis" data-id="${a.id}">Correctie wissen</button>` : ''}</div>`
+      : a.correctie ? `<div class="nak-correctie"><small>Jouw versie (gaat mee als voorbeeld)</small>${opmaak(a.correctie)}</div><div class="opv-knoppen"><button type="button" class="opv-k" data-nak="bewerk" data-id="${a.id}">Aanpassen</button></div>`
+      : `<div class="opv-knoppen"><button type="button" class="opv-k" data-nak="bewerk" data-id="${a.id}">Zou ik anders zeggen</button></div>`}</div>`;
+  return `<div class="opv nak open" id="nakijk">${kop}
+    ${l === null ? '<p class="klein">Laden...</p>' : l.length ? l.map(rij).join('') : '<p class="klein">Nog geen antwoorden. Zodra iemand de coach iets vraagt, staat het hier.</p>'}</div>`;
+}
+function nakTeken() { const el = document.getElementById('nakijk'); if (el) el.outerHTML = nakijkHtml(); }
+async function nakLaad(id, correctie) {
+  try {
+    const j = id != null
+      ? await (await fetch(`${API}?actie=antwoorden`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), id, correctie }) })).json()
+      : await (await fetch(`${API}?actie=antwoorden&t=${encodeURIComponent(leesToken())}`)).json();
+    if (j.ok) { NAK.lijst = j.antwoorden; NAK.aantal = j.aantalCorrecties; }
+  } catch (e) {}
+  nakTeken();
+}
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-nak]'); if (!k) return;
+  const a = k.dataset.nak;
+  if (a === 'klap') { NAK.open = !NAK.open; nakTeken(); if (NAK.open) nakLaad(); }
+  if (a === 'bewerk') { NAK.bewerk = k.dataset.id; nakTeken(); setTimeout(() => document.getElementById('nakTekst')?.focus(), 30); }
+  if (a === 'annuleer') { NAK.bewerk = null; nakTeken(); }
+  if (a === 'bewaar') { const t = document.getElementById('nakTekst').value.trim(); if (!t) return; NAK.bewerk = null; k.disabled = true; nakLaad(k.dataset.id, t); }
+  if (a === 'wis') { NAK.bewerk = null; nakLaad(k.dataset.id, ''); }
 });
 
 async function laadOverzicht() {
