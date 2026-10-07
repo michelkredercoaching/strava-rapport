@@ -39,6 +39,7 @@ import crypto from 'crypto';
 import { coreVoorEmail, emailVoorCoreToken } from './core.js';
 import { lidBeeld, haalLid, lidOpen } from './lid.js';
 import { COACH_KENNIS, COACH_REGELS } from '../lib/coach-kennis.js';
+import { meldMedisch } from '../lib/meld-medisch.js';
 
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || process.env.KV_REST_API_URL;
@@ -431,7 +432,7 @@ async function routeBandVraag(req, res) {
 // ===========================================================================
 const COACH_PER_DAG = 25;
 const COACH_MEDISCH = 'Dit ga ik niet op afstand beantwoorden, daar is je lijf te belangrijk voor. Stop met wat pijn doet en laat het checken door je huisarts of fysiotherapeut, zeker als het uitstraalt, je tintelingen voelt, het erger wordt of als het om je hart, ademhaling of duizeligheid gaat. Is dat in orde, dan denk ik graag mee over hoe je weer opbouwt.';
-const COACH_MEDISCH_WOORDEN = /(uit\s*stra+l|tintel|doof|gevoelloos|hernia|ischias|operatie|geopereerd|zwanger|scherpe pijn|stekende pijn|bloed|nachtelijke pijn|verlamd|krachtverlies|koorts|gebroken|breuk|pijn op (de|mijn) borst|borstpijn|hartklop|hartritme|duizel|flauw|benauwd|medicijn)/i;
+const COACH_MEDISCH_WOORDEN = /(uit\s*stra+l|stra+l\w*\s+(het\s+)?(uit|door)|tintel|doof|gevoelloos|hernia|ischias|operatie|geopereerd|zwanger|scherpe pijn|stekende pijn|bloed|nachtelijke pijn|verlamd|krachtverlies|koorts|gebroken|breuk|pijn op (de|mijn) borst|borstpijn|hartklop|hartritme|duizel|flauw|benauwd|medicijn)/i;
 const COACH_STORING = 'Ik kan je vraag nu even niet beantwoorden. Probeer het over een paar minuten nog eens.';
 
 async function haalCoachBerichten(email) {
@@ -509,5 +510,10 @@ async function routeCoach(req, res) {
     { van: 'coach', tekst: antwoord || COACH_STORING, op: new Date().toISOString(), medisch, storing: !antwoord }
   ).slice(-60);
   await redis(['SET', `app:coach:${email}`, JSON.stringify(nieuw)]);
+  if (medisch) {
+    const core = await coreVoorEmail(email);
+    await meldMedisch({ email, naam: (core && core.naam) || '', bron: 'mkc-coach', vraag: tekst,
+      extra: core ? `Doet de Core-app: blok ${core.blok || 1}, week ${core.weekInBlok || core.week}.` : 'Doet de Core-app niet.' });
+  }
   return res.status(200).json({ ok: true, berichten: nieuw.slice(-30) });
 }
