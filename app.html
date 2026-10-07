@@ -157,6 +157,56 @@
   .sb-fiets { background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:10px; display:grid; gap:6px; }
   .sb-fiets .bt-keuze select { flex:1; }
   .sb-weg { background:none; border:1px solid rgba(255,255,255,.14); color:var(--muted); font-size:20px; width:42px; border-radius:4px; cursor:pointer; }
+  /* Gratis bandentool: de slimme versie wazig als voorproefje */
+  .bt-slot { position:relative; margin-top:14px; border:1px solid rgba(255,107,26,.35); border-radius:8px; overflow:hidden; }
+  .bt-slot .achter { filter:blur(2px); opacity:.8; pointer-events:none; user-select:none; padding:12px; }
+  .bt-slot .achter .sb-weer, .bt-slot .achter .sb-kou { margin:0 0 8px; }
+  .bt-slot .voor { position:relative; border-top:1px solid rgba(255,107,26,.25); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:6px; padding:14px; background:rgba(255,107,26,.06); }
+  .bt-slot .voor svg { width:22px; height:22px; }
+  .bt-slot .voor b { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.03em; line-height:1.05; }
+  .bt-slot .voor span { font-size:13px; color:rgba(245,243,239,.8); max-width:280px; }
+  .bt-slot .voor .knop { width:auto; font-size:16px; padding:8px 14px 6px; margin-top:4px; }
+  /* MKC-coach */
+  .cc-fab { position:fixed; right:16px; bottom:max(16px, env(safe-area-inset-bottom)); z-index:40; display:flex; align-items:center; gap:10px; background:var(--accent); color:#0A0A0A; border:none; border-radius:99px; padding:6px 18px 6px 6px; font-family:'Bebas Neue',sans-serif; font-size:19px; letter-spacing:.05em; cursor:pointer; box-shadow:0 10px 30px rgba(0,0,0,.5), 0 0 0 1px rgba(255,107,26,.4); }
+  .cc-fab .cc-av { width:38px; height:38px; }
+  .cc-av { border-radius:50%; background:#0A0A0A; border:2px solid var(--accent); overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .cc-av img { width:100%; height:100%; display:block; }
+  .cc-paneel { position:fixed; right:16px; bottom:16px; z-index:45; width:min(400px, calc(100vw - 32px)); height:min(620px, calc(100vh - 32px)); background:#101010; border:1px solid rgba(255,107,26,.35); border-radius:14px; display:none; flex-direction:column; overflow:hidden; box-shadow:0 24px 70px rgba(0,0,0,.7); }
+  .cc-paneel.open { display:flex; }
+  .cc-kop { display:flex; align-items:center; gap:12px; padding:14px 14px 12px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(255,107,26,.09), transparent); }
+  .cc-kop .cc-av { width:44px; height:44px; }
+  .cc-kop .nm { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.04em; line-height:1; display:flex; align-items:center; gap:8px; }
+  .cc-kop .ai { font-family:'DM Sans',sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.12em; color:var(--muted); border:1px solid rgba(255,255,255,.2); border-radius:4px; padding:1px 5px; }
+  .cc-kop .st { font-size:12px; color:var(--muted); margin-top:3px; display:flex; align-items:center; gap:6px; }
+  .cc-kop .st::before { content:''; width:7px; height:7px; border-radius:50%; background:var(--groen); }
+  .cc-terug { background:none; border:none; color:var(--white); font-size:15px; font-weight:600; display:flex; align-items:center; gap:4px; padding:6px 8px 6px 0; cursor:pointer; flex-shrink:0; font-family:inherit; }
+  .cc-terug span { color:var(--accent); font-size:22px; line-height:1; }
+  .cc-lijst { flex:1; overflow-y:auto; padding:16px 14px 8px; display:flex; flex-direction:column; gap:10px; }
+  .cc-b { max-width:86%; padding:10px 13px; border-radius:14px; font-size:14.5px; line-height:1.55; white-space:pre-wrap; }
+  .cc-b.ik { align-self:flex-end; background:var(--accent); color:#0A0A0A; border-bottom-right-radius:4px; }
+  .cc-b.coach { align-self:flex-start; background:#1c1c1c; border:1px solid var(--border); border-bottom-left-radius:4px; }
+  .cc-b.let { border-color:rgba(255,138,92,.5); }
+  .cc-tijd { font-size:10.5px; color:var(--muted); margin-top:3px; }
+  .cc-typen { align-self:flex-start; background:#1c1c1c; border:1px solid var(--border); border-radius:14px; padding:12px 14px; display:flex; gap:5px; }
+  .cc-typen i { width:7px; height:7px; border-radius:50%; background:var(--muted); animation:ccPunt 1.2s infinite ease-in-out; }
+  .cc-typen i:nth-child(2) { animation-delay:.15s; } .cc-typen i:nth-child(3) { animation-delay:.3s; }
+  @keyframes ccPunt { 0%,60%,100% { opacity:.3; transform:translateY(0); } 30% { opacity:1; transform:translateY(-4px); } }
+  .cc-chips { display:flex; gap:6px; overflow-x:auto; padding:6px 14px 10px; scrollbar-width:none; }
+  .cc-chips::-webkit-scrollbar { display:none; }
+  .cc-chips button { flex-shrink:0; background:transparent; border:1px solid rgba(255,107,26,.45); color:var(--white); border-radius:99px; padding:7px 12px; font-size:13px; cursor:pointer; font-family:inherit; }
+  .cc-invoer { display:flex; gap:8px; align-items:flex-end; padding:10px 12px max(12px, env(safe-area-inset-bottom)); border-top:1px solid var(--border); }
+  .cc-invoer textarea { flex:1; min-height:44px; max-height:120px; resize:none; border-radius:22px; padding:11px 16px; background:#1a1a1a; border:1px solid rgba(255,255,255,.14); color:var(--white); font-family:inherit; font-size:16px; }
+  .cc-invoer textarea:focus { outline:none; border-color:var(--accent); }
+  .cc-invoer button { width:44px; height:44px; border-radius:50%; border:none; background:var(--accent); color:#0A0A0A; font-size:20px; cursor:pointer; flex-shrink:0; }
+  .cc-invoer button:disabled { opacity:.45; }
+  .cc-voet { font-size:10.5px; color:rgba(245,243,239,.4); text-align:center; padding:0 14px 8px; }
+  .cc-slot { position:relative; flex:1; display:flex; flex-direction:column; }
+  .cc-slot .achter { filter:blur(3px); opacity:.45; display:flex; flex-direction:column; gap:10px; pointer-events:none; user-select:none; }
+  .cc-slotkaart { margin-top:16px; background:var(--surface); border:1px solid rgba(255,107,26,.5); border-radius:10px; padding:16px; }
+  .cc-slotkaart h3 { font-family:'Bebas Neue',sans-serif; font-size:26px; line-height:1; text-transform:uppercase; margin:2px 0 8px; }
+  .cc-slotkaart p { font-size:14px; color:rgba(245,243,239,.8); margin-bottom:12px; }
+  .wrap { padding-bottom:70px; }
+  @media (max-width:560px) { .cc-paneel { right:0; bottom:0; width:100vw; height:100dvh; border-radius:0; border:none; padding-top:env(safe-area-inset-top); } }
   .voet { text-align:center; font-size:12px; color:rgba(245,243,239,.35); margin-top:30px; }
   .voet a { color:rgba(245,243,239,.5); }
 </style>
@@ -349,7 +399,15 @@ function bandenKaart(d) {
   if (toonSlim(d)) return slimBandenKaart();
   const v = btWaarden();
   const knop = (veld, waarde, tekst) => `<button type="button" data-bt="${veld}" data-w="${waarde}" class="${String(v[veld]) === String(waarde) ? 'aan' : ''}">${tekst}</button>`;
-  const slim = isLid(d) ? '' : `<div class="bt-slim"><b>Met de MKC-app slimmer:</b> je fietsen bewaard en het weer van vandaag automatisch meegerekend. Nat wegdek, kou of kasseien, je ziet meteen wat je pompt.</div>`;
+  // Het voorproefje van de slimme versie: echt beeld, wazig, met slot erover.
+  const kanLid = d.lidOpen || d.beheer;
+  const slim = `<div class="bt-slot"><div class="achter">
+      <div class="sb-weer"><span><b>6&deg;</b> in jouw plaats &middot; <b class="nat">nat wegdek</b></span></div>
+      <div class="sb-chips"><button class="aan">Racefiets <small>28</small></button><button>Gravel <small>40</small></button></div>
+      <div class="bt-keuze"><button class="aan">Droog</button><button>Nat wegdek</button></div>
+      <div class="sb-kou">Het wordt 6&deg;. Pomp je binnen, pomp dan iets harder. Buiten zit je dan precies goed.</div></div>
+    <div class="voor">${SLOT}<b>Weer, kou en je fietsen meegerekend</b><span>Nat wegdek, kasseien of een koude ochtend: de slimme versie past je spanning zelf aan.</span>
+      ${kanLid ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met de MKC-app</button>' : '<span class="klein">Binnenkort in het lidmaatschap</span>'}</div></div>`;
   return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag open">Gratis</span>
     <div class="label">Bandenspanning</div><h2>Wat pomp je vandaag?</h2>
     <p>Jouw gewicht en band, direct de juiste spanning voor en achter.</p>
@@ -358,7 +416,6 @@ function bandenKaart(d) {
       <div><label for="btGewicht">Je gewicht (kg)</label><input id="btGewicht" type="number" inputmode="numeric" min="40" max="150" placeholder="bijv. 78" value="${esc(v.gewicht || '')}"></div>
       <div><label for="btBreedte">Bandbreedte</label><select id="btBreedte">${BT_BREEDTES[v.type].map((b) => `<option value="${b}" ${Number(v.breedte) === b ? 'selected' : ''}>${b} mm</option>`).join('')}</select></div>
       <div class="bt-keuze">${knop('tubeless', 'false', 'Binnenband')}${knop('tubeless', 'true', 'Tubeless')}</div>
-      <div class="bt-keuze">${knop('nat', 'false', 'Droog')}${knop('nat', 'true', 'Nat wegdek')}</div>
     </div>
     <div id="btUit"></div>${slim}</div></div>`;
 }
@@ -580,10 +637,10 @@ async function btReken() {
   const a = BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: v.type, gewicht: v.gewicht, breedte: v.breedte, tubeless: v.tubeless ? 'tubeless' : 'binnenband' }));
   if (!a) { uit.innerHTML = ''; return; }
   // Nat wegdek: 0,3 bar eraf, dezelfde regel als op de kaart en in de tips.
-  const min = v.type === 'gravel' ? 1.3 : 2.5, eraf = v.nat ? 0.3 : 0;
+  const min = v.type === 'gravel' ? 1.3 : 2.5, eraf = 0;
   const voor = Math.max(min, a.voor - eraf), achter = Math.max(min, a.achter - eraf);
   uit.innerHTML = `<div class="bt-uit"><div><span>Voor</span><b>${BT_LIB.nl(voor)}</b><small>bar &middot; ${BT_LIB.psi(voor)} psi</small></div><div><span>Achter</span><b>${BT_LIB.nl(achter)}</b><small>bar &middot; ${BT_LIB.psi(achter)} psi</small></div></div>
-    <p class="klein">${v.nat ? 'Nat wegdek: 0,3 bar minder voor meer grip. ' : ''}${achter > BT_LIB.HOOKLESS_MAX ? 'Hookless velg? Ga nooit boven de 5,0 bar.' : ''}</p>`;
+    <p class="klein">${achter > BT_LIB.HOOKLESS_MAX ? 'Hookless velg? Ga nooit boven de 5,0 bar.' : ''}</p>`;
 }
 document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-bt]'); if (!k) return;
@@ -625,7 +682,7 @@ function beheerHtml(d) {
 }
 
 // ---- Lidmaatschap MKC-app (07-10-2026): €19 per maand via Mollie ----
-const LID_LIJST = ['De Core-app, doorlopend: na elke 12 weken een nieuw blok', 'Je Core-coach: direct antwoord op je vragen', 'Slimme bandenspanning: je fietsen bewaard, het weer van vandaag meegerekend en een vraagknop', 'Maandelijks opzegbaar'];
+const LID_LIJST = ['De Core-app, doorlopend: na elke 12 weken een nieuw blok', 'Je eigen MKC-coach: kent je analyse, je Core en je fietsen, en antwoordt dag en nacht', 'Slimme bandenspanning: je fietsen bewaard, het weer van vandaag meegerekend en een vraagknop', 'Maandelijks opzegbaar'];
 function lidPitchHtml() {
   return `<div class="lidblok"><div class="label">MKC-app</div><h2>Word lid</h2>
     <div class="prijs">&euro;19<small>per maand</small></div>
@@ -659,15 +716,18 @@ function teken() {
     ${isLid(d) ? `<div class="groepkop">Mijn lidmaatschap</div>${lidStatusHtml(d.lid)}` : ''}
     <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
   if (toonSlim(d)) sbStart(); else btReken();
+  coachBouw();
+  if (document.getElementById('ccPaneel').classList.contains('open')) coachLijst();
 }
 
 document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-actie]'); if (!k) return;
   const actie = k.dataset.actie;
-  if (actie === 'bekijk') { BEKIJK = k.dataset.w; teken(); }
+  if (actie === 'bekijk') { BEKIJK = k.dataset.w; CC.berichten = null; teken(); }
   if (actie === 'wordlid') wordLid(k);
+  if (actie === 'naarlid') { const b = document.querySelector('.lidblok'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   if (actie === 'opzeggen') zegOp(k);
-  if (actie === 'uitloggen') { wisToken(); D = null; toonLogin('Je bent uitgelogd.'); }
+  if (actie === 'uitloggen') { wisToken(); D = null; CC.berichten = null; document.getElementById('ccFab')?.remove(); document.getElementById('ccPaneel')?.remove(); toonLogin('Je bent uitgelogd.'); }
   if (actie === 'appweg') { try { localStorage.setItem('mkcAppWeg', '1'); } catch (e) {} teken(); }
   if (actie === 'installeer' && installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; teken(); }); }
 });
@@ -692,6 +752,99 @@ async function zegOp(knop) {
     if (!j.ok) alert(j.fout || 'Opzeggen lukte niet.');
   } catch { alert('Verbinding mislukt.'); }
   laadOverzicht();
+}
+
+// ===========================================================================
+// MKC-COACH (stap 4, 07-10-2026): één coach-knop in de hele app. Leden chatten
+// (api/app.js actie=coach), niet-leden zien wat het is en kunnen lid worden.
+// Staat buiten #app, zodat hij blijft staan als de pagina opnieuw getekend wordt.
+// ===========================================================================
+const CC_NAAM = 'MKC-coach';
+const CC_SNEL = ['Hoe bepaal ik mijn FTP?', 'Ik ben altijd moe, wat doe ik fout?', 'Hoe train ik met weinig tijd?', 'Wat eet ik op een lange rit?', 'Hoe past core naast mijn fietstraining?'];
+let CC = { berichten: null, bezig: false };
+const ccMag = () => !!(D && D.bandenSlim && (isLid(D) || (D.beheer && BEKIJK === 'alles')));
+function coachBouw() {
+  if (document.getElementById('ccPaneel')) return;
+  document.body.insertAdjacentHTML('beforeend', `
+    <button class="cc-fab" id="ccFab" aria-label="Vraag je coach"><span class="cc-av"><img src="/icoon-192.png" alt=""></span>Vraag je coach</button>
+    <div class="cc-paneel" id="ccPaneel" role="dialog" aria-label="${CC_NAAM}">
+      <div class="cc-kop"><button class="cc-terug" id="ccTerug" aria-label="Terug"><span>&#8249;</span>Terug</button><span class="cc-av"><img src="/icoon-192.png" alt=""></span>
+        <div><div class="nm">${CC_NAAM}<span class="ai">AI</span></div><div class="st">Getraind op Michels methode &middot; antwoordt direct</div></div></div>
+      <div class="cc-lijst" id="ccLijst"></div>
+      <div class="cc-chips" id="ccChips">${CC_SNEL.map((v) => `<button>${esc(v)}</button>`).join('')}</div>
+      <div class="cc-invoer" id="ccInvoer"><textarea id="ccTekst" rows="1" placeholder="Stel je vraag..."></textarea><button id="ccStuur" aria-label="Versturen">&#10148;</button></div>
+      <div class="cc-voet">Bij pijn of een medische vraag krijg je geen advies, maar het verzoek om het te laten checken.</div>
+    </div>`);
+  $('#ccFab').onclick = () => coachOpen(true);
+  $('#ccTerug').onclick = () => coachOpen(false);
+  $('#ccStuur').onclick = () => coachStuur($('#ccTekst').value);
+  $('#ccChips').onclick = (e) => { const b = e.target.closest('button'); if (b) coachStuur(b.textContent); };
+  const ta = $('#ccTekst');
+  ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(120, ta.scrollHeight) + 'px'; });
+  ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); coachStuur(ta.value); } });
+}
+// Openen zet een stap in de geschiedenis: de terugknop van de telefoon sluit de chat.
+function coachOpen(aan) {
+  coachBouw();
+  const open = $('#ccPaneel').classList.contains('open');
+  if (aan && !open) history.pushState({ coach: 1 }, '');
+  if (!aan && open && history.state && history.state.coach) { history.back(); return; }
+  coachZet(aan);
+}
+async function coachZet(aan) {
+  $('#ccPaneel').classList.toggle('open', aan);
+  $('#ccFab').style.display = aan ? 'none' : '';
+  if (!aan) return;
+  if (ccMag() && CC.berichten === null) {
+    CC.berichten = [];
+    coachLijst();
+    try { const j = await (await fetch(`${API}?actie=coach&t=${encodeURIComponent(leesToken())}`)).json(); if (j.ok) CC.berichten = j.berichten; } catch (e) {}
+  }
+  coachLijst();
+  if (ccMag()) setTimeout(() => $('#ccTekst').focus(), 50);
+}
+window.addEventListener('popstate', () => { const p = document.getElementById('ccPaneel'); if (p && p.classList.contains('open')) coachZet(false); });
+function coachLijst(typen) {
+  const l = $('#ccLijst'); if (!l) return;
+  const mag = ccMag();
+  $('#ccInvoer').style.display = mag ? '' : 'none';
+  const voornaam = String((D && D.naam) || '').split(' ')[0];
+  if (!mag) {
+    // Niet-lid: een voorbeeldgesprek, wazig, met het aanbod eroverheen.
+    $('#ccChips').style.display = 'none';
+    l.innerHTML = `<div class="cc-slot"><div class="achter">
+        <div class="cc-b ik">Ik train 8 uur per week maar word niet sneller. Wat doe ik fout?</div>
+        <div class="cc-b coach">Je rustige ritten zijn waarschijnlijk te hard en je harde ritten te zacht. Met jouw FTP van 248 W rijd je rustig onder de 186 W. Plan twee gerichte trainingen per week en houd de rest echt rustig.</div>
+        <div class="cc-b ik">En mijn core erbij?</div>
+        <div class="cc-b coach">Je zit in week 5 van je Core-app. Doe je sessies op je rustige dagen, niet voor je intervaltraining.</div></div>
+      <div class="cc-slotkaart"><div class="label">Je eigen coach</div><h3>Altijd iemand om het aan te vragen</h3>
+        <p>De MKC-coach kent jouw analyse, je Core-voortgang en je fietsen, en is getraind op Michels methode. Vraag het dag en nacht.</p>
+        ${D && (D.lidOpen || D.beheer) ? `<button class="knop" data-actie="wordlid">Word lid voor &euro;19 per maand</button><p class="klein">Maandelijks opzegbaar.</p>` : `<p class="klein">Onderdeel van het lidmaatschap van de MKC-app, dat binnenkort opengaat.</p>`}</div></div>`;
+    return;
+  }
+  const welkom = `Hoi${voornaam ? ' ' + esc(voornaam) : ''}! Ik ben je ${CC_NAAM}. Ik ken je analyse, je Core-app en je fietsen. Vraag me alles over training, herstel, voeding op de fiets of je materiaal.`;
+  const tijd = (op) => new Date(op).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const lijst = CC.berichten || [];
+  l.innerHTML = `<div class="cc-b coach">${welkom}</div>` + lijst.map((b) => b.van === 'ik'
+      ? `<div style="align-self:flex-end;max-width:86%;text-align:right"><div class="cc-b ik" style="max-width:100%">${esc(b.tekst)}</div><div class="cc-tijd">${tijd(b.op)}</div></div>`
+      : `<div style="align-self:flex-start;max-width:86%"><div class="cc-b coach ${b.medisch ? 'let' : ''}" style="max-width:100%">${esc(b.tekst)}</div><div class="cc-tijd">${CC_NAAM} &middot; ${tijd(b.op)}</div></div>`).join('')
+    + (typen ? `<div class="cc-b ik" style="align-self:flex-end">${esc(typen)}</div><div class="cc-typen"><i></i><i></i><i></i></div>` : '');
+  $('#ccChips').style.display = lijst.length || typen ? 'none' : '';
+  l.scrollTop = l.scrollHeight;
+}
+async function coachStuur(tekst) {
+  tekst = String(tekst || '').trim();
+  if (CC.bezig || tekst.length < 3 || !ccMag()) return;
+  CC.bezig = true; $('#ccStuur').disabled = true; $('#ccTekst').value = ''; $('#ccTekst').style.height = '';
+  coachLijst(tekst);
+  let fout = '';
+  try {
+    const j = await (await fetch(`${API}?actie=coach`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), tekst }) })).json();
+    if (j.ok) CC.berichten = j.berichten; else fout = j.fout || 'Dat lukte even niet.';
+  } catch (e) { fout = 'Verbinding mislukt. Probeer het zo nog eens.'; }
+  CC.bezig = false; $('#ccStuur').disabled = false;
+  coachLijst();
+  if (fout) $('#ccLijst').insertAdjacentHTML('beforeend', `<div class="cc-b coach">${esc(fout)}</div>`);
 }
 
 async function laadOverzicht() {
