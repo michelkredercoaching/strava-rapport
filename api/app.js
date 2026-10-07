@@ -157,6 +157,7 @@ export default async function handler(req, res) {
     if (actie === 'bandvraag') return await routeBandVraag(req, res);
     if (actie === 'coach') return await routeCoach(req, res);
     if (actie === 'opvolgen') return await routeOpvolgen(req, res);
+    if (actie === 'bandenritten') return await routeBandenRitten(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -191,7 +192,7 @@ async function routeLogin(req, res) {
 async function routeOverzicht(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email) return res.status(401).json({ ok: false, fout: 'Je inloglink is verlopen. Vraag hieronder een nieuwe aan.' });
-  const [core, lid, lidmaatschap, kanLid, bandenProfiel] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen(), haalBandenProfiel(email)]);
+  const [core, lid, lidmaatschap, kanLid, bandenProfiel, ritten] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen(), haalBandenProfiel(email), haalRitten(email)]);
   const mf = (lid && lid.merge_fields) || {};
   const analyse = heeftTag(lid, 'power-profile-koper') ? {
     datum: mf.RAPDAT || '', ftp: mf.FTP || '', meet: mf.MEETMETH || '', type: mf.RENTYPE || '',
@@ -210,6 +211,7 @@ async function routeOverzicht(req, res) {
     // Slimme bandenspanning: leden (en Michel) krijgen hun bewaarde fietsen mee.
     bandenSlim: BEHEER.includes(email) || !!lidBeeld(lidmaatschap).open,
     bandenProfiel: (BEHEER.includes(email) || lidBeeld(lidmaatschap).open) ? (bandenProfiel || schoonProfiel({})) : null,
+    bandenRitten: (BEHEER.includes(email) || lidBeeld(lidmaatschap).open) ? ritten : [],
     afval: { status: 'binnenkort' },
     pacing: { status: 'binnenkort' }
   });
@@ -544,4 +546,56 @@ async function routeOpvolgen(req, res) {
     .filter(Boolean)
     .map((m) => ({ ...m, status: (m.id && statussen[m.id] && statussen[m.id].status) || 'open' }));
   return res.status(200).json({ ok: true, meldingen });
+}
+
+// ===========================================================================
+// BANDENGEHEUGEN (07-10-2026, idee Michel): leden bewaren met welke spanning
+// ze reden, onder welk weer, en geven achteraf een oordeel (te zacht, precies
+// goed, te hard). Bij vergelijkbaar weer op dezelfde fiets komt dat terug in
+// de app: "vorige keer perfect" of "vorige keer te hard, probeer 0,2 lager".
+//   GET  bandenritten ?t=                       -> { ritten }
+//   POST bandenritten { t, rit }                -> nieuwe rit bewaren
+//   POST bandenritten { t, id, oordeel }        -> zacht | goed | hard
+// Redis: app:bandenritten:<email> (JSON-lijst, nieuwste eerst, max 40)
+// ===========================================================================
+async function haalRitten(email) {
+  const r = await redis(['GET', `app:bandenritten:${email}`]);
+  if (!r.ok || !r.result) return [];
+  try { const l = JSON.parse(r.result); return Array.isArray(l) ? l : []; } catch { return []; }
+}
+async function routeBandenRitten(req, res) {
+  if (req.method !== 'POST') {
+    const email = await slimEmail(req, res, req.query?.t); if (!email) return;
+    return res.status(200).json({ ok: true, ritten: await haalRitten(email) });
+  }
+  const body = await leesBody(req);
+  const email = await slimEmail(req, res, body.t); if (!email) return;
+  let ritten = await haalRitten(email);
+  const num = (x, min, max) => { const n = Math.round(Number(x) * 10) / 10; return isFinite(n) && n >= min && n <= max ? n : null; };
+  if (body.id && body.oordeel) {
+    if (!['zacht', 'goed', 'hard'].includes(body.oordeel)) return res.status(400).json({ ok: false });
+    const rit = ritten.find((x) => x.id === String(body.id));
+    if (!rit) return res.status(404).json({ ok: false, fout: 'Rit niet gevonden.' });
+    rit.oordeel = body.oordeel; rit.oordeelOp = new Date().toISOString();
+  } else {
+    const r = body.rit || {};
+    const rit = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+      op: new Date().toISOString(),
+      fiets: String(r.fiets || '').replace(/[^a-z0-9]/gi, '').slice(0, 12),
+      fietsNaam: String(r.fietsNaam || '').slice(0, 30),
+      voor: num(r.voor, 1, 9), achter: num(r.achter, 1, 9),
+      temp: num(r.temp, -20, 45), nat: !!r.nat,
+      grond: String(r.grond || '').replace(/[^a-z]/g, '').slice(0, 12),
+      oordeel: null
+    };
+    if (!rit.fiets || rit.voor == null || rit.achter == null) return res.status(400).json({ ok: false, fout: 'Onvolledige rit.' });
+    // Zelfde fiets op dezelfde dag: vervang de vorige, dan telt de laatste keuze.
+    const dag = rit.op.slice(0, 10);
+    ritten = ritten.filter((x) => !(x.fiets === rit.fiets && String(x.op).slice(0, 10) === dag && !x.oordeel));
+    ritten.unshift(rit);
+  }
+  ritten = ritten.slice(0, 40);
+  await redis(['SET', `app:bandenritten:${email}`, JSON.stringify(ritten)]);
+  return res.status(200).json({ ok: true, ritten });
 }
