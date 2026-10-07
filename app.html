@@ -237,6 +237,13 @@
   .sb-oordeel .w { font-size:12.5px; color:var(--muted); margin-bottom:10px; }
   .sb-oordeel .bt-keuze button { font-size:13.5px; }
   .sb-oordeel .sb-link { margin-top:8px; }
+  /* Welkom voor nieuwe gebruikers */
+  .welkom { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px 16px; margin:4px 0 22px; }
+  .welkom b { display:block; font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; }
+  .welkom ol { list-style:none; display:grid; gap:8px; }
+  .welkom li { display:flex; gap:10px; font-size:14.5px; color:rgba(245,243,239,.85); }
+  .welkom li span { flex-shrink:0; width:22px; height:22px; border-radius:50%; background:rgba(255,107,26,.15); color:var(--accent); font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; margin-top:1px; }
+  .welkom em { font-style:normal; color:var(--white); font-weight:600; }
   .voet { text-align:center; font-size:12px; color:rgba(245,243,239,.35); margin-top:30px; }
   .voet a { color:rgba(245,243,239,.5); }
 </style>
@@ -250,6 +257,18 @@ const API = '/api/app';
 const OPSLAG = 'mkc_app_t';
 const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// AI-antwoorden netjes tonen: eerst alles escapen, dan **vet** echt vet,
+// opsommingen met een bolletje en losse sterretjes of hekjes weg. De coaches
+// krijgen de opdracht platte tekst te schrijven, dit vangt de rest op.
+function opmaak(t) {
+  return String(t == null ? '' : t).split('\n').map((r) => {
+    let s = esc(r).replace(/^\s*#{1,6}\s*/, '');
+    s = s.replace(/^\s*[-*•]\s+/, '&bull; ');
+    s = s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/__(.+?)__/g, '<b>$1</b>').replace(/\*/g, '');
+    return s;
+  }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
 const SLOT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 const SITE = 'https://michelkredercoaching.nl';
 // Analyse kopen = direct naar de checkout met product 12131 in het mandje (de
@@ -294,15 +313,15 @@ function appHtml() {
 function loginHtml(melding, soort) {
   return `<div class="login">
     <div class="logo" style="margin-bottom:28px">MKC<span>.</span></div>
-    <h1>Log in op <em>je app.</em></h1>
-    <p>Je Core-app, je Strava-analyse en je tools op één plek. Vul het mailadres in waarmee je iets bij me deed, dan krijg je een inlogcode. Geen wachtwoord nodig.</p>
+    <h1>Welkom in <em>de MKC-app.</em></h1>
+    <p>Je bandenspanning voor elke rit, je Core-app en je Strava-analyse op één plek. Vul je mailadres in, dan krijg je een inlogcode. Geen wachtwoord, geen app-winkel.</p>
     <form id="loginForm"><input type="email" id="loginMail" placeholder="Je e-mailadres" autocomplete="email" required>
       <button class="knop" type="submit" id="loginKnop">Stuur mijn inlogcode</button></form>
     <form id="codeForm" style="display:none;margin-top:18px"><input type="text" id="loginCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 cijfers uit de mail" style="letter-spacing:6px;font-size:22px;text-align:center">
       <button class="knop" type="submit" id="codeKnop">Log in</button>
       <p class="klein" style="text-align:center"><a href="#" id="opnieuw" style="color:#FF6B1A">Nieuwe code sturen</a></p></form>
     <div class="melding ${soort || ''}" id="loginMelding">${melding ? esc(melding) : ''}</div>
-    <p class="klein" style="margin-top:28px">Nog niets bij me gedaan? <a href="${SITE}/core-gratis/" style="color:#FF6B1A">Start gratis met week 1 van de Core-app</a>, dan krijg je meteen toegang.</p>
+    <p class="klein" style="margin-top:28px">Nieuw hier? Dan maak je met je mailadres meteen een gratis account aan. Je krijgt af en toe een tip van Michel per mail, afmelden kan altijd.</p>
   </div>`;
 }
 function toonLogin(melding, soort) {
@@ -343,7 +362,8 @@ function coreKaart(c) {
       <p>12 weken core op maat, thuis zonder gewichten. Train mee op de timer en zie je Rompscore stijgen.</p>
       <div class="wazig" style="margin-top:14px"><div class="achter"><div class="cijfers"><div class="cijfer"><span>Week</span><b>3/12</b></div><div class="cijfer"><span>Rompscore</span><b>66</b></div><div class="cijfer"><span>Sessies</span><b>2/3</b></div></div></div>
         <div class="slotje">${SLOT}<b>Week 1 is gratis</b></div></div>
-      <a class="knop" href="${SITE}/core-gratis/">Start je gratis week</a></div></div>`;
+      <button class="knop" data-actie="startcore">Start je gratis week</button>
+      <p class="klein">Met je account, je hoeft niets meer in te vullen.</p></div></div>`;
   }
   const K = window.CoreSpierkaart;
   if (c.intakeNodig) {
@@ -603,7 +623,7 @@ function slimBandenKaart() {
     ${res}
     <div class="sb-vraag"><label for="sbVraag">Vraag het je bandencoach</label>
       <div class="sb-rij"><input id="sbVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen de Ronde met kasseien" value="${esc(SB.vraag)}"><button type="button" class="knop" data-sb="vraag" ${SB.vraagBezig ? 'disabled' : ''}>${SB.vraagBezig ? '...' : 'Vraag'}</button></div>
-      ${SB.antwoord ? `<div class="sb-antwoord">${esc(SB.antwoord)}</div>` : ''}</div>
+      ${SB.antwoord ? `<div class="sb-antwoord">${opmaak(SB.antwoord)}</div>` : ''}</div>
     <button type="button" class="sb-link" data-sb="bewerk">Mijn fietsen en gewicht</button></div></div>`;
 }
 
@@ -798,13 +818,20 @@ function isLid(d) { const l = d.lid || {}; return (l.status === 'actief' || l.st
 // analyse of lidmaatschap. Alleen de weergave, er verandert niets op de server.
 function alsNieuw(d) { return { ...d, core: null, analyse: null, banden: false, bandenSlim: false, bandenProfiel: null, lid: { status: 'geen' } }; }
 function zicht() { return D && D.beheer && BEKIJK === 'nieuw' ? alsNieuw(D) : D; }
+// Nog niets gekocht of gestart: dan tonen we de korte uitleg bovenaan.
+function isNieuw(d) { return !d.core && !d.analyse && !isLid(d); }
 function teken() {
   const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `<div class="kop"><div class="logo">MKC<span>.</span></div><button class="uit" data-actie="uitloggen">Uitloggen</button></div>
-    ${beheerHtml(d)}${opvolgHtml()}${appHtml()}
+    ${beheerHtml(d)}${opvolgHtml()}
     <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
-    <p class="intro">Je programma's, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>
+    ${isNieuw(d) ? `<div class="welkom"><b>Zo werkt je app</b>
+      <ol><li><span>1</span>Vul hieronder je gewicht en band in: je ziet meteen wat je pompt. Gratis, voor elke rit.</li>
+      <li><span>2</span>Start je gratis week in de Core-app: korte sessies thuis, op de timer.</li>
+      <li><span>3</span>${d.lidOpen ? 'Meer nodig? Als lid krijg je je eigen coach, de slimme bandenspanning en de Core-app doorlopend, voor &euro;19 per maand.' : 'Rechtsonder zit <em>Vraag je coach</em>: je eigen coach die je analyse en je plan kent, straks voor leden.'}</li></ol></div>`
+      : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}
     <div class="groepkop">Vandaag</div><div class="kaarten">${bandenKaart(d)}</div>
+    ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     ${isLid(d) || !(d.lidOpen || d.beheer) ? '' : `<div class="groepkop">Meer uit de app</div>${lidPitchHtml()}`}
     ${kaartenHtml(d)}
     ${isLid(d) ? `<div class="groepkop">Mijn lidmaatschap</div>${lidStatusHtml(d.lid)}` : ''}
@@ -819,6 +846,7 @@ document.addEventListener('click', (e) => {
   const actie = k.dataset.actie;
   if (actie === 'bekijk') { BEKIJK = k.dataset.w; CC.berichten = null; teken(); }
   if (actie === 'wordlid') wordLid(k);
+  if (actie === 'startcore') startCore(k);
   if (actie === 'naarlid') { const b = document.querySelector('.lidblok'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   if (actie === 'opzeggen') zegOp(k);
   if (actie === 'uitloggen') { wisToken(); D = null; CC.berichten = null; document.getElementById('ccFab')?.remove(); document.getElementById('ccPaneel')?.remove(); toonLogin('Je bent uitgelogd.'); }
@@ -826,6 +854,17 @@ document.addEventListener('click', (e) => {
   if (actie === 'installeer' && installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; teken(); }); }
 });
 
+// Proefweek via dezelfde route als /core-gratis/ (tag core-gratis, welkomstmail,
+// journey), maar met het mailadres van je account. Daarna meteen de Core-app open.
+async function startCore(knop) {
+  knop.disabled = true; knop.textContent = 'Even klaarzetten...';
+  try {
+    const j = await (await fetch('/api/keuzehulp-inschrijving', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ route: 'core-gratis', email: D.email, naam: D.naam || '' }) })).json();
+    if (j.ok && j.link) { location.href = j.link; return; }
+    alert(j.fout || 'Dat lukte niet. Probeer het zo nog eens.');
+  } catch (e) { alert('Verbinding mislukt. Probeer het zo nog eens.'); }
+  knop.disabled = false; knop.textContent = 'Start je gratis week';
+}
 async function wordLid(knop) {
   knop.disabled = true; const oud = knop.textContent; knop.textContent = 'Even naar iDEAL...';
   try {
@@ -921,7 +960,7 @@ function coachLijst(typen) {
   const lijst = CC.berichten || [];
   l.innerHTML = `<div class="cc-b coach">${welkom}</div>` + lijst.map((b) => b.van === 'ik'
       ? `<div style="align-self:flex-end;max-width:86%;text-align:right"><div class="cc-b ik" style="max-width:100%">${esc(b.tekst)}</div><div class="cc-tijd">${tijd(b.op)}</div></div>`
-      : `<div style="align-self:flex-start;max-width:86%"><div class="cc-b coach ${b.medisch ? 'let' : ''}" style="max-width:100%">${esc(b.tekst)}</div><div class="cc-tijd">${CC_NAAM} &middot; ${tijd(b.op)}</div></div>`).join('')
+      : `<div style="align-self:flex-start;max-width:86%"><div class="cc-b coach ${b.medisch ? 'let' : ''}" style="max-width:100%">${opmaak(b.tekst)}</div><div class="cc-tijd">${CC_NAAM} &middot; ${tijd(b.op)}</div></div>`).join('')
     + (typen ? `<div class="cc-b ik" style="align-self:flex-end">${esc(typen)}</div><div class="cc-typen"><i></i><i></i><i></i></div>` : '');
   $('#ccChips').style.display = lijst.length || typen ? 'none' : '';
   l.scrollTop = l.scrollHeight;
