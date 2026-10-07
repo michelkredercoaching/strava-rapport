@@ -20,6 +20,8 @@
 //                               Safari, dus daar kom je alleen met de code in.
 //   GET  manifest  ?t=       -> persoonlijk manifest met de login in start_url,
 //                               zodat de app op je beginscherm ingelogd blijft.
+//   bandenprofiel / weer / plaats / bandvraag -> slimme bandenspanning voor
+//                               leden, zie onderaan dit bestand.
 //
 // Bronnen per onderdeel:
 //   Core-app        Redis via api/core.js (coreVoorEmail)
@@ -147,6 +149,10 @@ export default async function handler(req, res) {
     if (actie === 'vancore') return await routeVanCore(req, res);
     if (actie === 'verifieer') return await routeVerifieer(req, res);
     if (actie === 'manifest') return routeManifest(req, res);
+    if (actie === 'bandenprofiel') return await routeBandenProfiel(req, res);
+    if (actie === 'weer') return await routeWeer(req, res);
+    if (actie === 'plaats') return await routePlaats(req, res);
+    if (actie === 'bandvraag') return await routeBandVraag(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -181,7 +187,7 @@ async function routeLogin(req, res) {
 async function routeOverzicht(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email) return res.status(401).json({ ok: false, fout: 'Je inloglink is verlopen. Vraag hieronder een nieuwe aan.' });
-  const [core, lid, lidmaatschap, kanLid] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen()]);
+  const [core, lid, lidmaatschap, kanLid, bandenProfiel] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen(), haalBandenProfiel(email)]);
   const mf = (lid && lid.merge_fields) || {};
   const analyse = heeftTag(lid, 'power-profile-koper') ? {
     datum: mf.RAPDAT || '', ftp: mf.FTP || '', meet: mf.MEETMETH || '', type: mf.RENTYPE || '',
@@ -197,6 +203,9 @@ async function routeOverzicht(req, res) {
     core,
     analyse,
     banden: heeftTag(lid, 'bandenspanning-pdf'),
+    // Slimme bandenspanning: leden (en Michel) krijgen hun bewaarde fietsen mee.
+    bandenSlim: BEHEER.includes(email) || !!lidBeeld(lidmaatschap).open,
+    bandenProfiel: (BEHEER.includes(email) || lidBeeld(lidmaatschap).open) ? (bandenProfiel || schoonProfiel({})) : null,
     afval: { status: 'binnenkort' },
     pacing: { status: 'binnenkort' }
   });
@@ -249,4 +258,163 @@ function routeManifest(req, res) {
       { src: '/icoon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
     ]
   }));
+}
+
+// ===========================================================================
+// SLIMME BANDENSPANNING (lidmaatschap stap 3, 07-10-2026)
+// Leden bewaren hun fietsen, de app haalt het weer van vandaag op en ze kunnen
+// een vraag stellen. De gratis calculator rekent in de browser (app.html) met
+// /lib/bandendruk.js; hier alleen opslag, weer en de vraag.
+//   GET  bandenprofiel ?t=           -> { gewicht, plaats, fietsen }
+//   POST bandenprofiel { t, profiel } -> bewaart (max 6 fietsen)
+//   GET  weer ?t=&lat=&lon=          -> temperatuur, nat wegdek, regen straks
+//   GET  plaats ?t=&q=               -> plaatsnaam opzoeken (Open-Meteo)
+//   POST bandvraag { t, vraag, context } -> kort antwoord van de AI-coach
+// Redis: app:banden:<email> (JSON), app:bandvraag:<email>:<datum> (teller)
+// ===========================================================================
+const CLAUDE_KEY = process.env.ANTHROPIC_API_KEY || '';
+const MAX_FIETSEN = 6;
+const VRAGEN_PER_DAG = 20;
+
+async function magSlim(email) {
+  if (BEHEER.includes(email)) return true;
+  return !!lidBeeld(await haalLid(email)).open;
+}
+async function slimEmail(req, res, t) {
+  const email = leesAppToken(String(t || ''));
+  if (!email) { res.status(401).json({ ok: false, fout: 'Log opnieuw in.' }); return null; }
+  if (!(await magSlim(email))) { res.status(403).json({ ok: false, fout: 'Dit hoort bij het lidmaatschap van de MKC-app.' }); return null; }
+  return email;
+}
+
+function schoonProfiel(p) {
+  p = p && typeof p === 'object' ? p : {};
+  const gewicht = Math.round(Number(String(p.gewicht ?? '').replace(',', '.')));
+  const pl = p.plaats && typeof p.plaats === 'object' ? p.plaats : null;
+  const plaats = pl && isFinite(pl.lat) && isFinite(pl.lon)
+    ? { naam: String(pl.naam || '').slice(0, 60), lat: Math.round(Number(pl.lat) * 100) / 100, lon: Math.round(Number(pl.lon) * 100) / 100 }
+    : null;
+  const breedtes = { weg: [23, 25, 26, 28, 30, 32], gravel: [35, 38, 40, 42, 45, 47, 50] };
+  const fietsen = (Array.isArray(p.fietsen) ? p.fietsen : []).slice(0, MAX_FIETSEN).map((f, i) => {
+    const type = f.type === 'gravel' ? 'gravel' : 'weg';
+    const breedte = breedtes[type].includes(Number(f.breedte)) ? Number(f.breedte) : (type === 'gravel' ? 40 : 28);
+    return {
+      id: String(f.id || 'f' + i).replace(/[^a-z0-9]/gi, '').slice(0, 12) || 'f' + i,
+      naam: String(f.naam || (type === 'gravel' ? 'Gravelbike' : 'Racefiets')).slice(0, 30),
+      type, breedte, tubeless: !!f.tubeless, hookless: !!f.hookless
+    };
+  });
+  return { gewicht: gewicht >= 40 && gewicht <= 150 ? gewicht : null, plaats, fietsen };
+}
+async function haalBandenProfiel(email) {
+  const r = await redis(['GET', `app:banden:${email}`]);
+  if (!r.ok || !r.result) return null;
+  try { return JSON.parse(r.result); } catch { return null; }
+}
+
+async function routeBandenProfiel(req, res) {
+  if (req.method === 'POST') {
+    const body = await leesBody(req);
+    const email = await slimEmail(req, res, body.t); if (!email) return;
+    const profiel = schoonProfiel(body.profiel);
+    const w = await redis(['SET', `app:banden:${email}`, JSON.stringify(profiel)]);
+    if (!w.ok) return res.status(502).json({ ok: false, fout: 'Bewaren lukte niet. Probeer het zo nog eens.' });
+    return res.status(200).json({ ok: true, profiel });
+  }
+  const email = await slimEmail(req, res, req.query?.t); if (!email) return;
+  return res.status(200).json({ ok: true, profiel: (await haalBandenProfiel(email)) || schoonProfiel({}) });
+}
+
+// Weer via Open-Meteo (gratis, geen sleutel). Nat wegdek = regen in de
+// afgelopen 3 uur of nu. Kort in het geheugen bewaard per afgeronde plek.
+const weerCache = new Map();
+async function routeWeer(req, res) {
+  const email = await slimEmail(req, res, req.query?.t); if (!email) return;
+  const lat = Math.round(Number(req.query?.lat) * 100) / 100, lon = Math.round(Number(req.query?.lon) * 100) / 100;
+  if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return res.status(400).json({ ok: false, fout: 'Geen geldige plek.' });
+  const sleutel = `${lat},${lon}`, c = weerCache.get(sleutel);
+  if (c && Date.now() - c.op < 15 * 60 * 1000) return res.status(200).json({ ok: true, weer: c.weer });
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,weather_code,wind_speed_10m&hourly=precipitation,temperature_2m&past_hours=3&forecast_hours=4&timezone=Europe%2FAmsterdam&wind_speed_unit=kmh`;
+    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) throw new Error('weer ' + r.status);
+    const j = await r.json();
+    const nu = j.current || {}, uur = j.hourly || {};
+    const tijden = uur.time || [], regen = uur.precipitation || [], temps = uur.temperature_2m || [];
+    const nuIso = String(nu.time || '').slice(0, 13);
+    const idx = Math.max(0, tijden.findIndex((t) => String(t).slice(0, 13) === nuIso));
+    const somVoor = regen.slice(Math.max(0, idx - 3), idx + 1).reduce((a, b) => a + (b || 0), 0);
+    const somNa = regen.slice(idx + 1, idx + 4).reduce((a, b) => a + (b || 0), 0);
+    const laagsteStraks = Math.min(...temps.slice(idx, idx + 4).filter((x) => x != null), nu.temperature_2m ?? 99);
+    const weer = {
+      temp: Math.round(nu.temperature_2m ?? 0),
+      laagste: Math.round(isFinite(laagsteStraks) ? laagsteStraks : nu.temperature_2m ?? 0),
+      nat: (nu.precipitation || 0) > 0 || somVoor >= 0.2,
+      regenStraks: somNa >= 0.5,
+      wind: Math.round(nu.wind_speed_10m || 0),
+      code: nu.weather_code ?? null
+    };
+    weerCache.set(sleutel, { op: Date.now(), weer });
+    return res.status(200).json({ ok: true, weer });
+  } catch (e) {
+    console.error('weer fout:', e);
+    return res.status(502).json({ ok: false, fout: 'Het weer ophalen lukt nu even niet.' });
+  }
+}
+
+async function routePlaats(req, res) {
+  const email = await slimEmail(req, res, req.query?.t); if (!email) return;
+  const q = String(req.query?.q || '').trim().slice(0, 60);
+  if (q.length < 2) return res.status(400).json({ ok: false, fout: 'Typ een plaatsnaam.' });
+  try {
+    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=nl&format=json`, { signal: AbortSignal.timeout(8000) });
+    const j = await r.json();
+    // Nederland en België eerst, daarna de buurlanden, de rest onderaan.
+    const voorkeur = (c) => ({ NL: 0, BE: 1, DE: 2, LU: 2, FR: 3 })[c] ?? 9;
+    const plaatsen = (j.results || []).sort((x, y) => voorkeur(x.country_code) - voorkeur(y.country_code)).map((x) => ({ naam: x.name, regio: [x.admin1, x.country_code].filter(Boolean).join(', '), lat: x.latitude, lon: x.longitude }));
+    return res.status(200).json({ ok: true, plaatsen });
+  } catch { return res.status(502).json({ ok: false, fout: 'Zoeken lukt nu even niet.' }); }
+}
+
+async function routeBandVraag(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = await slimEmail(req, res, body.t); if (!email) return;
+  const vraag = String(body.vraag || '').trim().slice(0, 500);
+  if (vraag.length < 3) return res.status(400).json({ ok: false, fout: 'Typ je vraag.' });
+  const datum = new Date().toISOString().slice(0, 10);
+  const n = await redis(['INCR', `app:bandvraag:${email}:${datum}`]);
+  if (n.ok && n.result === 1) await redis(['EXPIRE', `app:bandvraag:${email}:${datum}`, '90000']);
+  if (n.ok && n.result > VRAGEN_PER_DAG) return res.status(429).json({ ok: false, fout: 'Je hebt vandaag al veel gevraagd. Morgen kan het weer.' });
+  if (!CLAUDE_KEY) return res.status(503).json({ ok: false, fout: 'De vraagknop werkt nu even niet.' });
+
+  // Context komt van de app: fiets, gewicht, weer en het berekende advies.
+  // Alleen tekst, ingekort, en het model rekent niet zelf opnieuw.
+  const ctx = String(body.context || '').slice(0, 900);
+  const systeem = [
+    'Je bent de bandenspanning-assistent in de MKC-app van Michel Kreder, wielercoach en oud-profrenner. Je antwoord gaat direct naar de renner.',
+    'Het berekende advies in de context is leidend: noem die getallen, verzin geen andere basisdruk. Je mag wel bijsturen met deze vaste regels: nat wegdek 0,3 bar eraf; klinkers, kasseien of ruw asfalt 0,5 bar eraf; vers glad asfalt 0,3 bar erbij; los grind, zand of modder 0,3 bar eraf; bikepacking met tassen 0,4 bar erbij; voorband zachter dan achter; hookless velg nooit boven 5,0 bar; tubeless 0,2 tot 0,3 bar zachter dan met binnenband. Kou: lucht krimpt, pomp je binnen bij 20 graden en rijd je in de kou, dan zakt de druk ongeveer 0,1 bar per 5 graden.',
+    'Toon: warm, direct, korte zinnen, geen gedachtestreepjes. Spreek de renner aan met je. Nederlands, maximaal 90 woorden, geen begroeting of ondertekening. Geef altijd concrete getallen voor en achter als de vraag om een spanning gaat.',
+    'Gaat de vraag niet over banden, bandenspanning, materiaal of rijden in bepaald weer, zeg dan vriendelijk dat deze knop alleen over banden gaat.',
+    'Beloof nooit dat Michel persoonlijk iets doet.'
+  ].join(' ');
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': CLAUDE_KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-opus-5-5', max_tokens: 2000, output_config: { effort: 'low' }, fallbacks: 'default',
+        system: systeem,
+        messages: [{ role: 'user', content: `Context:\n${ctx}\n\nVraag:\n${vraag}` }]
+      }),
+      signal: AbortSignal.timeout(30000)
+    });
+    if (!r.ok) { console.error('bandvraag Claude', r.status, await r.text()); throw new Error('claude'); }
+    const j = await r.json();
+    const tekst = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
+    if (!tekst) throw new Error('leeg');
+    return res.status(200).json({ ok: true, antwoord: tekst });
+  } catch {
+    return res.status(502).json({ ok: false, fout: 'Even geen antwoord. Probeer het zo nog eens.' });
+  }
 }
