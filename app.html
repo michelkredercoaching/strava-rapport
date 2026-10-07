@@ -244,6 +244,10 @@
   .welkom li { display:flex; gap:10px; font-size:14.5px; color:rgba(245,243,239,.85); }
   .welkom li span { flex-shrink:0; width:22px; height:22px; border-radius:50%; background:rgba(255,107,26,.15); color:var(--accent); font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; margin-top:1px; }
   .welkom em { font-style:normal; color:var(--white); font-weight:600; }
+  .gratis-teller { margin-top:8px; }
+  .gratis-teller a { color:var(--accent); }
+  .cc-lijst .gratis-teller { text-align:center; }
+  .ai-verbruik { display:block; font-size:11px; letter-spacing:0; text-transform:none; color:var(--muted); font-weight:400; margin-top:2px; }
   .voet { text-align:center; font-size:12px; color:rgba(245,243,239,.35); margin-top:30px; }
   .voet a { color:rgba(245,243,239,.5); }
 </style>
@@ -467,9 +471,33 @@ function bandenKaart(d) {
       <div><label for="btBreedte">Bandbreedte</label><select id="btBreedte">${BT_BREEDTES[v.type].map((b) => `<option value="${b}" ${Number(v.breedte) === b ? 'selected' : ''}>${b} mm</option>`).join('')}</select></div>
       <div class="bt-keuze">${knop('tubeless', 'false', 'Binnenband')}${knop('tubeless', 'true', 'Tubeless')}</div>
     </div>
-    <div id="btUit"></div>${slim}</div></div>`;
+    <div id="btUit"></div>
+    <div class="sb-vraag"><label for="btVraag">Vraag het je bandencoach</label>
+      ${gratisOver() === 0 ? '' : `<div class="sb-rij"><input id="btVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen over kasseien" value="${esc(BTV.vraag)}"><button type="button" class="knop" data-btv="vraag" ${BTV.bezig ? 'disabled' : ''}>${BTV.bezig ? '...' : 'Vraag'}</button></div>`}
+      ${BTV.antwoord ? `<div class="sb-antwoord">${opmaak(BTV.antwoord)}</div>` : ''}
+      ${gratisTellerHtml('btVraagTeller')}</div>
+    ${slim}</div></div>`;
 }
 let BT_LIB = null;
+// Vraag in de gratis bandentool (telt mee voor de 3 gratis vragen per week).
+const BTV = { vraag: '', antwoord: '', bezig: false };
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-btv]'); if (!k) return;
+  const inp = document.getElementById('btVraag'); BTV.vraag = inp ? inp.value.trim() : '';
+  if (BTV.vraag.length < 3) return;
+  const v = btWaarden(), uit = document.getElementById('btUit');
+  const ctx = [`Renner: ${v.gewicht || '?'} kg.`, `Fiets: ${v.type === 'gravel' ? 'gravel' : 'racefiets'}, ${v.breedte} mm, ${v.tubeless ? 'tubeless' : 'binnenband'}.`,
+    'Weer en ondergrond onbekend (gratis versie): ga uit van droog asfalt, tenzij de vraag iets anders zegt.',
+    uit ? `Berekend advies: ${uit.innerText.replace(/\s+/g, ' ').slice(0, 160)}` : ''].join('\n');
+  BTV.bezig = true; BTV.antwoord = ''; teken();
+  try {
+    const j = await (await fetch(`${API}?actie=bandvraag`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), vraag: BTV.vraag, context: ctx }) })).json();
+    BTV.antwoord = j.ok ? j.antwoord : (j.fout || 'Even geen antwoord.');
+    if (j.ok) { zetGratis(j.gratisOver); BTV.vraag = ''; } else if (j.limiet) zetGratis(0);
+  } catch (er) { BTV.antwoord = 'Verbinding mislukt. Probeer het zo nog eens.'; }
+  BTV.bezig = false; teken();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'btVraag') { e.preventDefault(); document.querySelector('[data-btv="vraag"]')?.click(); } });
 // ---- Slimme bandenspanning voor leden (stap 3, 07-10-2026) ----
 // Bewaarde fietsen (server, app:banden:<email>), het weer van vandaag op je
 // eigen plek, ondergrond, en een vraagknop. Rekent met dezelfde formule als de
@@ -788,11 +816,12 @@ function voorbeeldData(d) {
 }
 function beheerHtml(d) {
   if (!d.beheer) return '';
-  return `<div class="beheer"><span>Beheerweergave</span><div><button data-actie="bekijk" data-w="nieuw" class="${BEKIJK === 'nieuw' ? 'aan' : ''}">Niet-lid</button><button data-actie="bekijk" data-w="klant" class="${BEKIJK === 'klant' ? 'aan' : ''}">Als klant</button><button data-actie="bekijk" data-w="alles" class="${BEKIJK === 'alles' ? 'aan' : ''}">Alles open</button></div></div>`;
+  const ai = d.aiGebruik;
+  return `<div class="beheer"><span>Beheerweergave${ai ? ` <small class="ai-verbruik">AI deze maand: ${ai.vragen} vragen &middot; &plusmn; &euro;${String(ai.euro.toFixed(2)).replace('.', ',')}</small>` : ''}</span><div><button data-actie="bekijk" data-w="nieuw" class="${BEKIJK === 'nieuw' ? 'aan' : ''}">Niet-lid</button><button data-actie="bekijk" data-w="klant" class="${BEKIJK === 'klant' ? 'aan' : ''}">Als klant</button><button data-actie="bekijk" data-w="alles" class="${BEKIJK === 'alles' ? 'aan' : ''}">Alles open</button></div></div>`;
 }
 
 // ---- Lidmaatschap MKC-app (07-10-2026): €19 per maand via Mollie ----
-const LID_LIJST = ['De Core-app, doorlopend: na elke 12 weken een nieuw blok', 'Je eigen MKC-coach: kent je analyse, je Core en je fietsen, en antwoordt dag en nacht', 'Slimme bandenspanning: je fietsen bewaard, het weer van vandaag meegerekend en een vraagknop', 'Maandelijks opzegbaar'];
+const LID_LIJST = ['De Core-app, doorlopend: na elke 12 weken een nieuw blok', 'Onbeperkt vragen aan je eigen MKC-coach: kent je analyse, je Core en je fietsen', 'Slimme bandenspanning: je fietsen bewaard, het weer van vandaag meegerekend en een vraagknop', 'Maandelijks opzegbaar'];
 function lidPitchHtml() {
   return `<div class="lidblok"><div class="label">MKC-app</div><h2>Word lid</h2>
     <div class="prijs">&euro;19<small>per maand</small></div>
@@ -816,7 +845,7 @@ function isLid(d) { const l = d.lid || {}; return (l.status === 'actief' || l.st
 
 // Beheer "Niet-lid": zo ziet iemand de app die net binnenkomt, zonder Core,
 // analyse of lidmaatschap. Alleen de weergave, er verandert niets op de server.
-function alsNieuw(d) { return { ...d, core: null, analyse: null, banden: false, bandenSlim: false, bandenProfiel: null, lid: { status: 'geen' } }; }
+function alsNieuw(d) { return { ...d, core: null, analyse: null, banden: false, bandenSlim: false, bandenProfiel: null, lid: { status: 'geen' }, gratisOver: d.gratisMax || 3 }; }
 function zicht() { return D && D.beheer && BEKIJK === 'nieuw' ? alsNieuw(D) : D; }
 // Nog niets gekocht of gestart: dan tonen we de korte uitleg bovenaan.
 function isNieuw(d) { return !d.core && !d.analyse && !isLid(d); }
@@ -847,7 +876,11 @@ document.addEventListener('click', (e) => {
   if (actie === 'bekijk') { BEKIJK = k.dataset.w; CC.berichten = null; teken(); }
   if (actie === 'wordlid') wordLid(k);
   if (actie === 'startcore') startCore(k);
-  if (actie === 'naarlid') { const b = document.querySelector('.lidblok'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  if (actie === 'naarlid') {
+    e.preventDefault();
+    const pan = document.getElementById('ccPaneel'); if (pan && pan.classList.contains('open')) coachOpen(false);
+    setTimeout(() => { const b = document.querySelector('.lidblok'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 150);
+  }
   if (actie === 'opzeggen') zegOp(k);
   if (actie === 'uitloggen') { wisToken(); D = null; CC.berichten = null; document.getElementById('ccFab')?.remove(); document.getElementById('ccPaneel')?.remove(); toonLogin('Je bent uitgelogd.'); }
   if (actie === 'appweg') { try { localStorage.setItem('mkcAppWeg', '1'); } catch (e) {} teken(); }
@@ -895,7 +928,22 @@ async function zegOp(knop) {
 const CC_NAAM = 'MKC-coach';
 const CC_SNEL = ['Hoe bepaal ik mijn FTP?', 'Ik ben altijd moe, wat doe ik fout?', 'Hoe train ik met weinig tijd?', 'Wat eet ik op een lange rit?', 'Hoe past core naast mijn fietstraining?'];
 let CC = { berichten: null, bezig: false };
-const ccMag = () => { const d = zicht(); return !!(d && d.bandenSlim && (isLid(d) || (d.beheer && BEKIJK === 'alles'))); };
+// Onbeperkt: leden, en Michel in "Alles open". Anderen: gratis vragen (GRATIS).
+const ccOnbeperkt = () => { const d = zicht(); return !!(d && d.bandenSlim && (isLid(d) || (d.beheer && BEKIJK === 'alles'))); };
+const ccMag = () => !!D;
+// Hoeveel gratis vragen er deze week nog over zijn (null = onbeperkt).
+function gratisOver() { if (ccOnbeperkt()) return null; const d = zicht(); return d && d.gratisOver != null ? d.gratisOver : (D && D.gratisMax) || 3; }
+function zetGratis(n) { if (n == null || !D) return; D.gratisOver = n; const t = document.getElementById('btVraagTeller'); if (t) t.outerHTML = gratisTellerHtml('btVraagTeller'); }
+function gratisTellerHtml(id) {
+  const over = gratisOver(); if (over == null) return `<span id="${id}"></span>`;
+  const max = (D && D.gratisMax) || 3;
+  return `<p class="klein gratis-teller" id="${id}">${over > 0 ? `Nog ${over} van ${max} gratis vragen deze week` : 'Je gratis vragen van deze week zijn op'}${D && (D.lidOpen || D.beheer) ? ' &middot; <a href="#" data-actie="naarlid">onbeperkt als lid</a>' : ''}</p>`;
+}
+function gratisOpHtml() {
+  return `<div class="cc-slotkaart"><div class="label">Je gratis vragen zijn op</div><h3>Wil je verder vragen?</h3>
+    <p>Maandag heb je weer 3 gratis vragen. Als lid vraag je zoveel je wilt, en kent je coach ook je fietsen en je Core-voortgang.</p>
+    ${D && (D.lidOpen || D.beheer) ? '<button class="knop" data-actie="wordlid">Word lid voor &euro;19 per maand</button><p class="klein">Maandelijks opzegbaar.</p>' : '<p class="klein">Het lidmaatschap gaat binnenkort open.</p>'}</div>`;
+}
 function coachBouw() {
   if (document.getElementById('ccPaneel')) return;
   document.body.insertAdjacentHTML('beforeend', `
@@ -931,7 +979,7 @@ async function coachZet(aan) {
   if (ccMag() && CC.berichten === null) {
     CC.berichten = [];
     coachLijst();
-    try { const j = await (await fetch(`${API}?actie=coach&t=${encodeURIComponent(leesToken())}`)).json(); if (j.ok) CC.berichten = j.berichten; } catch (e) {}
+    try { const j = await (await fetch(`${API}?actie=coach&t=${encodeURIComponent(leesToken())}`)).json(); if (j.ok) { CC.berichten = j.berichten; zetGratis(j.gratisOver); } } catch (e) {}
   }
   coachLijst();
   if (ccMag()) setTimeout(() => $('#ccTekst').focus(), 50);
@@ -939,30 +987,18 @@ async function coachZet(aan) {
 window.addEventListener('popstate', () => { const p = document.getElementById('ccPaneel'); if (p && p.classList.contains('open')) coachZet(false); });
 function coachLijst(typen) {
   const l = $('#ccLijst'); if (!l) return;
-  const mag = ccMag();
-  $('#ccInvoer').style.display = mag ? '' : 'none';
+  const over = gratisOver();
+  $('#ccInvoer').style.display = over === 0 ? 'none' : '';
   const voornaam = String((D && D.naam) || '').split(' ')[0];
-  if (!mag) {
-    // Niet-lid: een voorbeeldgesprek, wazig, met het aanbod eroverheen.
-    $('#ccChips').style.display = 'none';
-    l.innerHTML = `<div class="cc-slot"><div class="achter">
-        <div class="cc-b ik">Ik train 8 uur per week maar word niet sneller. Wat doe ik fout?</div>
-        <div class="cc-b coach">Je rustige ritten zijn waarschijnlijk te hard en je harde ritten te zacht. Met jouw FTP van 248 W rijd je rustig onder de 186 W. Plan twee gerichte trainingen per week en houd de rest echt rustig.</div>
-        <div class="cc-b ik">En mijn core erbij?</div>
-        <div class="cc-b coach">Je zit in week 5 van je Core-app. Doe je sessies op je rustige dagen, niet voor je intervaltraining.</div></div>
-      <div class="cc-slotkaart"><div class="label">Je eigen coach</div><h3>Altijd iemand om het aan te vragen</h3>
-        <p>De MKC-coach kent jouw analyse, je Core-voortgang en je fietsen, en is getraind op Michels methode. Vraag het dag en nacht.</p>
-        ${D && (D.lidOpen || D.beheer) ? `<button class="knop" data-actie="wordlid">Word lid voor &euro;19 per maand</button><p class="klein">Maandelijks opzegbaar.</p>` : `<p class="klein">Onderdeel van het lidmaatschap van de MKC-app, dat binnenkort opengaat.</p>`}</div></div>`;
-    return;
-  }
-  const welkom = `Hoi${voornaam ? ' ' + esc(voornaam) : ''}! Ik ben je ${CC_NAAM}. Ik ken je analyse, je Core-app en je fietsen. Vraag me alles over training, herstel, voeding op de fiets of je materiaal.`;
+  const welkom = `Hoi${voornaam ? ' ' + esc(voornaam) : ''}! Ik ben je ${CC_NAAM}, getraind op de methode van Michel. Vraag me alles over training, herstel, voeding op de fiets of je materiaal.${over != null ? ` Je hebt ${(D && D.gratisMax) || 3} gratis vragen per week.` : ''}`;
   const tijd = (op) => new Date(op).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const lijst = CC.berichten || [];
   l.innerHTML = `<div class="cc-b coach">${welkom}</div>` + lijst.map((b) => b.van === 'ik'
       ? `<div style="align-self:flex-end;max-width:86%;text-align:right"><div class="cc-b ik" style="max-width:100%">${esc(b.tekst)}</div><div class="cc-tijd">${tijd(b.op)}</div></div>`
       : `<div style="align-self:flex-start;max-width:86%"><div class="cc-b coach ${b.medisch ? 'let' : ''}" style="max-width:100%">${opmaak(b.tekst)}</div><div class="cc-tijd">${CC_NAAM} &middot; ${tijd(b.op)}</div></div>`).join('')
-    + (typen ? `<div class="cc-b ik" style="align-self:flex-end">${esc(typen)}</div><div class="cc-typen"><i></i><i></i><i></i></div>` : '');
-  $('#ccChips').style.display = lijst.length || typen ? 'none' : '';
+    + (typen ? `<div class="cc-b ik" style="align-self:flex-end">${esc(typen)}</div><div class="cc-typen"><i></i><i></i><i></i></div>` : '')
+    + (over === 0 && !typen ? gratisOpHtml() : over != null && !typen ? gratisTellerHtml('ccTeller') : '');
+  $('#ccChips').style.display = lijst.length || typen || over === 0 ? 'none' : '';
   l.scrollTop = l.scrollHeight;
 }
 async function coachStuur(tekst) {
@@ -973,7 +1009,8 @@ async function coachStuur(tekst) {
   let fout = '';
   try {
     const j = await (await fetch(`${API}?actie=coach`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), tekst }) })).json();
-    if (j.ok) CC.berichten = j.berichten; else fout = j.fout || 'Dat lukte even niet.';
+    if (j.ok) { CC.berichten = j.berichten; zetGratis(j.gratisOver); }
+    else { fout = j.limiet ? '' : (j.fout || 'Dat lukte even niet.'); if (j.limiet) zetGratis(0); }
   } catch (e) { fout = 'Verbinding mislukt. Probeer het zo nog eens.'; }
   CC.bezig = false; $('#ccStuur').disabled = false;
   coachLijst();
