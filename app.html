@@ -207,6 +207,24 @@
   .cc-slotkaart p { font-size:14px; color:rgba(245,243,239,.8); margin-bottom:12px; }
   .wrap { padding-bottom:70px; }
   @media (max-width:560px) { .cc-paneel { right:0; bottom:0; width:100vw; height:100dvh; border-radius:0; border:none; padding-top:env(safe-area-inset-top); } }
+  /* Opvolgen (alleen Michel) */
+  .opv { background:#1a0f0b; border:1px solid rgba(255,138,92,.45); border-radius:8px; margin-bottom:16px; }
+  .opv-kop { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; background:none; border:0; color:var(--white); font-family:inherit; font-size:14px; padding:12px 14px; cursor:pointer; text-align:left; }
+  .opv-kop em { font-style:normal; background:#ff8a5c; color:#0A0A0A; font-weight:700; font-size:12px; padding:2px 8px; border-radius:10px; margin-left:6px; }
+  .opv-kop i { font-style:normal; color:var(--muted); font-size:12.5px; margin-left:6px; }
+  .opv.open { padding-bottom:10px; }
+  .opv .klein, .opv .sb-link { padding:0 14px; }
+  .opv-rij { margin:0 10px 8px; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:10px 12px; }
+  .opv-rij.open { border-color:rgba(255,138,92,.5); }
+  .opv-rij.afgehandeld { opacity:.55; }
+  .opv-top { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; font-size:14px; }
+  .opv-top span, .opv-mail { font-size:12px; color:var(--muted); }
+  .opv-vraag { margin:6px 0; font-size:14px; background:var(--surface2); border-left:3px solid #ff8a5c; padding:6px 10px; border-radius:3px; }
+  .opv-extra { font-size:12.5px; color:var(--muted); }
+  .opv-knoppen { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:8px; }
+  .opv-k { background:transparent; border:1px solid rgba(255,255,255,.2); color:var(--white); font-family:inherit; font-size:12.5px; padding:6px 10px; border-radius:4px; cursor:pointer; text-decoration:none; }
+  .opv-k.oranje { background:var(--accent); border-color:var(--accent); color:#0A0A0A; font-weight:700; }
+  .opv-status { margin-left:auto; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
   .voet { text-align:center; font-size:12px; color:rgba(245,243,239,.35); margin-top:30px; }
   .voet a { color:rgba(245,243,239,.5); }
 </style>
@@ -711,7 +729,7 @@ function zicht() { return D && D.beheer && BEKIJK === 'nieuw' ? alsNieuw(D) : D;
 function teken() {
   const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `<div class="kop"><div class="logo">MKC<span>.</span></div><button class="uit" data-actie="uitloggen">Uitloggen</button></div>
-    ${beheerHtml(d)}${appHtml()}
+    ${beheerHtml(d)}${opvolgHtml()}${appHtml()}
     <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
     <p class="intro">Je programma's, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>
     <div class="groepkop">Vandaag</div><div class="kaarten">${bandenKaart(d)}</div>
@@ -851,6 +869,53 @@ async function coachStuur(tekst) {
   if (fout) $('#ccLijst').insertAdjacentHTML('beforeend', `<div class="cc-b coach">${esc(fout)}</div>`);
 }
 
+// ---- Opvolgen (alleen Michel): medische meldingen van de coaches ----
+// Bron: api/app.js actie=opvolgen (lijst uit lib/meld-medisch.js).
+let OPV = { meldingen: null, open: false, alles: false };
+function opvMailto(m) {
+  const voornaam = String(m.naam || '').trim().split(' ')[0];
+  const tekst = `Hoi${voornaam ? ' ' + voornaam : ''},\n\nIk zag je vraag in de app voorbij komen en wilde even persoonlijk reageren. Goed dat je het hebt aangegeven.\n\nHoe gaat het nu? Heb je het al kunnen laten checken bij je huisarts of fysio?\n\nLaat maar even weten wat er uitkomt, dan kijken we samen hoe je je training daarop aanpast.\n\nSportieve groet,\nMichel`;
+  return `mailto:${encodeURIComponent(m.email)}?subject=${encodeURIComponent('Even over je vraag in de app')}&body=${encodeURIComponent(tekst)}`;
+}
+function opvolgHtml() {
+  if (!D || !D.beheer) return '';
+  const l = OPV.meldingen;
+  const open = l ? l.filter((m) => m.status === 'open').length : 0;
+  const kop = `<button type="button" class="opv-kop" data-opv="klap"><span><b>Opvolgen &middot; Medisch</b> ${l === null ? '' : open ? `<em>${open} open</em>` : '<i>niets open</i>'}</span><span>${OPV.open ? '&#9650;' : '&#9660;'}</span></button>`;
+  if (!OPV.open) return `<div class="opv" id="opvolg">${kop}</div>`;
+  const zicht = (l || []).filter((m) => OPV.alles || m.status !== 'afgehandeld');
+  const datum = (op) => new Date(op).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const rij = (m) => `<div class="opv-rij ${m.status}">
+      <div class="opv-top"><b>${esc(m.naam || m.email)}</b><span>${datum(m.op)} &middot; ${m.bron === 'core-coach' ? 'Core-coach' : 'MKC-coach'}</span></div>
+      <div class="opv-mail">${esc(m.email)}</div>
+      <div class="opv-vraag">${esc(m.vraag)}</div>
+      ${m.extra ? `<div class="opv-extra">${esc(m.extra)}</div>` : ''}
+      <div class="opv-knoppen"><a class="opv-k oranje" href="${opvMailto(m)}">Mail</a>
+        ${m.coreId ? `<a class="opv-k" href="/coach-afval?programma=core" target="_blank" rel="noopener">Coachscherm</a>` : ''}
+        ${['gemaild', 'afgehandeld', 'open'].filter((s) => s !== m.status).map((s) => `<button type="button" class="opv-k" data-opv="status" data-id="${esc(m.id || '')}" data-s="${s}">${s === 'open' ? 'Weer open' : s === 'gemaild' ? 'Gemaild' : 'Afgehandeld'}</button>`).join('')}
+        <span class="opv-status">${m.status}</span></div></div>`;
+  return `<div class="opv open" id="opvolg">${kop}
+    ${l === null ? '<p class="klein">Laden...</p>' : zicht.length ? zicht.map(rij).join('') : '<p class="klein">Geen meldingen. Krijgt iemand van een coach het advies om naar de arts of fysio te gaan, dan staat het hier en krijg je een mail.</p>'}
+    ${l && l.some((m) => m.status === 'afgehandeld') ? `<button type="button" class="sb-link" data-opv="alles">${OPV.alles ? 'Verberg afgehandeld' : 'Toon ook afgehandeld'}</button>` : ''}</div>`;
+}
+function opvTeken() { const el = document.getElementById('opvolg'); if (el) el.outerHTML = opvolgHtml(); }
+async function opvLaad(id, status) {
+  try {
+    const t = encodeURIComponent(leesToken());
+    const j = id
+      ? await (await fetch(`${API}?actie=opvolgen`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), id, status }) })).json()
+      : await (await fetch(`${API}?actie=opvolgen&t=${t}`)).json();
+    if (j.ok) OPV.meldingen = j.meldingen;
+  } catch (e) {}
+  opvTeken();
+}
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-opv]'); if (!k) return;
+  if (k.dataset.opv === 'klap') { OPV.open = !OPV.open; opvTeken(); if (OPV.open) opvLaad(); }
+  if (k.dataset.opv === 'alles') { OPV.alles = !OPV.alles; opvTeken(); }
+  if (k.dataset.opv === 'status') { k.disabled = true; opvLaad(k.dataset.id, k.dataset.s); }
+});
+
 async function laadOverzicht() {
   const t = leesToken();
   if (!t) return toonLogin();
@@ -860,6 +925,7 @@ async function laadOverzicht() {
     const j = await r.json();
     if (!j.ok) { wisToken(); return toonLogin(j.fout, 'fout'); }
     D = j; teken();
+    if (D.beheer && OPV.meldingen === null) opvLaad();
   } catch { $('#app').innerHTML = '<div class="laden">Verbinding mislukt. Probeer het zo nog eens.</div>'; }
 }
 
