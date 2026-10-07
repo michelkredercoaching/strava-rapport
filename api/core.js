@@ -43,6 +43,9 @@ import {
   weekRij, blokVan, BLOK_WEKEN, BLOKTIPS
 } from '../lib/core.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
+// Kringverwijzing met lid.js (die gebruikt zetLidmaatschap van hier). Mag, want
+// beide gebruiken elkaars functies pas binnen een aanvraag, niet bij het laden.
+import { lidOpen } from './lid.js';
 
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || process.env.KV_REST_API_URL;
@@ -334,6 +337,7 @@ function klantBeeld(d) {
     // Proefweek: week 1 mag, vanaf week 2 op slot tot er betaald is.
     opSlot: opSlotNu(d),
     koopUrl: KOOP_URL,
+    lidOpen: LID_OPEN,
     zwaarsteDag: d.intake?.zwaarsteDag || null,
     intakeNodig: !d.intake, geblokkeerd,
     week, afgerond: d.afgerond, fase: weekRij(week).fase, faseNaam: FASES[weekRij(week).fase],
@@ -417,8 +421,13 @@ export async function emailVoorCoreToken(token) {
 // ===========================================================================
 // ROUTES
 // ===========================================================================
+// Lidmaatschap open (SEPA-incasso goedgekeurd)? Dan biedt de betaalmuur na de
+// proefweek het lidmaatschap aan in plaats van de eenmalige €49. Schakelt
+// vanzelf om; lid.js houdt het 10 minuten vast.
+let LID_OPEN = false;
 export default async function handler(req, res) {
   const actie = (req.query?.actie || '').toString();
+  try { LID_OPEN = await lidOpen(); } catch { LID_OPEN = false; }
   try {
     switch (actie) {
       case 'nieuw':     return await routeNieuw(req, res);
