@@ -267,6 +267,18 @@ const token = new URLSearchParams(location.search).get('t') || '';
 let S = null;                  // laatste stand van de server
 const $ = (s, r = document) => r.querySelector(s);
 const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// AI-antwoorden netjes tonen: eerst alles escapen, dan **vet** echt vet,
+// opsommingen met een bolletje en losse sterretjes of hekjes weg. De coaches
+// krijgen de opdracht platte tekst te schrijven, dit vangt de rest op.
+function opmaak(t) {
+  return String(t == null ? '' : t).split('\n').map((r) => {
+    let s = esc(r).replace(/^\s*#{1,6}\s*/, '');
+    s = s.replace(/^\s*[-*•]\s+/, '&bull; ');
+    s = s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/__(.+?)__/g, '<b>$1</b>').replace(/\*/g, '');
+    return s;
+  }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
 const A = window.CoreAnimaties, F = window.CoreFiguur;
 
 function melding(t, ms = 3200) {
@@ -968,7 +980,7 @@ function coachLijst(typen) {
   const tijd = (op) => new Date(op).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   l.innerHTML = `<div class="cc-b coach">${welkom}</div>` + S.berichten.map((b) => b.van === 'klant'
       ? `<div style="align-self:flex-end;max-width:86%;text-align:right"><div class="cc-b ik" style="max-width:100%">${esc(b.tekst)}</div><div class="cc-tijd">${tijd(b.op)}</div></div>`
-      : `<div style="align-self:flex-start;max-width:86%"><div class="cc-b coach ${b.medisch ? 'let' : ''}" style="max-width:100%">${esc(b.tekst)}</div><div class="cc-tijd">${b.van === 'michel' ? 'Michel' : CC_NAAM} &middot; ${tijd(b.op)}</div></div>`).join('')
+      : `<div style="align-self:flex-start;max-width:86%"><div class="cc-b coach ${b.medisch ? 'let' : ''}" style="max-width:100%">${opmaak(b.tekst)}</div><div class="cc-tijd">${b.van === 'michel' ? 'Michel' : CC_NAAM} &middot; ${tijd(b.op)}</div></div>`).join('')
     + (typen ? `<div class="cc-b ik" style="align-self:flex-end">${esc(typen)}</div><div class="cc-typen"><i></i><i></i><i></i></div>` : '');
   $('#ccChips').style.display = S.berichten.length ? 'none' : '';
   l.scrollTop = l.scrollHeight;
