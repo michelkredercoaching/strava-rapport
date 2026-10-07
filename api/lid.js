@@ -150,13 +150,21 @@ async function lidOpen() {
 
 // ---- Routes ----------------------------------------------------------------------
 export default async function handler(req, res) {
-  res.setHeader('Cache-Control', 'no-store');
   const actie = String(req.query?.actie || '');
+  if (actie !== 'open') res.setHeader('Cache-Control', 'no-store');
   try {
     if (actie === 'webhook') return await routeWebhook(req, res);
     if (actie === 'start') return await routeStart(req, res);
     if (actie === 'status') return await routeStatus(req, res);
     if (actie === 'opzeggen') return await routeOpzeggen(req, res);
+    if (actie === 'open') {
+      // Publiek: kunnen mensen al lid worden? De WordPress-pagina's (/core/,
+      // bedankpagina, homepage, checkout) vragen dit, zodat het oude aanbod
+      // van €49/€29 vanzelf verdwijnt zodra de incasso is goedgekeurd.
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cache-Control', 'public, max-age=300');
+      return res.status(200).json({ ok: true, open: await lidOpen(), bedrag: BEDRAG });
+    }
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('lid fout:', e);
