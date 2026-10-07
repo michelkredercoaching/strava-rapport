@@ -35,6 +35,7 @@
 //      MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID (= de Keuzehulp-lijst), APP_URL (optioneel)
 import crypto from 'crypto';
 import { coreVoorEmail, emailVoorCoreToken } from './core.js';
+import { lidBeeld, haalLid } from './lid.js';
 
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || process.env.KV_REST_API_URL;
@@ -45,6 +46,8 @@ const MC_LIST     = process.env.MAILCHIMP_LIST_ID || '';
 const APP_URL     = process.env.APP_URL || 'https://rapport.michelkredercoaching.nl/app';
 const AFZENDER    = 'Michel Kreder <michel@michelkredercoaching.nl>';
 const GELDIG_DAGEN = 180;
+// Michels eigen adressen: die zien in de app een schakelaar "Alles open".
+const BEHEER = ['michel.kredercoaching@gmail.com', 'michel.kreder@gmail.com', 'info@michelkredercoaching.nl'];
 
 // ---- Token -----------------------------------------------------------------
 function handtekening(payload) {
@@ -178,7 +181,7 @@ async function routeLogin(req, res) {
 async function routeOverzicht(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email) return res.status(401).json({ ok: false, fout: 'Je inloglink is verlopen. Vraag hieronder een nieuwe aan.' });
-  const [core, lid] = await Promise.all([coreVoorEmail(email), mcLid(email)]);
+  const [core, lid, lidmaatschap] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email)]);
   const mf = (lid && lid.merge_fields) || {};
   const analyse = heeftTag(lid, 'power-profile-koper') ? {
     datum: mf.RAPDAT || '', ftp: mf.FTP || '', meet: mf.MEETMETH || '', type: mf.RENTYPE || '',
@@ -187,6 +190,8 @@ async function routeOverzicht(req, res) {
   return res.status(200).json({
     ok: true,
     email,
+    beheer: BEHEER.includes(email),
+    lid: lidBeeld(lidmaatschap),
     naam: (core && core.naam) || mf.FNAME || '',
     core,
     analyse,
