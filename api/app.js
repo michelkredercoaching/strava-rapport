@@ -170,15 +170,17 @@ async function routeLogin(req, res) {
   const body = await leesBody(req);
   const email = String(body.email || '').trim().toLowerCase();
   if (!geldigMail(email)) return res.status(400).json({ ok: false, fout: 'Vul een geldig e-mailadres in.' });
-  const antwoord = { ok: true, bericht: 'Als dit adres bij ons bekend is, staat er binnen een minuut een mail met je inlogcode.' };
+  const antwoord = { ok: true, bericht: 'Check je mail: binnen een minuut staat je inlogcode erin. Niets gekregen? Kijk even in je spam.' };
 
   // Rem: één inlogmail per adres per minuut.
   const rem = await redis(['SET', `app:login:${email}`, '1', 'NX', 'EX', '60']);
   if (rem.ok && rem.result !== 'OK') return res.status(200).json(antwoord);
 
+  // Iedereen kan inloggen (07-10-2026): een onbekend adres krijgt ook een code
+  // en wordt na het invoeren van die code een gratis account (zie verifieer).
+  // Zo kan iemand die via Instagram binnenkomt meteen de gratis tools gebruiken.
   const [core, lid] = await Promise.all([coreVoorEmail(email), mcLid(email)]);
-  const bekend = !!core || (lid && lid.status && lid.status !== 'archived');
-  if (bekend) {
+  {
     const naam = (core && core.naam) || (lid && lid.merge_fields && lid.merge_fields.FNAME) || '';
     // 6 cijfers, een kwartier geldig. Nieuwe aanvraag = nieuwe code, pogingen op 0.
     const code = String(crypto.randomInt(0, 1000000)).padStart(6, '0');
@@ -193,6 +195,9 @@ async function routeOverzicht(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email) return res.status(401).json({ ok: false, fout: 'Je inloglink is verlopen. Vraag hieronder een nieuwe aan.' });
   const [core, lid, lidmaatschap, kanLid, bandenProfiel, ritten] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen(), haalBandenProfiel(email), haalRitten(email)]);
+  // Ingelogd via de knop in de mail (zonder code) en nog geen contact? Dan
+  // ook hier het gratis account aanmaken.
+  if (!lid || lid.status === 'archived') await nieuwAccount(email);
   const mf = (lid && lid.merge_fields) || {};
   const analyse = heeftTag(lid, 'power-profile-koper') ? {
     datum: mf.RAPDAT || '', ftp: mf.FTP || '', meet: mf.MEETMETH || '', type: mf.RENTYPE || '',
@@ -241,7 +246,24 @@ async function routeVerifieer(req, res) {
   if (!goed) return res.status(401).json({ ok: false, fout: 'Deze code klopt niet of is verlopen.' });
   await redis(['DEL', `app:code:${email}`]);
   await redis(['DEL', `app:pogingen:${email}`]);
+  // Nieuw adres? Dan nu (pas na de code, dus het adres is echt van hem) in de
+  // Keuzehulp-lijst met tag mkc-app. Bestaande contacten blijven zoals ze zijn.
+  await nieuwAccount(email);
   return res.status(200).json({ ok: true, t: maakAppToken(email) });
+}
+
+async function nieuwAccount(email) {
+  if (!MC_KEY || !MC_LIST) return;
+  try {
+    const bestaand = await mcLid(email);
+    if (bestaand && bestaand.status && bestaand.status !== 'archived') return;
+    const dc = MC_KEY.split('-')[1];
+    const hash = crypto.createHash('md5').update(email).digest('hex');
+    const auth = { Authorization: 'Basic ' + Buffer.from('any:' + MC_KEY).toString('base64'), 'Content-Type': 'application/json' };
+    const basis = `https://${dc}.api.mailchimp.com/3.0/lists/${MC_LIST}/members/${hash}`;
+    await fetch(basis, { method: 'PUT', headers: auth, body: JSON.stringify({ email_address: email, status_if_new: 'subscribed', status: 'subscribed' }), signal: AbortSignal.timeout(8000) });
+    await fetch(basis + '/tags', { method: 'POST', headers: auth, body: JSON.stringify({ tags: [{ name: 'mkc-app', status: 'active' }] }), signal: AbortSignal.timeout(8000) });
+  } catch (e) { console.error('nieuw account Mailchimp mislukt (genegeerd):', e); }
 }
 
 // Persoonlijk manifest: de login zit in start_url. Zet je de app op je
@@ -401,6 +423,7 @@ async function routeBandVraag(req, res) {
     'Je bent de bandenspanning-assistent in de MKC-app van Michel Kreder, wielercoach en oud-profrenner. Je antwoord gaat direct naar de renner.',
     'Het berekende advies in de context is leidend: noem die getallen, verzin geen andere basisdruk. Je mag wel bijsturen met deze vaste regels: nat wegdek 0,3 bar eraf; klinkers, kasseien of ruw asfalt 0,5 bar eraf; vers glad asfalt 0,3 bar erbij; los grind, zand of modder 0,3 bar eraf; bikepacking met tassen 0,4 bar erbij; voorband zachter dan achter; hookless velg nooit boven 5,0 bar; tubeless 0,2 tot 0,3 bar zachter dan met binnenband. Kou: lucht krimpt, pomp je binnen bij 20 graden en rijd je in de kou, dan zakt de druk ongeveer 0,1 bar per 5 graden.',
     'Toon: warm, direct, korte zinnen, geen gedachtestreepjes. Spreek de renner aan met je. Nederlands, maximaal 90 woorden, geen begroeting of ondertekening. Geef altijd concrete getallen voor en achter als de vraag om een spanning gaat.',
+    'Schrijf platte tekst zonder opmaak: geen sterretjes, geen hekjes, geen vetgedrukt, geen opsomming met streepjes. Houd elke alinea kort, een of twee zinnen. Het weer, nat of droog en de ondergrond staan al in de context: ga daarvan uit en vraag er niet naar. Noem een aanpassing alleen als de vraag iets anders beschrijft dan de context (bijvoorbeeld kasseien of regen morgen).',
     'Gaat de vraag niet over banden, bandenspanning, materiaal of rijden in bepaald weer, zeg dan vriendelijk dat deze knop alleen over banden gaat.',
     'Beloof nooit dat Michel persoonlijk iets doet.'
   ].join(' ');
