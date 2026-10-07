@@ -39,7 +39,8 @@ import crypto from 'node:crypto';
 import {
   maakPlan, sessie, heeftRodeVlag, KLACHTEN, OEFENINGEN, TESTS, rompscore, balans,
   volgendeWeek, testNodig, meterNodig, verdiendeBadges, BADGES,
-  WEEKTIPS, besteStart, FASES, WEKEN as WEEKTABEL, letters, nodigVoorWeek, frequentie, startniveau
+  WEEKTIPS, besteStart, FASES, WEKEN as WEEKTABEL, letters, nodigVoorWeek, frequentie, startniveau,
+  weekRij, blokVan, BLOK_WEKEN, BLOKTIPS
 } from '../lib/core.js';
 
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
@@ -158,6 +159,12 @@ async function bewaarNieuw(d) {
 // datum lopen: d.lidTot (ISO). Wie eerder eenmalig betaalde heeft geen lidTot
 // en houdt dus gewoon toegang.
 const isBetaald = (d) => d.betaald !== false && (!d.lidTot || Date.now() < Date.parse(d.lidTot));
+// Na week 12 doorgaan met blok 2 en verder: leden (lidTot) en begeleidingsklanten.
+// Wie eenmalig betaalde, sluit na week 12 af met de vraag of hij als lid door wil.
+const nogGeldig = (iso) => !!iso && Date.now() < Date.parse(iso);
+const magDoorlopen = (d) => nogGeldig(d.lidTot) || nogGeldig(d.doorloopTot) || d.bron === 'begeleiding';
+// Op slot: proefweek voorbij zonder betaling, of na week 12 zonder lidmaatschap.
+const opSlotNu = (d) => (!isBetaald(d) && d.week >= 2) || (d.week > BLOK_WEKEN && !magDoorlopen(d));
 
 // Proefweek starten, of de bestaande link teruggeven. Aangeroepen vanuit
 // api/keuzehulp-inschrijving.js. Mailt zelf niets, dat doet die route.
@@ -205,7 +212,7 @@ async function assistentAntwoord(vraag, d) {
   const laatsteTest = (d.tests || []).slice(-1)[0];
   const context = [
     `Deelnemer: ${d.naam || 'onbekend'}`,
-    `Week ${d.week} van 12 (${FASES[WEEKTABEL[d.week - 1]?.fase] || ''}), ${d.afgerond} weken afgerond.`,
+    `Blok ${blokVan(d.week)}, week ${weekRij(d.week).weekInBlok} van 12 (${FASES[weekRij(d.week).fase] || ''}), ${d.afgerond} weken afgerond in totaal.`,
     d.intake ? `Klachten: ${(d.intake.klachten || []).join(', ') || 'geen'}. Ervaring: ${d.intake.ervaring}. Leeftijd: ${({ onder40: 'jonger dan 40', '40-55': '40 tot 55', '55plus': '55 of ouder' })[d.intake.leeftijd] || 'onbekend'}. ${frequentie(d.intake)}x per week. Startniveau uit de starttest: ${startniveau(planIntake(d))}.` : 'Intake nog niet gedaan.',
     s ? `Oefeningen deze week: ${letters(d.intake).map((l, i) => { const x = sessie(d.week, l, planIntake(d)); return 'sessie ' + (i + 1) + ': ' + x.oefeningen.map((o) => `${o.naam} (${o.cue})`).join('; '); }).join(' | ')}.` : '',
     s ? `Werk/rust deze week: ${s.werk}s/${s.rust}s, ${s.rondes} rondes.` : '',
@@ -217,7 +224,7 @@ async function assistentAntwoord(vraag, d) {
 
   const systeem = [
     'Je bent de coach-assistent van het Core-programma van Michel Kreder, wielercoach en oud-profrenner. Je antwoord gaat direct naar de deelnemer, er kijkt niemand meer naar.',
-    'Het programma: 12 weken romp- en heupoefeningen zonder gewichten voor wielrenners, 2, 3 of 4 sessies per week (de deelnemer kiest en kan wisselen), elke week zwaarder. Een week is rond bij 2 van de 2, 2 van de 3 of 3 van de 4 sessies. Gaat het slechter, dan herhaalt de deelnemer de week met lichtere varianten. Romptest in week 0, 4, 8 en 12.',
+    'Het programma: blokken van 12 weken (leden gaan na week 12 door met blok 2, 3, enz., elk blok een stap zwaarder) met romp- en heupoefeningen zonder gewichten voor wielrenners, 2, 3 of 4 sessies per week (de deelnemer kiest en kan wisselen), elke week zwaarder. Een week is rond bij 2 van de 2, 2 van de 3 of 3 van de 4 sessies. Gaat het slechter, dan herhaalt de deelnemer de week met lichtere varianten. Romptest bij de start en daarna elke 4 weken.',
     'Toon: warm, direct, korte zinnen, geen gedachtestreepjes, geen jargon. Spreek de deelnemer aan met je. Nederlands, maximaal 120 woorden, geen begroeting en geen ondertekening.',
     'Geef praktische uitleg over uitvoering, makkelijkere of zwaardere varianten, planning naast fietstraining en wat de deelnemer voelt (spierpijn, vermoeidheid). Gebruik de oefeningen uit de context.',
     'Spierpijn of vermoeidheid mag je uitleggen. Maar gaat de vraag over pijn die scherp is, erger wordt of blijft, uitstraling naar een been of arm, tintelingen, een doof gevoel, een hernia, een operatie, zwangerschap, medicijnen of iets anders medisch: geef GEEN advies en antwoord alleen met het woord [MEDISCH].',
@@ -312,7 +319,9 @@ function klantBeeld(d) {
   const gedaan = gedaanDezeWeek(d);
   const tests = (d.tests || []).map((t) => ({ moment: t.moment, score: t.score, uitslag: t.uitslag, balans: balans(t.uitslag) }));
   const vakjes = [];
-  for (let w = 1; w <= 12; w++) for (const l of letters(d.intake)) {
+  // Alleen de 12 weken van het huidige blok.
+  const blokStart = (blokVan(week) - 1) * BLOK_WEKEN;
+  for (let w = blokStart + 1; w <= blokStart + BLOK_WEKEN; w++) for (const l of letters(d.intake)) {
     vakjes.push({ week: w, letter: l, gedaan: (d.sessies || []).some((s) => s.week === w && s.letter === l) });
   }
   // Alleen aftellen, geen doeltip (besluit Michel).
@@ -322,11 +331,13 @@ function klantBeeld(d) {
     naam: d.naam || '', status: d.status,
     betaald: isBetaald(d),
     // Proefweek: week 1 mag, vanaf week 2 op slot tot er betaald is.
-    opSlot: !isBetaald(d) && d.week >= 2,
+    opSlot: opSlotNu(d),
     koopUrl: KOOP_URL,
     zwaarsteDag: d.intake?.zwaarsteDag || null,
     intakeNodig: !d.intake, geblokkeerd,
-    week, afgerond: d.afgerond, fase: WEEKTABEL[week - 1].fase, faseNaam: FASES[WEEKTABEL[week - 1].fase],
+    week, afgerond: d.afgerond, fase: weekRij(week).fase, faseNaam: FASES[weekRij(week).fase],
+    blok: blokVan(week), weekInBlok: weekRij(week).weekInBlok, blokStart,
+    magDoorlopen: magDoorlopen(d),
     sessies, gedaanDezeWeek: gedaan,
     weekRond: gedaan.length >= nodigVoorWeek(d.intake), nodigVoorWeek: nodigVoorWeek(d.intake),
     frequentie: frequentie(d.intake),
@@ -338,7 +349,7 @@ function klantBeeld(d) {
     meters: (d.meters || []).map((m) => ({ moment: m.moment, onderrug: m.onderrug, nek: m.nek })),
     badges: BADGES.map((b) => ({ ...b, verdiend: verdiendeBadges(d.afgerond).some((v) => v.fase === b.fase) })),
     vakjes,
-    weektip: WEEKTIPS[week], intakeTips: d.intake ? maakPlan(intake).tips || [] : [],
+    weektip: (blokVan(week) > 1 && BLOKTIPS[weekRij(week).weekInBlok]) || WEEKTIPS[weekRij(week).weekInBlok], intakeTips: d.intake ? maakPlan(intake).tips || [] : [],
     doel,
     vervolgVraag: d.afgerond >= 9, doorgaan: !!d.doorgaan,
     berichten: (d.berichten || []).map((b) => ({ van: b.van, tekst: b.tekst, op: b.op, medisch: !!b.medisch })),
@@ -357,7 +368,7 @@ export async function coreVoorEmail(email) {
   return {
     link: linkVoor(d.id), naam: b.naam,
     betaald: b.betaald, opSlot: b.opSlot, intakeNodig: b.intakeNodig, klaar: b.klaar,
-    week: b.week, fase: b.fase, faseNaam: b.faseNaam,
+    week: b.week, blok: b.blok, weekInBlok: b.weekInBlok, fase: b.fase, faseNaam: b.faseNaam, magDoorlopen: b.magDoorlopen,
     gedaan: b.gedaanDezeWeek.length, frequentie: b.frequentie, afgerond: b.afgerond,
     startScore: tests[0] ? tests[0].score : null,
     rompscore: tests.length ? tests[tests.length - 1].score : null,
@@ -380,6 +391,11 @@ export async function zetLidmaatschap({ email, naam, tot }) {
   } else {
     const eenmalig = d.betaald !== false && !d.lidTot && d.bron !== 'proef' && d.bron !== 'lid';
     if (!eenmalig) { d.betaald = true; d.lidTot = tot; if (!d.lidSinds) d.lidSinds = nu(); if (d.bron === 'proef') d.bron = 'lid'; }
+    // Eenmalige kopers houden hun 12 weken voor altijd; het lidmaatschap geeft ze
+    // daarnaast toegang tot blok 2 en verder, zolang het loopt.
+    else d.doorloopTot = tot;
+    // Had je de 12 weken al af en word je lid: dan begint blok 2.
+    if (d.status === 'klaar') { d.status = 'actief'; d.week = Math.max(d.week, d.afgerond + 1); }
     if (!d.naam && naam) d.naam = String(naam).slice(0, 80);
     await bewaarDossier(d);
   }
@@ -551,7 +567,7 @@ async function routeAfvink(req, res) {
   const r = await metToken(req, res); if (!r) return;
   const { d, body } = r;
   if (!d.intake || d.status === 'wacht-op-fysio') return res.status(400).json({ ok: false, fout: 'eerst de intake' });
-  if (!isBetaald(d) && d.week >= 2) return res.status(403).json({ ok: false, fout: 'je proefweek zit erop', opSlot: true });
+  if (opSlotNu(d)) return res.status(403).json({ ok: false, fout: d.week > BLOK_WEKEN ? 'word lid om door te gaan' : 'je proefweek zit erop', opSlot: true });
   const letter = letters(d.intake).includes(body.letter) ? body.letter : null;
   if (!letter) return res.status(400).json({ ok: false, fout: 'welke sessie?' });
   if (!gedaanDezeWeek(d).includes(letter)) {
@@ -567,8 +583,9 @@ async function routeWeekklaar(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const r = await metToken(req, res); if (!r) return;
   const { d, body } = r;
+  if (d.status === 'klaar') return res.status(400).json({ ok: false, fout: 'je programma is al afgerond' });
   if (gedaanDezeWeek(d).length < nodigVoorWeek(d.intake)) return res.status(400).json({ ok: false, fout: `rond eerst ${nodigVoorWeek(d.intake)} sessies af` });
-  if (!isBetaald(d) && d.week >= 2) return res.status(403).json({ ok: false, fout: 'je proefweek zit erop', opSlot: true });
+  if (opSlotNu(d)) return res.status(403).json({ ok: false, fout: d.week > BLOK_WEKEN ? 'word lid om door te gaan' : 'je proefweek zit erop', opSlot: true });
   const reactie = ['beter', 'gelijk', 'slechter'].includes(body.reactie) ? body.reactie : null;
   if (!reactie) return res.status(400).json({ ok: false, fout: 'hoe reageerde je lichaam?' });
 
@@ -592,7 +609,12 @@ async function routeWeekklaar(req, res) {
     d.slechterOpRij = 0;
     d.verlicht = false;
     d.afgerond = Math.max(d.afgerond, oudeWeek);
-    if (oudeWeek >= 12) { d.status = 'klaar'; melding = 'Alle 12 weken rond. Doe nu je eindtest en kijk wat het je heeft opgeleverd.'; }
+    if (oudeWeek % BLOK_WEKEN === 0 && magDoorlopen(d)) {
+      // Einde van een blok, en deze deelnemer gaat door: het volgende blok begint.
+      d.week = stap.week;
+      melding = `Blok ${blokVan(oudeWeek)} rond. Doe je test, en daarna begint blok ${blokVan(d.week)}: dezelfde opbouw, elke oefening een stap zwaarder.`;
+    }
+    else if (oudeWeek % BLOK_WEKEN === 0) { d.status = 'klaar'; melding = 'Alle 12 weken rond. Doe nu je eindtest en kijk wat het je heeft opgeleverd.'; }
     else if (d.vasthouden) {
       // Eén week vasthouden na een hertest met weinig vooruitgang.
       d.vasthouden = false;
@@ -627,7 +649,7 @@ async function routeTest(req, res) {
   // vorige test? Dan houden we de volgende week één keer vast in plaats van
   // weer zwaarder te gaan, zodat de basis eerst steviger wordt.
   const vorige = (d.tests || []).filter((t) => t.moment < moment).pop();
-  if (vorige && [4, 8].includes(moment) && score - vorige.score < 5) d.vasthouden = true;
+  if (vorige && [4, 8].includes(moment % BLOK_WEKEN) && score - vorige.score < 5) d.vasthouden = true;
   d.tests.push({ moment, uitslag, score, op: nu() });
   await bewaarDossier(d);
   return res.status(200).json({ ok: true, ...klantBeeld(d) });
@@ -892,7 +914,7 @@ function herinneringHtml(d) {
   const doel = d.doel ? besteStart(d.doel.datum) : null;
   return `<div style="${STIJL}">
     <p>${hoi(d)}</p>
-    <p>Week ${d.week} van 12. Je sessies staan klaar op je pagina.</p>
+    <p>${blokVan(d.week) > 1 ? `Blok ${blokVan(d.week)}, week ${weekRij(d.week).weekInBlok} van 12` : `Week ${d.week} van 12`}. Je sessies staan klaar op je pagina.</p>
     ${doel && doel.dagenTotDoel > 0 ? `<p>Nog <b>${doel.wekenTotDoel} weken</b> tot ${esc(d.doel.naam)}.</p>` : ''}
     ${tip ? `<p style="border-left:3px solid #FF6B1A;padding-left:14px;color:#333"><b>Tip van de week:</b> ${esc(tip)}</p>` : ''}
     <p><a href="${linkVoor(d.id)}" style="${KNOP}">Start je sessie</a></p>
