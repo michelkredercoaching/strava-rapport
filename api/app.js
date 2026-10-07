@@ -158,6 +158,7 @@ export default async function handler(req, res) {
     if (actie === 'coach') return await routeCoach(req, res);
     if (actie === 'opvolgen') return await routeOpvolgen(req, res);
     if (actie === 'bandenritten') return await routeBandenRitten(req, res);
+    if (actie === 'antwoorden') return await routeAntwoorden(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -485,7 +486,7 @@ async function routeBandVraag(req, res) {
     'Schrijf platte tekst zonder opmaak: geen sterretjes, geen hekjes, geen vetgedrukt, geen opsomming met streepjes. Houd elke alinea kort, een of twee zinnen. Het weer, nat of droog en de ondergrond staan al in de context: ga daarvan uit en vraag er niet naar. Noem een aanpassing alleen als de vraag iets anders beschrijft dan de context (bijvoorbeeld kasseien of regen morgen).',
     'Gaat de vraag niet over banden, bandenspanning, materiaal of rijden in bepaald weer, zeg dan vriendelijk dat deze knop alleen over banden gaat.',
     'Beloof nooit dat Michel persoonlijk iets doet.'
-  ].join(' ');
+  ].join(' ') + await voorbeeldenTekst('bandvraag');
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -502,6 +503,7 @@ async function routeBandVraag(req, res) {
     await logVerbruik(j);
     const tekst = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
     if (!tekst) throw new Error('leeg');
+    await bewaarAntwoord({ email, bron: 'bandvraag', vraag, antwoord: tekst });
     return res.status(200).json({ ok: true, antwoord: tekst, gratisOver: recht.lid ? null : await telGratis(email) });
   } catch {
     return res.status(502).json({ ok: false, fout: 'Even geen antwoord. Probeer het zo nog eens.' });
@@ -578,7 +580,7 @@ async function routeCoach(req, res) {
         headers: { 'x-api-key': CLAUDE_KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01', 'content-type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-opus-5-5', max_tokens: 3000, output_config: { effort: 'low' }, fallbacks: 'default',
-          system: `${COACH_KENNIS}\n\nOVER DEZE RENNER\n${context}\n\nREGELS\n${COACH_REGELS}`,
+          system: `${COACH_KENNIS}\n\nOVER DEZE RENNER\n${context}\n\nREGELS\n${COACH_REGELS}${await voorbeeldenTekst('mkc-coach')}`,
           messages: [...eerder, { role: 'user', content: tekst }]
         }),
         signal: AbortSignal.timeout(40000)
@@ -600,6 +602,7 @@ async function routeCoach(req, res) {
     { van: 'coach', tekst: antwoord || COACH_STORING, op: new Date().toISOString(), medisch, storing: !antwoord }
   ).slice(-60);
   await redis(['SET', `app:coach:${email}`, JSON.stringify(nieuw)]);
+  if (antwoord && !medisch) await bewaarAntwoord({ email, bron: 'mkc-coach', vraag: tekst, antwoord });
   if (medisch) {
     const [core, mc] = await Promise.all([coreVoorEmail(email), mcLid(email)]);
     await meldMedisch({ email, naam: (core && core.naam) || (mc && mc.merge_fields && mc.merge_fields.FNAME) || '', bron: 'mkc-coach', vraag: tekst,
@@ -687,4 +690,52 @@ async function routeBandenRitten(req, res) {
   ritten = ritten.slice(0, 40);
   await redis(['SET', `app:bandenritten:${email}`, JSON.stringify(ritten)]);
   return res.status(200).json({ ok: true, ritten });
+}
+
+// ===========================================================================
+// NAKIJKEN EN CORRIGEREN (07-10-2026): elk coach-antwoord wordt bewaard. Michel
+// ziet ze in zijn beheerweergave en kan per antwoord zeggen hoe hij het zelf
+// zou zeggen. Die correcties gaan als voorbeeld mee in de volgende vragen,
+// zodat de coach steeds meer als Michel klinkt.
+//   GET  antwoorden ?t=                   -> { antwoorden, correcties }   (alleen Michel)
+//   POST antwoorden { t, id, correctie }  -> correctie opslaan (leeg = wissen)
+// Redis: app:antwoorden (lijst, nieuwste eerst, max 200), app:correcties (JSON, max 40)
+// ===========================================================================
+const MAX_VOORBEELDEN = 8;
+async function bewaarAntwoord({ email, bron, vraag, antwoord }) {
+  try {
+    const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    await redis(['LPUSH', 'app:antwoorden', JSON.stringify({ id, email, bron, vraag: String(vraag).slice(0, 600), antwoord: String(antwoord).slice(0, 1500), op: new Date().toISOString() })]);
+    await redis(['LTRIM', 'app:antwoorden', '0', '199']);
+  } catch {}
+}
+async function haalCorrecties() {
+  const r = await redis(['GET', 'app:correcties']);
+  try { const l = JSON.parse((r.ok && r.result) || '[]'); return Array.isArray(l) ? l : []; } catch { return []; }
+}
+// Tekstblok voor de systeemprompt: de laatste correcties als voorbeeld.
+async function voorbeeldenTekst(bron) {
+  const l = (await haalCorrecties()).filter((c) => !bron || c.bron === bron || bron === 'mkc-coach').slice(0, MAX_VOORBEELDEN);
+  if (!l.length) return '';
+  return '\n\nVOORBEELDEN: ZO ZOU MICHEL HET ZELF ZEGGEN (volg deze inhoud en toon als een vraag erop lijkt)\n' +
+    l.map((c) => `Vraag: ${c.vraag}\nMichel: ${c.correctie}`).join('\n\n');
+}
+async function routeAntwoorden(req, res) {
+  const body = req.method === 'POST' ? await leesBody(req) : {};
+  const email = leesAppToken(String(req.method === 'POST' ? body.t : req.query?.t || ''));
+  if (!email || !BEHEER.includes(email)) return res.status(403).json({ ok: false });
+  let correcties = await haalCorrecties();
+  const l = await redis(['LRANGE', 'app:antwoorden', '0', '49']);
+  const antwoorden = ((l.ok && l.result) || []).map((x) => { try { return JSON.parse(x); } catch { return null; } }).filter(Boolean);
+  if (req.method === 'POST') {
+    const id = String(body.id || '').slice(0, 20);
+    const tekst = String(body.correctie || '').trim().slice(0, 1200);
+    const a = antwoorden.find((x) => x.id === id);
+    correcties = correcties.filter((c) => c.id !== id);
+    if (tekst && a) correcties.unshift({ id, bron: a.bron, vraag: a.vraag, origineel: a.antwoord, correctie: tekst, op: new Date().toISOString() });
+    correcties = correcties.slice(0, 40);
+    await redis(['SET', 'app:correcties', JSON.stringify(correcties)]);
+  }
+  const perId = Object.fromEntries(correcties.map((c) => [c.id, c.correctie]));
+  return res.status(200).json({ ok: true, antwoorden: antwoorden.map((a) => ({ ...a, correctie: perId[a.id] || '' })), aantalCorrecties: correcties.length });
 }
