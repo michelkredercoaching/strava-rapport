@@ -72,6 +72,20 @@
   .nepgrafiek { height:86px; margin-top:14px; border-radius:6px; background:linear-gradient(180deg, rgba(255,107,26,.15), transparent); position:relative; overflow:hidden; }
   .nepgrafiek svg { width:100%; height:100%; display:block; }
 
+  .beheer { display:flex; justify-content:space-between; align-items:center; gap:10px; background:#1d1408; border:1px dashed rgba(255,107,26,.5); border-radius:6px; padding:8px 10px; margin-bottom:16px; font-size:12px; color:var(--accent); font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+  .beheer button { background:transparent; border:1px solid rgba(255,255,255,.15); color:var(--muted); font-family:inherit; font-size:12px; padding:5px 10px; cursor:pointer; }
+  .beheer button.aan { background:var(--accent); color:#0A0A0A; border-color:var(--accent); }
+  .lidblok { border:1px solid rgba(255,107,26,.55); background:linear-gradient(160deg, rgba(255,107,26,.16), var(--surface) 60%); border-radius:8px; padding:20px; margin-bottom:6px; }
+  .lidblok h2 { font-family:'Bebas Neue',sans-serif; font-size:32px; line-height:.95; text-transform:uppercase; margin:2px 0 8px; }
+  .lidblok .prijs { font-family:'Bebas Neue',sans-serif; font-size:46px; line-height:1; }
+  .lidblok .prijs small { font-family:'DM Sans',sans-serif; font-size:14px; color:var(--muted); margin-left:4px; }
+  .lidblok ul { list-style:none; margin:12px 0 4px; display:grid; gap:7px; }
+  .lidblok li { display:flex; gap:10px; font-size:14.5px; color:rgba(245,243,239,.85); }
+  .lidblok li::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--accent); flex-shrink:0; margin-top:8px; }
+  .lidrij { display:flex; justify-content:space-between; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px 16px; font-size:14px; }
+  .lidrij b { color:var(--groen); }
+  .lidrij.waarschuw b { color:#ff8a5c; }
+  .lidrij button { background:none; border:0; color:var(--muted); text-decoration:underline; font-family:inherit; font-size:13px; cursor:pointer; }
   .groepkop { font-size:11px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin:26px 2px 10px; }
   .groepkop:first-of-type { margin-top:4px; }
   .binnenkort { opacity:.8; }
@@ -112,6 +126,10 @@ const $ = (s) => document.querySelector(s);
 const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const SLOT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 const SITE = 'https://michelkredercoaching.nl';
+// Analyse kopen = direct naar de checkout met product 12131 in het mandje (de
+// korte checkout uit checkout-analyse-minimaal.php), niet via de productpagina.
+const ANALYSE_KOOP = SITE + '/checkout/?add-to-cart=12131';
+let BEKIJK = 'klant'; // beheerweergave: 'klant' of 'alles'
 let D = null;
 
 function leesToken() { try { return localStorage.getItem(OPSLAG) || ''; } catch (e) { return ''; } }
@@ -252,7 +270,7 @@ function analyseKaart(a) {
       <p>Je analyse ${a.datum ? 'van ' + esc(a.datum) + ' ' : ''}${meet}. Het volledige rapport staat als pdf in je mail.</p>
       <div class="cijfers">${hoofd}<div class="cijfer" style="grid-column:span 2"><span>Rennerstype</span><b style="font-size:22px">${esc(a.type || '–')}</b></div></div>
       ${a.advies ? `<p class="klein">Mijn advies voor jou: <b style="color:var(--white)">${esc(a.advies)}</b></p>` : ''}
-      <a class="knop leeg" href="${SITE}/strava-analyse/">Doe een nieuwe analyse</a>
+      <a class="knop leeg" href="${ANALYSE_KOOP}">Doe een nieuwe analyse</a>
       <p class="klein">Na een paar weken trainen zie je zo of je FTP gestegen is.</p></div></div>`;
   }
   return `<div class="kaart"><div class="kaart-in"><span class="tag slot">Op slot</span>
@@ -260,7 +278,7 @@ function analyseKaart(a) {
     <p>Koppel je Strava en zie in een paar minuten je FTP, je sterke en zwakke punten en wat het meeste oplevert.</p>
     <div class="wazig"><div class="achter"><div class="cijfers"><div class="cijfer"><span>FTP</span><b>241</b></div><div class="cijfer"><span>W/kg</span><b>3,4</b></div><div class="cijfer"><span>Score</span><b>78</b></div></div>${nepGrafiek()}</div>
       <div class="slotje">${SLOT}<b>Ontgrendel voor &euro;29</b></div></div>
-    <a class="knop" href="${SITE}/strava-analyse/">Ontgrendel je analyse</a></div></div>`;
+    <a class="knop" href="${ANALYSE_KOOP}">Ontgrendel je analyse</a></div></div>`;
 }
 
 function pacingKaart() {
@@ -279,6 +297,7 @@ function bandenKaart(heeft) {
 // Volgorde (besluit Michel 06-10-2026): eerst wat actief is of gratis te gebruiken,
 // dan wat je kunt ontgrendelen, onderaan wat nog moet komen. Met tussenkopjes.
 function kaartenHtml(d) {
+  if (d.beheer && BEKIJK === 'alles') d = voorbeeldData(d);
   const actief = [], ontgrendel = [];
   (d.core ? actief : ontgrendel).push(coreKaart(d.core));
   (d.analyse ? actief : ontgrendel).push(analyseKaart(d.analyse));
@@ -287,23 +306,86 @@ function kaartenHtml(d) {
   return groep('Actief', actief) + groep('Ontgrendelen', ontgrendel) + groep('Binnenkort', [afvalKaart(), pacingKaart()]);
 }
 
+// Beheerweergave (alleen voor Michels eigen adressen, zie BEHEER in api/app.js):
+// alles open met voorbeeldcijfers, zodat je ziet hoe elke kaart er straks uitziet.
+function voorbeeldData(d) {
+  return { ...d,
+    core: d.core || { link: '#', naam: d.naam, betaald: true, opSlot: false, intakeNodig: false, klaar: false, week: 3, fase: 1, faseNaam: 'Fundament', gedaan: 1, frequentie: 3, afgerond: 7, startScore: 52, rompscore: 66, volgende: { letter: 'B', naam: 'Zijkant en rotatie', minuten: 11, oefeningen: ['zijplank-knieen', 'birddog', 'bridge', 'deadbug-gebogen'] } },
+    analyse: d.analyse || { datum: '01-10-2026', ftp: '248', meet: 'vermogen', type: 'Klimmer', omslag: '', advies: 'Opbouw 12-wekenplan' },
+    banden: true };
+}
+function beheerHtml(d) {
+  if (!d.beheer) return '';
+  return `<div class="beheer"><span>Beheerweergave</span><div><button data-actie="bekijk" data-w="klant" class="${BEKIJK === 'klant' ? 'aan' : ''}">Als klant</button><button data-actie="bekijk" data-w="alles" class="${BEKIJK === 'alles' ? 'aan' : ''}">Alles open</button></div></div>`;
+}
+
+// ---- Lidmaatschap MKC-app (07-10-2026): €19 per maand via Mollie ----
+const LID_LIJST = ['De Core-app, doorlopend: na elke 12 weken een nieuw blok', 'Je Core-coach: direct antwoord op je vragen', 'Straks ook de slimme bandenspanning: je fietsen en het weer van vandaag', 'Maandelijks opzegbaar'];
+function lidPitchHtml() {
+  return `<div class="lidblok"><div class="label">MKC-app</div><h2>Word lid</h2>
+    <div class="prijs">&euro;19<small>per maand</small></div>
+    <ul>${LID_LIJST.map((x) => `<li>${x}</li>`).join('')}</ul>
+    <button class="knop" data-actie="wordlid">Word lid</button>
+    <p class="klein">Je betaalt de eerste maand met iDEAL. Daarna wordt elke maand automatisch &euro;19 afgeschreven. Opzeggen kan altijd, hier in de app.</p></div>`;
+}
+function lidStatusHtml(l) {
+  if (!l || l.status === 'geen' || l.status === 'nieuw') return '';
+  if (l.status === 'actief') return `<div class="lidrij"><span><b>Lid</b> &middot; volgende afschrijving rond ${esc(datumNl(l.tot, -5))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
+  if (l.status === 'achterstand') return `<div class="lidrij waarschuw"><span><b>Betaling mislukt</b> &middot; je app blijft open tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid">Betaling bijwerken</button></div>`;
+  if (l.status === 'opgezegd' && l.open) return `<div class="lidrij"><span>Opgezegd &middot; je kunt nog alles gebruiken tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid">Opnieuw lid</button></div>`;
+  return '';
+}
+function datumNl(iso, dagenErbij = 0) {
+  if (!iso) return '';
+  const d = new Date(iso); d.setDate(d.getDate() + dagenErbij);
+  return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
+}
+function isLid(d) { const l = d.lid || {}; return (l.status === 'actief' || l.status === 'achterstand' || l.status === 'opgezegd') && l.open; }
+
 function teken() {
   const d = D, voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `<div class="kop"><div class="logo">MKC<span>.</span></div><button class="uit" data-actie="uitloggen">Uitloggen</button></div>
-    ${appHtml()}
+    ${beheerHtml(d)}${appHtml()}
     <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
     <p class="intro">Je programma's, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>
+    ${isLid(d) ? '' : `<div class="groepkop">MKC-app</div>${lidPitchHtml()}`}
     ${kaartenHtml(d)}
+    ${isLid(d) ? `<div class="groepkop">Mijn lidmaatschap</div>${lidStatusHtml(d.lid)}` : ''}
     <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
 }
 
 document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-actie]'); if (!k) return;
   const actie = k.dataset.actie;
+  if (actie === 'bekijk') { BEKIJK = k.dataset.w; teken(); }
+  if (actie === 'wordlid') wordLid(k);
+  if (actie === 'opzeggen') zegOp(k);
   if (actie === 'uitloggen') { wisToken(); D = null; toonLogin('Je bent uitgelogd.'); }
   if (actie === 'appweg') { try { localStorage.setItem('mkcAppWeg', '1'); } catch (e) {} teken(); }
   if (actie === 'installeer' && installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; teken(); }); }
 });
+
+async function wordLid(knop) {
+  knop.disabled = true; const oud = knop.textContent; knop.textContent = 'Even naar iDEAL...';
+  try {
+    const r = await fetch('/api/lid?actie=start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: D && D.naam }) });
+    const j = await r.json();
+    if (j.ok && j.url) { location.href = j.url; return; }
+    if (j.ok && j.alLid) { return laadOverzicht(); }
+    alert(j.fout || 'Dat lukte niet. Probeer het zo nog eens.');
+  } catch { alert('Verbinding mislukt. Probeer het zo nog eens.'); }
+  knop.disabled = false; knop.textContent = oud;
+}
+async function zegOp(knop) {
+  if (!confirm('Weet je het zeker? Je kunt alles blijven gebruiken tot het einde van de maand waarvoor je betaald hebt.')) return;
+  knop.disabled = true;
+  try {
+    const r = await fetch('/api/lid?actie=opzeggen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken() }) });
+    const j = await r.json();
+    if (!j.ok) alert(j.fout || 'Opzeggen lukte niet.');
+  } catch { alert('Verbinding mislukt.'); }
+  laadOverzicht();
+}
 
 async function laadOverzicht() {
   const t = leesToken();
@@ -326,6 +408,13 @@ async function start() {
       const r = await fetch(API + '?actie=vancore', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ct: p.get('ct') }) });
       const j = await r.json(); if (j.ok && j.t) bewaarToken(j.t);
     } catch (e) {}
+  }
+  if (p.get('lid') === 'terug') {
+    $('#app').innerHTML = '<div class="laden">Bedankt! Je betaling wordt verwerkt...</div>';
+    for (let i = 0; i < 8; i++) {
+      await new Promise((r) => setTimeout(r, 1500));
+      try { const s = await (await fetch('/api/lid?actie=status&t=' + encodeURIComponent(leesToken()))).json(); if (s.ok && s.lid && s.lid.status === 'actief') break; } catch (e) {}
+    }
   }
   return laadOverzicht();
 }
