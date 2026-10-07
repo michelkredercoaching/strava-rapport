@@ -439,7 +439,16 @@ function muurHtml(d) {
       <div class="eyebrow" style="justify-content:center">Je proefweek zit erop</div>
       <h2 style="margin-bottom:8px">Week 2 staat voor je klaar</h2>
       <p class="muted klein">${t ? `Je startte met een Rompscore van <b style="color:var(--white)">${t.score}</b>.${zwak ? ` Je ${zwak.naam.toLowerCase()} is ${zwak.pct}% zwakker ${zwak.zwakker}.` : ''} ` : ''}Vanaf hier wordt het elke week zwaarder.</p>
-      <div class="prijs">&euro;49</div>
+      ${d.lidOpen ? `<div class="prijs">&euro;19</div>
+      <div class="klein muted">per maand, maandelijks opzegbaar</div>
+      <ul>
+        <li>Je Core-app doorlopend: na elke 12 weken een nieuw blok, telkens een stap zwaarder</li>
+        <li>Je romptest elke 4 weken, met grafiek</li>
+        <li>Je eigen MKC-coach: kent je plan en antwoordt dag en nacht</li>
+        <li>Slimme bandenspanning: je fietsen en het weer van vandaag</li>
+      </ul>
+      <a class="knop breed" href="/app?ct=${encodeURIComponent(token)}">Word lid en ga door met week 2</a>
+      <p class="klein muted" style="margin-top:12px">Alles wat je deed blijft staan. Opzeggen kan altijd, in de app.</p>` : `<div class="prijs">&euro;49</div>
       <div class="klein muted">eenmalig, voor de rest van de 12 weken</div>
       <ul>
         <li>Nog ${11 * d.frequentie} sessies, elke week net iets zwaarder</li>
@@ -449,7 +458,7 @@ function muurHtml(d) {
       </ul>
       <a class="knop breed" href="${esc(d.koopUrl)}">Ga door met week 2</a>
       <p class="klein muted" style="margin-top:12px">Betaal met hetzelfde mailadres, dan gaat deze pagina vanzelf open en blijft alles staan.</p>
-      <p class="klein muted" style="margin-top:8px">Gaat je Rompscore in 12 weken niet omhoog, dan krijg je je geld terug.</p>
+      <p class="klein muted" style="margin-top:8px">Gaat je Rompscore in 12 weken niet omhoog, dan krijg je je geld terug.</p>`}
     </div></div>
   </div>`;
 }
