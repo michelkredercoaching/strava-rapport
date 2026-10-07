@@ -134,6 +134,20 @@ function lidBeeld(lid) {
   return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, bedrag: BEDRAG };
 }
 
+// Kan Mollie al maandelijks incasseren? Zolang SEPA-incasso niet is goedgekeurd
+// staat directdebit niet in de recurring-methodes; dan houden we de lid-knop
+// verborgen, zodat niemand betaalt zonder dat er een abonnement kan komen.
+// Gaat vanzelf open zodra Mollie goedkeurt (10 min cache).
+let incassoCache = { tot: 0, open: false };
+async function lidOpen() {
+  if (!MOLLIE_KEY) return false;
+  if (Date.now() < incassoCache.tot) return incassoCache.open;
+  const m = await mollie('/methods?sequenceType=recurring');
+  const open = m.ok && ((m.j._embedded && m.j._embedded.methods) || []).some((x) => x.id === 'directdebit');
+  incassoCache = { tot: Date.now() + (m.ok ? 10 : 1) * 60 * 1000, open };
+  return open;
+}
+
 // ---- Routes ----------------------------------------------------------------------
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -159,6 +173,7 @@ async function routeStart(req, res) {
 
   let lid = await haalLid(email) || {};
   if (lid.status === 'actief' && lid.subscriptionId) return res.status(200).json({ ok: true, alLid: true });
+  if (!(await lidOpen())) return res.status(503).json({ ok: false, fout: 'Lid worden kan over een paar dagen. We regelen nog even de maandelijkse betaling.' });
 
   // Eén Mollie-klant per mailadres, hergebruiken bij opnieuw lid worden.
   if (!lid.customerId) {
@@ -303,4 +318,4 @@ async function routeOpzeggen(req, res) {
   return res.status(200).json({ ok: true, lid: lidBeeld(lid) });
 }
 
-export { lidBeeld, haalLid };
+export { lidOpen, lidBeeld, haalLid };
