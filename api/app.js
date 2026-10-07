@@ -40,6 +40,9 @@ import { coreVoorEmail, emailVoorCoreToken } from './core.js';
 import { lidBeeld, haalLid, lidOpen } from './lid.js';
 import { COACH_KENNIS, COACH_REGELS } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
+import { kledingAdvies, kledingBijstel, kledingKort } from '../lib/kleding.js';
+import { bandenAdvies, leesInvoer, nl, HOOKLESS_MAX } from '../lib/bandendruk.js';
+import { stuurPush } from '../lib/webpush.js';
 
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || process.env.KV_REST_API_URL;
@@ -159,6 +162,9 @@ export default async function handler(req, res) {
     if (actie === 'opvolgen') return await routeOpvolgen(req, res);
     if (actie === 'bandenritten') return await routeBandenRitten(req, res);
     if (actie === 'antwoorden') return await routeAntwoorden(req, res);
+    if (actie === 'push') return await routePush(req, res);
+    if (actie === 'pushtest') return await routePushTest(req, res);
+    if (actie === 'pushcron') return await routePushCron(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -391,7 +397,9 @@ function schoonProfiel(p) {
       type, breedte, tubeless: !!f.tubeless, hookless: !!f.hookless
     };
   });
-  return { gewicht: gewicht >= 40 && gewicht <= 150 ? gewicht : null, plaats, fietsen };
+  // Kledingadvies: heb je het snel koud of snel warm? En het ochtendbericht.
+  const kouType = ['koud', 'warm'].includes(p.kouType) ? p.kouType : 'normaal';
+  return { gewicht: gewicht >= 40 && gewicht <= 150 ? gewicht : null, plaats, fietsen, kouType };
 }
 async function haalBandenProfiel(email) {
   const r = await redis(['GET', `app:banden:${email}`]);
@@ -415,33 +423,55 @@ async function routeBandenProfiel(req, res) {
 // Weer via Open-Meteo (gratis, geen sleutel). Nat wegdek = regen in de
 // afgelopen 3 uur of nu. Kort in het geheugen bewaard per afgeronde plek.
 const weerCache = new Map();
+// Weer ophalen bij Open-Meteo: nu, de afgelopen 3 uur (nat wegdek) en de
+// komende 12 uur per uur (voor kledingadvies tijdens je rit). Gebruikt door de
+// app en het ochtendbericht.
+async function haalWeer(lat, lon) {
+  lat = Math.round(Number(lat) * 100) / 100; lon = Math.round(Number(lon) * 100) / 100;
+  if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  const sleutel = `${lat},${lon}`, c = weerCache.get(sleutel);
+  if (c && Date.now() - c.op < 15 * 60 * 1000) return c.weer;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,weather_code,wind_speed_10m&hourly=precipitation,temperature_2m,wind_speed_10m&past_hours=3&forecast_hours=13&timezone=Europe%2FAmsterdam&wind_speed_unit=kmh`;
+  const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error('weer ' + r.status);
+  const j = await r.json();
+  const nu = j.current || {}, uur = j.hourly || {};
+  const tijden = uur.time || [], regen = uur.precipitation || [], temps = uur.temperature_2m || [], winden = uur.wind_speed_10m || [];
+  const nuIso = String(nu.time || '').slice(0, 13);
+  const idx = Math.max(0, tijden.findIndex((t) => String(t).slice(0, 13) === nuIso));
+  const somVoor = regen.slice(Math.max(0, idx - 3), idx + 1).reduce((a, b) => a + (b || 0), 0);
+  const somNa = regen.slice(idx + 1, idx + 4).reduce((a, b) => a + (b || 0), 0);
+  const laagsteStraks = Math.min(...temps.slice(idx, idx + 4).filter((x) => x != null), nu.temperature_2m ?? 99);
+  const weer = {
+    temp: Math.round(nu.temperature_2m ?? 0),
+    laagste: Math.round(isFinite(laagsteStraks) ? laagsteStraks : nu.temperature_2m ?? 0),
+    nat: (nu.precipitation || 0) > 0 || somVoor >= 0.2,
+    regenStraks: somNa >= 0.5,
+    wind: Math.round(nu.wind_speed_10m || 0),
+    code: nu.weather_code ?? null,
+    // Per uur vanaf nu: { uur: '14', temp, regen (mm), wind (km/u) }
+    uren: tijden.slice(idx, idx + 13).map((t, i) => ({ uur: String(t).slice(11, 13), temp: Math.round(temps[idx + i] ?? 0), regen: Math.round((regen[idx + i] || 0) * 10) / 10, wind: Math.round(winden[idx + i] || 0) }))
+  };
+  weerCache.set(sleutel, { op: Date.now(), weer });
+  return weer;
+}
+// Het weer tijdens een rit: vertrek over "over" uur, "duur" uur lang.
+function weerTijdensRit(weer, over = 0, duur = 2) {
+  const uren = (weer && weer.uren) || [];
+  const stuk = uren.slice(Math.max(0, Math.floor(over)), Math.max(1, Math.ceil(over + duur)) + 1);
+  if (!stuk.length) return { temp: weer ? weer.laagste : null, start: weer ? weer.temp : null, wind: weer ? weer.wind : 0, regen: !!(weer && (weer.nat || weer.regenStraks)) };
+  return {
+    temp: Math.min(...stuk.map((u) => u.temp)),
+    start: stuk[0].temp,
+    wind: Math.max(...stuk.map((u) => u.wind)),
+    regen: (over < 1 && weer.nat) || stuk.reduce((a, u) => a + u.regen, 0) >= 0.5
+  };
+}
 async function routeWeer(req, res) {
   const email = await slimEmail(req, res, req.query?.t); if (!email) return;
-  const lat = Math.round(Number(req.query?.lat) * 100) / 100, lon = Math.round(Number(req.query?.lon) * 100) / 100;
-  if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return res.status(400).json({ ok: false, fout: 'Geen geldige plek.' });
-  const sleutel = `${lat},${lon}`, c = weerCache.get(sleutel);
-  if (c && Date.now() - c.op < 15 * 60 * 1000) return res.status(200).json({ ok: true, weer: c.weer });
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,weather_code,wind_speed_10m&hourly=precipitation,temperature_2m&past_hours=3&forecast_hours=4&timezone=Europe%2FAmsterdam&wind_speed_unit=kmh`;
-    const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!r.ok) throw new Error('weer ' + r.status);
-    const j = await r.json();
-    const nu = j.current || {}, uur = j.hourly || {};
-    const tijden = uur.time || [], regen = uur.precipitation || [], temps = uur.temperature_2m || [];
-    const nuIso = String(nu.time || '').slice(0, 13);
-    const idx = Math.max(0, tijden.findIndex((t) => String(t).slice(0, 13) === nuIso));
-    const somVoor = regen.slice(Math.max(0, idx - 3), idx + 1).reduce((a, b) => a + (b || 0), 0);
-    const somNa = regen.slice(idx + 1, idx + 4).reduce((a, b) => a + (b || 0), 0);
-    const laagsteStraks = Math.min(...temps.slice(idx, idx + 4).filter((x) => x != null), nu.temperature_2m ?? 99);
-    const weer = {
-      temp: Math.round(nu.temperature_2m ?? 0),
-      laagste: Math.round(isFinite(laagsteStraks) ? laagsteStraks : nu.temperature_2m ?? 0),
-      nat: (nu.precipitation || 0) > 0 || somVoor >= 0.2,
-      regenStraks: somNa >= 0.5,
-      wind: Math.round(nu.wind_speed_10m || 0),
-      code: nu.weather_code ?? null
-    };
-    weerCache.set(sleutel, { op: Date.now(), weer });
+    const weer = await haalWeer(req.query?.lat, req.query?.lon);
+    if (!weer) return res.status(400).json({ ok: false, fout: 'Geen geldige plek.' });
     return res.status(200).json({ ok: true, weer });
   } catch (e) {
     console.error('weer fout:', e);
@@ -664,11 +694,12 @@ async function routeBandenRitten(req, res) {
   const email = await slimEmail(req, res, body.t); if (!email) return;
   let ritten = await haalRitten(email);
   const num = (x, min, max) => { const n = Math.round(Number(x) * 10) / 10; return isFinite(n) && n >= min && n <= max ? n : null; };
-  if (body.id && body.oordeel) {
-    if (!['zacht', 'goed', 'hard'].includes(body.oordeel)) return res.status(400).json({ ok: false });
+  if (body.id && (body.oordeel || body.oordeelKleding)) {
     const rit = ritten.find((x) => x.id === String(body.id));
     if (!rit) return res.status(404).json({ ok: false, fout: 'Rit niet gevonden.' });
-    rit.oordeel = body.oordeel; rit.oordeelOp = new Date().toISOString();
+    if (body.oordeel) { if (!['zacht', 'goed', 'hard'].includes(body.oordeel)) return res.status(400).json({ ok: false }); rit.oordeel = body.oordeel; }
+    if (body.oordeelKleding) { if (!['koud', 'goed', 'warm'].includes(body.oordeelKleding)) return res.status(400).json({ ok: false }); rit.oordeelKleding = body.oordeelKleding; }
+    rit.oordeelOp = new Date().toISOString();
   } else {
     const r = body.rit || {};
     const rit = {
@@ -679,7 +710,11 @@ async function routeBandenRitten(req, res) {
       voor: num(r.voor, 1, 9), achter: num(r.achter, 1, 9),
       temp: num(r.temp, -20, 45), nat: !!r.nat,
       grond: String(r.grond || '').replace(/[^a-z]/g, '').slice(0, 12),
-      oordeel: null
+      oordeel: null,
+      // Kleding bij deze rit (gevoelstemperatuur en de kledingband), voor het
+      // oordeel achteraf: te koud, precies goed of te warm.
+      kleding: r.kleding && typeof r.kleding === 'object' ? { gevoel: num(r.kleding.gevoel, -30, 45), band: String(r.kleding.band || '').slice(0, 30) } : null,
+      oordeelKleding: null
     };
     if (!rit.fiets || rit.voor == null || rit.achter == null) return res.status(400).json({ ok: false, fout: 'Onvolledige rit.' });
     // Zelfde fiets op dezelfde dag: vervang de vorige, dan telt de laatste keuze.
@@ -738,4 +773,115 @@ async function routeAntwoorden(req, res) {
   }
   const perId = Object.fromEntries(correcties.map((c) => [c.id, c.correctie]));
   return res.status(200).json({ ok: true, antwoorden: antwoorden.map((a) => ({ ...a, correctie: perId[a.id] || '' })), aantalCorrecties: correcties.length });
+}
+
+// ===========================================================================
+// OCHTENDBERICHT (07-10-2026): leden kiezen een tijd en dagen, en krijgen dan
+// een pushbericht met het weer, hun bandenspanning en wat ze aantrekken.
+//   GET  push ?t=                        -> { publicKey, instelling }
+//   POST push { t, sub, tijd, dagen, uit } -> aanmelden / wijzigen / uitzetten
+//   POST pushtest { t }                  -> nu een bericht naar jezelf
+//   GET  pushcron (Vercel Cron, CRON_SECRET) -> verstuurt wat nu aan de beurt is
+// Redis: app:push:<email> (JSON), app:push:alle (set met mailadressen)
+// Env: VAPID_PUBLIC, VAPID_PRIVATE (zie lib/webpush.js), CRON_SECRET
+// ===========================================================================
+const CRON_SECRET = process.env.CRON_SECRET || '';
+const TIJDEN = ['06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30', '10:00', '11:00', '12:00'];
+
+async function haalPush(email) {
+  const r = await redis(['GET', `app:push:${email}`]);
+  try { return r.ok && r.result ? JSON.parse(r.result) : null; } catch { return null; }
+}
+function pushBeeld(p) { return p && p.sub ? { aan: true, tijd: p.tijd, dagen: p.dagen } : { aan: false, tijd: '07:00', dagen: [1, 2, 3, 4, 5, 6, 0] }; }
+
+async function routePush(req, res) {
+  if (req.method !== 'POST') {
+    const email = await slimEmail(req, res, req.query?.t); if (!email) return;
+    return res.status(200).json({ ok: true, publicKey: process.env.VAPID_PUBLIC || null, instelling: pushBeeld(await haalPush(email)) });
+  }
+  const body = await leesBody(req);
+  const email = await slimEmail(req, res, body.t); if (!email) return;
+  if (body.uit) {
+    await redis(['DEL', `app:push:${email}`]);
+    await redis(['SREM', 'app:push:alle', email]);
+    return res.status(200).json({ ok: true, instelling: pushBeeld(null) });
+  }
+  const oud = await haalPush(email) || {};
+  const sub = body.sub && body.sub.endpoint && body.sub.keys ? { endpoint: String(body.sub.endpoint).slice(0, 800), keys: { p256dh: String(body.sub.keys.p256dh || '').slice(0, 200), auth: String(body.sub.keys.auth || '').slice(0, 100) } } : oud.sub;
+  if (!sub) return res.status(400).json({ ok: false, fout: 'Geen toestemming voor meldingen ontvangen.' });
+  const tijd = TIJDEN.includes(body.tijd) ? body.tijd : (oud.tijd || '07:00');
+  const dagen = Array.isArray(body.dagen) ? [...new Set(body.dagen.map(Number).filter((d) => d >= 0 && d <= 6))] : (oud.dagen || [0, 1, 2, 3, 4, 5, 6]);
+  const p = { sub, tijd, dagen, laatste: oud.laatste || null, sinds: oud.sinds || new Date().toISOString() };
+  await redis(['SET', `app:push:${email}`, JSON.stringify(p)]);
+  await redis(['SADD', 'app:push:alle', email]);
+  return res.status(200).json({ ok: true, instelling: pushBeeld(p) });
+}
+
+// Het bericht zelf: weer op je plek, spanning voor je eerste fiets, kleding
+// voor een rit van 2 uur die over een half uur begint.
+async function ochtendBericht(email) {
+  const [profiel, ritten] = await Promise.all([haalBandenProfiel(email), haalRitten(email)]);
+  if (!profiel || !profiel.plaats) return { title: 'Goedemorgen', body: 'Zet je woonplaats en fiets in de app, dan krijg je hier elke ochtend je bandenspanning en kledingadvies.' };
+  const weer = await haalWeer(profiel.plaats.lat, profiel.plaats.lon);
+  if (!weer) return null;
+  const rit = weerTijdensRit(weer, 0.5, 2);
+  const kl = kledingAdvies({ temp: rit.temp, start: rit.start, wind: rit.wind, regen: rit.regen, kouType: profiel.kouType || 'normaal', bijstel: kledingBijstel(ritten), duurUur: 2 });
+  let banden = '';
+  const f = (profiel.fietsen || [])[0];
+  if (f && profiel.gewicht) {
+    const a = bandenAdvies(leesInvoer({ bandtype: f.type, gewicht: profiel.gewicht, breedte: f.breedte, tubeless: f.tubeless ? 'tubeless' : 'binnenband' }));
+    if (a) {
+      const eraf = weer.nat ? 0.3 : 0, min = f.type === 'gravel' ? 1.3 : 2.5, max = f.hookless ? HOOKLESS_MAX : 99;
+      const k = (x) => nl(Math.min(max, Math.max(min, x - eraf)));
+      banden = `Pomp ${k(a.voor)} voor en ${k(a.achter)} achter${(profiel.fietsen || []).length > 1 ? ` (${f.naam})` : ''}. `;
+    }
+  }
+  const natTekst = weer.nat ? 'nat wegdek' : rit.regen ? 'regen op komst' : 'droog';
+  return {
+    title: `Vandaag ${weer.temp}° en ${natTekst} in ${profiel.plaats.naam}`,
+    body: `${banden}Trek aan: ${kledingKort(kl)}.${kl && kl.tips[0] ? ' ' + kl.tips[0] : ''}`.slice(0, 230),
+    url: '/app'
+  };
+}
+
+async function routePushTest(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = await slimEmail(req, res, body.t); if (!email) return;
+  const p = await haalPush(email);
+  if (!p || !p.sub) return res.status(400).json({ ok: false, fout: 'Zet eerst het ochtendbericht aan.' });
+  const bericht = await ochtendBericht(email);
+  const r = await stuurPush(p.sub, bericht || { title: 'Test', body: 'Je ochtendbericht werkt.' });
+  if (r.weg) { await redis(['DEL', `app:push:${email}`]); await redis(['SREM', 'app:push:alle', email]); }
+  return res.status(r.ok ? 200 : 502).json({ ok: r.ok, status: r.status, fout: r.ok ? null : 'Versturen lukte niet' + (r.fout ? `: ${r.fout}` : ` (${r.status})`), bericht });
+}
+
+// Nederlandse tijd en dag, los van de servertijd (UTC).
+function nlNu() {
+  const d = new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short', hour12: false }).formatToParts(new Date());
+  const v = Object.fromEntries(d.map((x) => [x.type, x.value]));
+  const dag = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'].indexOf(String(v.weekday).slice(0, 2).toLowerCase());
+  return { datum: `${v.year}-${v.month}-${v.day}`, minuten: Number(v.hour) * 60 + Number(v.minute), dag };
+}
+async function routePushCron(req, res) {
+  const auth = String(req.headers?.authorization || '');
+  if (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`) return res.status(401).json({ ok: false });
+  const nu = nlNu();
+  const lijst = await redis(['SMEMBERS', 'app:push:alle']);
+  let verstuurd = 0, overgeslagen = 0, weg = 0;
+  for (const email of (lijst.ok && lijst.result) || []) {
+    const p = await haalPush(email);
+    if (!p || !p.sub) { await redis(['SREM', 'app:push:alle', email]); continue; }
+    const [h, m] = String(p.tijd || '07:00').split(':').map(Number);
+    const doel = h * 60 + m;
+    // Aan de beurt: juiste dag, tijd net voorbij (binnen een uur), vandaag nog niet gehad.
+    if (!p.dagen.includes(nu.dag) || nu.minuten < doel || nu.minuten - doel > 60 || p.laatste === nu.datum) { overgeslagen++; continue; }
+    if (!(await magSlim(email))) { overgeslagen++; continue; }   // lidmaatschap verlopen
+    const bericht = await ochtendBericht(email).catch(() => null);
+    if (!bericht) { overgeslagen++; continue; }
+    const r = await stuurPush(p.sub, bericht);
+    if (r.weg) { await redis(['DEL', `app:push:${email}`]); await redis(['SREM', 'app:push:alle', email]); weg++; continue; }
+    if (r.ok) { p.laatste = nu.datum; await redis(['SET', `app:push:${email}`, JSON.stringify(p)]); verstuurd++; }
+  }
+  return res.status(200).json({ ok: true, verstuurd, overgeslagen, weg });
 }
