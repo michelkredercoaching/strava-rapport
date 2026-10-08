@@ -43,6 +43,10 @@
     {
       "path": "/api/app?actie=pushcron",
       "schedule": "*/15 4-11 * * *"
+    },
+    {
+      "path": "/api/lid?actie=herinner",
+      "schedule": "0 7 * * *"
     }
   ]
 }
