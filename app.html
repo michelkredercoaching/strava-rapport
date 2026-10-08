@@ -1187,6 +1187,7 @@ function lidPitchHtml() {
 }
 function lidStatusHtml(l) {
   if (!l || l.status === 'geen' || l.status === 'nieuw') return '';
+  if (l.status === 'actief' && l.bron === 'coaching') return `<div class="lidrij" id="lid"><span><b>Inbegrepen bij je coaching</b> &middot; ${l.coaching === 'premium' ? 'Premium' : 'Flexibel'}</span></div>`;
   if (l.status === 'actief' && l.bron === 'cadeau') return `<div class="lidrij" id="lid"><span><b>Gratis maand</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="naarlid">Daarna lid blijven</button></div>`;
   if (l.status === 'actief' && l.bron === 'schema') return `<div class="lidrij" id="lid"><span><b>Inbegrepen bij je schema</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="naarlid">Daarna lid blijven</button></div>`;
   if (l.status === 'actief' && l.handmatig) return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid" data-plan="${l.plan === 'jaar' ? 'jaar' : 'maand'}">Verlengen</button></div>`;
