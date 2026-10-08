@@ -12,7 +12,7 @@ self.addEventListener('push', (e) => {
     body: d.body || '',
     icon: '/icoon-192.png',
     badge: '/icoon-192.png',
-    tag: 'mkc-ochtend',
+    tag: d.tag || 'mkc-ochtend',
     data: { url: d.url || '/app' }
   }));
 });
