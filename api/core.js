@@ -228,7 +228,7 @@ async function assistentAntwoord(vraag, d) {
 
   const systeem = [
     'Je bent de coach-assistent van het Core-programma van Michel Kreder, wielercoach en oud-profrenner. Je antwoord gaat direct naar de deelnemer, er kijkt niemand meer naar.',
-    'De Core-app beweegt mee: romp- en heupoefeningen zonder gewichten voor wielrenners, 2, 3 of 4 sessies per week (de deelnemer kiest en kan wisselen), in niveaus zonder einde. Een niveau is rond bij 2 van de 2, 2 van de 3 of 3 van de 4 sessies; daarna geeft de deelnemer aan hoe het ging. Beter of hetzelfde = volgend niveau, te makkelijk = een niveau extra, slechter = hetzelfde niveau opnieuw met lichtere varianten. Na elke sessie kan de deelnemer aangeven of het te licht of te zwaar was; de volgende sessies passen zich dan aan. Romptest bij de start en daarna elke 4 weken; stijgt de Rompscore flink, dan schuift de app een niveau op. Noem nooit een vast aantal weken of een einde.',
+    'De Core-app beweegt mee: romp- en heupoefeningen zonder gewichten voor wielrenners, 2, 3 of 4 sessies per week (de deelnemer kiest en kan wisselen), in niveaus zonder einde. Een niveau is rond bij 2 van de 2, 2 van de 3 of 3 van de 4 sessies; daarna geeft de deelnemer aan hoe het ging. Goed = volgend niveau, te makkelijk = een niveau extra, te zwaar = hetzelfde niveau nog een keer (twee keer op rij te zwaar = een niveau terug), meer klachten = hetzelfde niveau opnieuw met lichtere varianten. Na elke sessie kan de deelnemer aangeven of het te licht of te zwaar was; de volgende sessies passen zich dan aan. Romptest bij de start en daarna elke 4 weken; stijgt de Rompscore flink, dan schuift de app een niveau op. Noem nooit een vast aantal weken of een einde.',
     'Toon: warm, direct, korte zinnen, geen gedachtestreepjes, geen jargon. Spreek de deelnemer aan met je. Nederlands, maximaal 120 woorden, geen begroeting en geen ondertekening.',
     'Schrijf platte tekst zonder opmaak: geen sterretjes, geen hekjes, geen vetgedrukt, geen opsomming met streepjes. Houd elke alinea kort, een of twee zinnen.',
     'Geef praktische uitleg over uitvoering, makkelijkere of zwaardere varianten, planning naast fietstraining en wat de deelnemer voelt (spierpijn, vermoeidheid). Gebruik de oefeningen uit de context.',
@@ -616,18 +616,29 @@ async function routeWeekklaar(req, res) {
   if (d.status === 'klaar') return res.status(400).json({ ok: false, fout: 'je programma is al afgerond' });
   if (gedaanDezeWeek(d).length < nodigVoorWeek(d.intake)) return res.status(400).json({ ok: false, fout: `rond eerst ${nodigVoorWeek(d.intake)} sessies af` });
   if (opSlotNu(d)) return res.status(403).json({ ok: false, fout: d.week > BLOK_WEKEN ? 'word lid om door te gaan' : 'je proefweek zit erop', opSlot: true });
-  const reactie = ['makkelijk', 'beter', 'gelijk', 'slechter'].includes(body.reactie) ? body.reactie : null;
+  const reactie = ['makkelijk', 'beter', 'gelijk', 'zwaar', 'slechter'].includes(body.reactie) ? body.reactie : null;
   if (!reactie) return res.status(400).json({ ok: false, fout: 'hoe reageerde je lichaam?' });
 
   const oudeWeek = d.week;
-  const stap = volgendeWeek(d.week, reactie, d.slechterOpRij);
+  const stap = volgendeWeek(d.week, reactie, d.slechterOpRij, d.zwaarOpRij || 0);
   // Eenmalige kopers zonder lidmaatschap springen niet voorbij niveau 12.
   if (!magDoorlopen(d) && oudeWeek < BLOK_WEKEN && stap.week > BLOK_WEKEN) stap.week = BLOK_WEKEN;
   d.bijstel = 0;
   d.reacties.push({ week: d.week, reactie, op: nu() });
   d.teller += 1;
   let melding;
-  if (reactie === 'slechter') {
+  if (reactie === 'zwaar') {
+    // Te zwaar maar geen klachten: niveau herhalen, bij twee keer op rij een stap terug.
+    const terug = stap.week < oudeWeek;
+    d.zwaarOpRij = terug ? 0 : (d.zwaarOpRij || 0) + 1;
+    d.slechterOpRij = 0; d.verlicht = false;
+    d.week = stap.week;
+    d.afgerond = Math.min(d.afgerond, d.week - 1);
+    melding = terug
+      ? `Twee keer op rij te zwaar. De app beweegt mee: je gaat een stapje terug, naar niveau ${d.week}. Zo bouw je weer op met vertrouwen.`
+      : `Goed dat je het zegt. Je doet niveau ${d.week} nog een keer, zodat je het straks onder controle hebt. Voelt het weer te zwaar, dan gaan we een stapje terug.`;
+  } else if (reactie === 'slechter') {
+    d.zwaarOpRij = 0;
     d.slechterOpRij += 1;
     d.verlicht = true;
     d.week = stap.week;
@@ -639,7 +650,7 @@ async function routeWeekklaar(req, res) {
       : `Je doet niveau ${d.week} nog een keer, met lichtere varianten. Zo bouw je nooit door op pijn.`;
     // Twee keer slechter op rij: geen mail, wel de vlag 'slechter' in het coachscherm.
   } else {
-    d.slechterOpRij = 0;
+    d.slechterOpRij = 0; d.zwaarOpRij = 0;
     d.verlicht = false;
     d.afgerond = Math.max(d.afgerond, oudeWeek);
     if (oudeWeek >= BLOK_WEKEN && !magDoorlopen(d)) { d.status = 'klaar'; melding = 'Niveau 12 bereikt. Doe je romptest en kijk wat het je heeft opgeleverd. Wil je verder, dan beweegt de app als lid gewoon met je mee.'; }
@@ -655,7 +666,7 @@ async function routeWeekklaar(req, res) {
       if (!isBetaald(d) && oudeWeek === 1) { d.proefKlaarOp = nu(); await mcTag(d.email, 'core-proef-klaar'); }
     }
   }
-  const nieuwBadge = verdiendeBadges(d.afgerond).find((b) => b.fase * 3 === d.afgerond && reactie !== 'slechter');
+  const nieuwBadge = verdiendeBadges(d.afgerond).find((b) => b.fase * 3 === d.afgerond && reactie !== 'slechter' && reactie !== 'zwaar');
   await bewaarDossier(d);
   return res.status(200).json({ ok: true, melding, nieuwBadge: nieuwBadge || null, ...klantBeeld(d) });
 }
