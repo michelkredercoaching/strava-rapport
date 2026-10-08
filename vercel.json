@@ -2,9 +2,17 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "functions": {
     "api/*.js": {
-      "maxDuration": 60
+      "maxDuration": 60,
+      "includeFiles": "data/schemas/**"
     }
   },
+  "redirects": [
+    {
+      "source": "/data/:pad*",
+      "destination": "/app",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/privacy",
