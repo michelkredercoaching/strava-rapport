@@ -385,7 +385,7 @@ export async function coreVoorEmail(email) {
 // Bestaat er nog geen dossier, dan wordt het aangemaakt en gaat de welkomstmail
 // met de link de deur uit. Wie eerder eenmalig betaalde, houdt die toegang:
 // daar zetten we geen einddatum op.
-export async function zetLidmaatschap({ email, naam, tot }) {
+export async function zetLidmaatschap({ email, naam, tot, stil = false }) {
   email = String(email || '').toLowerCase();
   if (!email || !tot) return null;
   let d = await dossierVoorEmail(email);
@@ -406,7 +406,7 @@ export async function zetLidmaatschap({ email, naam, tot }) {
     await bewaarDossier(d);
   }
   await mcTag(email, 'core-klant');
-  if (nieuw) await mail({ naar: email, onderwerp: 'Je Core-app staat klaar', html: welkomHtml(d, linkVoor(d.id), false), antwoordNaar: INTERN_NAAR });
+  if (nieuw && !stil) await mail({ naar: email, onderwerp: 'Je Core-app staat klaar', html: welkomHtml(d, linkVoor(d.id), false), antwoordNaar: INTERN_NAAR });
   return { id: d.id, link: linkVoor(d.id), nieuw };
 }
 
