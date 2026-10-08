@@ -1035,9 +1035,12 @@ function kaartenHtml(d) {
   if (d.beheer && BEKIJK === 'alles') d = voorbeeldData(d);
   const actief = [], ontgrendel = [];
   (d.core ? actief : ontgrendel).push(coreKaart(d.core));
-  if (!d.analyse) ontgrendel.push(analyseKaart(null));
+  // Coaching-klanten (09-10-2026, besluit Michel): geen Strava-analyse en geen
+  // pacingplan, die analyse en planning doet Michel zelf. Afvalprogramma blijft.
+  const coaching = !!(d.lid && d.lid.bron === 'coaching');
+  if (!d.analyse && !coaching) ontgrendel.push(analyseKaart(null));
   const groep = (titel, kaarten) => kaarten.length ? `<div class="groepkop">${titel}</div><div class="kaarten">${kaarten.join('')}</div>` : '';
-  return groep('Actief', actief) + groep('Ontgrendelen', ontgrendel) + groep('Binnenkort', [afvalKaart(), pacingKaart()]);
+  return groep('Actief', actief) + groep('Ontgrendelen', ontgrendel) + groep('Binnenkort', coaching ? [afvalKaart()] : [afvalKaart(), pacingKaart()]);
 }
 
 // Beheerweergave (alleen voor Michels eigen adressen, zie BEHEER in api/app.js):
@@ -1234,7 +1237,7 @@ function zicht() { if (D && D.beheer && BEKIJK === 'nieuw') return alsNieuw(D); 
 const SIM_OPTIES = {
   core: [['echt', 'Mijn eigen'], ['geen', 'Niet gestart'], ['intake', 'Intake nog doen'], ['proef', 'In proefweek'], ['proefklaar', 'Proefweek klaar'], ['actief', 'Actief (lid)'], ['klaar', 'Niveau 12 (eenmalig)']],
   analyse: [['echt', 'Mijn eigen'], ['geen', 'Niet gekocht'], ['vermogen', 'Gekocht: vermogen'], ['hartslag', 'Gekocht: hartslag']],
-  lid: [['echt', 'Mijn eigen'], ['geen', 'Geen lid'], ['maand', 'Lid per maand'], ['jaar', 'Jaarlid'], ['ideal', 'Lid via iDEAL (verlengen)'], ['opgezegd', 'Opgezegd'], ['achterstand', 'Betaling mislukt']],
+  lid: [['echt', 'Mijn eigen'], ['geen', 'Geen lid'], ['maand', 'Lid per maand'], ['jaar', 'Jaarlid'], ['ideal', 'Lid via iDEAL (verlengen)'], ['opgezegd', 'Opgezegd'], ['achterstand', 'Betaling mislukt'], ['coaching-flex', 'Coaching Flexibel'], ['coaching-premium', 'Coaching Premium'], ['schema', 'Via schema (inbegrepen)'], ['cadeau', 'Gratis maand (cadeau)']],
   lancering: [['echt', 'Zoals nu'], ['voor', 'Vóór 16 okt'], ['na', 'Na 16 okt']],
   schema: [['echt', 'Mijn eigen'], ['geen', 'Geen schema'], ['opbouw-12-w|-2', 'Start over 3 dagen'], ['opbouw-12-w|1', 'Opbouw 12 · week 1'], ['opbouw-12-w|18', 'Opbouw 12 · week 3'], ['basis-8-hr|30', 'Basis 8 hartslag · week 5'], ['piek-16-w|80', 'Piek 16 · week 12'], ['winter-basis-w|9', 'Winterprogramma · week 2'], ['opbouw-12-w|90', 'Afgerond']]
 };
@@ -1267,6 +1270,9 @@ function simuleer(d) {
   else if (SIM.lid === 'ideal') n.lid = { status: 'actief', open: true, plan: 'maand', bedrag: '19.00', tot: tot(4), handmatig: true };
   else if (SIM.lid === 'opgezegd') n.lid = { status: 'opgezegd', open: true, plan: 'maand', bedrag: '19.00', tot: tot(12) };
   else if (SIM.lid === 'achterstand') n.lid = { status: 'achterstand', open: true, plan: 'maand', bedrag: '19.00', tot: tot(3) };
+  else if (SIM.lid === 'coaching-flex' || SIM.lid === 'coaching-premium') n.lid = { status: 'actief', open: true, plan: 'maand', bedrag: '19.00', tot: tot(90), bron: 'coaching', coaching: SIM.lid === 'coaching-premium' ? 'premium' : 'flex' };
+  else if (SIM.lid === 'schema') n.lid = { status: 'actief', open: true, plan: 'maand', bedrag: '19.00', tot: tot(70), bron: 'schema' };
+  else if (SIM.lid === 'cadeau') n.lid = { status: 'actief', open: true, plan: 'maand', bedrag: '19.00', tot: tot(30), bron: 'cadeau' };
   if (SIM.schema === 'geen') n.schema = null;
   else if (SIM.schema && SIM.schema !== 'echt') n.schema = SIM_SCHEMA[SIM.schema] || null;
   if (SIM.lancering === 'voor') { n.voorLancering = true; n.lidOpen = false; }
