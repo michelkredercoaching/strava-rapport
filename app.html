@@ -91,6 +91,7 @@
   .binnenkort { opacity:.8; }
   .binnenkort h2 { color:rgba(245,243,239,.85); }
 
+  .plan .knop[disabled] { opacity:.45; cursor:default; }
   /* Beginscherm-kaart */
   .appkaart { display:flex; gap:14px; align-items:flex-start; background:var(--surface); border:1px solid rgba(255,107,26,.4); border-radius:8px; padding:14px; margin-bottom:18px; position:relative; }
   .appkaart img { width:52px; height:52px; border-radius:12px; flex-shrink:0; }
@@ -100,13 +101,33 @@
   .deelicoon { width:15px; height:17px; vertical-align:-3px; }
   .appkaart .knop { width:auto; display:inline-block; font-size:17px; padding:8px 14px 6px; margin-top:8px; }
 
-  /* Inloggen */
-  .login { padding-top:8vh; }
-  .login h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(46px,13vw,64px); line-height:.92; text-transform:uppercase; margin-bottom:12px; }
+  /* Inloggen (09-10-2026): rustig, zelfverzekerd, twee stappen */
+  .login { min-height:calc(100vh - 80px); display:flex; flex-direction:column; padding-top:4vh; }
+  .login-kop { display:flex; align-items:center; justify-content:space-between; margin-bottom:5vh; }
+  .login-kop .van { font-size:11px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+  .login h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(44px,12.5vw,68px); line-height:.9; text-transform:uppercase; margin-bottom:14px; letter-spacing:.01em; }
   .login h1 em { font-style:normal; color:var(--accent); }
-  .login p { color:var(--muted); font-size:15px; margin-bottom:22px; }
-  .login input { width:100%; background:var(--surface); border:1px solid rgba(255,255,255,.14); color:var(--white); font-family:inherit; font-size:16px; padding:15px 16px; border-radius:4px; }
+  .login .lead { color:var(--muted); font-size:15px; line-height:1.55; margin-bottom:20px; max-width:420px; }
+  .login-punten { list-style:none; display:grid; gap:9px; margin:0 0 22px; }
+  .login-punten li { display:flex; align-items:center; gap:12px; font-size:14px; line-height:1.35; color:rgba(245,243,239,.88); }
+  .login-punten .ic { flex:0 0 32px; height:32px; border-radius:50%; background:var(--accent-dim); display:flex; align-items:center; justify-content:center; }
+  .login-punten svg { width:18px; height:18px; stroke:var(--accent); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .login-vak { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px; }
+  .login-vak label { display:block; font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+  .login input { width:100%; background:var(--black); border:1px solid rgba(255,255,255,.14); color:var(--white); font-family:inherit; font-size:16px; padding:15px 16px; border-radius:6px; margin-bottom:12px; transition:border-color .15s; }
   .login input:focus { outline:none; border-color:var(--accent); }
+  .login .codeveld { letter-spacing:10px; font-size:26px; text-align:center; font-weight:600; }
+  .login-naar { font-size:14px; color:var(--muted); margin-bottom:14px; line-height:1.5; }
+  .login-naar b { color:var(--white); font-weight:600; overflow-wrap:anywhere; }
+  .login-terug { background:none; border:0; color:var(--accent); font-family:inherit; font-size:13.5px; cursor:pointer; padding:0; }
+  .login-terug:disabled { opacity:.5; }
+  .login-acties { display:flex; justify-content:space-between; margin-top:12px; }
+  .login-bewijs { display:flex; align-items:center; gap:12px; margin-top:26px; padding-top:20px; border-top:1px solid var(--border); }
+  .login-bewijs img { width:42px; height:42px; border-radius:50%; }
+  .login-bewijs div { font-size:13px; color:var(--muted); line-height:1.45; }
+  .login-bewijs b { color:var(--white); font-weight:600; }
+  .login-bewijs .ster { color:var(--accent); letter-spacing:1px; }
+  .login-voet { margin-top:auto; padding-top:28px; font-size:12px; color:rgba(245,243,239,.42); line-height:1.6; }
   .melding { font-size:14px; margin-top:14px; color:var(--muted); }
   .melding.goed { color:var(--groen); }
   .melding.fout { color:#ff8a5c; }
@@ -370,40 +391,62 @@ function appHtml() {
 }
 
 // ---- Inloggen ----
+// Twee stappen: mailadres, dan de code uit de mail. Nieuw adres = gratis account.
+const LOGIN_PUNTEN = [
+  ['band', 'Bandenspanning voor elke rit, afgestemd op het weer'],
+  ['core', 'Core-training die met je meebeweegt'],
+  ['kleding', 'Kledingadvies en een ochtendbericht voor je rit'],
+  ['coach', 'Je vragen beantwoord met de kennis van Michel']
+];
+const LOGIN_IC = {"band":"<svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"3.5\"/></svg>","core":"<svg viewBox=\"0 0 24 24\"><path d=\"M4 18h16M7 18V9l5-4 5 4v9\"/></svg>","kleding":"<svg viewBox=\"0 0 24 24\"><path d=\"M12 3v2M5.6 5.6l1.4 1.4M3 12h2M18.4 5.6 17 7M21 12h-2\"/><path d=\"M7 16a5 5 0 0 1 10 0\"/><path d=\"M3 20h18\"/></svg>","coach":"<svg viewBox=\"0 0 24 24\"><path d=\"M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12z\"/></svg>"};
 function loginHtml(melding, soort) {
   return `<div class="login">
-    <div class="logo" style="margin-bottom:28px">MKC<span>.</span></div>
-    <h1>Welkom in <em>de MKC-app.</em></h1>
-    <p>Je bandenspanning voor elke rit, je Core-app en je Strava-analyse op één plek. Vul je mailadres in, dan krijg je een inlogcode. Geen wachtwoord, geen app-winkel.</p>
-    <form id="loginForm"><input type="email" id="loginMail" placeholder="Je e-mailadres" autocomplete="email" required>
-      <button class="knop" type="submit" id="loginKnop">Stuur mijn inlogcode</button></form>
-    <form id="codeForm" style="display:none;margin-top:18px"><input type="text" id="loginCode" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="6 cijfers uit de mail" style="letter-spacing:6px;font-size:22px;text-align:center">
-      <button class="knop" type="submit" id="codeKnop">Log in</button>
-      <p class="klein" style="text-align:center"><a href="#" id="opnieuw" style="color:#FF6B1A">Nieuwe code sturen</a></p></form>
-    <div class="melding ${soort || ''}" id="loginMelding">${melding ? esc(melding) : ''}</div>
-    <p class="klein" style="margin-top:28px">Nieuw hier? Dan maak je met je mailadres meteen een gratis account aan. Je krijgt af en toe een tip van Michel per mail, afmelden kan altijd.</p>
+    <div class="login-kop"><div class="logo">MKC<span>.</span></div><div class="van">Michel Kreder Coaching</div></div>
+    <h1>Train slimmer.<br><em>Rij sterker.</em></h1>
+    <p class="lead">Alles voor je training op één plek, van je eerste rit van de dag tot je volgende stap.</p>
+    <ul class="login-punten">${LOGIN_PUNTEN.map(([i, t]) => `<li><span class="ic">${LOGIN_IC[i]}</span>${t}</li>`).join('')}</ul>
+    <div class="login-vak">
+      <form id="loginForm"><label for="loginMail">Inloggen of account maken</label>
+        <input type="email" id="loginMail" placeholder="naam@voorbeeld.nl" autocomplete="email" required>
+        <button class="knop" type="submit" id="loginKnop">Ga verder</button></form>
+      <form id="codeForm" style="display:none"><label for="loginCode">Je inlogcode</label>
+        <p class="login-naar">We stuurden een code van 6 cijfers naar <b id="loginNaar"></b>.</p>
+        <input type="text" id="loginCode" class="codeveld" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000">
+        <button class="knop" type="submit" id="codeKnop">Log in</button>
+        <div class="login-acties"><button type="button" class="login-terug" id="anderAdres">Ander mailadres</button><button type="button" class="login-terug" id="opnieuw">Nieuwe code sturen</button></div></form>
+      <div class="melding ${soort || ''}" id="loginMelding">${melding ? esc(melding) : ''}</div>
+    </div>
+    <div class="login-bewijs"><img src="/icoon-192.png" alt=""><div><b>Gebouwd door Michel Kreder</b>, 9 jaar profwielrenner en coach.<br><span class="ster">&#9733;&#9733;&#9733;&#9733;&#9733;</span> 4,9 &middot; 1000+ renners getraind</div></div>
+    <p class="login-voet">Nieuw hier? Met je mailadres maak je meteen een gratis account. Je krijgt af en toe een tip van Michel per mail, afmelden kan altijd.</p>
   </div>`;
 }
 function toonLogin(melding, soort) {
   $('#app').innerHTML = loginHtml(melding, soort);
   const m = $('#loginMelding');
-  const vraagCode = async () => {
-    const email = $('#loginMail').value.trim(), knop = $('#loginKnop');
-    knop.disabled = true; knop.textContent = 'Even versturen...';
+  const naarCode = (email) => {
+    $('#loginForm').style.display = 'none'; $('#codeForm').style.display = 'block';
+    $('#loginNaar').textContent = email; $('#loginCode').value = ''; $('#loginCode').focus();
+  };
+  const vraagCode = async (knop) => {
+    const email = $('#loginMail').value.trim(), oud = knop.textContent;
+    knop.disabled = true; knop.textContent = 'Even versturen...'; m.className = 'melding'; m.textContent = '';
     try {
       const r = await fetch(API + '?actie=login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
       const j = await r.json();
-      m.className = 'melding ' + (j.ok ? 'goed' : 'fout');
-      m.textContent = j.ok ? j.bericht : (j.fout || 'Dat lukte niet. Probeer het zo nog eens.');
-      if (j.ok) { $('#codeForm').style.display = 'block'; $('#loginCode').focus(); }
+      if (j.ok) { naarCode(email); m.className = 'melding'; m.textContent = 'Niets binnen na een minuut? Kijk even in je spam.'; }
+      else { m.className = 'melding fout'; m.textContent = j.fout || 'Dat lukte niet. Probeer het zo nog eens.'; }
     } catch { m.className = 'melding fout'; m.textContent = 'Verbinding mislukt. Probeer het zo nog eens.'; }
-    knop.disabled = false; knop.textContent = 'Stuur mijn inlogcode';
+    knop.disabled = false; knop.textContent = oud;
   };
-  $('#loginForm').addEventListener('submit', (e) => { e.preventDefault(); vraagCode(); });
-  $('#opnieuw').addEventListener('click', (e) => { e.preventDefault(); vraagCode(); });
+  $('#loginForm').addEventListener('submit', (e) => { e.preventDefault(); vraagCode($('#loginKnop')); });
+  $('#opnieuw').addEventListener('click', () => vraagCode($('#opnieuw')));
+  $('#anderAdres').addEventListener('click', () => { $('#codeForm').style.display = 'none'; $('#loginForm').style.display = 'block'; m.textContent = ''; $('#loginMail').focus(); });
+  // Zes cijfers ingevuld (ook via autofill uit de mail) = meteen inloggen.
+  $('#loginCode').addEventListener('input', (e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); if (e.target.value.length === 6) $('#codeForm').requestSubmit(); });
   $('#codeForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const knop = $('#codeKnop'); knop.disabled = true; knop.textContent = 'Even kijken...';
+    const knop = $('#codeKnop'); if (knop.disabled) return;
+    knop.disabled = true; knop.textContent = 'Even kijken...';
     try {
       const r = await fetch(API + '?actie=verifieer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: $('#loginMail').value.trim(), code: $('#loginCode').value }) });
       const j = await r.json();
@@ -953,28 +996,36 @@ function beheerHtml(d) {
 // ---- Lidmaatschap MKC-app (07-10-2026): €19 per maand via Mollie ----
 const LID_LIJST = ['De Core-app die met je meebeweegt: gaat het makkelijk, dan ga je sneller', 'Slimme bandenspanning: je fietsen, het weer van vandaag en een geheugen', 'Kledingadvies voor je rit, plus een ochtendbericht met weer, spanning en kleding', 'Onbeperkt vragen aan je eigen coach, met Michels kennis uit 9 jaar prof en zijn coachervaring', 'Per maand of voordelig per jaar, altijd opzegbaar'];
 function binnenkortPitchHtml() {
-  return `<div class="lidblok"><div class="label">MKC-app</div><h2>Binnenkort beschikbaar</h2>
-    <p style="color:rgba(245,243,239,.82);font-size:14.5px">Er komt veel meer in deze app:</p>
-    <ul>${LID_LIJST.filter((x) => !/opzegbaar/i.test(x)).map((x) => `<li>${x}</li>`).join('')}</ul>
-    <p class="klein">Volg Michel op Instagram, daar hoor je als eerste wanneer het opengaat. De bandenspanning hierboven kun je nu al gebruiken.</p></div>`;
+  // Vóór de lancering: prijzen al zichtbaar, knoppen nog dicht (09-10-2026).
+  return `<div class="lidblok"><div class="label">MKC-app &middot; opent vrijdag 16 oktober</div><h2>Word lid</h2>
+    <ul>${LID_LIJST.map((x) => `<li>${x}</li>`).join('')}</ul>
+    ${plannenHtml(true)}
+    <p class="klein">Lid worden kan vanaf vrijdag 16 oktober om 12:00. Volg Michel op Instagram, daar hoor je het als eerste. De bandenspanning hierboven kun je nu al gebruiken.</p></div>`;
+}
+// De twee prijskaarten; dicht = vóór de lancering (knoppen uit).
+function plannenHtml(dicht) {
+  const knop = (plan, tekst, leeg) => dicht
+    ? `<button class="knop${leeg ? ' leeg' : ''}" disabled>Vanaf 16 oktober</button>`
+    : `<button class="knop${leeg ? ' leeg' : ''}" data-actie="wordlid" data-plan="${plan}">${tekst}</button>`;
+  return `<div class="plannen">
+      <div class="plan jaar"><span class="plan-badge">Beste keuze &middot; bespaar 35%</span>
+        <div class="plan-naam">Per jaar</div>
+        <div class="prijs">&euro;12,42<small>per maand</small></div>
+        <div class="plan-sub">&euro;149 per jaar in &eacute;&eacute;n keer</div>
+        ${knop('jaar', 'Kies per jaar')}</div>
+      <div class="plan">
+        <div class="plan-naam">Per maand</div>
+        <div class="prijs">&euro;19<small>per maand</small></div>
+        <div class="plan-sub">op elk moment opzegbaar</div>
+        ${knop('maand', 'Kies per maand', true)}</div>
+    </div>`;
 }
 // Twee keuzes, zoals bij JOIN: per maand (lage drempel) of per jaar (beste keuze).
 // €19 x 12 = €228, jaar €149: €79 voordeel, ongeveer 35%.
 function lidPitchHtml() {
   return `<div class="lidblok"><div class="label">MKC-app</div><h2>Word lid</h2>
     <ul>${LID_LIJST.map((x) => `<li>${x}</li>`).join('')}</ul>
-    <div class="plannen">
-      <div class="plan jaar"><span class="plan-badge">Beste keuze &middot; bespaar 35%</span>
-        <div class="plan-naam">Per jaar</div>
-        <div class="prijs">&euro;12,42<small>per maand</small></div>
-        <div class="plan-sub">&euro;149 per jaar in &eacute;&eacute;n keer</div>
-        <button class="knop" data-actie="wordlid" data-plan="jaar">Kies per jaar</button></div>
-      <div class="plan">
-        <div class="plan-naam">Per maand</div>
-        <div class="prijs">&euro;19<small>per maand</small></div>
-        <div class="plan-sub">op elk moment opzegbaar</div>
-        <button class="knop leeg" data-actie="wordlid" data-plan="maand">Kies per maand</button></div>
-    </div>
+    ${plannenHtml(false)}
     <p class="klein">${D && D.automatisch ? 'Je betaalt de eerste keer met iDEAL. Daarna wordt het bedrag automatisch afgeschreven, elke maand of elk jaar. Opzeggen kan altijd in de app; je houdt toegang tot het einde van wat je al betaalde.' : 'Je betaalt met iDEAL voor een maand of een jaar. Er wordt niets automatisch afgeschreven: vlak voor de einddatum krijg je een mail om te verlengen.'}</p></div>`;
 }
 function lidStatusHtml(l) {
