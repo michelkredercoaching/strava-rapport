@@ -278,6 +278,23 @@
   .push-rij { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:8px; }
   .push-aan { color:var(--groen); font-size:14px; font-weight:600; }
   .push-rij .sb-link { margin-top:0; }
+  /* Jouw Strava-analyse (inklapbaar) */
+  .an { background:linear-gradient(160deg, rgba(255,107,26,.12), var(--surface) 70%); border:1px solid rgba(255,107,26,.45); border-radius:8px; margin:4px 0 6px; }
+  .an-kop { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; background:none; border:0; color:var(--white); font-family:inherit; padding:14px 16px; cursor:pointer; text-align:left; }
+  .an-kop small { display:block; font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); font-weight:700; margin-bottom:3px; }
+  .an-kop b { font-size:15.5px; }
+  .an-pijl { color:var(--muted); }
+  .an-in { padding:0 16px 16px; }
+  .an-in .cijfers { margin-top:0; }
+  .an-type { font-size:14.5px; color:rgba(245,243,239,.85); margin:10px 0 4px; }
+  .an-sub { font-size:10.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:14px 0 6px; }
+  .an-zones { width:100%; border-collapse:collapse; font-size:14px; }
+  .an-zones td { padding:7px 4px; border-bottom:1px solid var(--border); }
+  .an-zones td:nth-child(2) { color:var(--muted); font-size:12.5px; }
+  .an-zones td:last-child { text-align:right; }
+  .an-advies { margin-top:6px; }
+  .an-advies > b { font-size:16px; }
+  .an-advies .knop { margin-top:10px; }
   .voet { text-align:center; font-size:12px; color:rgba(245,243,239,.35); margin-top:30px; }
   .voet a { color:rgba(245,243,239,.5); }
 </style>
@@ -441,6 +458,56 @@ function afvalKaart() {
       <div class="slotje">${SLOT}<b>Binnenkort</b></div></div>
     <a class="knop leeg" href="${SITE}/afvalcheck/">Doe alvast de gratis afvalcheck</a></div></div>`;
 }
+
+// ---- Jouw Strava-analyse: inklapbaar blok bovenaan (08-10-2026) ----
+// Voor wie een analyse kocht. Dicht: de kern in één regel. Open: cijfers,
+// rennerstype, zones (Michels TrainingPeaks-zones), advies met tegoed.
+const RENNERTYPES = {
+  Sprinter: 'Korte, explosieve pieken ver boven je drempel. Je kracht zit in de sprint.',
+  Puncheur: 'Sterk in korte, harde inspanningen boven je drempel. Ideaal voor aanvallen en korte hellingen.',
+  Klimmer: 'Veel vermogen per kilo. Je motor houdt het lang volhoudend zwaar.',
+  Tijdrijder: 'Een vlakke curve zonder grote pieken. Jij bent het sterkst op een constant, hoog tempo.',
+  Allrounder: 'Geen uitgesproken piek of dal in je curve. Je kunt op meerdere manieren meedoen.'
+};
+const ZONES_W = [['Herstel', 0, 55], ['Duur', 56, 75], ['Tempo', 76, 85], ['Sweetspot', 86, 95], ['FTP', 96, 105], ['VO2max', 106, null]];
+const ZONES_HR = [['Herstel', 0, 75], ['D1', 76, 85], ['D2', 86, 90], ['D3', 91, 100], ['Weerstand', 101, null]];
+function analyseOpen() { try { return localStorage.getItem('mkcAnalyseOpen') === '1'; } catch (e) { return false; } }
+function analyseBlok(a) {
+  if (!a) return '';
+  const hr = a.meet === 'hartslag';
+  const basis = Number(String(hr ? a.omslag : a.ftp).replace(/[^0-9.]/g, '')) || 0;
+  const eenheid = hr ? 'bpm' : 'W';
+  const hoofd = basis ? `${hr ? 'Omslagpunt' : 'FTP'} ${basis} ${eenheid}` : 'Je analyse';
+  const kort = [hoofd, a.type, a.score ? `score ${a.score}` : ''].filter(Boolean).join(' &middot; ');
+  const open = analyseOpen();
+  const kop = `<button type="button" class="an-kop" data-an="klap" aria-expanded="${open}"><span><small>Jouw Strava-analyse${a.datum ? ' &middot; ' + esc(a.datum) : ''}</small><b>${kort}</b></span><span class="an-pijl">${open ? '&#9650;' : '&#9660;'}</span></button>`;
+  if (!open) return `<div class="an" id="analyse">${kop}</div>`;
+  const dec = a.decoupling !== '' && a.decoupling != null ? Number(String(a.decoupling).replace(',', '.')) : null;
+  const zones = (hr ? ZONES_HR : ZONES_W).map(([naam, van, tot]) => {
+    const v = Math.round(basis * van / 100), t = tot != null ? Math.round(basis * tot / 100) : null;
+    return `<tr><td>${naam}</td><td>${van}${tot != null ? '-' + tot : '+'}%</td><td><b>${van === 0 ? 'tot ' + t : t != null ? v + '-' + t : v + '+'}</b> ${eenheid}</td></tr>`;
+  }).join('');
+  return `<div class="an open" id="analyse">${kop}
+    <div class="an-in">
+      <div class="cijfers" style="grid-template-columns:repeat(${1 + (a.score ? 1 : 0) + (dec != null && isFinite(dec) ? 1 : 0)},1fr)">
+        <div class="cijfer"><span>${hr ? 'Omslagpunt' : 'FTP'}</span><b>${basis || '&ndash;'}<em style="color:var(--muted)">${basis ? eenheid : ''}</em></b></div>
+        ${a.score ? `<div class="cijfer"><span>Score</span><b>${esc(a.score)}</b></div>` : ''}
+        ${dec != null && isFinite(dec) ? `<div class="cijfer"><span>Decoupling</span><b>${String(dec).replace('.', ',')}<em style="color:var(--muted)">%</em></b></div>` : ''}
+      </div>
+      ${a.type ? `<p class="an-type"><b>${esc(a.type)}.</b> ${esc(RENNERTYPES[a.type] || '')}</p>` : ''}
+      ${dec != null && isFinite(dec) ? `<p class="klein">${dec < 5 ? 'Decoupling onder de 5%: je basis staat, je hartslag blijft mooi gelijk op een lange rit.' : 'Decoupling boven de 5%: een aandachtspunt. Vaak zit het in eten en drinken onderweg of de lengte van je ritten.'}</p>` : ''}
+      ${basis ? `<div class="an-sub">Jouw zones</div><table class="an-zones">${zones}</table>` : ''}
+      ${a.advies ? `<div class="an-advies"><div class="an-sub">Mijn advies voor jou</div><b>${esc(a.advies)}</b>
+        ${a.tegoedLink && a.adviesPrijs ? `<p class="klein">Met je tegoed uit de analyse: <b style="color:var(--white)">&euro;${esc(a.adviesPrijs)}</b>${a.adviesOud ? ` in plaats van <s>&euro;${esc(a.adviesOud)}</s>` : ''}${a.deadline ? `, geldig tot ${esc(a.deadline)}` : ''}.</p>
+        <a class="knop" href="${esc(a.tegoedLink)}">Bekijk mijn schema</a>` : ''}</div>` : ''}
+      <p class="klein">Het volledige rapport staat als pdf in je mail. Na een paar weken trainen zie je met een nieuwe analyse of je vooruit bent gegaan. <a href="${ANALYSE_KOOP}" style="color:var(--accent)">Doe een nieuwe analyse</a></p>
+    </div></div>`;
+}
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-an="klap"]'); if (!k) return;
+  try { localStorage.setItem('mkcAnalyseOpen', analyseOpen() ? '0' : '1'); } catch (er) {}
+  const el = document.getElementById('analyse'); if (el) el.outerHTML = analyseBlok(zicht().analyse);
+});
 
 function analyseKaart(a) {
   if (a) {
@@ -856,7 +923,7 @@ function kaartenHtml(d) {
   if (d.beheer && BEKIJK === 'alles') d = voorbeeldData(d);
   const actief = [], ontgrendel = [];
   (d.core ? actief : ontgrendel).push(coreKaart(d.core));
-  (d.analyse ? actief : ontgrendel).push(analyseKaart(d.analyse));
+  if (!d.analyse) ontgrendel.push(analyseKaart(null));
   const groep = (titel, kaarten) => kaarten.length ? `<div class="groepkop">${titel}</div><div class="kaarten">${kaarten.join('')}</div>` : '';
   return groep('Actief', actief) + groep('Ontgrendelen', ontgrendel) + groep('Binnenkort', [afvalKaart(), pacingKaart()]);
 }
@@ -866,7 +933,7 @@ function kaartenHtml(d) {
 function voorbeeldData(d) {
   return { ...d,
     core: d.core || { link: '#', naam: d.naam, betaald: true, opSlot: false, intakeNodig: false, klaar: false, week: 3, fase: 1, faseNaam: 'Fundament', gedaan: 1, frequentie: 3, afgerond: 7, startScore: 52, rompscore: 66, volgende: { letter: 'B', naam: 'Zijkant en rotatie', minuten: 11, oefeningen: ['zijplank-knieen', 'birddog', 'bridge', 'deadbug-gebogen'] } },
-    analyse: d.analyse || { datum: '01-10-2026', ftp: '248', meet: 'vermogen', type: 'Klimmer', omslag: '', advies: 'Opbouw 12-wekenplan' },
+    analyse: d.analyse || { datum: '1 oktober 2026', ftp: '248', meet: 'vermogen', type: 'Klimmer', omslag: '', advies: 'Opbouw 12-wekenplan', score: '72', decoupling: '4.1', adviesPrijs: '49', adviesOud: '59', deadline: '15 oktober', tegoedLink: '#' },
     banden: true };
 }
 function beheerHtml(d) {
@@ -901,7 +968,7 @@ function isLid(d) { const l = d.lid || {}; return (l.status === 'actief' || l.st
 // Beheer "Niet-lid": zo ziet iemand de app die net binnenkomt, zonder Core,
 // analyse of lidmaatschap. Alleen de weergave, er verandert niets op de server.
 function alsNieuw(d) { return { ...d, core: null, analyse: null, banden: false, bandenSlim: false, bandenProfiel: null, lid: { status: 'geen' }, gratisOver: d.gratisMax || 3 }; }
-function zicht() { return D && D.beheer && BEKIJK === 'nieuw' ? alsNieuw(D) : D; }
+function zicht() { if (D && D.beheer && BEKIJK === 'nieuw') return alsNieuw(D); if (D && D.beheer && BEKIJK === 'alles') return voorbeeldData(D); return D; }
 // Nog niets gekocht of gestart: dan tonen we de korte uitleg bovenaan.
 function isNieuw(d) { return !d.core && !d.analyse && !isLid(d); }
 function teken() {
@@ -914,6 +981,7 @@ function teken() {
       <li><span>2</span>Start je gratis week in de Core-app: korte sessies thuis, op de timer.</li>
       <li><span>3</span>${d.lidOpen ? 'Meer nodig? Als lid krijg je je eigen coach, de slimme bandenspanning en de Core-app doorlopend, voor &euro;19 per maand.' : 'Rechtsonder zit <em>Vraag je coach</em>: je eigen coach die je analyse en je plan kent, straks voor leden.'}</li></ol></div>`
       : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}
+    ${analyseBlok(d.analyse)}
     <div class="groepkop">Vandaag</div><div class="kaarten">${bandenKaart(d)}</div>
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     ${isLid(d) || !(d.lidOpen || d.beheer) ? '' : `<div class="groepkop">Meer uit de app</div>${lidPitchHtml()}`}
