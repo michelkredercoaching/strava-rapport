@@ -450,10 +450,9 @@ async function routeSchema(req, res) {
   const niveauNaam = (String(body.niveau || '').match(/basis|opbouw|piek/i) || [''])[0].replace(/^./, (c) => c.toUpperCase());
   const titel = soort === 'winter' ? `Indoor Winterprogramma ${niveauNaam}` : `${niveauNaam || 'Trainingsschema'} ${weken} weken`;
   const huidig = { plan: plan && laadPlan(plan) ? plan : null, soort, weken, niveauNaam, titel, start, verschuif: 0, order, sinds: new Date().toISOString() };
-  // Recente Strava-analyse (max. 8 weken voor de start)? Dan vervalt de test in
-  // week 1 automatisch (besluit Michel 09-10-2026): de kracht van donderdag
-  // gaat naar dinsdag, donderdag wordt een VO2max-training. Michel krijgt een
-  // mail om dat in TrainingPeaks te doen en de FTP/het omslagpunt in te zetten.
+  // Recente Strava-analyse (max. 8 weken voor de start)? Dan is de test in
+  // week 1 vrijwillig (de app zegt het erbij) en krijgt Michel een mail om de
+  // FTP of het omslagpunt in TrainingPeaks te zetten.
   const cadeau = body.cadeau === true;
   const maandGratis = cadeau && body.maand === true;
   if (cadeau) huidig.cadeau = true;
@@ -462,7 +461,7 @@ async function routeSchema(req, res) {
     const an = await recenteAnalyse(email, start, /-hr$/.test(huidig.plan) ? 'hartslag' : 'vermogen');
     if (an) {
       huidig.testOverslaan = an;
-      await meldIntern(`TEST OVERSLAAN - ${email}`, `${naam || email} kocht ${titel} (order ${order}, start ${start}) en deed op ${an.datum} een Strava-analyse: ${an.meet === 'hartslag' ? 'omslagpunt ' + an.waarde + ' bpm' : 'FTP ' + an.waarde + ' W'}.\n\nIn TrainingPeaks:\n1. Zet ${an.meet === 'hartslag' ? 'het omslagpunt op ' + an.waarde + ' bpm' : 'de FTP op ' + an.waarde + ' W'}.\n2. Haal de ${soort === 'winter' ? 'ramptest' : 'veldtest'} van dinsdag week 1 weg en zet daar de krachttraining van donderdag.\n3. Zet op donderdag een VO2max-training (de app toont de eerste VO2max uit het plan).\n\nDe app laat dit al zo zien.`);
+      await meldIntern(`ANALYSE BEKEND - ${email}`, `${naam || email} kocht ${titel} (order ${order}, start ${start}) en deed op ${an.datum} een Strava-analyse: ${an.meet === 'hartslag' ? 'omslagpunt ' + an.waarde + ' bpm' : 'FTP ' + an.waarde + ' W'}.\n\nZet in TrainingPeaks ${an.meet === 'hartslag' ? 'het omslagpunt op ' + an.waarde + ' bpm' : 'de FTP op ' + an.waarde + ' W'}. De ${soort === 'winter' ? 'ramptest' : 'veldtest'} mag blijven staan: de app zegt erbij dat hij vrijwillig is (extra bevestiging, anders een rustig rondje en donderdag de eerste interval).`);
     }
   }
   const oud = await haalSchema(email);
