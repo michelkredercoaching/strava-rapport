@@ -206,9 +206,14 @@ async function routeOverzicht(req, res) {
   // ook hier het gratis account aanmaken.
   if (!lid || lid.status === 'archived') await nieuwAccount(email);
   const mf = (lid && lid.merge_fields) || {};
+  // Strava-analyse: de KOOP*-velden zijn de echte (betaalde) uitslag; FTP/OMSLAG
+  // kunnen door een later afgehaakte funnelpoging overschreven zijn (lib/lever-rapport.js).
   const analyse = heeftTag(lid, 'power-profile-koper') ? {
-    datum: mf.RAPDAT || '', ftp: mf.FTP || '', meet: mf.MEETMETH || '', type: mf.RENTYPE || '',
-    omslag: mf.OMSLAG || '', advies: mf.ADVSCHEMA || ''
+    datum: mf.RAPDAT || '', ftp: mf.KOOPFTP || mf.FTP || '', meet: mf.MEETMETH || '', type: mf.RENTYPE || '',
+    omslag: mf.KOOPOMS || mf.OMSLAG || '', advies: mf.ADVSCHEMA || '', score: mf.SCORE || '',
+    decoupling: mf.MEETMETH === 'hartslag' ? (mf.KOOPDCHR || '') : (mf.KOOPDEC || ''),
+    adviesPrijs: mf.ADVNIEUW || '', adviesOud: mf.ADVOUD || '', deadline: mf.DEADLINE || '',
+    tegoedLink: mf.PPTOKEN ? `https://michelkredercoaching.nl/trainingsschemas/?pp=${encodeURIComponent(mf.PPTOKEN)}` : ''
   } : null;
   return res.status(200).json({
     ok: true,
@@ -570,7 +575,7 @@ async function coachContext(email) {
     else regels.push(`Core-app: blok ${core.blok || 1}, week ${core.weekInBlok || core.week} van 12, fase ${core.fase || '?'}, ${core.gedaan || 0} van ${core.frequentie || '?'} sessies deze week gedaan, ${core.afgerond || 0} weken afgerond.${core.startScore ? ` Rompscore start ${core.startScore}` : ''}${core.rompscore ? `, laatste ${core.rompscore}` : ''}.`);
   } else regels.push('Core-app: niet gestart.');
   if ((lid && (lid.tags || []).some((t) => t.name === 'power-profile-koper'))) {
-    regels.push(`Strava-analyse (${mf.RAPDAT || 'datum onbekend'}): ${mf.MEETMETH === 'hartslag' ? `omslagpunt ${mf.OMSLAG || '?'} bpm` : `FTP ${mf.FTP || '?'} W`}, renner-type ${mf.RENTYPE || '?'}, geadviseerd schema ${mf.ADVSCHEMA || '?'}.`);
+    regels.push(`Strava-analyse (${mf.RAPDAT || 'datum onbekend'}): ${mf.MEETMETH === 'hartslag' ? `omslagpunt ${mf.KOOPOMS || mf.OMSLAG || '?'} bpm` : `FTP ${mf.KOOPFTP || mf.FTP || '?'} W`}, renner-type ${mf.RENTYPE || '?'}, geadviseerd schema ${mf.ADVSCHEMA || '?'}.`);
   } else regels.push('Strava-analyse: niet gedaan.');
   if (banden && banden.fietsen && banden.fietsen.length) {
     regels.push(`Gewicht: ${banden.gewicht || '?'} kg. Fietsen: ${banden.fietsen.map((f) => `${f.naam} (${f.type === 'gravel' ? 'gravel' : 'racefiets'}, ${f.breedte} mm, ${f.tubeless ? 'tubeless' : 'binnenband'}${f.hookless ? ', hookless' : ''})`).join('; ')}.`);
