@@ -318,6 +318,10 @@
   .sk-week button.tr i { background:var(--accent); }
   .sk-week button.nu { border-color:rgba(255,107,26,.6); color:var(--white); }
   .sk-week button.kies { background:var(--accent-dim); color:var(--white); }
+  .sk-week button { position:relative; }
+  .sk-c { position:absolute; bottom:-7px; left:50%; transform:translateX(-50%); font-style:normal; font-size:8.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; background:#4CC38A; color:#0A0A0A; border-radius:3px; padding:0 4px; line-height:13px; }
+  .sk-coreregel { margin:12px 18px 0; font-size:13px; color:var(--muted); }
+  .sk-coreregel b { color:#4CC38A; }
   .sk-dag { padding:12px 18px 18px; }
   .sk-dagkop { font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; }
   .sk-tr + .sk-tr { margin-top:18px; padding-top:16px; border-top:1px solid var(--border); }
@@ -528,6 +532,7 @@ function coreKaart(c) {
     <div class="label">Core-app</div>
     <h2>${c.klaar ? 'Niveau 12 bereikt' : `Niveau ${c.week}`}</h2>
     <p>${c.klaar ? 'Knap gedaan. Als lid beweegt de app met je mee.' : `Fase: ${esc(c.faseNaam)} &middot; ${c.gedaan} van ${c.frequentie} sessies gedaan`}</p>
+    ${(() => { const dz = zicht(); const cd = coreDagen(dz && dz.schema, coreAantal(dz || {})); return cd.length && !c.klaar ? `<p class="klein" style="color:#4CC38A;margin-top:-4px">Past bij je schema: ${cd.map((x) => x.dagnaam).join(', ')}</p>` : ''; })()}
     <div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore != null ? c.rompscore : '&ndash;'}${winst}</b></div>
       <div class="cijfer"><span>Niveau</span><b>${c.week}</b></div><div class="cijfer"><span>Gedaan</span><b>${c.afgerond}</b></div></div>
     <div class="balk"><i style="width:${c.klaar ? 100 : pct}%"></i></div>
@@ -1071,6 +1076,30 @@ function skTraining(w, meet, sleutel) {
     ${tekst ? `<div class="sk-tekst${lang && !open ? ' dicht' : ''}">${opmaak(tekst)}</div>${lang ? `<button class="sk-meer" data-sk="meer" data-k="${sleutel}">${open ? 'Minder' : 'Lees de hele uitleg'}</button>` : ''}` : ''}
     ${notitie ? `<div class="sk-tip">${opmaak(notitie)}</div>` : ''}</div>`;
 }
+// Core rond het schema (09-10-2026): op welke dagen van deze schemaweek je je
+// core-sessies het beste doet. Rustdag het best, dan een rustige rit; nooit op
+// een zware dag en liever niet de dag voor een zware training. Met rust ertussen.
+const SK_RUSTIG = /duur|herstel|z2|cadans|voorbereiding|recovery/i;
+function skZwaar(trainingen) { return trainingen.some((w) => !SK_RUSTIG.test(w.titel)); }
+function coreDagen(s, aantal) {
+  if (!s || s.status !== 'loopt' || !aantal) return [];
+  const d = s.weekDagen;
+  const score = d.map((x, i) => {
+    let p = !x.trainingen.length ? 3 : skZwaar(x.trainingen) ? 0 : 2;
+    if (d[i + 1] && skZwaar(d[i + 1].trainingen)) p -= 1.5;
+    return { i, p };
+  });
+  const gekozen = [];
+  for (const kandidaat of score.slice().sort((a, b) => b.p - a.p || a.i - b.i)) {
+    if (gekozen.length >= aantal) break;
+    if (kandidaat.p <= 0 && gekozen.length >= 2) break;
+    if (gekozen.some((g) => Math.abs(g - kandidaat.i) === 1) && score.filter((x) => !gekozen.includes(x.i) && !gekozen.some((g) => Math.abs(g - x.i) === 1) && x.p > 0).length) continue;
+    gekozen.push(kandidaat.i);
+  }
+  return gekozen.sort((a, b) => a - b).map((i) => d[i]);
+}
+function coreAantal(d) { return d.core && !d.core.intakeNodig && !d.core.opSlot ? (d.core.frequentie || 3) : 0; }
+
 function datumKort(iso) { return new Date(iso + 'T12:00:00').toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' }); }
 function schemaKaart(d) {
   const s = d.schema; if (!s) return '';
@@ -1089,15 +1118,17 @@ function schemaKaart(d) {
   const kiesDag = SK.dag != null ? SK.dag : s.dagNr;
   const dagInfo = s.weekDagen.find((x) => x.dag === kiesDag) || s.weekDagen.find((x) => x.vandaag);
   const isVandaag = dagInfo && dagInfo.vandaag;
-  const strook = s.weekDagen.map((x) => `<button data-sk="dag" data-dag="${x.dag}" class="${x.trainingen.length ? 'tr' : ''}${x.vandaag ? ' nu' : ''}${x.dag === kiesDag ? ' kies' : ''}"><b>${x.dagnaam}</b><i></i></button>`).join('');
+  const cd = coreDagen(s, coreAantal(d)).map((x) => x.dag);
+  const strook = s.weekDagen.map((x) => `<button data-sk="dag" data-dag="${x.dag}" class="${x.trainingen.length ? 'tr' : ''}${x.vandaag ? ' nu' : ''}${x.dag === kiesDag ? ' kies' : ''}"><b>${x.dagnaam}</b><i></i>${cd.includes(x.dag) ? '<em class="sk-c">core</em>' : ''}</button>`).join('');
+  const coreRegel = cd.length ? `<div class="sk-coreregel">Core-dagen deze week: <b>${s.weekDagen.filter((x) => cd.includes(x.dag)).map((x) => x.dagnaam).join(' &middot; ')}</b>. Op een rustdag of rustige rit, en niet vlak voor je zware trainingen.</div>` : '';
   const inhoud = dagInfo && dagInfo.trainingen.length
     ? dagInfo.trainingen.map((w, i) => skTraining(w, s.meet, dagInfo.dag + '-' + i)).join('')
     : `<p class="sk-rust">${isVandaag ? 'Vandaag staat er niets op je schema. Rust is ook training: hier word je sterker.' : 'Rustdag.'}${isVandaag && s.volgende ? ` Volgende training: <b>${esc(s.volgende.titel)}</b>, ${s.volgende.overDagen === 1 ? 'morgen' : esc(datumKort(s.volgende.datum))}.` : ''}</p>`;
   const titel = dagInfo && dagInfo.trainingen.length ? dagInfo.trainingen[0].titel : '';
   return `<div class="sk">${kop('Week ' + s.week + ' van ' + s.weken, (s.weekUren ? s.weekUren.toString().replace('.', ',') + ' uur fietsen deze week' : '') + ' &middot; je traint in TrainingPeaks')}
-    <div class="sk-week">${strook}</div>
+    <div class="sk-week">${strook}</div>${coreRegel}
     <div class="sk-dag"><div class="sk-dagkop">${isVandaag ? 'Vandaag' : esc(datumKort(dagInfo.datum))}</div>${inhoud}
-      <div class="sk-acties"><button class="knop leeg" data-sk="vraag" data-titel="${esc(titel)}">Vraag je coach over ${titel ? 'deze training' : 'je schema'}</button></div></div>
+      <div class="sk-acties">${cd.includes(dagInfo.dag) && d.core && d.core.link ? `<a class="knop" href="${esc(d.core.link)}">Doe je core-sessie</a>` : ''}<button class="knop leeg" data-sk="vraag" data-titel="${esc(titel)}">Vraag je coach over ${titel ? 'deze training' : 'je schema'}</button></div></div>
     <div class="sk-schuif"><span>Loopt je schema in TrainingPeaks anders?</span><span><button data-sk="schuif" data-r="-1">Ik loop een dag voor</button> &middot; <button data-sk="schuif" data-r="1">achter</button></span></div></div>`;
 }
 async function skSchuif(r) {
