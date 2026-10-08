@@ -419,8 +419,8 @@ function coreKaart(c) {
   if (!c) {
     return `<div class="kaart"><div class="kaart-in"><span class="tag oranje">Gratis week</span>
       <div class="label">Core-app</div><h2>Sterk tot de laatste km</h2>
-      <p>12 weken core op maat, thuis zonder gewichten. Train mee op de timer en zie je Rompscore stijgen.</p>
-      <div class="wazig" style="margin-top:14px"><div class="achter"><div class="cijfers"><div class="cijfer"><span>Week</span><b>3/12</b></div><div class="cijfer"><span>Rompscore</span><b>66</b></div><div class="cijfer"><span>Sessies</span><b>2/3</b></div></div></div>
+      <p>Core op maat die met je meebeweegt, thuis zonder gewichten. Train mee op de timer en zie je Rompscore stijgen.</p>
+      <div class="wazig" style="margin-top:14px"><div class="achter"><div class="cijfers"><div class="cijfer"><span>Niveau</span><b>3</b></div><div class="cijfer"><span>Rompscore</span><b>66</b></div><div class="cijfer"><span>Sessies</span><b>2/3</b></div></div></div>
         <div class="slotje">${SLOT}<b>${binnenkortNu() ? 'Binnenkort' : 'Week 1 is gratis'}</b></div></div>
       ${binnenkortNu() ? BINNENKORT : '<button class="knop" data-actie="startcore">Start je gratis week</button><p class="klein">Met je account, je hoeft niets meer in te vullen.</p>'}</div></div>`;
   }
@@ -433,22 +433,22 @@ function coreKaart(c) {
   if (c.opSlot) {
     return `<div class="kaart actief"><div class="kaart-in"><span class="tag oranje">Proefweek klaar</span><div class="label">Core-app</div>
       <h2>Week 2 staat klaar</h2><p>Je proefweek zit erop. Ga door en alles wat je deed blijft staan.</p>
-      ${c.rompscore != null ? `<div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore}</b></div><div class="cijfer"><span>Weken</span><b>1/12</b></div><div class="cijfer"><span>Prijs</span><b>${kanLidNu() ? '&euro;19<em style="color:var(--muted)">/mnd</em>' : '&euro;49'}</b></div></div>` : ''}
+      ${c.rompscore != null ? `<div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore}</b></div><div class="cijfer"><span>Niveau</span><b>1</b></div><div class="cijfer"><span>Prijs</span><b>${kanLidNu() ? '&euro;19<em style="color:var(--muted)">/mnd</em>' : '&euro;49'}</b></div></div>` : ''}
       ${kanLidNu() ? '<button class="knop" data-actie="naarlid">Word lid en ga door</button>' : `<a class="knop" href="${esc(c.link)}">Ga door met week 2</a>`}</div></div>`;
   }
   const winst = c.rompscore != null && c.startScore != null && c.rompscore > c.startScore ? `<em>+${c.rompscore - c.startScore}</em>` : '';
-  const wib = c.weekInBlok || c.week, blok = c.blok || 1;
-  const pct = Math.min(100, Math.round(((wib - 1) / 12) * 100 + (c.gedaan / Math.max(1, c.frequentie)) * (100 / 12)));
+  // Balk: hoe ver je bent in dit niveau (sessies gedaan van wat nodig is).
+  const pct = Math.min(100, Math.round((c.gedaan / Math.max(1, c.frequentie)) * 100));
   const v = c.volgende;
   const kaartje = v && K ? `<div class="volgende"><div>${K.svg(K.vanSessie(v.oefeningen), { labels: false })}</div>
       <div><div class="w">Volgende: sessie ${'ABCD'.indexOf(v.letter) + 1}</div><div class="n">${esc(v.naam)}</div>
       <div class="m">${v.minuten} min &middot; ${esc(K.namenLijst(K.vanSessie(v.oefeningen)).hoofd.slice(0, 3).join(', '))}</div></div></div>` : '';
   return `<div class="kaart actief"><div class="kaart-in"><span class="tag open">${c.klaar ? 'Afgerond' : 'Actief'}</span>
     <div class="label">Core-app</div>
-    <h2>${c.klaar ? 'Programma afgerond' : `Week ${wib} van 12`}</h2>
-    <p>${c.klaar ? 'Twaalf weken gedaan. Kijk in je app naar je grafiek.' : `${blok > 1 ? 'Blok ' + blok + ' &middot; ' : ''}Fase ${c.fase}: ${esc(c.faseNaam)} &middot; ${c.gedaan} van ${c.frequentie} sessies gedaan`}</p>
+    <h2>${c.klaar ? 'Niveau 12 bereikt' : `Niveau ${c.week}`}</h2>
+    <p>${c.klaar ? 'Knap gedaan. Als lid beweegt de app met je mee.' : `Fase: ${esc(c.faseNaam)} &middot; ${c.gedaan} van ${c.frequentie} sessies gedaan`}</p>
     <div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore != null ? c.rompscore : '&ndash;'}${winst}</b></div>
-      <div class="cijfer"><span>${blok > 1 ? 'Blok' : 'Week'}</span><b>${blok > 1 ? blok : wib + '/12'}</b></div><div class="cijfer"><span>Gedaan</span><b>${c.afgerond}</b></div></div>
+      <div class="cijfer"><span>Niveau</span><b>${c.week}</b></div><div class="cijfer"><span>Gedaan</span><b>${c.afgerond}</b></div></div>
     <div class="balk"><i style="width:${c.klaar ? 100 : pct}%"></i></div>
     ${c.klaar ? '' : kaartje}
     <a class="knop" href="${esc(c.link)}">${c.klaar ? 'Open je Core-app' : v ? `Verder met sessie ${'ABCD'.indexOf(v.letter) + 1}` : 'Open je Core-app'}</a></div></div>`;
@@ -951,7 +951,7 @@ function beheerHtml(d) {
 }
 
 // ---- Lidmaatschap MKC-app (07-10-2026): €19 per maand via Mollie ----
-const LID_LIJST = ['De Core-app, doorlopend: na elke 12 weken een nieuw blok', 'Slimme bandenspanning: je fietsen, het weer van vandaag en een geheugen', 'Kledingadvies voor je rit, plus een ochtendbericht met weer, spanning en kleding', 'Onbeperkt vragen aan je eigen coach, met Michels kennis uit 9 jaar prof en zijn coachervaring', 'Per maand of voordelig per jaar, altijd opzegbaar'];
+const LID_LIJST = ['De Core-app die met je meebeweegt: gaat het makkelijk, dan ga je sneller', 'Slimme bandenspanning: je fietsen, het weer van vandaag en een geheugen', 'Kledingadvies voor je rit, plus een ochtendbericht met weer, spanning en kleding', 'Onbeperkt vragen aan je eigen coach, met Michels kennis uit 9 jaar prof en zijn coachervaring', 'Per maand of voordelig per jaar, altijd opzegbaar'];
 function binnenkortPitchHtml() {
   return `<div class="lidblok"><div class="label">MKC-app</div><h2>Binnenkort beschikbaar</h2>
     <p style="color:rgba(245,243,239,.82);font-size:14.5px">Er komt veel meer in deze app:</p>
@@ -975,10 +975,11 @@ function lidPitchHtml() {
         <div class="plan-sub">op elk moment opzegbaar</div>
         <button class="knop leeg" data-actie="wordlid" data-plan="maand">Kies per maand</button></div>
     </div>
-    <p class="klein">Je betaalt de eerste keer met iDEAL. Daarna wordt het bedrag automatisch afgeschreven, elke maand of elk jaar. Opzeggen kan altijd in de app; je houdt toegang tot het einde van wat je al betaalde.</p></div>`;
+    <p class="klein">${D && D.automatisch ? 'Je betaalt de eerste keer met iDEAL. Daarna wordt het bedrag automatisch afgeschreven, elke maand of elk jaar. Opzeggen kan altijd in de app; je houdt toegang tot het einde van wat je al betaalde.' : 'Je betaalt met iDEAL voor een maand of een jaar. Er wordt niets automatisch afgeschreven: vlak voor de einddatum krijg je een mail om te verlengen.'}</p></div>`;
 }
 function lidStatusHtml(l) {
   if (!l || l.status === 'geen' || l.status === 'nieuw') return '';
+  if (l.status === 'actief' && l.handmatig) return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid" data-plan="${l.plan === 'jaar' ? 'jaar' : 'maand'}">Verlengen</button></div>`;
   if (l.status === 'actief') return `<div class="lidrij"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; ${l.plan === 'jaar' ? 'verlengt automatisch rond' : 'volgende afschrijving rond'} ${esc(datumNl(l.tot, -5))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
   if (l.status === 'achterstand') return `<div class="lidrij waarschuw"><span><b>Betaling mislukt</b> &middot; je app blijft open tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid">Betaling bijwerken</button></div>`;
   if (l.status === 'opgezegd' && l.open) return `<div class="lidrij"><span>Opgezegd &middot; je kunt nog alles gebruiken tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid">Opnieuw lid</button></div>`;
@@ -989,6 +990,8 @@ function datumNl(iso, dagenErbij = 0) {
   const d = new Date(iso); d.setDate(d.getDate() + dagenErbij);
   return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
 }
+// Verleng-link uit de herinneringsmail (/app#lid): na het laden naar het lidblok.
+function naarLidAnker() { if (location.hash !== '#lid') return; setTimeout(() => { const el = document.getElementById('lid') || document.querySelector('.lidblok'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 300); }
 function isLid(d) { const l = d.lid || {}; return (l.status === 'actief' || l.status === 'achterstand' || l.status === 'opgezegd') && l.open; }
 
 // Beheer "Niet-lid": zo ziet iemand de app die net binnenkomt, zonder Core,
@@ -1397,7 +1400,7 @@ async function laadOverzicht() {
     const r = await fetch(API + '?actie=overzicht&t=' + encodeURIComponent(t));
     const j = await r.json();
     if (!j.ok) { wisToken(); return toonLogin(j.fout, 'fout'); }
-    D = j; teken();
+    D = j; teken(); naarLidAnker();
     if (D.beheer && OPV.meldingen === null) opvLaad();
   } catch { $('#app').innerHTML = '<div class="laden">Verbinding mislukt. Probeer het zo nog eens.</div>'; }
 }
