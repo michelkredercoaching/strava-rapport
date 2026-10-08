@@ -613,9 +613,10 @@ async function haalCoachBerichten(email) {
 }
 
 async function coachContext(email) {
-  const [core, lid, banden, schemaDossier] = await Promise.all([coreVoorEmail(email), mcLid(email), haalBandenProfiel(email), haalSchema(email)]);
+  const [core, lid, banden, schemaDossier, lidm] = await Promise.all([coreVoorEmail(email), mcLid(email), haalBandenProfiel(email), haalSchema(email), haalLid(email)]);
   const mf = (lid && lid.merge_fields) || {};
   const regels = [];
+  if (lidm && lidm.coaching) regels.push(`BELANGRIJK: deze renner zit in persoonlijke coaching bij Michel (${lidm.coaching === 'premium' ? 'Premium' : 'Flexibel'}). Michel maakt zijn trainingsplan zelf, persoonlijk in TrainingPeaks. Pas dat plan nooit aan en schuif geen trainingen: bij vragen over zijn plan, zijn trainingen of zijn opbouw zeg je vriendelijk dat hij dat even met Michel kortsluit, via TrainingPeaks of de mail, omdat Michel zijn plan zo heeft opgebouwd. Algemene vragen over voeding, herstel, materiaal, kleding, banden en techniek beantwoord je gewoon.`);
   const sb = schemaDossier && schemaDossier.huidig && schemaDossier.huidig.plan ? schemaBeeld(schemaDossier.huidig) : null;
   if (sb) regels.push(schemaContext(sb));
   const naam = (core && core.naam) || mf.FNAME || '';
