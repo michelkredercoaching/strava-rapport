@@ -59,6 +59,10 @@
   .pil { display:inline-flex; align-items:center; gap:8px; background:var(--accent-dim); border:1px solid rgba(255,107,26,.35); color:var(--white); padding:6px 12px; border-radius:99px; font-size:13px; margin-top:12px; }
   .pil b { color:var(--accent); }
   .blok { margin-bottom:30px; }
+  .keuze4 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .keuze4 button { padding:12px 8px; font-size:14px; }
+  .gevoel3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
+  .gevoel3 button { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.2); color:#fff; border-radius:6px; padding:12px 6px; font-size:15px; cursor:pointer; }
   .kaart { background:var(--surface); border:1px solid var(--border); padding:20px; border-radius:6px; }
   .kaart.accent { border-color:rgba(255,107,26,.4); background:linear-gradient(180deg, rgba(255,107,26,.07), var(--surface)); }
   .knop { display:inline-block; background:var(--accent); color:#0A0A0A; border:none; font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:.06em; padding:13px 22px 10px; border-radius:5px; cursor:pointer; text-decoration:none; }
@@ -329,7 +333,7 @@ function teken() {
     if (d.testNodig != null && d.testNodig !== 0) h += testHtml(d, false);
     if (!d.betaald && !d.opSlot) h += `<div class="proefbalk"><span><b>Proefweek.</b> Week 1 is gratis. Doe je starttest en je sessies, dan zie je meteen wat het programma met je doet.</span></div>`;
     if (d.opSlot) h += muurHtml(d);
-    else if (d.klaar) h += `<div class="blok kaart accent"><h2>Alle 12 weken rond</h2><p>Knap gedaan. ${d.testNodig === 12 ? 'Doe hierboven je eindtest en kijk wat het je heeft opgeleverd.' : 'Je eindtest staat in je voortgang hieronder.'}</p>${d.magDoorlopen ? '' : `<p style="margin-top:10px">Wil je verder? Blok 2 begint een stap zwaarder, met je voortgang erbij. Doorgaan doe je als lid van de MKC-app: &euro;19 per maand of &euro;149 per jaar, altijd opzegbaar.</p><a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word lid en ga door met blok 2</a>`}</div>`;
+    else if (d.klaar) h += `<div class="blok kaart accent"><h2>Niveau 12 bereikt</h2><p>Knap gedaan. ${d.testNodig != null ? 'Doe hierboven je romptest en kijk wat het je heeft opgeleverd.' : 'Je Rompscore staat in je voortgang hieronder.'}</p>${d.magDoorlopen ? '' : `<p style="margin-top:10px">Wil je verder? De app beweegt met je mee: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller. Doorgaan doe je als lid van de MKC-app: &euro;19 per maand of &euro;149 per jaar, altijd opzegbaar.</p><a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word lid en ga door</a>`}</div>`;
     else {
       if (d.weekRond) h += weekklaarHtml(d);
       h += sessiesHtml(d);
@@ -338,7 +342,7 @@ function teken() {
     h += voortgangHtml(d);
     if (!d.opSlot) h += agendaHtml(d);
     h += doelHtml(d);
-    if (d.vervolgVraag && !d.magDoorlopen && d.week <= 12) h += vervolgHtml(d);
+
     h += vraagHtml(d);
   }
   h += `<p class="klein muted" style="margin-top:30px">Voel je pijn tijdens een oefening (niet hetzelfde als vermoeidheid)? Stop die oefening en sla hem over. Laat het Michel weten via de vraagknop.</p>`;
@@ -352,12 +356,12 @@ function kopHtml(d) {
   const doel = d.doel && d.doel.dagenTotDoel > 0
     ? `<div class="pil">${esc(d.doel.naam)} &middot; nog <b>${d.doel.wekenTotDoel >= 1 ? d.doel.wekenTotDoel + ' weken' : d.doel.dagenTotDoel + ' dagen'}</b></div>` : '';
   const sub = d.intakeNodig ? 'Eerst een paar korte vragen, dan staat je plan klaar.'
-    : d.klaar ? 'Programma afgerond.' : d.opSlot ? (d.week > 12 ? 'Blok 1 rond. Blok 2 staat voor je klaar.' : 'Proefweek afgerond. Week 1 zit erop.') : `${d.blok > 1 ? 'Blok ' + d.blok + ' &middot; ' : ''}Fase ${d.fase}: ${esc(d.faseNaam)} &middot; ${d.gedaanDezeWeek.length} van ${d.frequentie} sessies gedaan`;
+    : d.klaar ? 'Knap gedaan. Als lid beweegt de app gewoon met je mee.' : d.opSlot ? (d.week > 12 ? 'Niveau 12 bereikt. De app beweegt met je mee als lid.' : 'Je proefweek zit erop.') : `Fase: ${esc(d.faseNaam)} &middot; ${d.gedaanDezeWeek.length} van ${d.frequentie} sessies gedaan${d.bijstel > 0 ? ' &middot; iets zwaarder gemaakt' : d.bijstel < 0 ? ' &middot; iets lichter gemaakt' : ''}`;
   // Terug naar de MKC-startpagina (/app). ?ct= ruilt deze Core-link in voor een
   // app-login, zodat je niet opnieuw hoeft in te loggen.
   const naarApp = `<a class="naarapp" href="/app?ct=${encodeURIComponent(token)}">&#8592; Alle onderdelen</a>`;
   return `${naarApp}<div class="kop"><div class="eyebrow">Mijn Core${d.naam ? ' &middot; ' + esc(d.naam.split(' ')[0]) : ''}</div>
-    <h1>${d.intakeNodig ? 'Welkom' : d.klaar ? 'Klaar!' : 'Week ' + (d.weekInBlok || d.week) + ' van 12'}</h1>
+    <h1>${d.intakeNodig ? 'Welkom' : d.klaar ? 'Niveau 12 bereikt' : 'Niveau ' + d.week}</h1>
     <div class="sub">${sub}</div>${doel}</div>`;
 }
 
@@ -409,7 +413,7 @@ function intakeHtml() {
 // ---- Romptest ----
 const TESTANIM = { plank: 'plank', zijplankL: 'zijplank', zijplankR: 'zijplank', bridgeL: 'bridge-eenbeen', bridgeR: 'bridge-eenbeen', fietshouding: 'fietshouding' };
 function testHtml(d, start) {
-  const titel = start ? 'Je starttest' : (d.testNodig === 12 ? 'Je eindtest' : `Romptest na week ${d.testNodig}`);
+  const titel = start ? 'Je starttest' : 'Je romptest';
   return `<div class="blok kaart accent" id="test"><h2>${titel}</h2>
     <p class="muted klein" style="margin-bottom:10px">${start ? 'Dit is je nulmeting. Daar vergelijk je straks alles mee. Je sessies gaan open zodra hij is ingevuld.' : 'Zelfde test als bij de start. Zo zie je zwart op wit wat het oplevert.'}
     Houd elke houding zo lang als je hem goed kunt houden en druk op stop zodra je houding breekt. Neem twee minuten rust tussen de tests.</p>
@@ -433,10 +437,10 @@ function meterHtml(d) {
 
 // ---- Week afsluiten ----
 function weekklaarHtml(d) {
-  return `<div class="blok kaart accent" id="weekklaar"><h2>Week ${d.week} afsluiten</h2>
-    <p class="muted klein" style="margin-bottom:12px">${d.gedaanDezeWeek.length} van ${d.frequentie} sessies gedaan, genoeg om door te gaan${d.gedaanDezeWeek.length < d.frequentie ? ' (de laatste mag je nog doen)' : ''}. Hoe reageerde je lichaam op deze week?</p>
-    <div class="keuze3"><button data-actie="reactie" data-waarde="beter">Beter</button><button data-actie="reactie" data-waarde="gelijk">Hetzelfde</button><button data-actie="reactie" data-waarde="slechter">Slechter</button></div>
-    <p class="klein muted" style="margin-top:10px">Slechter betekent: meer pijn of klachten, niet gewoon spierpijn. Dan doe je de week opnieuw met lichtere varianten.</p></div>`;
+  return `<div class="blok kaart accent" id="weekklaar"><h2>Niveau ${d.week} afronden</h2>
+    <p class="muted klein" style="margin-bottom:12px">${d.gedaanDezeWeek.length} van ${d.frequentie} sessies gedaan, genoeg om door te gaan${d.gedaanDezeWeek.length < d.frequentie ? ' (de laatste mag je nog doen)' : ''}. Hoe ging dit niveau? De app beweegt met je mee.</p>
+    <div class="keuze4"><button data-actie="reactie" data-waarde="makkelijk">Te makkelijk</button><button data-actie="reactie" data-waarde="beter">Goed</button><button data-actie="reactie" data-waarde="gelijk">Zwaar maar te doen</button><button data-actie="reactie" data-waarde="slechter">Slechter</button></div>
+    <p class="klein muted" style="margin-top:10px">Te makkelijk: je springt een niveau verder. Slechter betekent meer pijn of klachten, niet gewoon spierpijn: dan doe je dit niveau opnieuw met lichtere varianten.</p></div>`;
 }
 
 // ---- Na de proefweek: week 2 wazig, betaalblok erover ----
@@ -449,28 +453,28 @@ function muurHtml(d) {
     <div class="wazig" aria-hidden="true">${echt}</div>
     <div class="muur"><div class="muurkaart">
       <div class="eyebrow" style="justify-content:center">Je proefweek zit erop</div>
-      <h2 style="margin-bottom:8px">Week 2 staat voor je klaar</h2>
+      <h2 style="margin-bottom:8px">Je volgende niveau staat klaar</h2>
       <p class="muted klein">${t ? `Je startte met een Rompscore van <b style="color:var(--white)">${t.score}</b>.${zwak ? ` Je ${zwak.naam.toLowerCase()} is ${zwak.pct}% zwakker ${zwak.zwakker}.` : ''} ` : ''}Vanaf hier wordt het elke week zwaarder.</p>
       ${d.lidOpen ? `<div class="prijs">&euro;19</div>
       <div class="klein muted">per maand, of &euro;149 per jaar (bespaar 35%). Altijd opzegbaar.</div>
       <ul>
-        <li>Je Core-app doorlopend: na elke 12 weken een nieuw blok, telkens een stap zwaarder</li>
+        <li>Een Core-app die met je meebeweegt: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller</li>
         <li>Je romptest elke 4 weken, met grafiek</li>
         <li>Je eigen MKC-coach: kent je plan en antwoordt dag en nacht</li>
         <li>Slimme bandenspanning: je fietsen en het weer van vandaag</li>
       </ul>
-      <a class="knop breed" href="/app?ct=${encodeURIComponent(token)}">Word lid en ga door met week 2</a>
+      <a class="knop breed" href="/app?ct=${encodeURIComponent(token)}">Word lid en ga door</a>
       <p class="klein muted" style="margin-top:12px">Alles wat je deed blijft staan. Opzeggen kan altijd, in de app.</p>` : `<div class="prijs">&euro;49</div>
-      <div class="klein muted">eenmalig, voor de rest van de 12 weken</div>
+      <div class="klein muted">eenmalig, tot en met niveau 12</div>
       <ul>
-        <li>Nog ${11 * d.frequentie} sessies, elke week net iets zwaarder</li>
-        <li>Je romptest in week 4, 8 en 12, met grafiek</li>
+        <li>Elk niveau net iets zwaarder, en de app past zich aan als het makkelijk of zwaar gaat</li>
+        <li>Elke 4 weken je romptest, met grafiek</li>
         <li>Je plan past zich aan als het ergens slechter gaat</li>
         <li>Direct antwoord op je vragen over de oefeningen</li>
       </ul>
       <a class="knop breed" href="${esc(d.koopUrl)}">Ga door met week 2</a>
       <p class="klein muted" style="margin-top:12px">Betaal met hetzelfde mailadres, dan gaat deze pagina vanzelf open en blijft alles staan.</p>
-      <p class="klein muted" style="margin-top:8px">Gaat je Rompscore in 12 weken niet omhoog, dan krijg je je geld terug.</p>`}
+      <p class="klein muted" style="margin-top:8px">Gaat je Rompscore tot en met niveau 12 niet omhoog, dan krijg je je geld terug.</p>`}
     </div></div>
   </div>`;
 }
@@ -479,8 +483,8 @@ function muurHtml(d) {
 function blokMuurHtml(d) {
   const eerste = d.tests[0], laatste = d.tests[d.tests.length - 1];
   const winst = eerste && laatste && laatste !== eerste ? laatste.score - eerste.score : null;
-  return `<div class="blok kaart accent"><div class="eyebrow">Blok 1 rond</div><h2>Ga door met blok 2</h2>
-    <p>${winst != null ? `Je Rompscore ging van <b>${eerste.score}</b> naar <b>${laatste.score}</b> (${winst > 0 ? '+' : ''}${winst}). ` : ''}Blok 2 heeft dezelfde opbouw, maar elke oefening begint een stap zwaarder. Je voortgang en je grafiek lopen gewoon door.</p>
+  return `<div class="blok kaart accent"><div class="eyebrow">Niveau 12 bereikt</div><h2>Ga verder als lid</h2>
+    <p>${winst != null ? `Je Rompscore ging van <b>${eerste.score}</b> naar <b>${laatste.score}</b> (${winst > 0 ? '+' : ''}${winst}). ` : ''}De app beweegt met je mee: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller. Je voortgang en je grafiek lopen gewoon door.</p>
     <p style="margin-top:10px">Doorgaan doe je als lid van de MKC-app: &euro;19 per maand of &euro;149 per jaar, altijd opzegbaar.</p>
     <a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word lid en ga door</a></div>`;
 }
@@ -553,12 +557,12 @@ function lijnGrafiek(series, opts) {
 }
 function voortgangHtml(d) {
   const vak = d.vakjes, rijen = [...new Set(vak.map((v) => v.letter))].map((l) => vak.filter((v) => v.letter === l).map((v) =>
-    `<div class="vakje ${v.gedaan ? 'aan' : ''} ${v.week === d.week && !d.klaar ? 'nu' : ''}" title="Week ${v.week} sessie ${NR[l]}"></div>`).join('')).join('');
+    `<div class="vakje ${v.gedaan ? 'aan' : ''} ${v.week === d.week && !d.klaar ? 'nu' : ''}" title="Niveau ${v.week} sessie ${NR[l]}"></div>`).join('')).join('');
   const eerste = d.tests[0], laatste = d.tests[d.tests.length - 1];
   const verschil = eerste && laatste && laatste !== eerste ? laatste.score - eerste.score : null;
   const balans = (laatste?.balans || []).filter((b) => b.opvallend);
   const totaal = vak.filter((v) => v.gedaan).length;
-  return `<div class="blok"><h2>Je voortgang${d.blok > 1 ? ' <span class="muted klein" style="font-family:DM Sans">blok ' + d.blok + '</span>' : ''}</h2><div class="kaart">
+  return `<div class="blok"><h2>Je voortgang</h2><div class="kaart">
     <div class="cijfers">
       <div class="cijfer"><span>Sessies</span><b>${totaal}<span style="font-size:15px;color:var(--muted)"> / ${vak.length}</span></b></div>
       <div class="cijfer"><span>Rompscore</span><b>${laatste ? laatste.score : '–'}</b></div>
@@ -610,7 +614,7 @@ function agendaHtml(d) {
   }
   agendaAantal = n;
   return `<div class="blok"><h2>Zet je sessies in je agenda</h2><div class="kaart">
-    <p class="muted klein">Kies ${TELWOORD[n]} vaste dagen en een tijd. Je krijgt 12 weken lang een afspraak met een herinnering, en tikken op de afspraak opent je sessie.</p>
+    <p class="muted klein">Kies ${TELWOORD[n]} vaste dagen en een tijd. Je krijgt een half jaar lang een afspraak met een herinnering, en tikken op de afspraak opent je sessie.</p>
     <div class="dagen">${DAGEN.map((x) => `<button data-actie="dag" data-dag="${x}" class="${agendaDagen.includes(x) ? 'aan' : ''} ${x === zwaar ? 'zwaar' : ''}" title="${x === zwaar ? 'Je zwaarste fietsdag' : ''}">${x}</button>`).join('')}</div>
     <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><input type="time" id="agendaTijd" value="${agendaTijd}" style="width:130px">
       <button class="knop" data-actie="agenda">Zet in mijn agenda</button></div>
@@ -699,7 +703,7 @@ document.addEventListener('click', async (e) => {
     if (leeg) return ($('#testfout').textContent = 'Vul alle tests in. Lukt een houding helemaal niet, vul dan 0 in.');
     Object.values(klokken).forEach((x) => clearInterval(x.iv));
     const j = await post('test', { uitslag });
-    if (!j.ok) $('#testfout').textContent = j.fout || 'Mislukt.'; else melding('Test opgeslagen. Je Rompscore staat in je voortgang.');
+    if (!j.ok) $('#testfout').textContent = j.fout || 'Mislukt.'; else melding(j.melding || 'Test opgeslagen. Je Rompscore staat in je voortgang.', j.melding ? 5500 : 3200);
   }
   if (actie === 'schaal') {
     keuzes[k.dataset.naam] = Number(k.dataset.waarde);
@@ -755,7 +759,7 @@ document.addEventListener('click', async (e) => {
 function toonBadge(b) {
   const o = document.createElement('div'); o.className = 'speler'; o.style.background = 'rgba(5,5,5,.96)';
   o.innerHTML = `<div class="midden"><div class="soort">Fase ${b.fase} rond</div><div class="naam" style="font-size:56px;color:#FF6B1A">${esc(b.naam)}</div>
-    <p class="cue" style="margin:10px 0 24px">${esc(b.tekst)}</p><button class="knop">Door naar week ${S.week}</button></div>`;
+    <p class="cue" style="margin:10px 0 24px">${esc(b.tekst)}</p><button class="knop">Door naar niveau ${S.week}</button></div>`;
   o.querySelector('button').onclick = () => o.remove();
   document.body.appendChild(o); piep(660, .15); setTimeout(() => piep(990, .3), 170);
 }
@@ -924,8 +928,18 @@ async function klaarSpeler() {
     ? (volgende ? `<span style="color:#FF6B1A;font-weight:700">Sessie ${NR[volgende.letter]} is ontgrendeld.</span><br>` : '') + esc(S.weekRond ? 'Afgevinkt. Je kunt deze week nu afsluiten.' : `Afgevinkt. Nog ${S.nodigVoorWeek - S.gedaanDezeWeek.length} sessie tot je de week kunt afsluiten.`)
     : 'Afvinken lukte niet. Probeer het straks opnieuw vanaf je pagina.';
   if (volgende) { nieuwOpen = volgende.letter; setTimeout(() => piep(1320, .18), 500); }
+  if (j.ok) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<p class="cue" style="margin-top:18px">Hoe voelde deze sessie?</p><div class="gevoel3"><button data-gevoel="licht">Te licht</button><button data-gevoel="goed">Goed</button><button data-gevoel="zwaar">Te zwaar</button></div>`);
   $('.bediening', sp.el).innerHTML = '<button class="hoofd" data-sp="klaar">Terug naar mijn pagina</button>';
-  sp.el.addEventListener('click', (e) => { if (e.target.closest('[data-sp=klaar]')) sluitSpeler(); });
+  sp.el.addEventListener('click', async (e) => {
+    const g = e.target.closest('[data-gevoel]');
+    if (g) {
+      sp.el.querySelectorAll('[data-gevoel]').forEach((b) => (b.disabled = true));
+      const r = await post('gevoel', { gevoel: g.dataset.gevoel });
+      const box = sp.el.querySelector('.gevoel3'); if (box) box.outerHTML = `<p class="cue" style="color:#FF6B1A">${esc(r.ok ? r.melding : 'Opslaan lukte niet.')}</p>`;
+      return;
+    }
+    if (e.target.closest('[data-sp=klaar]')) sluitSpeler();
+  });
 }
 
 // ===========================================================================
