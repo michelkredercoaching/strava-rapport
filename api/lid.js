@@ -148,7 +148,7 @@ function lidBeeld(lid) {
   if (!lid) return { status: 'geen' };
   const open = lid.tot && Date.now() < Date.parse(lid.tot);
   const plan = planVan(lid.plan);
-  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: PLANNEN[plan].bedrag, handmatig: !!lid.handmatig && !lid.subscriptionId, bron: lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald' };
+  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: PLANNEN[plan].bedrag, handmatig: !!lid.handmatig && !lid.subscriptionId, bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
 }
 
 // Kan Mollie al maandelijks incasseren? Zolang SEPA-incasso niet is goedgekeurd
@@ -363,7 +363,7 @@ async function routeOpzeggen(req, res) {
   const email = leesAppToken(String(body.t || ''));
   if (!email) return res.status(401).json({ ok: false, fout: 'Log eerst opnieuw in.' });
   const lid = await haalLid(email);
-  if (lid && (lid.handmatig || lid.bron === 'schema') && !lid.subscriptionId) return res.status(400).json({ ok: false, fout: 'Je lidmaatschap verlengt niet automatisch; het stopt vanzelf op de einddatum.' });
+  if (lid && (lid.handmatig || lid.bron === 'schema' || lid.bron === 'coaching') && !lid.subscriptionId) return res.status(400).json({ ok: false, fout: 'Je lidmaatschap verlengt niet automatisch; het stopt vanzelf op de einddatum.' });
   if (!lid || !lid.subscriptionId) return res.status(400).json({ ok: false, fout: 'Je hebt geen lopend lidmaatschap.' });
   const r = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'DELETE' });
   if (!r.ok && r.status !== 404 && r.status !== 422) return res.status(502).json({ ok: false, fout: 'Opzeggen lukte nu even niet. Probeer het zo nog eens.' });
@@ -436,6 +436,27 @@ async function routeSchema(req, res) {
   if (!geheim || body.secret !== geheim) return res.status(401).json({ ok: false });
   const email = String(body.email || '').trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ ok: false, fout: 'mailadres?' });
+  // Coaching-klanten (besluit Michel 09-10-2026): de app hoort bij hun coaching.
+  // Toegang voor een periode; een sync met de TrainingPeaks-groepen verlengt
+  // hem zolang iemand in coaching zit. Geen schema-kopje (eigen plan in TP).
+  if (body.coaching === 'flex' || body.coaching === 'premium') {
+    const naamC = String(body.naam || '').slice(0, 80);
+    const totC = new Date(Math.max(Date.now(), LANCERING) + (Number(body.dagen) || 90) * 86400000).toISOString();
+    const lidC = (await haalLid(email)) || {};
+    const loptAboC = lidC.subscriptionId && lidC.status === 'actief';
+    lidC.coaching = body.coaching;
+    if (!loptAboC) {
+      if (!lidC.tot || Date.parse(lidC.tot) < Date.parse(totC)) lidC.tot = totC;
+      lidC.status = 'actief'; lidC.bron = 'coaching'; lidC.sinds = lidC.sinds || new Date().toISOString();
+      lidC.naam = lidC.naam || naamC; lidC.plan = lidC.plan || 'maand';
+    }
+    await bewaarLid(email, lidC);
+    await zetLidmaatschap({ email, naam: naamC, tot: lidC.tot, stil: true });
+    await mcTag(email, 'mkc-lid');
+    await redis(['SADD', 'lid:coaching', email]);
+    if (body.cadeau === true) await redis(['SADD', 'lid:cadeau', email]);
+    return res.status(200).json({ ok: true, coaching: body.coaching, tot: lidC.tot });
+  }
   const order = String(body.order || '').slice(0, 20);
   if (order) {
     const nieuw = await redis(['SET', `schema:order:${order}`, '1', 'NX', 'EX', 60 * 60 * 24 * 400]);
@@ -576,8 +597,16 @@ async function routeCadeauMail(req, res) {
   if (voorLancering()) return res.status(200).json({ ok: true, nogNiet: true });
   const key = process.env.RESEND_API_KEY;
   const lijst = await redis(['SMEMBERS', 'lid:cadeau']);
-  let gemaild = 0;
-  for (const email of (lijst.ok && lijst.result) || []) {
+  // Resend gratis = 100 per dag: standaard 35 per run, zodat inlogcodes altijd
+  // doorgaan. Vrijdag 12:05 en daarna elke ochtend tot alles weg is (vercel.json).
+  const max = Math.max(1, Number(process.env.CADEAU_MAX) || 35);
+  const wacht = [];
+  // Volgorde: coaching eerst, dan een lopend schema, als laatste de gratis maand.
+  const kandidaten = [];
+  for (const email of (lijst.ok && lijst.result) || []) { const l = await haalLid(email); if (l) kandidaten.push({ email, prio: l.bron === 'coaching' ? 0 : l.cadeauMaand ? 2 : 1 }); }
+  kandidaten.sort((x, y) => x.prio - y.prio);
+  for (const { email } of kandidaten) {
+    if (wacht.length >= max) break;
     const lid = await haalLid(email);
     const sch = await haalSchema(email);
     if (!lid || lid.cadeauGemaild || !key) continue;
@@ -586,26 +615,34 @@ async function routeCadeauMail(req, res) {
     const datum = new Date(lid.tot).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
     const metPlan = sch && sch.huidig && sch.huidig.plan;
     const maand = !!lid.cadeauMaand;
+    const coaching = lid.bron === 'coaching';
     const winter = sch && sch.huidig && sch.huidig.soort === 'winter';
     const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.7;color:#1a1a1a;max-width:560px">
       <p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
-      <p>Vandaag lanceer ik iets waar ik lang aan gewerkt heb: de MKC-app. ${maand ? `Jij trainde met een schema van mij, en daarom krijg je hem een maand gratis, tot ${datum}.` : `En omdat jij nu met ${winter ? 'mijn winterprogramma' : 'een schema van mij'} traint, krijg je hem er gratis bij. Tot ${datum}, twee weken na je laatste week.`}</p>
+      <p>Vandaag lanceer ik iets waar ik lang aan gewerkt heb: de MKC-app. ${coaching ? 'En omdat jij bij mij in coaching zit, krijg je hem er gewoon bij, zolang je coaching loopt. Je plan blijft van mij, persoonlijk in TrainingPeaks; de app is alles eromheen.' : maand ? `Jij trainde met een schema van mij, en daarom krijg je hem een maand gratis, tot ${datum}.` : `En omdat jij nu met ${winter ? 'mijn winterprogramma' : 'een schema van mij'} traint, krijg je hem er gratis bij. Tot ${datum}, twee weken na je laatste week.`}</p>
       <p>Wat je erin vindt:</p>
-      <p>${metPlan ? '&#10003; Elke dag je training met mijn uitleg erbij, en wat je eet en drinkt.<br>' : ''}&#10003; Je eigen coach: stel al je vragen over je training, en je krijgt antwoord met mijn kennis uit negen jaar prof en coaching.<br>&#10003; De Core-app: korte sessies thuis tegen rugpijn en inzakken in het laatste uur.<br>&#10003; Bandenspanning en kledingadvies voor elke rit, afgestemd op het weer.</p>
+      <p>${metPlan ? '&#10003; Elke dag je training met mijn uitleg erbij, en wat je eet en drinkt.<br>' : ''}${coaching ? '&#10003; Een coach in je broekzak voor de snelle vragen tussendoor, over voeding, herstel en materiaal. Vragen over je plan blijven gewoon bij mij.<br>' : '&#10003; Je eigen coach: stel al je vragen over je training, en je krijgt antwoord met mijn kennis uit negen jaar prof en coaching.<br>'}&#10003; De Core-app: korte sessies thuis tegen rugpijn en inzakken in het laatste uur.<br>&#10003; Bandenspanning en kledingadvies voor elke rit, afgestemd op het weer.</p>
       <p style="margin:22px 0 26px"><a href="${APP_URL}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Open de MKC-app</a></p>
       <p style="color:#555;font-size:14px">Log in met dit mailadres, je krijgt dan een code. Tip: zet de app op je beginscherm, dan heb je hem altijd bij de hand. Je traint gewoon verder in TrainingPeaks, daar verandert niets.</p>
-      <p>Veel plezier ermee, en laat me gerust weten wat je ervan vindt.</p>
+      <p>Veel plezier ermee, en laat me gerust weten wat je ervan vindt.${coaching ? ' Juist jouw mening hoor ik graag.' : ''}</p>
       <p>Sportieve groet,<br>Michel</p></div>`;
-    try {
-      const r = await fetch('https://api.resend.com/emails', {
-        method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: email, subject: maand ? 'Een maand gratis: de MKC-app' : 'Een cadeautje bij je schema: de MKC-app', html }),
-        signal: AbortSignal.timeout(8000)
-      });
-      if (r.ok) { lid.cadeauGemaild = new Date().toISOString(); await bewaarLid(email, lid); gemaild++; }
-    } catch (e) { console.error('Cadeaumail mislukt:', email, e); }
+    wacht.push({ email, lid, mail: { from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: email, subject: coaching ? 'Een cadeautje bij je coaching: de MKC-app' : maand ? 'Een maand gratis: de MKC-app' : 'Een cadeautje bij je schema: de MKC-app', html } });
   }
-  return res.status(200).json({ ok: true, gemaild });
+  let gemaild = 0, fouten = 0;
+  for (let i = 0; i < wacht.length; i += 100) {
+    const pak = wacht.slice(i, i + 100);
+    try {
+      const r = await fetch('https://api.resend.com/emails/batch', {
+        method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(pak.map((x) => x.mail)), signal: AbortSignal.timeout(20000)
+      });
+      if (!r.ok) { fouten += pak.length; console.error('Cadeau-batch mislukt:', r.status, (await r.text()).slice(0, 300)); continue; }
+      for (const x of pak) { x.lid.cadeauGemaild = new Date().toISOString(); await bewaarLid(x.email, x.lid); gemaild++; }
+    } catch (e) { fouten += pak.length; console.error('Cadeau-batch mislukt:', e); }
+    if (i + 100 < wacht.length) await new Promise((k) => setTimeout(k, 1100));
+  }
+  if (fouten) await meldIntern('CADEAUMAIL - niet alles verstuurd', `${gemaild} cadeaumails verstuurd, ${fouten} mislukt (Resend-limiet?). De rest gaat automatisch mee bij de volgende run.`);
+  return res.status(200).json({ ok: true, gemaild, fouten });
 }
 
 export { lidOpen, lidBeeld, haalLid, incassoKlaar, haalSchema };
