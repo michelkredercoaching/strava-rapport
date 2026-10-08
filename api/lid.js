@@ -211,6 +211,10 @@ async function routeStart(req, res) {
   let lid = await haalLid(email) || {};
   if (lid.status === 'actief' && lid.subscriptionId) return res.status(200).json({ ok: true, alLid: true });
   if (!(BEHEER_LID.includes(email) ? !!MOLLIE_KEY : await lidOpen())) return res.status(503).json({ ok: false, fout: 'Lid worden kan binnenkort. Houd Instagram in de gaten.' });
+  // Akkoord met directe toegang (afstand bedenktijd) en voorwaarden, verplicht
+  // en vastgelegd met tijdstip (09-10-2026).
+  if (body.akkoord !== true) return res.status(400).json({ ok: false, fout: 'Vink eerst aan dat je direct toegang wil en akkoord gaat met de voorwaarden.' });
+  lid.akkoord = { op: new Date().toISOString(), versie: 'voorwaarden-2026-10-09' };
   const automatisch = await incassoKlaar();
 
   // Eén Mollie-klant per mailadres, hergebruiken bij opnieuw lid worden.
@@ -223,6 +227,7 @@ async function routeStart(req, res) {
     await bewaarLid(email, lid);
   }
 
+  await bewaarLid(email, lid);   // akkoord altijd vastleggen
   const plan = planVan(body.plan);
   const p = await mollie('/payments', {
     method: 'POST',
@@ -237,7 +242,7 @@ async function routeStart(req, res) {
       // vaak in Safari uit, en die heeft eigen opslag (zie api/app.js).
       redirectUrl: `${APP_URL}?lid=terug&t=${encodeURIComponent(String(body.t))}`,
       webhookUrl: WEBHOOK_URL,
-      metadata: { email, soort: automatisch ? 'lid-eerste' : 'lid-periode', plan }
+      metadata: { email, soort: automatisch ? 'lid-eerste' : 'lid-periode', plan, akkoord: lid.akkoord.op }
     })
   });
   if (!p.ok) return res.status(502).json({ ok: false, fout: 'Betalen lukt nu even niet. Probeer het zo nog eens.' });
