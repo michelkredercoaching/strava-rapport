@@ -623,6 +623,8 @@ async function coachContext(email) {
   if (core) {
     if (core.intakeNodig) regels.push('Core-app: gestart, intake nog niet gedaan.');
     else regels.push(`Core-app (beweegt mee, geen vast aantal weken): niveau ${core.week}, fase ${core.faseNaam || core.fase || '?'}, ${core.gedaan || 0} van ${core.frequentie || '?'} sessies van dit niveau gedaan, ${core.afgerond || 0} niveaus afgerond.${core.startScore ? ` Rompscore start ${core.startScore}` : ''}${core.rompscore ? `, laatste ${core.rompscore}` : ''}.`);
+    if (core.kracht && core.kracht !== 'nee') regels.push(`Doet ook krachttraining in de sportschool, ${core.kracht} per week. Adviseer: geen core op een zware beendag, sportschool niet de dag voor de zwaarste intervaltraining.`);
+    if (core.disbalans) regels.push('Disbalans uit de romptest: ' + Object.entries(core.disbalans).map(([k, x]) => `${k} ${x.pct}% zwakker ${x.kant.toLowerCase()}`).join(', ') + '. De Core-app laat die kant eerst gaan en langer werken.');
   } else regels.push('Core-app: niet gestart.');
   if ((lid && (lid.tags || []).some((t) => t.name === 'power-profile-koper'))) {
     regels.push(`Strava-analyse (${mf.RAPDAT || 'datum onbekend'}): ${mf.MEETMETH === 'hartslag' ? `omslagpunt ${mf.KOOPOMS || mf.OMSLAG || '?'} bpm` : `FTP ${mf.KOOPFTP || mf.FTP || '?'} W`}, renner-type ${mf.RENTYPE || '?'}, geadviseerd schema ${mf.ADVSCHEMA || '?'}.`);
