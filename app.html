@@ -536,6 +536,8 @@ function loginHtml(melding, soort) {
 function toonLogin(melding, soort) {
   $('#app').innerHTML = loginHtml(melding, soort);
   const m = $('#loginMelding');
+  // Vanuit de analyse-uitslag (?mail=): adres alvast invullen.
+  try { const voor = new URLSearchParams(location.search).get('mail'); if (voor && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(voor)) { $('#loginMail').value = voor; if (!melding) { m.className = 'melding'; m.textContent = 'Je mailadres staat er al. Tik op Ga verder, dan krijg je een code.'; } } } catch (e) {}
   const naarCode = (email) => {
     $('#loginForm').style.display = 'none'; $('#codeForm').style.display = 'block';
     $('#loginNaar').textContent = email; $('#loginCode').value = ''; $('#loginCode').focus();

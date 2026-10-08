@@ -511,6 +511,12 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
 
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
 .fade-up{animation:fadeUp .5s ease both;}
+  /* MKC-app (09-10-2026): de uitslag woont ook in de app */
+  .app-kaart { display:flex; gap:14px; align-items:center; justify-content:space-between; flex-wrap:wrap; background:linear-gradient(135deg, rgba(255,107,26,.16), rgba(255,255,255,.03)); border:1px solid rgba(255,107,26,.5); border-radius:12px; padding:16px 18px; margin:16px 0; text-align:left; }
+  .app-kaart-tekst { flex:1 1 220px; display:flex; flex-direction:column; gap:3px; }
+  .app-kaart-tekst strong { color:#fff; font-size:15px; }
+  .app-kaart-tekst span { color:rgba(255,255,255,.65); font-size:13px; line-height:1.5; }
+  .app-kaart-knop { background:#FF6B1A; color:#0a0a0a !important; font-weight:800; font-size:14px; text-decoration:none; padding:11px 18px; border-radius:8px; white-space:nowrap; }
 </style>
 </head>
 <body>
@@ -1092,6 +1098,11 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <div class="pp-tagline">INZICHT. <span>TRAIN GERICHT.</span> WORD STERKER.</div>
     </div>
 
+    <div class="app-kaart" id="appKaartRapport">
+      <div class="app-kaart-tekst"><strong>Je uitslag staat ook in je MKC-app</strong><span>Je FTP, je zones en je tegoed altijd bij de hand op je telefoon. Plus gratis je bandenspanning voor elke rit.</span></div>
+      <a class="app-kaart-knop" href="https://rapport.michelkredercoaching.nl/app" data-appknop>Open in de app &rarr;</a>
+    </div>
+
     <div class="pp-divider"></div>
 
     <!-- ZONE DISTRIBUTIE CARD -->
@@ -1263,6 +1274,10 @@ body{min-height:100%;font-family:'DM Sans',sans-serif;background:var(--zwart);co
       <div class="bedankt-stap"><div class="bedankt-stap-icon">✅</div><div class="bedankt-stap-txt"><strong>Betaling bevestigd</strong><span id="prijsBedankt">€29 via iDEAL · Mollie</span></div></div>
       <div class="bedankt-stap"><div class="bedankt-stap-icon">⚙️</div><div class="bedankt-stap-txt"><strong>Rapport wordt gegenereerd</strong>Jouw Strava-data wordt geanalyseerd</div></div>
       <div class="bedankt-stap"><div class="bedankt-stap-icon">📧</div><div class="bedankt-stap-txt"><strong>Email onderweg</strong>Rapport en PDF komen binnen 2 min aan</div></div>
+    </div>
+    <div class="app-kaart" id="appKaartBedankt">
+      <div class="app-kaart-tekst"><strong>Je uitslag staat ook in je MKC-app</strong><span>Je FTP, je zones en je tegoed altijd bij de hand op je telefoon. Plus gratis je bandenspanning voor elke rit.</span></div>
+      <a class="app-kaart-knop" href="https://rapport.michelkredercoaching.nl/app" data-appknop>Open in de app &rarr;</a>
     </div>
     <p class="bedankt-note" style="color:rgba(255,255,255,0.45);line-height:1.6;max-width:320px;margin:0 auto;">Zie je 'm niet binnen 2 minuten? <strong style="color:rgba(255,255,255,0.7);">Check je spam of ongewenste mail</strong> en markeer 'm als 'geen spam' — dan komt-ie voortaan gewoon binnen. Lukt het niet? Mail <a href="mailto:info@michelkredercoaching.nl" style="color:rgba(255,255,255,0.6);">info@michelkredercoaching.nl</a>.</p>
   </div>
@@ -1965,6 +1980,14 @@ function vulUnlockPagina(data, analyse) {
 }
 
 // ========== POWER PROFILE RAPPORT VULLEN ==========
+// App-knoppen: het mailadres gaat mee, zodat de app het al heeft ingevuld.
+function appLinkMail(mail) {
+  mail = String(mail || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return;
+  document.querySelectorAll('[data-appknop]').forEach(function(a){ a.href = 'https://rapport.michelkredercoaching.nl/app?mail=' + encodeURIComponent(mail); });
+}
+try { appLinkMail(localStorage.getItem('pp_email')); } catch(e) {}
+
 function toonRapport(data, analyse) {
   gaNaar('s5');
 
@@ -2809,6 +2832,7 @@ window.addEventListener('DOMContentLoaded', function() {
       .then(function(analyse){
         if(aiProgVul) aiProgVul.style.width = '100%';
         window._claudeAnalyse = analyse;
+        try { appLinkMail(localStorage.getItem('pp_email')); } catch(e) {}
         try { localStorage.removeItem('pp_blob'); localStorage.removeItem('pp_pid'); localStorage.removeItem('pp_pv'); localStorage.removeItem('pp_email'); localStorage.removeItem('pp_korting'); localStorage.removeItem('pp_bron'); localStorage.removeItem('pp_fbclid'); } catch(e) {}
         setTimeout(function(){ toonRapport(data, analyse); }, 400);
       });
