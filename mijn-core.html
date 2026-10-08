@@ -329,7 +329,7 @@ function teken() {
     if (d.testNodig != null && d.testNodig !== 0) h += testHtml(d, false);
     if (!d.betaald && !d.opSlot) h += `<div class="proefbalk"><span><b>Proefweek.</b> Week 1 is gratis. Doe je starttest en je sessies, dan zie je meteen wat het programma met je doet.</span></div>`;
     if (d.opSlot) h += muurHtml(d);
-    else if (d.klaar) h += `<div class="blok kaart accent"><h2>Alle 12 weken rond</h2><p>Knap gedaan. ${d.testNodig === 12 ? 'Doe hierboven je eindtest en kijk wat het je heeft opgeleverd.' : 'Je eindtest staat in je voortgang hieronder.'}</p>${d.magDoorlopen ? '' : `<p style="margin-top:10px">Wil je verder? Blok 2 begint een stap zwaarder, met je voortgang erbij. Doorgaan doe je als lid van de MKC-app: &euro;19 per maand, maandelijks opzegbaar.</p><a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word lid en ga door met blok 2</a>`}</div>`;
+    else if (d.klaar) h += `<div class="blok kaart accent"><h2>Alle 12 weken rond</h2><p>Knap gedaan. ${d.testNodig === 12 ? 'Doe hierboven je eindtest en kijk wat het je heeft opgeleverd.' : 'Je eindtest staat in je voortgang hieronder.'}</p>${d.magDoorlopen ? '' : `<p style="margin-top:10px">Wil je verder? Blok 2 begint een stap zwaarder, met je voortgang erbij. Doorgaan doe je als lid van de MKC-app: &euro;19 per maand of &euro;149 per jaar, altijd opzegbaar.</p><a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word lid en ga door met blok 2</a>`}</div>`;
     else {
       if (d.weekRond) h += weekklaarHtml(d);
       h += sessiesHtml(d);
@@ -452,7 +452,7 @@ function muurHtml(d) {
       <h2 style="margin-bottom:8px">Week 2 staat voor je klaar</h2>
       <p class="muted klein">${t ? `Je startte met een Rompscore van <b style="color:var(--white)">${t.score}</b>.${zwak ? ` Je ${zwak.naam.toLowerCase()} is ${zwak.pct}% zwakker ${zwak.zwakker}.` : ''} ` : ''}Vanaf hier wordt het elke week zwaarder.</p>
       ${d.lidOpen ? `<div class="prijs">&euro;19</div>
-      <div class="klein muted">per maand, maandelijks opzegbaar</div>
+      <div class="klein muted">per maand, of &euro;149 per jaar (bespaar 35%). Altijd opzegbaar.</div>
       <ul>
         <li>Je Core-app doorlopend: na elke 12 weken een nieuw blok, telkens een stap zwaarder</li>
         <li>Je romptest elke 4 weken, met grafiek</li>
@@ -481,7 +481,7 @@ function blokMuurHtml(d) {
   const winst = eerste && laatste && laatste !== eerste ? laatste.score - eerste.score : null;
   return `<div class="blok kaart accent"><div class="eyebrow">Blok 1 rond</div><h2>Ga door met blok 2</h2>
     <p>${winst != null ? `Je Rompscore ging van <b>${eerste.score}</b> naar <b>${laatste.score}</b> (${winst > 0 ? '+' : ''}${winst}). ` : ''}Blok 2 heeft dezelfde opbouw, maar elke oefening begint een stap zwaarder. Je voortgang en je grafiek lopen gewoon door.</p>
-    <p style="margin-top:10px">Doorgaan doe je als lid van de MKC-app: &euro;19 per maand, maandelijks opzegbaar.</p>
+    <p style="margin-top:10px">Doorgaan doe je als lid van de MKC-app: &euro;19 per maand of &euro;149 per jaar, altijd opzegbaar.</p>
     <a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word lid en ga door</a></div>`;
 }
 
