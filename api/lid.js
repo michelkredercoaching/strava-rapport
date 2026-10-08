@@ -148,7 +148,7 @@ function lidBeeld(lid) {
   if (!lid) return { status: 'geen' };
   const open = lid.tot && Date.now() < Date.parse(lid.tot);
   const plan = planVan(lid.plan);
-  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: PLANNEN[plan].bedrag, handmatig: !!lid.handmatig && !lid.subscriptionId, bron: lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? 'schema' : 'betaald' };
+  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: PLANNEN[plan].bedrag, handmatig: !!lid.handmatig && !lid.subscriptionId, bron: lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald' };
 }
 
 // Kan Mollie al maandelijks incasseren? Zolang SEPA-incasso niet is goedgekeurd
@@ -424,8 +424,14 @@ async function haalSchema(email) {
   try { return JSON.parse(r.result); } catch { return null; }
 }
 async function routeSchema(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', 'https://michelkredercoaching.nl');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  if (req.method === 'OPTIONS') return res.status(204).send('');
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
-  const body = typeof req.body === 'object' && req.body ? req.body : {};
+  let body = req.body;
+  if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
+  if (!body || typeof body !== 'object') body = {};
   const geheim = process.env.WOO_WEBHOOK_SECRET || '';
   if (!geheim || body.secret !== geheim) return res.status(401).json({ ok: false });
   const email = String(body.email || '').trim().toLowerCase();
@@ -449,7 +455,9 @@ async function routeSchema(req, res) {
   // gaat naar dinsdag, donderdag wordt een VO2max-training. Michel krijgt een
   // mail om dat in TrainingPeaks te doen en de FTP/het omslagpunt in te zetten.
   const cadeau = body.cadeau === true;
+  const maandGratis = cadeau && body.maand === true;
   if (cadeau) huidig.cadeau = true;
+  if (maandGratis) { huidig.plan = null; huidig.maandGratis = true; }
   if (huidig.plan && !cadeau) {
     const an = await recenteAnalyse(email, start, /-hr$/.test(huidig.plan) ? 'hartslag' : 'vermogen');
     if (an) {
@@ -463,11 +471,14 @@ async function routeSchema(req, res) {
 
   // Toegang tot de app: van de startdatum (of vandaag) tot na de looptijd.
   const basis = cadeau ? (Date.parse(start + 'T00:00:00Z') || Date.now()) : Math.max(Date.now(), Date.parse(start + 'T00:00:00Z') || 0);
-  const tot = new Date(basis + (weken * 7 + SCHEMA_EXTRA_DAGEN) * 86400000).toISOString();
+  const tot = maandGratis
+    ? new Date(Math.max(Date.now(), LANCERING) + 30 * 86400000).toISOString()
+    : new Date(basis + (weken * 7 + SCHEMA_EXTRA_DAGEN) * 86400000).toISOString();
   const lid = (await haalLid(email)) || {};
   const loptAbo = lid.subscriptionId && lid.status === 'actief';
   if (!loptAbo && (!lid.tot || Date.parse(lid.tot) < Date.parse(tot))) {
     if (!lid.handmatig) lid.bron = 'schema';
+    if (maandGratis) lid.cadeauMaand = true;
     lid.status = 'actief'; lid.tot = tot; lid.sinds = lid.sinds || new Date().toISOString();
     lid.naam = lid.naam || naam; lid.plan = lid.plan || 'maand';
     await bewaarLid(email, lid);
@@ -539,7 +550,7 @@ async function schemaEindeMails() {
     const datum = new Date(lid.tot).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
     const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.7;color:#1a1a1a;max-width:560px">
       <p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
-      <p>Je schema zit erop, knap gedaan. De MKC-app die erbij hoorde loopt op <b>${datum}</b> af.</p>
+      <p>${lid.cadeauMaand ? `Je gratis maand in de MKC-app loopt op <b>${datum}</b> af. Ik hoop dat je er veel aan had.` : `Je schema zit erop, knap gedaan. De MKC-app die erbij hoorde loopt op <b>${datum}</b> af.`}</p>
       <p>Je kunt op twee manieren verder:</p>
       <p><b>Een vervolgschema.</b> Een nieuw blok dat aansluit op waar je nu staat. De app hoort er weer bij, voor de hele looptijd.</p>
       <p style="margin:14px 0 22px"><a href="https://michelkredercoaching.nl/trainingsschema-vervolg/" style="background:#ff6b1a;color:#0a0a0a;padding:13px 24px;border-radius:4px;text-decoration:none;font-weight:700">Kies je vervolgschema</a></p>
@@ -549,7 +560,7 @@ async function schemaEindeMails() {
     try {
       const r = await fetch('https://api.resend.com/emails', {
         method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: email, subject: 'Je schema zit erop. Hoe ga je verder?', html }),
+        body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: email, subject: lid.cadeauMaand ? 'Je gratis maand loopt af. Hoe ga je verder?' : 'Je schema zit erop. Hoe ga je verder?', html }),
         signal: AbortSignal.timeout(8000)
       });
       if (r.ok) { lid.schemaEindeGemaild = lid.tot; await bewaarLid(email, lid); n++; }
@@ -575,10 +586,11 @@ async function routeCadeauMail(req, res) {
     const voornaam = String(lid.naam || '').split(' ')[0];
     const datum = new Date(lid.tot).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
     const metPlan = sch && sch.huidig && sch.huidig.plan;
+    const maand = !!lid.cadeauMaand;
     const winter = sch && sch.huidig && sch.huidig.soort === 'winter';
     const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.7;color:#1a1a1a;max-width:560px">
       <p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
-      <p>Vandaag lanceer ik iets waar ik lang aan gewerkt heb: de MKC-app. En omdat jij nu met ${winter ? 'mijn winterprogramma' : 'een schema van mij'} traint, krijg je hem er gratis bij. Tot ${datum}, twee weken na je laatste week.</p>
+      <p>Vandaag lanceer ik iets waar ik lang aan gewerkt heb: de MKC-app. ${maand ? `Jij trainde met een schema van mij, en daarom krijg je hem een maand gratis, tot ${datum}.` : `En omdat jij nu met ${winter ? 'mijn winterprogramma' : 'een schema van mij'} traint, krijg je hem er gratis bij. Tot ${datum}, twee weken na je laatste week.`}</p>
       <p>Wat je erin vindt:</p>
       <p>${metPlan ? '&#10003; Elke dag je training met mijn uitleg erbij, en wat je eet en drinkt.<br>' : ''}&#10003; Je eigen coach: stel al je vragen over je training, en je krijgt antwoord met mijn kennis uit negen jaar prof en coaching.<br>&#10003; De Core-app: korte sessies thuis tegen rugpijn en inzakken in het laatste uur.<br>&#10003; Bandenspanning en kledingadvies voor elke rit, afgestemd op het weer.</p>
       <p style="margin:22px 0 26px"><a href="${APP_URL}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Open de MKC-app</a></p>
@@ -588,7 +600,7 @@ async function routeCadeauMail(req, res) {
     try {
       const r = await fetch('https://api.resend.com/emails', {
         method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: email, subject: 'Een cadeautje bij je schema: de MKC-app', html }),
+        body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: email, subject: maand ? 'Een maand gratis: de MKC-app' : 'Een cadeautje bij je schema: de MKC-app', html }),
         signal: AbortSignal.timeout(8000)
       });
       if (r.ok) { lid.cadeauGemaild = new Date().toISOString(); await bewaarLid(email, lid); gemaild++; }
