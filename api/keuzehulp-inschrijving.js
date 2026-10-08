@@ -385,6 +385,13 @@ async function stuurLeadMail(route, payload) {
   return stuurMail(payload);
 }
 
+// "2026-10-20" -> "maandag 20 oktober 2026"; onbekend formaat blijft zoals het is.
+function startdatumNL(s) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(s || ''))) return s || '';
+  return new Date(s + 'T12:00:00Z')
+    .toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/Amsterdam' });
+}
+
 function interneCoachingHtml(b) {
   const r = (label, val) => `<tr><td style="padding:4px 16px 4px 0;color:#666;">${label}</td><td style="padding:4px 0;font-weight:700;">${val}</td></tr>`;
   return naarHtmlEntities(`
@@ -395,6 +402,7 @@ function interneCoachingHtml(b) {
       ${r('Naam', escHtml(b.naam || '—'))}
       ${r('E-mail', escHtml(b.email || '—'))}
       ${r('Telefoon', escHtml(b.telefoon || '—'))}
+      ${r('Gewenste start', escHtml(startdatumNL(b.startdatum) || '—'))}
       ${r('Pakket', escHtml(b.pakket || '—'))}
       ${r('Uren per week', escHtml(b.uren || '—'))}
       ${r('Rijdt wedstrijden', escHtml(b.wedstrijden || '—'))}
@@ -418,6 +426,7 @@ function interneBegeleidingHtml(b) {
       ${r('Naam', b.naam)}
       ${r('E-mail', b.email)}
       ${r('Telefoon', b.telefoon)}
+      ${r('Gewenste start', startdatumNL(b.startdatum))}
       ${r('Geboortedatum', b.geboortedatum)}
       ${r('Adres', b.adres)}
       ${r('Postcode', b.postcode)}
@@ -536,6 +545,7 @@ function onboardingBegeleidingHtml(b) {
         ${r('Telefoon', b.telefoon)}
         ${r('E-mail', b.email)}
         ${r('Pakket', b.pakket)}
+        ${r('Gewenste startdatum', startdatumNL(b.startdatum))}
         ${r('Vermogen of hartslag', b.meetmethode)}
         ${r('Omslagpunt/FTP', b.ftp)}
         ${r('Trainingen per week', b.frequentie)}
@@ -1181,7 +1191,7 @@ export default async function handler(req, res) {
       await stuurLeadMail(route, {
         from: AFZENDER, to: INTERNE_MAIL,
         reply_to: email,
-        subject: `🚴 Coaching-aanvraag: ${String(b.naam || email)} · ${String(b.pakket || 'adviestool')}`,
+        subject: `🚴 Coaching-aanvraag: ${String(b.naam || email)} · ${String(b.pakket || 'adviestool')}${b.startdatum ? ` · start ${startdatumNL(b.startdatum)}` : ''}`,
         html: interneCoachingHtml(b),
       });
       await stuurLeadMail(route, {
@@ -1198,7 +1208,7 @@ export default async function handler(req, res) {
       await stuurLeadMail(route, {
         from: AFZENDER, to: INTERNE_MAIL,
         reply_to: email,
-        subject: `🚴 Inschrijving begeleiding: ${String(b.naam || email)} · ${String(b.pakket || 'begeleiding')}`,
+        subject: `🚴 Inschrijving begeleiding: ${String(b.naam || email)} · ${String(b.pakket || 'begeleiding')}${b.startdatum ? ` · start ${startdatumNL(b.startdatum)}` : ''}`,
         html: interneBegeleidingHtml(b),
       });
       await stuurLeadMail(route, {
