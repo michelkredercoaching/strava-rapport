@@ -37,7 +37,7 @@
 //      MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID (= de Keuzehulp-lijst), APP_URL (optioneel)
 import crypto from 'crypto';
 import { coreVoorEmail, emailVoorCoreToken } from './core.js';
-import { lidBeeld, haalLid, lidOpen, LANCERING } from './lid.js';
+import { lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar } from './lid.js';
 import { COACH_KENNIS, COACH_REGELS } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
 import { kledingAdvies, kledingBijstel, kledingKort } from '../lib/kleding.js';
@@ -224,6 +224,8 @@ async function routeOverzicht(req, res) {
     // Vóór de Instagram-lancering staat alles behalve de bandenspanning op
     // "binnenkort beschikbaar" (wat iemand al heeft blijft zichtbaar).
     voorLancering: Date.now() < LANCERING,
+    // Automatische incasso klaar (Mollie SEPA)? Anders betaalt een lid per periode met iDEAL.
+    automatisch: await incassoKlaar(),
     naam: (core && core.naam) || mf.FNAME || '',
     core,
     analyse,
@@ -575,7 +577,7 @@ async function coachContext(email) {
   if (naam) regels.push(`Naam: ${String(naam).split(' ')[0]}.`);
   if (core) {
     if (core.intakeNodig) regels.push('Core-app: gestart, intake nog niet gedaan.');
-    else regels.push(`Core-app: blok ${core.blok || 1}, week ${core.weekInBlok || core.week} van 12, fase ${core.fase || '?'}, ${core.gedaan || 0} van ${core.frequentie || '?'} sessies deze week gedaan, ${core.afgerond || 0} weken afgerond.${core.startScore ? ` Rompscore start ${core.startScore}` : ''}${core.rompscore ? `, laatste ${core.rompscore}` : ''}.`);
+    else regels.push(`Core-app (beweegt mee, geen vast aantal weken): niveau ${core.week}, fase ${core.faseNaam || core.fase || '?'}, ${core.gedaan || 0} van ${core.frequentie || '?'} sessies van dit niveau gedaan, ${core.afgerond || 0} niveaus afgerond.${core.startScore ? ` Rompscore start ${core.startScore}` : ''}${core.rompscore ? `, laatste ${core.rompscore}` : ''}.`);
   } else regels.push('Core-app: niet gestart.');
   if ((lid && (lid.tags || []).some((t) => t.name === 'power-profile-koper'))) {
     regels.push(`Strava-analyse (${mf.RAPDAT || 'datum onbekend'}): ${mf.MEETMETH === 'hartslag' ? `omslagpunt ${mf.KOOPOMS || mf.OMSLAG || '?'} bpm` : `FTP ${mf.KOOPFTP || mf.FTP || '?'} W`}, renner-type ${mf.RENTYPE || '?'}, geadviseerd schema ${mf.ADVSCHEMA || '?'}.`);
@@ -645,7 +647,7 @@ async function routeCoach(req, res) {
   if (medisch) {
     const [core, mc] = await Promise.all([coreVoorEmail(email), mcLid(email)]);
     await meldMedisch({ email, naam: (core && core.naam) || (mc && mc.merge_fields && mc.merge_fields.FNAME) || '', bron: 'mkc-coach', vraag: tekst,
-      extra: core ? `Doet de Core-app: blok ${core.blok || 1}, week ${core.weekInBlok || core.week}.` : 'Doet de Core-app niet.' });
+      extra: core ? `Doet de Core-app: niveau ${core.week}.` : 'Doet de Core-app niet.' });
   }
   // Alleen een echt antwoord telt als gratis vraag; medisch en storingen niet.
   const over = recht.lid ? null : (antwoord && !medisch ? await telGratis(email) : await gratisOver(email));
