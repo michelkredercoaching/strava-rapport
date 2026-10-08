@@ -37,7 +37,7 @@
 //      MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID (= de Keuzehulp-lijst), APP_URL (optioneel)
 import crypto from 'crypto';
 import { coreVoorEmail, emailVoorCoreToken } from './core.js';
-import { lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar, haalSchema } from './lid.js';
+import { lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar, haalSchema, ledenOverzicht, lidZoek, geefToegang } from './lid.js';
 import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN } from '../lib/schema-app.js';
 import { haalMeldingen, leesMelding } from '../lib/app-melding.js';
 import { COACH_KENNIS, COACH_REGELS } from '../lib/coach-kennis.js';
@@ -197,6 +197,53 @@ async function routeMelding(req, res) {
   return res.status(200).json({ ok: true, meldingen: await haalMeldingen(email) });
 }
 
+// ---- Beheer: leden (09-10-2026) ----------------------------------------------
+//   GET  leden?t=..            -> tellers + recente leden
+//   GET  leden?t=..&zoek=mail  -> één lid
+//   POST leden { t, email, soort, tot, plan, start, naam } -> toegang geven/intrekken
+async function routeLeden(req, res) {
+  const t = req.method === 'POST' ? (await leesBody(req)) : null;
+  const email = leesAppToken(String(req.method === 'POST' ? t.t : req.query?.t) || '');
+  if (!email || !BEHEER.includes(email)) return res.status(403).json({ ok: false });
+  if (req.method === 'POST') {
+    const r = await geefToegang({ email: t.email, naam: t.naam, soort: t.soort, tot: t.tot, plan: t.plan, start: t.start });
+    return res.status(r.ok ? 200 : 400).json(r);
+  }
+  if (req.query?.zoek) return res.status(200).json({ ok: true, lid: await lidZoek(req.query.zoek) });
+  const [overzicht, fb] = await Promise.all([ledenOverzicht(), redis(['LRANGE', 'app:feedback', 0, 19])]);
+  const feedback = ((fb.ok && fb.result) || []).map((x) => { try { return JSON.parse(x); } catch { return null; } }).filter(Boolean);
+  return res.status(200).json({ ok: true, ...overzicht, feedback });
+}
+
+// ---- Feedback uit de app (09-10-2026) ----------------------------------------
+// "Mis je iets of werkt iets niet?" -> lijstje in Michels beheer + een mail.
+// Max 3 per persoon per dag.
+async function routeFeedback(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email) return res.status(401).json({ ok: false, fout: 'Log opnieuw in.' });
+  const tekst = String(body.tekst || '').trim().slice(0, 1500);
+  if (tekst.length < 3) return res.status(400).json({ ok: false, fout: 'Typ even wat je mist of wat er niet werkt.' });
+  const teller = await redis(['INCR', `app:feedback:teller:${email}:${new Date().toISOString().slice(0, 10)}`]);
+  if (teller.ok && teller.result === 1) await redis(['EXPIRE', `app:feedback:teller:${email}:${new Date().toISOString().slice(0, 10)}`, 90000]);
+  if (teller.ok && teller.result > 3) return res.status(429).json({ ok: false, fout: 'Dank je, ik heb je berichten binnen. Morgen kun je weer iets sturen.' });
+  const item = { email, tekst, waar: String(body.waar || '').slice(0, 60), op: new Date().toISOString() };
+  await redis(['LPUSH', 'app:feedback', JSON.stringify(item)]);
+  await redis(['LTRIM', 'app:feedback', 0, 199]);
+  const key = process.env.RESEND_API_KEY;
+  if (key) {
+    try {
+      await fetch('https://api.resend.com/emails', {
+        method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: 'MKC-app <michel@michelkredercoaching.nl>', to: 'michel.kredercoaching@gmail.com', reply_to: email, subject: `Feedback uit de app (${email})`, text: `${tekst}\n\nVan: ${email}${item.waar ? '\nWaar: ' + item.waar : ''}\n\nBeantwoorden kan gewoon met Antwoorden.` }),
+        signal: AbortSignal.timeout(8000)
+      });
+    } catch (e) { console.error('Feedbackmail mislukt:', e); }
+  }
+  return res.status(200).json({ ok: true });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   const actie = String(req.query?.actie || '');
@@ -219,6 +266,8 @@ export default async function handler(req, res) {
     if (actie === 'pushcron') return await routePushCron(req, res);
     if (actie === 'schema') return await routeSchema(req, res);
     if (actie === 'melding') return await routeMelding(req, res);
+    if (actie === 'leden') return await routeLeden(req, res);
+    if (actie === 'feedback') return await routeFeedback(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -255,7 +304,7 @@ async function routeLogin(req, res) {
 async function routeOverzicht(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email) return res.status(401).json({ ok: false, fout: 'Je inloglink is verlopen. Vraag hieronder een nieuwe aan.' });
-  const [core, lid, lidmaatschap, kanLid, bandenProfiel, ritten, schemaDossier, meldingen] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen(), haalBandenProfiel(email), haalRitten(email), haalSchema(email), haalMeldingen(email)]);
+  const [core, lid, lidmaatschap, kanLid, bandenProfiel, ritten, schemaDossier, meldingen, coachBerichten] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen(), haalBandenProfiel(email), haalRitten(email), haalSchema(email), haalMeldingen(email), haalCoachBerichten(email)]);
   // Ingelogd via de knop in de mail (zonder code) en nog geen contact? Dan
   // ook hier het gratis account aanmaken.
   if (!lid || lid.status === 'archived') await nieuwAccount(email);
@@ -294,6 +343,7 @@ async function routeOverzicht(req, res) {
     // Schema in de app: wat er vandaag op het schema staat (lib/schema-app.js).
     schema: schemaDossier && schemaDossier.huidig && schemaDossier.huidig.plan ? schemaBeeld(schemaDossier.huidig) : null,
     meldingen,
+    coachGesteld: (coachBerichten || []).some((b) => b.van === 'ik' || b.van === 'klant'),
     afval: { status: 'binnenkort' },
     pacing: { status: 'binnenkort' }
   });

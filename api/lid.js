@@ -97,6 +97,7 @@ async function haalLid(email) {
 }
 async function bewaarLid(email, lid) {
   lid.gewijzigd = new Date().toISOString();
+  await redis(['SADD', 'lid:alle', email]);
   return redis(['SET', `lid:${email}`, JSON.stringify(lid)]);
 }
 
@@ -648,6 +649,101 @@ async function routeCadeauMail(req, res) {
   }
   if (fouten) await meldIntern('CADEAUMAIL - niet alles verstuurd', `${gemaild} cadeaumails verstuurd, ${fouten} mislukt (Resend-limiet?). De rest gaat automatisch mee bij de volgende run.`);
   return res.status(200).json({ ok: true, gemaild, fouten });
+}
+
+// ---- Beheer: ledenoverzicht, zoeken en toegang geven (09-10-2026) ------------
+// Alleen aan te roepen vanuit api/app.js na de beheercheck.
+const nlDatum = (d = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Amsterdam' }).format(d);
+function soortVan(lid) {
+  const open = lid.tot && Date.parse(lid.tot) > Date.now();
+  if (!open) return 'verlopen';
+  if (lid.bron === 'coaching' && !lid.subscriptionId) return lid.coaching === 'premium' ? 'coaching-premium' : 'coaching-flex';
+  if (lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig) return lid.cadeauMaand ? 'gratis-maand' : 'schema';
+  if (lid.status === 'opgezegd') return 'opgezegd';
+  if (lid.status === 'achterstand') return 'achterstand';
+  return planVan(lid.plan) === 'jaar' ? 'betaald-jaar' : 'betaald-maand';
+}
+async function alleLedenEmails() {
+  const sets = ['lid:alle', 'lid:schema', 'lid:coaching', 'lid:cadeau', 'lid:handmatig'];
+  const uit = new Set();
+  for (const k of sets) { const r = await redis(['SMEMBERS', k]); for (const e of (r.ok && r.result) || []) uit.add(e); }
+  return [...uit];
+}
+export async function ledenOverzicht() {
+  const emails = await alleLedenEmails();
+  const leden = [];
+  for (let i = 0; i < emails.length; i += 25) {
+    const stuk = await Promise.all(emails.slice(i, i + 25).map(async (e) => ({ email: e, lid: await haalLid(e) })));
+    for (const x of stuk) if (x.lid) leden.push(x);
+  }
+  const tel = {};
+  const vandaag = nlDatum();
+  let nieuwVandaag = 0, mrr = 0;
+  for (const { lid } of leden) {
+    const k = soortVan(lid); tel[k] = (tel[k] || 0) + 1;
+    if (k === 'betaald-maand') mrr += 19;
+    if (k === 'betaald-jaar') mrr += 149 / 12;
+    if ((k === 'betaald-maand' || k === 'betaald-jaar') && lid.sinds && nlDatum(new Date(lid.sinds)) === vandaag) nieuwVandaag++;
+  }
+  const recent = leden.filter(({ lid }) => lid.sinds).sort((a, b) => String(b.lid.sinds).localeCompare(String(a.lid.sinds))).slice(0, 12)
+    .map(({ email, lid }) => ({ email, naam: lid.naam || '', soort: soortVan(lid), sinds: lid.sinds ? nlDatum(new Date(lid.sinds)) : '', tot: lid.tot ? nlDatum(new Date(lid.tot)) : '' }));
+  return { totaal: leden.length, tel, nieuwVandaag, mrr: Math.round(mrr), recent };
+}
+export async function lidZoek(email) {
+  email = String(email || '').trim().toLowerCase();
+  const lid = await haalLid(email);
+  const sch = await haalSchema(email);
+  return lid || sch ? {
+    email, naam: (lid && lid.naam) || '', soort: lid ? soortVan(lid) : 'geen',
+    tot: lid && lid.tot ? nlDatum(new Date(lid.tot)) : '', sinds: lid && lid.sinds ? nlDatum(new Date(lid.sinds)) : '',
+    abonnement: !!(lid && lid.subscriptionId), akkoord: lid && lid.akkoord ? lid.akkoord.op.slice(0, 10) : '',
+    schema: sch && sch.huidig ? { titel: sch.huidig.titel, start: sch.huidig.start, plan: sch.huidig.plan } : null
+  } : { email, soort: 'geen' };
+}
+// soort: coaching-flex | coaching-premium | schema | gratis | intrekken
+export async function geefToegang({ email, naam = '', soort, tot, plan, start }) {
+  email = String(email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ok: false, fout: 'Geen geldig mailadres.' };
+  const lid = (await haalLid(email)) || {};
+  if (soort === 'intrekken') {
+    if (lid.subscriptionId) return { ok: false, fout: 'Dit lid heeft een lopend abonnement. Zeg dat eerst op (de klant zelf in de app, of in Mollie).' };
+    lid.tot = new Date().toISOString(); lid.status = 'verlopen';
+    await bewaarLid(email, lid);
+    await zetLidmaatschap({ email, naam: lid.naam, tot: lid.tot, stil: true });
+    return { ok: true, lid: await lidZoek(email) };
+  }
+  let totIso = /^\d{4}-\d{2}-\d{2}$/.test(String(tot || '')) ? new Date(tot + 'T20:00:00Z').toISOString() : null;
+  if (soort === 'schema') {
+    const planNaamGeldig = plan && laadPlan(plan) ? plan : null;
+    if (!planNaamGeldig) return { ok: false, fout: 'Kies een schema.' };
+    const st = /^\d{4}-\d{2}-\d{2}$/.test(String(start || '')) ? start : nlDatum();
+    const weken = laadPlan(planNaamGeldig).weken;
+    const nv = planNaamGeldig.split('-')[0];
+    const niveauNaam = planNaamGeldig.startsWith('winter') ? planNaamGeldig.split('-')[1].replace(/^./, (c) => c.toUpperCase()) : nv.replace(/^./, (c) => c.toUpperCase());
+    const titel = planNaamGeldig.startsWith('winter') ? 'Indoor Winterprogramma ' + niveauNaam : niveauNaam + ' ' + weken + ' weken';
+    const oud = await haalSchema(email);
+    const huidig = { plan: planNaamGeldig, soort: planNaamGeldig.startsWith('winter') ? 'winter' : 'schema', weken, niveauNaam, titel, start: st, verschuif: 0, order: 'beheer', sinds: new Date().toISOString() };
+    await redis(['SET', `schema:${email}`, JSON.stringify({ huidig, eerder: oud ? [oud.huidig, ...(oud.eerder || [])].filter(Boolean).slice(0, 10) : [] })]);
+    totIso = totIso || new Date(Math.max(Date.now(), Date.parse(st + 'T00:00:00Z')) + (weken * 7 + SCHEMA_EXTRA_DAGEN) * 86400000).toISOString();
+    if (!lid.subscriptionId) { lid.bron = 'schema'; lid.cadeauMaand = false; }
+    await redis(['SADD', 'lid:schema', email]);
+  } else if (soort === 'coaching-flex' || soort === 'coaching-premium') {
+    totIso = totIso || new Date(Date.now() + 90 * 86400000).toISOString();
+    lid.coaching = soort === 'coaching-premium' ? 'premium' : 'flex';
+    if (!lid.subscriptionId) lid.bron = 'coaching';
+    await redis(['SADD', 'lid:coaching', email]);
+  } else if (soort === 'gratis') {
+    totIso = totIso || new Date(Date.now() + 30 * 86400000).toISOString();
+    if (!lid.subscriptionId) { lid.bron = 'schema'; lid.cadeauMaand = true; }
+  } else return { ok: false, fout: 'Onbekende soort.' };
+  if (!lid.subscriptionId) { lid.tot = totIso; lid.status = 'actief'; }
+  lid.sinds = lid.sinds || new Date().toISOString();
+  lid.naam = lid.naam || String(naam).slice(0, 80);
+  lid.plan = lid.plan || 'maand';
+  await bewaarLid(email, lid);
+  await zetLidmaatschap({ email, naam: lid.naam, tot: lid.tot, stil: true });
+  await mcTag(email, 'mkc-lid');
+  return { ok: true, lid: await lidZoek(email) };
 }
 
 export { lidOpen, lidBeeld, haalLid, incassoKlaar, haalSchema };
