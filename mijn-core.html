@@ -59,6 +59,9 @@
   .pil { display:inline-flex; align-items:center; gap:8px; background:var(--accent-dim); border:1px solid rgba(255,107,26,.35); color:var(--white); padding:6px 12px; border-radius:99px; font-size:13px; margin-top:12px; }
   .pil b { color:var(--accent); }
   .blok { margin-bottom:30px; }
+  .toestemming { display:flex; gap:10px; align-items:flex-start; font-size:13px; color:var(--muted); line-height:1.45; margin:4px 0 14px; cursor:pointer; }
+  .toestemming input { flex:0 0 18px; width:18px; height:18px; margin-top:1px; accent-color:#FF6B1A; }
+  .toestemming a { color:#FF6B1A; }
   .db-rij { margin-top:12px; }
   .db-kop { display:flex; flex-direction:column; gap:2px; margin-bottom:8px; font-size:14px; }
   .db-kop span { color:var(--muted); font-size:13.5px; }
@@ -341,7 +344,7 @@ function teken() {
     if (d.testNodig != null && d.testNodig !== 0) h += testHtml(d, false);
     if (!d.betaald && !d.opSlot) h += `<div class="proefbalk"><span><b>Proefweek.</b> Week 1 is gratis. Doe je starttest en je sessies, dan zie je meteen wat het programma met je doet.</span></div>`;
     if (d.opSlot) h += muurHtml(d);
-    else if (d.klaar) h += `<div class="blok kaart accent"><h2>Niveau 12 bereikt</h2><p>Knap gedaan. ${d.testNodig != null ? 'Doe hierboven je romptest en kijk wat het je heeft opgeleverd.' : 'Je Rompscore staat in je voortgang hieronder.'}</p>${d.magDoorlopen ? '' : `<p style="margin-top:10px">Wil je verder? De app beweegt met je mee: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller. Doorgaan doe je als lid van de MKC-app: &euro;19 per maand of &euro;149 per jaar, altijd opzegbaar.</p><a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word lid en ga door</a>`}</div>`;
+    else if (d.klaar) h += `<div class="blok kaart accent"><h2>Niveau 12 bereikt</h2><p>Knap gedaan. ${d.testNodig != null ? 'Doe hierboven je romptest en kijk wat het je heeft opgeleverd.' : 'Je Rompscore staat in je voortgang hieronder.'}</p>${d.magDoorlopen ? '' : `<p style="margin-top:10px">Wil je verder? De app beweegt met je mee: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller. Doorgaan doe je als lid van de MKC-app: &euro;19 per maand, maandelijks opzegbaar, of &euro;149 per jaar.</p><a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word lid en ga door</a>`}</div>`;
     else {
       if (d.weekRond) h += weekklaarHtml(d);
       if (d.kracht == null && d.week > 1) h += krachtVraagHtml();
@@ -418,6 +421,7 @@ function intakeHtml() {
       ${optie('kracht', 'nee', 'Nee')}${optie('kracht', '1x', 'Ja, 1 keer per week')}${optie('kracht', '2x', 'Ja, 2 keer of vaker per week')}</div>
     <div class="vraag"><div class="v">Train je naar iets toe? <span class="muted" style="font-weight:400">(mag je overslaan)</span></div>
       <div class="rij2"><input type="text" name="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60">${datumVeld('name="doelDatum"', '')}</div></div>
+    <label class="toestemming"><input type="checkbox" name="toestemming"> <span>Ik geef toestemming dat mijn antwoorden over klachten en gezondheid worden gebruikt om mijn plan op mij af te stemmen, en dat Michel meekijkt als de app me naar een arts of fysiotherapeut verwijst. Lees de <a href="/privacy#app" target="_blank" rel="noopener">privacyverklaring</a>.</span></label>
     <button class="knop breed" data-actie="intake">Maak mijn plan</button><div class="fout" id="intakefout"></div></div>`;
 }
 
@@ -467,7 +471,7 @@ function muurHtml(d) {
       <h2 style="margin-bottom:8px">Je volgende niveau staat klaar</h2>
       <p class="muted klein">${t ? `Je startte met een Rompscore van <b style="color:var(--white)">${t.score}</b>.${zwak ? ` Je ${zwak.naam.toLowerCase()} is ${zwak.pct}% zwakker ${zwak.zwakker}.` : ''} ` : ''}Vanaf hier wordt het elke week zwaarder.</p>
       ${d.lidOpen ? `<div class="prijs">&euro;19</div>
-      <div class="klein muted">per maand, of &euro;149 per jaar (bespaar 35%). Altijd opzegbaar.</div>
+      <div class="klein muted">per maand (maandelijks opzegbaar), of &euro;149 per jaar (bespaar 35%).</div>
       <ul>
         <li>Een Core-app die met je meebeweegt: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller</li>
         <li>Je romptest elke 4 weken, met grafiek</li>
@@ -496,7 +500,7 @@ function blokMuurHtml(d) {
   const winst = eerste && laatste && laatste !== eerste ? laatste.score - eerste.score : null;
   return `<div class="blok kaart accent"><div class="eyebrow">Niveau 12 bereikt</div><h2>Ga verder als lid</h2>
     <p>${winst != null ? `Je Rompscore ging van <b>${eerste.score}</b> naar <b>${laatste.score}</b> (${winst > 0 ? '+' : ''}${winst}). ` : ''}De app beweegt met je mee: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller. Je voortgang en je grafiek lopen gewoon door.</p>
-    <p style="margin-top:10px">Doorgaan doe je als lid van de MKC-app: &euro;19 per maand of &euro;149 per jaar, altijd opzegbaar.</p>
+    <p style="margin-top:10px">Doorgaan doe je als lid van de MKC-app: &euro;19 per maand, maandelijks opzegbaar, of &euro;149 per jaar.</p>
     <a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word lid en ga door</a></div>`;
 }
 
@@ -716,10 +720,11 @@ document.addEventListener('click', async (e) => {
     const leeftijd = $('input[name=leeftijd]:checked')?.value;
     if (!leeftijd) return (fout.textContent = 'Kies bij vraag 3 je leeftijd.');
     if (!erv) return (fout.textContent = 'Kies bij vraag 4 je ervaring.');
+    if (!$('input[name=toestemming]').checked) return (fout.textContent = 'Vink onderaan de toestemming aan, dan kan ik je plan op je klachten afstemmen.');
     k.disabled = true; k.textContent = 'Plan maken...';
     const freq = $('input[name=freq]:checked')?.value;
     if (!freq) { k.disabled = false; k.textContent = 'Maak mijn plan'; return (fout.textContent = 'Kies bij vraag 5 hoe vaak per week.'); }
-    const j = await post('intake', { klachten, rugErnst: rug, rodeVlag: vlag === 'ja', ervaring: erv, leeftijd, frequentie: Number(freq), zwaarsteDag: $('select[name=dag]').value, kracht: $('input[name=kracht]:checked')?.value || 'nee',
+    const j = await post('intake', { klachten, rugErnst: rug, rodeVlag: vlag === 'ja', ervaring: erv, leeftijd, frequentie: Number(freq), zwaarsteDag: $('select[name=dag]').value, kracht: $('input[name=kracht]:checked')?.value || 'nee', toestemming: true,
       doelNaam: $('input[name=doelNaam]').value.trim(), doelDatum: $('input[name=doelDatum]').value });
     if (!j.ok) { k.disabled = false; k.textContent = 'Maak mijn plan'; fout.textContent = j.fout || 'Mislukt.'; }
     else window.scrollTo({ top: 0, behavior: 'smooth' });
