@@ -536,6 +536,8 @@ async function routeIntake(req, res) {
     leeftijd: ['onder40', '40-55', '55plus'].includes(body.leeftijd) ? body.leeftijd : null,
     zwaarsteDag: ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'].includes(body.zwaarsteDag) ? body.zwaarsteDag : null,
     kracht: ['nee', '1x', '2x'].includes(body.kracht) ? body.kracht : null,
+    // Uitdrukkelijke toestemming voor gezondheidsgegevens (AVG art. 9), 09-10-2026.
+    toestemming: body.toestemming === true ? { op: nu(), versie: 'privacy-2026-10-09' } : null,
     op: nu()
   };
   d.intake = intake;
