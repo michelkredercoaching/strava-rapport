@@ -57,10 +57,10 @@ footer.pp{margin-top:48px;padding-top:24px;border-top:1px solid var(--rand);font
   <header class="pp">
     <span class="logo">Michel Kreder Coaching</span>
     <h1>Privacyverklaring</h1>
-    <p class="bijgewerkt">Power Profile™-trainingsrapport · laatst bijgewerkt: 28 juli 2026</p>
+    <p class="bijgewerkt">Power Profile™-trainingsrapport en MKC-app · laatst bijgewerkt: 9 oktober 2026</p>
   </header>
 
-  <p class="intro">Deze verklaring legt uit hoe wij omgaan met je gegevens wanneer je het Power Profile™-trainingsrapport gebruikt. Kort samengevat: we verwerken zo min mogelijk, je ruwe Strava-data slaan we niet op, en je koppeling met Strava verbreken we direct na je analyse.</p>
+  <p class="intro">Deze verklaring legt uit hoe wij omgaan met je gegevens wanneer je het Power Profile™-trainingsrapport of de MKC-app gebruikt. Over de app lees je alles in het blok <a href="#app">De MKC-app</a> hieronder. Kort samengevat: we verwerken zo min mogelijk, je ruwe Strava-data slaan we niet op, en je koppeling met Strava verbreken we direct na je analyse.</p>
 
   <h2>Wie is verantwoordelijk?</h2>
   <div class="kaart">
@@ -113,7 +113,26 @@ footer.pp{margin-top:48px;padding-top:24px;border-top:1px solid var(--rand);font
     <li><strong>Vercel</strong>: hosting van de applicatie.</li>
   </ul>
   <p><strong>Verwerking buiten de EU.</strong> Een deel van deze diensten (met name Resend, Mailchimp en Vercel) verwerkt gegevens mede buiten de Europese Unie, in de Verenigde Staten. Voor die doorgifte gelden passende waarborgen: de standaardcontractbepalingen van de Europese Commissie (Standard Contractual Clauses) en, waar van toepassing, certificering onder het EU-US Data Privacy Framework. Met deze diensten zijn verwerkersovereenkomsten gesloten.</p>
-  <p>Je analyse wordt volledig in onze eigen omgeving berekend en wordt <strong>niet</strong> met AI-diensten gedeeld.</p>
+  <p>Je Power Profile™-analyse wordt volledig in onze eigen omgeving berekend en wordt <strong>niet</strong> met AI-diensten gedeeld. Alleen de coach in de MKC-app gebruikt AI; zie hieronder.</p>
+
+  <h2 id="app">De MKC-app</h2>
+  <p>In de MKC-app (rapport.michelkredercoaching.nl/app) verwerken we meer gegevens dan bij de analyse, omdat de app je persoonlijk advies geeft. Dit is wat en waarom.</p>
+  <table>
+    <tr><th>Gegeven</th><th>Waarvoor</th><th>Grondslag (AVG)</th></tr>
+    <tr><td>E-mailadres, naam, inlogcode</td><td>Je account en inloggen zonder wachtwoord</td><td>Uitvoering van de overeenkomst</td></tr>
+    <tr><td>Lidmaatschap en betalingen</td><td>Toegang regelen, incasso, facturen</td><td>Overeenkomst en wettelijke bewaarplicht</td></tr>
+    <tr><td>Je schema, startdatum en voortgang</td><td>Je training van de dag tonen</td><td>Uitvoering van de overeenkomst</td></tr>
+    <tr><td>Core-app: intake, sessies, romptest, gevoel na een sessie</td><td>Je oefeningen op jou afstemmen</td><td>Uitvoering van de overeenkomst</td></tr>
+    <tr><td><strong>Klachten en gezondheid</strong> (zoals rugklachten in de intake, of een vraag aan de coach die op klachten wijst)</td><td>Je plan veilig afstemmen, en Michel laten meekijken als de app je naar een arts of fysiotherapeut verwijst</td><td><strong>Uitdrukkelijke toestemming</strong>, die je geeft in de intake. Intrekken kan altijd</td></tr>
+    <tr><td>Gewicht, fietsen, banden, woonplaats</td><td>Bandenspanning en kledingadvies op het weer van jouw plek</td><td>Uitvoering van de overeenkomst</td></tr>
+    <tr><td>Vragen aan de coach en de antwoorden</td><td>Je vragen beantwoorden, en de kwaliteit van de antwoorden verbeteren (Michel kijkt antwoorden na)</td><td>Uitvoering van de overeenkomst en gerechtvaardigd belang</td></tr>
+    <tr><td>Pushmeldingen (een technisch adres van je toestel)</td><td>Je ochtendbericht en je Core-herinnering sturen</td><td>Toestemming, die je op je toestel geeft. Uitzetten kan in de app of in je telefoon</td></tr>
+  </table>
+  <p><strong>De coach gebruikt AI.</strong> Als je een vraag stelt, sturen we die samen met de context die nodig is voor een goed antwoord (zoals je niveau in de Core-app, je klachten uit de intake, je schema van deze week, je analysecijfers en je fietsen) naar Anthropic, de maker van het AI-model Claude. Anthropic verwerkt dit alleen om het antwoord te maken en gebruikt het niet om zijn modellen te trainen. Zet in je vragen liever geen gegevens die er niet toe doen.</p>
+  <p><strong>Medische seintjes.</strong> Verwijst de app je naar een arts of fysiotherapeut, dan krijgt Michel daar een bericht van, zodat hij contact met je kan opnemen als dat nodig is.</p>
+  <p><strong>Weer.</strong> Voor het weer sturen we alleen de coördinaten van je woonplaats naar Open-Meteo, zonder je naam of e-mailadres.</p>
+  <p><strong>Hoe lang.</strong> Je appgegevens bewaren we zolang je account bestaat. Ben je een jaar niet meer actief geweest, of vraag je erom, dan verwijderen we ze. Betaal- en factuurgegevens bewaren we 7 jaar (wettelijke bewaarplicht). Coachgesprekken bewaren we alleen zover nodig voor je gesprek en het nakijken.</p>
+  <p><strong>Extra diensten voor de app:</strong> Anthropic (AI voor de coach, VS), Upstash (opslag van je accountgegevens in de app), Open-Meteo (weer), en de pushdienst van je telefoon of browser (Apple, Google of Mozilla) voor meldingen. Ook hier gelden de waarborgen die hierboven bij verwerking buiten de EU staan.</p>
 
   <h2>Beveiliging</h2>
   <p>Je analyse wordt versleuteld verwerkt (AES-256) en je trainingsdata verlaat onze beveiligde omgeving niet onversleuteld. De Strava-koppeling is alleen-lezen en wordt direct na gebruik verbroken, zodat er geen actieve toegang tot je account blijft bestaan.</p>
