@@ -138,8 +138,15 @@ function lidBeeld(lid) {
 // staat directdebit niet in de recurring-methodes; dan houden we de lid-knop
 // verborgen, zodat niemand betaalt zonder dat er een abonnement kan komen.
 // Gaat vanzelf open zodra Mollie goedkeurt (10 min cache).
+// Lancering op Instagram (besluit Michel 08-10-2026): vóór dit moment is lid
+// worden voor niemand open, ook niet als Mollie al goedkeurde. De app, /core/,
+// de bedankpagina, homepage en checkout schakelen hierdoor allemaal tegelijk om.
+export const LANCERING = Date.parse('2026-10-16T12:00:00+02:00');
+const voorLancering = () => Date.now() < LANCERING;
+// Michel kan vóór de lancering wel zelf lid worden (live test met echte betaling).
+const BEHEER_LID = ['michel.kredercoaching@gmail.com', 'michel.kreder@gmail.com', 'info@michelkredercoaching.nl'];
 let incassoCache = { tot: 0, open: false };
-async function lidOpen() {
+async function incassoKlaar() {
   if (!MOLLIE_KEY) return false;
   if (Date.now() < incassoCache.tot) return incassoCache.open;
   const m = await mollie('/methods?sequenceType=recurring');
@@ -147,6 +154,7 @@ async function lidOpen() {
   incassoCache = { tot: Date.now() + (m.ok ? 10 : 1) * 60 * 1000, open };
   return open;
 }
+async function lidOpen() { return !voorLancering() && await incassoKlaar(); }
 
 // ---- Routes ----------------------------------------------------------------------
 export default async function handler(req, res) {
@@ -181,7 +189,7 @@ async function routeStart(req, res) {
 
   let lid = await haalLid(email) || {};
   if (lid.status === 'actief' && lid.subscriptionId) return res.status(200).json({ ok: true, alLid: true });
-  if (!(await lidOpen())) return res.status(503).json({ ok: false, fout: 'Lid worden kan over een paar dagen. We regelen nog even de maandelijkse betaling.' });
+  if (!(BEHEER_LID.includes(email) ? await incassoKlaar() : await lidOpen())) return res.status(503).json({ ok: false, fout: 'Lid worden kan over een paar dagen. We regelen nog even de maandelijkse betaling.' });
 
   // Eén Mollie-klant per mailadres, hergebruiken bij opnieuw lid worden.
   if (!lid.customerId) {
