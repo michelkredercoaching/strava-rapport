@@ -37,7 +37,7 @@
 //      MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID (= de Keuzehulp-lijst), APP_URL (optioneel)
 import crypto from 'crypto';
 import { coreVoorEmail, emailVoorCoreToken } from './core.js';
-import { lidBeeld, haalLid, lidOpen } from './lid.js';
+import { lidBeeld, haalLid, lidOpen, LANCERING } from './lid.js';
 import { COACH_KENNIS, COACH_REGELS } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
 import { kledingAdvies, kledingBijstel, kledingKort } from '../lib/kleding.js';
@@ -221,6 +221,9 @@ async function routeOverzicht(req, res) {
     beheer: BEHEER.includes(email),
     lid: lidBeeld(lidmaatschap),
     lidOpen: kanLid,
+    // Vóór de Instagram-lancering staat alles behalve de bandenspanning op
+    // "binnenkort beschikbaar" (wat iemand al heeft blijft zichtbaar).
+    voorLancering: Date.now() < LANCERING,
     naam: (core && core.naam) || mf.FNAME || '',
     core,
     analyse,
@@ -593,6 +596,7 @@ async function routeCoach(req, res) {
   const body = await leesBody(req);
   const recht = await vraagRecht(res, body.t); if (!recht) return;
   const email = recht.email;
+  if (Date.now() < LANCERING && !BEHEER.includes(email)) return res.status(403).json({ ok: false, binnenkort: true, fout: 'Je eigen coach is binnenkort beschikbaar.' });
   const tekst = String(body.tekst || '').trim().slice(0, 1000);
   if (tekst.length < 3) return res.status(400).json({ ok: false, fout: 'Typ je vraag.' });
   const datum = new Date().toISOString().slice(0, 10);
