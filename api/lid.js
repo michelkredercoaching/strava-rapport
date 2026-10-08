@@ -185,6 +185,7 @@ export default async function handler(req, res) {
     if (actie === 'opzeggen') return await routeOpzeggen(req, res);
     if (actie === 'herinner') return await routeHerinner(req, res);
     if (actie === 'schema') return await routeSchema(req, res);
+    if (actie === 'cadeaumail') return await routeCadeauMail(req, res);
     if (actie === 'open') {
       // Publiek: kunnen mensen al lid worden? De WordPress-pagina's (/core/,
       // bedankpagina, homepage, checkout) vragen dit, zodat het oude aanbod
@@ -447,7 +448,9 @@ async function routeSchema(req, res) {
   // week 1 automatisch (besluit Michel 09-10-2026): de kracht van donderdag
   // gaat naar dinsdag, donderdag wordt een VO2max-training. Michel krijgt een
   // mail om dat in TrainingPeaks te doen en de FTP/het omslagpunt in te zetten.
-  if (huidig.plan) {
+  const cadeau = body.cadeau === true;
+  if (cadeau) huidig.cadeau = true;
+  if (huidig.plan && !cadeau) {
     const an = await recenteAnalyse(email, start, /-hr$/.test(huidig.plan) ? 'hartslag' : 'vermogen');
     if (an) {
       huidig.testOverslaan = an;
@@ -459,7 +462,7 @@ async function routeSchema(req, res) {
   await redis(['SET', `schema:${email}`, JSON.stringify(dossier)]);
 
   // Toegang tot de app: van de startdatum (of vandaag) tot na de looptijd.
-  const basis = Math.max(Date.now(), Date.parse(start + 'T00:00:00Z') || 0);
+  const basis = cadeau ? (Date.parse(start + 'T00:00:00Z') || Date.now()) : Math.max(Date.now(), Date.parse(start + 'T00:00:00Z') || 0);
   const tot = new Date(basis + (weken * 7 + SCHEMA_EXTRA_DAGEN) * 86400000).toISOString();
   const lid = (await haalLid(email)) || {};
   const loptAbo = lid.subscriptionId && lid.status === 'actief';
@@ -472,7 +475,8 @@ async function routeSchema(req, res) {
     await mcTag(email, 'mkc-lid');
     if (lid.bron === 'schema') await redis(['SADD', 'lid:schema', email]);
   }
-  await schemaWelkom(email, naam, huidig);
+  if (cadeau) await redis(['SADD', 'lid:cadeau', email]);
+  else await schemaWelkom(email, naam, huidig);
   return res.status(200).json({ ok: true, plan: huidig.plan, tot: lid.tot });
 }
 // Strava-analyse van deze koper, als die recent genoeg is (RAPDAT dd-mm-jjjj,
@@ -552,6 +556,45 @@ async function schemaEindeMails() {
     } catch (e) { console.error('Schema-einde mislukt:', email, e); }
   }
   return n;
+}
+
+// Cadeaumail aan bestaande schema-klanten, op het lanceermoment (cron
+// vr 16-10 12:05 Amsterdam). Eén keer per klant; vóór de lancering doet hij niets.
+async function routeCadeauMail(req, res) {
+  const cron = process.env.CRON_SECRET || '';
+  if (!cron || String(req.headers?.authorization || '') !== `Bearer ${cron}`) return res.status(401).json({ ok: false });
+  if (voorLancering()) return res.status(200).json({ ok: true, nogNiet: true });
+  const key = process.env.RESEND_API_KEY;
+  const lijst = await redis(['SMEMBERS', 'lid:cadeau']);
+  let gemaild = 0;
+  for (const email of (lijst.ok && lijst.result) || []) {
+    const lid = await haalLid(email);
+    const sch = await haalSchema(email);
+    if (!lid || lid.cadeauGemaild || !key) continue;
+    if (!lid.tot || Date.parse(lid.tot) < Date.now()) { await redis(['SREM', 'lid:cadeau', email]); continue; }
+    const voornaam = String(lid.naam || '').split(' ')[0];
+    const datum = new Date(lid.tot).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
+    const metPlan = sch && sch.huidig && sch.huidig.plan;
+    const winter = sch && sch.huidig && sch.huidig.soort === 'winter';
+    const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.7;color:#1a1a1a;max-width:560px">
+      <p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
+      <p>Vandaag lanceer ik iets waar ik lang aan gewerkt heb: de MKC-app. En omdat jij nu met ${winter ? 'mijn winterprogramma' : 'een schema van mij'} traint, krijg je hem er gratis bij. Tot ${datum}, twee weken na je laatste week.</p>
+      <p>Wat je erin vindt:</p>
+      <p>${metPlan ? '&#10003; Elke dag je training met mijn uitleg erbij, en wat je eet en drinkt.<br>' : ''}&#10003; Je eigen coach: stel al je vragen over je training, en je krijgt antwoord met mijn kennis uit negen jaar prof en coaching.<br>&#10003; De Core-app: korte sessies thuis tegen rugpijn en inzakken in het laatste uur.<br>&#10003; Bandenspanning en kledingadvies voor elke rit, afgestemd op het weer.</p>
+      <p style="margin:22px 0 26px"><a href="${APP_URL}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Open de MKC-app</a></p>
+      <p style="color:#555;font-size:14px">Log in met dit mailadres, je krijgt dan een code. Tip: zet de app op je beginscherm, dan heb je hem altijd bij de hand. Je traint gewoon verder in TrainingPeaks, daar verandert niets.</p>
+      <p>Veel plezier ermee, en laat me gerust weten wat je ervan vindt.</p>
+      <p>Sportieve groet,<br>Michel</p></div>`;
+    try {
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: email, subject: 'Een cadeautje bij je schema: de MKC-app', html }),
+        signal: AbortSignal.timeout(8000)
+      });
+      if (r.ok) { lid.cadeauGemaild = new Date().toISOString(); await bewaarLid(email, lid); gemaild++; }
+    } catch (e) { console.error('Cadeaumail mislukt:', email, e); }
+  }
+  return res.status(200).json({ ok: true, gemaild });
 }
 
 export { lidOpen, lidBeeld, haalLid, incassoKlaar, haalSchema };
