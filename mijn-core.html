@@ -439,8 +439,8 @@ function meterHtml(d) {
 function weekklaarHtml(d) {
   return `<div class="blok kaart accent" id="weekklaar"><h2>Niveau ${d.week} afronden</h2>
     <p class="muted klein" style="margin-bottom:12px">${d.gedaanDezeWeek.length} van ${d.frequentie} sessies gedaan, genoeg om door te gaan${d.gedaanDezeWeek.length < d.frequentie ? ' (de laatste mag je nog doen)' : ''}. Hoe ging dit niveau? De app beweegt met je mee.</p>
-    <div class="keuze4"><button data-actie="reactie" data-waarde="makkelijk">Te makkelijk</button><button data-actie="reactie" data-waarde="beter">Goed</button><button data-actie="reactie" data-waarde="gelijk">Zwaar maar te doen</button><button data-actie="reactie" data-waarde="slechter">Slechter</button></div>
-    <p class="klein muted" style="margin-top:10px">Te makkelijk: je springt een niveau verder. Slechter betekent meer pijn of klachten, niet gewoon spierpijn: dan doe je dit niveau opnieuw met lichtere varianten.</p></div>`;
+    <div class="keuze4"><button data-actie="reactie" data-waarde="makkelijk">Te makkelijk</button><button data-actie="reactie" data-waarde="beter">Goed</button><button data-actie="reactie" data-waarde="zwaar">Te zwaar</button><button data-actie="reactie" data-waarde="slechter">Meer klachten</button></div>
+    <p class="klein muted" style="margin-top:10px">Te makkelijk: je springt een niveau verder. Te zwaar: je doet dit niveau nog een keer, en is het daarna weer te zwaar, dan ga je een stapje terug. Meer klachten betekent meer pijn, niet gewoon spierpijn: dan doe je dit niveau opnieuw met lichtere varianten.</p></div>`;
 }
 
 // ---- Na de proefweek: week 2 wazig, betaalblok erover ----
