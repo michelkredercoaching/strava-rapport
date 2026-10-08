@@ -59,6 +59,10 @@
     {
       "path": "/api/lid?actie=cadeaumail",
       "schedule": "5 10 16 10 *"
+    },
+    {
+      "path": "/api/lid?actie=cadeaumail",
+      "schedule": "5 8 17-21 10 *"
     }
   ]
 }
