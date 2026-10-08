@@ -37,12 +37,14 @@
 //      MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID (= de Keuzehulp-lijst), APP_URL (optioneel)
 import crypto from 'crypto';
 import { coreVoorEmail, emailVoorCoreToken } from './core.js';
-import { lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar } from './lid.js';
+import { lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar, haalSchema } from './lid.js';
+import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN } from '../lib/schema-app.js';
 import { COACH_KENNIS, COACH_REGELS } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
 import { kledingAdvies, kledingBijstel, kledingKort } from '../lib/kleding.js';
 import { bandenAdvies, leesInvoer, nl, HOOKLESS_MAX } from '../lib/bandendruk.js';
 import { stuurPush } from '../lib/webpush.js';
+import { schemaPrijs, naLancering } from '../lib/schema-prijzen.js';
 
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || process.env.KV_REST_API_URL;
@@ -145,6 +147,44 @@ async function leesBody(req) {
 const geldigMail = (e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e) && e.length <= 160;
 
 // ---- Routes -------------------------------------------------------------------
+// Het schema-advies uit de analyse (ADVOUD/ADVNIEUW) is uitgerekend met de
+// prijzen van dat moment. Na de lancering geldt de nieuwe prijs per lengte;
+// het tegoed (oud min nieuw) blijft gelijk.
+function adviesBedragen(mf) {
+  const oud = Number(mf.ADVOUD) || 0, nieuw = Number(mf.ADVNIEUW) || 0;
+  const weken = Number((String(mf.ADVSCHEMA || '').match(/(8|12|16)/) || [])[1]) || 0;
+  const niveau = (String(mf.ADVSCHEMA || '').match(/Basis|Opbouw|Piek/i) || [''])[0];
+  const nu = schemaPrijs(weken, niveau);
+  if (!naLancering() || !nu || !oud) return { adviesPrijs: mf.ADVNIEUW || '', adviesOud: mf.ADVOUD || '' };
+  const tegoed = Math.max(0, oud - nieuw);
+  return { adviesPrijs: String(Math.max(0, nu - tegoed)), adviesOud: String(nu) };
+}
+
+// ---- Schema in de app -------------------------------------------------------
+//   POST schema { t, verschuif: -1|1 } -> de klant loopt een dag achter/voor
+//   GET  schema?t=..&plan=..&dag=..    -> voorbeeld voor beheer (Zelf kiezen)
+async function routeSchema(req, res) {
+  if (req.method === 'GET') {
+    const email = leesAppToken(String(req.query?.t || ''));
+    if (!email || !BEHEER.includes(email)) return res.status(403).json({ ok: false });
+    const plan = SCHEMA_PLANNEN.includes(String(req.query.plan)) ? String(req.query.plan) : 'opbouw-12-w';
+    const dag = Math.max(-6, Math.min(130, Number(req.query.dag) || 1));
+    const start = new Date(Date.now() - (dag - 1) * 86400000).toISOString().slice(0, 10);
+    const niveauNaam = plan.split('-')[0].replace(/^./, (c) => c.toUpperCase());
+    return res.status(200).json({ ok: true, schema: schemaBeeld({ plan, start, verschuif: 0, niveauNaam, titel: /^winter/.test(plan) ? 'Indoor Winterprogramma ' + plan.split('-')[1].replace(/^./, (c) => c.toUpperCase()) : niveauNaam + ' ' + plan.split('-')[1] + ' weken' }) });
+  }
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email) return res.status(401).json({ ok: false, fout: 'Log opnieuw in.' });
+  const d = await haalSchema(email);
+  if (!d || !d.huidig) return res.status(404).json({ ok: false, fout: 'Geen schema gevonden.' });
+  const stap = Number(body.verschuif) > 0 ? 1 : -1;
+  d.huidig.verschuif = Math.max(-14, Math.min(28, (Number(d.huidig.verschuif) || 0) + stap));
+  await redis(['SET', `schema:${email}`, JSON.stringify(d)]);
+  return res.status(200).json({ ok: true, schema: schemaBeeld(d.huidig) });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   const actie = String(req.query?.actie || '');
@@ -165,6 +205,7 @@ export default async function handler(req, res) {
     if (actie === 'push') return await routePush(req, res);
     if (actie === 'pushtest') return await routePushTest(req, res);
     if (actie === 'pushcron') return await routePushCron(req, res);
+    if (actie === 'schema') return await routeSchema(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -201,7 +242,7 @@ async function routeLogin(req, res) {
 async function routeOverzicht(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email) return res.status(401).json({ ok: false, fout: 'Je inloglink is verlopen. Vraag hieronder een nieuwe aan.' });
-  const [core, lid, lidmaatschap, kanLid, bandenProfiel, ritten] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen(), haalBandenProfiel(email), haalRitten(email)]);
+  const [core, lid, lidmaatschap, kanLid, bandenProfiel, ritten, schemaDossier] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen(), haalBandenProfiel(email), haalRitten(email), haalSchema(email)]);
   // Ingelogd via de knop in de mail (zonder code) en nog geen contact? Dan
   // ook hier het gratis account aanmaken.
   if (!lid || lid.status === 'archived') await nieuwAccount(email);
@@ -212,7 +253,7 @@ async function routeOverzicht(req, res) {
     datum: mf.RAPDAT || '', ftp: mf.KOOPFTP || mf.FTP || '', meet: mf.MEETMETH || '', type: mf.RENTYPE || '',
     omslag: mf.KOOPOMS || mf.OMSLAG || '', advies: mf.ADVSCHEMA || '', score: mf.SCORE || '',
     decoupling: mf.MEETMETH === 'hartslag' ? (mf.KOOPDCHR || '') : (mf.KOOPDEC || ''),
-    adviesPrijs: mf.ADVNIEUW || '', adviesOud: mf.ADVOUD || '', deadline: mf.DEADLINE || '',
+    ...adviesBedragen(mf), deadline: mf.DEADLINE || '',
     tegoedLink: mf.PPTOKEN ? `https://michelkredercoaching.nl/trainingsschemas/?pp=${encodeURIComponent(mf.PPTOKEN)}` : ''
   } : null;
   return res.status(200).json({
@@ -237,6 +278,8 @@ async function routeOverzicht(req, res) {
     gratisOver: (BEHEER.includes(email) || lidBeeld(lidmaatschap).open) ? null : await gratisOver(email),
     gratisMax: GRATIS_PER_WEEK,
     aiGebruik: BEHEER.includes(email) ? await aiGebruik() : null,
+    // Schema in de app: wat er vandaag op het schema staat (lib/schema-app.js).
+    schema: schemaDossier && schemaDossier.huidig && schemaDossier.huidig.plan ? schemaBeeld(schemaDossier.huidig) : null,
     afval: { status: 'binnenkort' },
     pacing: { status: 'binnenkort' }
   });
@@ -570,9 +613,11 @@ async function haalCoachBerichten(email) {
 }
 
 async function coachContext(email) {
-  const [core, lid, banden] = await Promise.all([coreVoorEmail(email), mcLid(email), haalBandenProfiel(email)]);
+  const [core, lid, banden, schemaDossier] = await Promise.all([coreVoorEmail(email), mcLid(email), haalBandenProfiel(email), haalSchema(email)]);
   const mf = (lid && lid.merge_fields) || {};
   const regels = [];
+  const sb = schemaDossier && schemaDossier.huidig && schemaDossier.huidig.plan ? schemaBeeld(schemaDossier.huidig) : null;
+  if (sb) regels.push(schemaContext(sb));
   const naam = (core && core.naam) || mf.FNAME || '';
   if (naam) regels.push(`Naam: ${String(naam).split(' ')[0]}.`);
   if (core) {
