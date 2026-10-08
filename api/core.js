@@ -43,6 +43,7 @@ import {
   weekRij, blokVan, BLOK_WEKEN, BLOKTIPS, disbalansUit
 } from '../lib/core.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
+import { appMelding } from '../lib/app-melding.js';
 // Kringverwijzing met lid.js (die gebruikt zetLidmaatschap van hier). Mag, want
 // beide gebruiken elkaars functies pas binnen een aanvraag, niet bij het laden.
 import { lidOpen } from './lid.js';
@@ -937,17 +938,25 @@ async function routeVerwijder(req, res) {
 async function routeHerinner(req, res) {
   if (!magIntern(req)) return res.status(403).json({ ok: false });
   const leden = await redis(['SMEMBERS', 'core:actief']);
-  let gemaild = 0, overgeslagen = 0;
+  let gemaild = 0, overgeslagen = 0, push = 0;
   for (const id of leden.result || []) {
     const d = await haalDossier(id);
     // Proefdeelnemers krijgen hun mails uit de Mailchimp-journey, niet van hier.
     if (!d || d.status !== 'actief' || !isBetaald(d)) { overgeslagen++; continue; }
     const laatste = (d.sessies || []).slice(-1)[0];
     if (laatste && Date.now() - new Date(laatste.op) > 14 * 864e5) { overgeslagen++; continue; }
-    await mail({ naar: d.email, onderwerp: `Niveau ${d.week}: je core-sessies staan klaar`, html: herinneringHtml(d), antwoordNaar: INTERN_NAAR });
-    gemaild++;
+    // 09-10-2026 (besluit Michel): geen mail meer, maar een melding in de app
+    // en een pushbericht voor wie meldingen aan heeft. Spaart Resend.
+    const doel = d.doel ? besteStart(d.doel.datum) : null;
+    const r = await appMelding(d.email, {
+      soort: 'core',
+      titel: `Niveau ${d.week}: je core-sessies staan klaar`,
+      tekst: `Fase ${FASES[weekRij(d.week).fase] || ''}.${doel && doel.dagenTotDoel > 0 ? ` Nog ${doel.wekenTotDoel} weken tot ${d.doel.naam}.` : ''} Tik om te starten.`,
+      link: linkVoor(d.id)
+    });
+    gemaild++; if (r.push) push++;
   }
-  return res.status(200).json({ ok: true, gemaild, overgeslagen });
+  return res.status(200).json({ ok: true, klaargezet: gemaild, push, overgeslagen });
 }
 
 // ===========================================================================
