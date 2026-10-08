@@ -40,7 +40,7 @@ import {
   maakPlan, sessie, heeftRodeVlag, KLACHTEN, OEFENINGEN, TESTS, rompscore, balans,
   volgendeWeek, testNodig, meterNodig, verdiendeBadges, BADGES,
   WEEKTIPS, besteStart, FASES, WEKEN as WEEKTABEL, letters, nodigVoorWeek, frequentie, startniveau,
-  weekRij, blokVan, BLOK_WEKEN, BLOKTIPS
+  weekRij, blokVan, BLOK_WEKEN, BLOKTIPS, disbalansUit
 } from '../lib/core.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
 // Kringverwijzing met lid.js (die gebruikt zetLidmaatschap van hier). Mag, want
@@ -216,6 +216,8 @@ async function assistentAntwoord(vraag, d) {
   const laatsteTest = (d.tests || []).slice(-1)[0];
   const context = [
     `Deelnemer: ${d.naam || 'onbekend'}`,
+    d.intake && d.intake.kracht && d.intake.kracht !== 'nee' ? `Doet ook krachttraining in de sportschool, ${d.intake.kracht} per week.` : '',
+    (() => { const db = planIntake(d).disbalans; return db ? 'Disbalans uit de laatste romptest: ' + Object.entries(db).map(([k, x]) => `${k} ${x.pct}% zwakker ${x.kant.toLowerCase()} (die kant gaat eerst en werkt ${x.extra} s langer)`).join(', ') + '.' : ''; })(),
     `Niveau ${d.week} (fase ${FASES[weekRij(d.week).fase] || ''}), ${d.afgerond} niveaus afgerond.${d.bijstel > 0 ? ' Vorige sessie voelde te licht, nu iets zwaarder.' : d.bijstel < 0 ? ' Vorige sessie voelde te zwaar, nu iets lichter.' : ''}`,
     d.intake ? `Klachten: ${(d.intake.klachten || []).join(', ') || 'geen'}. Ervaring: ${d.intake.ervaring}. Leeftijd: ${({ onder40: 'jonger dan 40', '40-55': '40 tot 55', '55plus': '55 of ouder' })[d.intake.leeftijd] || 'onbekend'}. ${frequentie(d.intake)}x per week. Startniveau uit de starttest: ${startniveau(planIntake(d))}.` : 'Intake nog niet gedaan.',
     s ? `Oefeningen deze week: ${letters(d.intake).map((l, i) => { const x = sessie(d.week, l, planIntake(d)); return 'sessie ' + (i + 1) + ': ' + x.oefeningen.map((o) => `${o.naam} (${o.cue})`).join('; '); }).join(' | ')}.` : '',
@@ -301,7 +303,8 @@ async function metToken(req, res) {
 // en de score van de starttest (bepaalt het startniveau).
 function planIntake(d) {
   const start = (d.tests || []).find((t) => t.moment === 0);
-  return { ...(d.intake || {}), verlicht: !!d.verlicht, bijstel: d.bijstel || 0, startScore: start ? start.score : null };
+  const laatste = (d.tests || []).filter((t) => t.uitslag).slice(-1)[0];
+  return { ...(d.intake || {}), verlicht: !!d.verlicht, bijstel: d.bijstel || 0, startScore: start ? start.score : null, disbalans: laatste ? disbalansUit(laatste.uitslag) : null };
 }
 const nu = () => new Date().toISOString();
 
@@ -340,6 +343,10 @@ function klantBeeld(d) {
     koopUrl: KOOP_URL,
     lidOpen: LID_OPEN,
     zwaarsteDag: d.intake?.zwaarsteDag || null,
+    kracht: d.intake ? (d.intake.kracht || null) : null,
+    // Disbalans-meter: per paar het verschil bij elke romptest.
+    disbalans: intake.disbalans || null,
+    disbalansVerloop: ['Zijkant', 'Bil'].map((naam) => ({ naam, punten: tests.map((t) => { const b = (t.balans || []).find((x) => x.naam === naam); return b ? { moment: t.moment, pct: b.pct, zwakker: b.zwakker } : null; }).filter(Boolean) })).filter((x) => x.punten.length),
     intakeNodig: !d.intake, geblokkeerd,
     week, afgerond: d.afgerond, fase: weekRij(week).fase, faseNaam: FASES[weekRij(week).fase],
     blok: blokVan(week), weekInBlok: weekRij(week).weekInBlok, blokStart, niveau: week, bijstel: d.bijstel || 0,
@@ -378,6 +385,7 @@ export async function coreVoorEmail(email) {
     gedaan: b.gedaanDezeWeek.length, frequentie: b.frequentie, afgerond: b.afgerond,
     startScore: tests[0] ? tests[0].score : null,
     rompscore: tests.length ? tests[tests.length - 1].score : null,
+    kracht: b.kracht, disbalans: b.disbalans, zwaarsteDag: b.zwaarsteDag,
     volgende: (() => { const s = b.sessies.find((x) => !b.gedaanDezeWeek.includes(x.letter)); return s ? { letter: s.letter, naam: s.naam, minuten: s.minuten, oefeningen: s.oefeningen.map((o) => o.id) } : null; })()
   };
 }
@@ -437,6 +445,7 @@ export default async function handler(req, res) {
       case 'doel':      return await routeDoel(req, res);
       case 'afvink':    return await routeAfvink(req, res);
       case 'gevoel':    return await routeGevoel(req, res);
+      case 'kracht':    return await routeKracht(req, res);
       case 'weekklaar': return await routeWeekklaar(req, res);
       case 'test':      return await routeTest(req, res);
       case 'meter':     return await routeMeter(req, res);
@@ -525,6 +534,7 @@ async function routeIntake(req, res) {
     frequentie: [2, 3, 4].includes(Number(body.frequentie)) ? Number(body.frequentie) : 3,
     leeftijd: ['onder40', '40-55', '55plus'].includes(body.leeftijd) ? body.leeftijd : null,
     zwaarsteDag: ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'].includes(body.zwaarsteDag) ? body.zwaarsteDag : null,
+    kracht: ['nee', '1x', '2x'].includes(body.kracht) ? body.kracht : null,
     op: nu()
   };
   d.intake = intake;
@@ -606,6 +616,19 @@ async function routeGevoel(req, res) {
   const melding = g > 0 ? 'Genoteerd. Je volgende sessies worden iets zwaarder: langer werken, korter rusten.'
     : g < 0 ? 'Genoteerd. Je volgende sessies worden iets lichter. Zo bouw je veilig op.' : 'Mooi, dan blijft het zo.';
   return res.status(200).json({ ok: true, melding, ...klantBeeld(d) });
+}
+
+// --- Sportschool (09-10-2026) -------------------------------------------------
+// Voor wie de intake al deed: één vraag, komt in de tips en bij de coach.
+async function routeKracht(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const r = await metToken(req, res); if (!r) return;
+  const { d, body } = r;
+  if (!d.intake) return res.status(400).json({ ok: false, fout: 'doe eerst je intake' });
+  if (!['nee', '1x', '2x'].includes(body.kracht)) return res.status(400).json({ ok: false, fout: 'kies een antwoord' });
+  d.intake.kracht = body.kracht;
+  await bewaarDossier(d);
+  return res.status(200).json({ ok: true, ...klantBeeld(d) });
 }
 
 // --- Week afsluiten ---------------------------------------------------------------
