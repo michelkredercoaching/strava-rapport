@@ -39,6 +39,7 @@ import crypto from 'crypto';
 import { coreVoorEmail, emailVoorCoreToken } from './core.js';
 import { lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar, haalSchema } from './lid.js';
 import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN } from '../lib/schema-app.js';
+import { haalMeldingen, leesMelding } from '../lib/app-melding.js';
 import { COACH_KENNIS, COACH_REGELS } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
 import { kledingAdvies, kledingBijstel, kledingKort } from '../lib/kleding.js';
@@ -185,6 +186,17 @@ async function routeSchema(req, res) {
   return res.status(200).json({ ok: true, schema: schemaBeeld(d.huidig) });
 }
 
+// ---- Meldingen in de app (09-10-2026) -----------------------------------------
+//   POST melding { t, id }  -> weggetikt (id 'alle' = alles)
+async function routeMelding(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email) return res.status(401).json({ ok: false, fout: 'Log opnieuw in.' });
+  await leesMelding(email, String(body.id || ''));
+  return res.status(200).json({ ok: true, meldingen: await haalMeldingen(email) });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   const actie = String(req.query?.actie || '');
@@ -206,6 +218,7 @@ export default async function handler(req, res) {
     if (actie === 'pushtest') return await routePushTest(req, res);
     if (actie === 'pushcron') return await routePushCron(req, res);
     if (actie === 'schema') return await routeSchema(req, res);
+    if (actie === 'melding') return await routeMelding(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -242,7 +255,7 @@ async function routeLogin(req, res) {
 async function routeOverzicht(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email) return res.status(401).json({ ok: false, fout: 'Je inloglink is verlopen. Vraag hieronder een nieuwe aan.' });
-  const [core, lid, lidmaatschap, kanLid, bandenProfiel, ritten, schemaDossier] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen(), haalBandenProfiel(email), haalRitten(email), haalSchema(email)]);
+  const [core, lid, lidmaatschap, kanLid, bandenProfiel, ritten, schemaDossier, meldingen] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen(), haalBandenProfiel(email), haalRitten(email), haalSchema(email), haalMeldingen(email)]);
   // Ingelogd via de knop in de mail (zonder code) en nog geen contact? Dan
   // ook hier het gratis account aanmaken.
   if (!lid || lid.status === 'archived') await nieuwAccount(email);
@@ -280,6 +293,7 @@ async function routeOverzicht(req, res) {
     aiGebruik: BEHEER.includes(email) ? await aiGebruik() : null,
     // Schema in de app: wat er vandaag op het schema staat (lib/schema-app.js).
     schema: schemaDossier && schemaDossier.huidig && schemaDossier.huidig.plan ? schemaBeeld(schemaDossier.huidig) : null,
+    meldingen,
     afval: { status: 'binnenkort' },
     pacing: { status: 'binnenkort' }
   });
@@ -851,15 +865,18 @@ async function haalPush(email) {
   const r = await redis(['GET', `app:push:${email}`]);
   try { return r.ok && r.result ? JSON.parse(r.result) : null; } catch { return null; }
 }
-function pushBeeld(p) { return p && p.sub ? { aan: true, tijd: p.tijd, dagen: p.dagen } : { aan: false, tijd: '07:00', dagen: [1, 2, 3, 4, 5, 6, 0] }; }
+function pushBeeld(p) { return p && p.sub ? { aan: true, tijd: p.tijd, dagen: p.dagen, ochtend: p.ochtend !== false, core: p.core !== false } : { aan: false, tijd: '07:00', dagen: [1, 2, 3, 4, 5, 6, 0], ochtend: true, core: true }; }
+// Pushberichten mag iedereen die is ingelogd (Core-herinnering); het ochtendbericht
+// zelf gaat alleen naar leden (zie routePushCron).
+function pushEmail(res, t) { const e = leesAppToken(String(t || '')); if (!e) res.status(401).json({ ok: false, fout: 'Log opnieuw in.' }); return e; }
 
 async function routePush(req, res) {
   if (req.method !== 'POST') {
-    const email = await slimEmail(req, res, req.query?.t); if (!email) return;
+    const email = pushEmail(res, req.query?.t); if (!email) return;
     return res.status(200).json({ ok: true, publicKey: process.env.VAPID_PUBLIC || null, instelling: pushBeeld(await haalPush(email)) });
   }
   const body = await leesBody(req);
-  const email = await slimEmail(req, res, body.t); if (!email) return;
+  const email = pushEmail(res, body.t); if (!email) return;
   if (body.uit) {
     await redis(['DEL', `app:push:${email}`]);
     await redis(['SREM', 'app:push:alle', email]);
@@ -870,7 +887,9 @@ async function routePush(req, res) {
   if (!sub) return res.status(400).json({ ok: false, fout: 'Geen toestemming voor meldingen ontvangen.' });
   const tijd = TIJDEN.includes(body.tijd) ? body.tijd : (oud.tijd || '07:00');
   const dagen = Array.isArray(body.dagen) ? [...new Set(body.dagen.map(Number).filter((d) => d >= 0 && d <= 6))] : (oud.dagen || [0, 1, 2, 3, 4, 5, 6]);
-  const p = { sub, tijd, dagen, laatste: oud.laatste || null, sinds: oud.sinds || new Date().toISOString() };
+  const ochtend = typeof body.ochtend === 'boolean' ? body.ochtend : oud.ochtend !== false;
+  const core = typeof body.core === 'boolean' ? body.core : oud.core !== false;
+  const p = { sub, tijd, dagen, ochtend, core, laatste: oud.laatste || null, sinds: oud.sinds || new Date().toISOString() };
   await redis(['SET', `app:push:${email}`, JSON.stringify(p)]);
   await redis(['SADD', 'app:push:alle', email]);
   return res.status(200).json({ ok: true, instelling: pushBeeld(p) });
@@ -934,7 +953,7 @@ async function routePushCron(req, res) {
     const [h, m] = String(p.tijd || '07:00').split(':').map(Number);
     const doel = h * 60 + m;
     // Aan de beurt: juiste dag, tijd net voorbij (binnen een uur), vandaag nog niet gehad.
-    if (!p.dagen.includes(nu.dag) || nu.minuten < doel || nu.minuten - doel > 60 || p.laatste === nu.datum) { overgeslagen++; continue; }
+    if (p.ochtend === false || !p.dagen.includes(nu.dag) || nu.minuten < doel || nu.minuten - doel > 60 || p.laatste === nu.datum) { overgeslagen++; continue; }
     if (!(await magSlim(email))) { overgeslagen++; continue; }   // lidmaatschap verlopen
     const bericht = await ochtendBericht(email).catch(() => null);
     if (!bericht) { overgeslagen++; continue; }
