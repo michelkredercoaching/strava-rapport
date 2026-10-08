@@ -443,6 +443,17 @@ async function routeSchema(req, res) {
   const niveauNaam = (String(body.niveau || '').match(/basis|opbouw|piek/i) || [''])[0].replace(/^./, (c) => c.toUpperCase());
   const titel = soort === 'winter' ? `Indoor Winterprogramma ${niveauNaam}` : `${niveauNaam || 'Trainingsschema'} ${weken} weken`;
   const huidig = { plan: plan && laadPlan(plan) ? plan : null, soort, weken, niveauNaam, titel, start, verschuif: 0, order, sinds: new Date().toISOString() };
+  // Recente Strava-analyse (max. 8 weken voor de start)? Dan vervalt de test in
+  // week 1 automatisch (besluit Michel 09-10-2026): de kracht van donderdag
+  // gaat naar dinsdag, donderdag wordt een VO2max-training. Michel krijgt een
+  // mail om dat in TrainingPeaks te doen en de FTP/het omslagpunt in te zetten.
+  if (huidig.plan) {
+    const an = await recenteAnalyse(email, start, /-hr$/.test(huidig.plan) ? 'hartslag' : 'vermogen');
+    if (an) {
+      huidig.testOverslaan = an;
+      await meldIntern(`TEST OVERSLAAN - ${email}`, `${naam || email} kocht ${titel} (order ${order}, start ${start}) en deed op ${an.datum} een Strava-analyse: ${an.meet === 'hartslag' ? 'omslagpunt ' + an.waarde + ' bpm' : 'FTP ' + an.waarde + ' W'}.\n\nIn TrainingPeaks:\n1. Zet ${an.meet === 'hartslag' ? 'het omslagpunt op ' + an.waarde + ' bpm' : 'de FTP op ' + an.waarde + ' W'}.\n2. Haal de ${soort === 'winter' ? 'ramptest' : 'veldtest'} van dinsdag week 1 weg en zet daar de krachttraining van donderdag.\n3. Zet op donderdag een VO2max-training (de app toont de eerste VO2max uit het plan).\n\nDe app laat dit al zo zien.`);
+    }
+  }
   const oud = await haalSchema(email);
   const dossier = { huidig, eerder: oud ? [oud.huidig, ...(oud.eerder || [])].filter(Boolean).slice(0, 10) : [] };
   await redis(['SET', `schema:${email}`, JSON.stringify(dossier)]);
@@ -464,6 +475,31 @@ async function routeSchema(req, res) {
   await schemaWelkom(email, naam, huidig);
   return res.status(200).json({ ok: true, plan: huidig.plan, tot: lid.tot });
 }
+// Strava-analyse van deze koper, als die recent genoeg is (RAPDAT dd-mm-jjjj,
+// max. 56 dagen voor de start) en de juiste waarde heeft voor de meetmethode.
+async function recenteAnalyse(email, start, meet) {
+  if (!MC_KEY || !MC_LIST) return null;
+  try {
+    const dc = MC_KEY.split('-')[1];
+    const hash = crypto.createHash('md5').update(email).digest('hex');
+    const r = await fetch(`https://${dc}.api.mailchimp.com/3.0/lists/${MC_LIST}/members/${hash}?fields=merge_fields,tags`, {
+      headers: { Authorization: 'Basic ' + Buffer.from('any:' + MC_KEY).toString('base64') }, signal: AbortSignal.timeout(8000)
+    });
+    if (!r.ok) return null;
+    const m = await r.json();
+    if (!(m.tags || []).some((t) => t.name === 'power-profile-koper')) return null;
+    const mf = m.merge_fields || {};
+    const d = String(mf.RAPDAT || '').match(/^(\d{2})-(\d{2})-(\d{4})/);
+    if (!d) return null;
+    const datum = `${d[3]}-${d[2]}-${d[1]}`;
+    const oud = (Date.parse(start + 'T12:00:00Z') - Date.parse(datum + 'T12:00:00Z')) / 86400000;
+    if (!(oud >= -1 && oud <= 56)) return null;
+    const waarde = meet === 'hartslag' ? String(mf.KOOPOMS || mf.OMSLAG || '').replace(/[^0-9]/g, '') : String(mf.KOOPFTP || mf.FTP || '').replace(/[^0-9]/g, '');
+    if (!waarde || Number(waarde) < 60) return null;
+    return { datum, meet, waarde: Number(waarde) };
+  } catch (e) { console.error('Analyse opzoeken mislukt (genegeerd):', e); return null; }
+}
+
 async function schemaWelkom(email, naam, s) {
   const key = process.env.RESEND_API_KEY; if (!key) return;
   const voornaam = String(naam || '').split(' ')[0];
