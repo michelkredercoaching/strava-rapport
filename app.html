@@ -1052,7 +1052,8 @@ function skGrafiek(blokken) {
 }
 function skDoel(x, meet) {
   if (x.lo == null && x.hi == null) return '';
-  const ftp = meet === 'vermogen' && D && D.analyse && D.analyse.meet !== 'hartslag' ? Number(String(D.analyse.ftp).replace(/[^0-9]/g, '')) : 0;
+  const sa = D && D.schema && D.schema.analyse;
+  const ftp = meet === 'vermogen' ? (sa && sa.meet === 'vermogen' ? sa.waarde : (D && D.analyse && D.analyse.meet !== 'hartslag' ? Number(String(D.analyse.ftp).replace(/[^0-9]/g, '')) : 0)) : 0;
   const pct = x.hi ? x.lo + '-' + x.hi + '%' : x.lo + '%';
   return ftp ? `${pct} (${Math.round(ftp * x.lo / 100)}${x.hi ? '-' + Math.round(ftp * x.hi / 100) : ''} W)` : pct;
 }
@@ -1064,7 +1065,7 @@ function skBlokken(blokken, meet) {
 function skTraining(w, meet, sleutel) {
   const tekst = (w.tekst || '').trim(), lang = tekst.length > 240, open = SK.open[sleutel];
   const notitie = (w.notitie || '').replace(/\*+/g, '').trim();
-  return `<div class="sk-tr"><h3>${esc(w.titel)}</h3>
+  return `<div class="sk-tr">${w.melding ? `<div class="sk-tip" style="margin:0 0 12px">${esc(w.melding)}</div>` : ''}<h3>${esc(w.titel)}</h3>
     <div class="sk-meta">${skUren(w.duur)}${w.tss ? ' &middot; TSS ' + Math.round(w.tss) : ''}${w.blokken ? ' &middot; ' + (meet === 'hartslag' ? '% van je omslagpunt' : '% van je FTP') : ''}</div>
     ${skGrafiek(w.blokken)}${skBlokken(w.blokken, meet)}
     ${tekst ? `<div class="sk-tekst${lang && !open ? ' dicht' : ''}">${opmaak(tekst)}</div>${lang ? `<button class="sk-meer" data-sk="meer" data-k="${sleutel}">${open ? 'Minder' : 'Lees de hele uitleg'}</button>` : ''}` : ''}
