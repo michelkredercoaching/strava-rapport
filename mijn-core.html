@@ -59,6 +59,14 @@
   .pil { display:inline-flex; align-items:center; gap:8px; background:var(--accent-dim); border:1px solid rgba(255,107,26,.35); color:var(--white); padding:6px 12px; border-radius:99px; font-size:13px; margin-top:12px; }
   .pil b { color:var(--accent); }
   .blok { margin-bottom:30px; }
+  .db-rij { margin-top:12px; }
+  .db-kop { display:flex; flex-direction:column; gap:2px; margin-bottom:8px; font-size:14px; }
+  .db-kop span { color:var(--muted); font-size:13.5px; }
+  .db-balken { display:grid; grid-template-columns:repeat(auto-fill, minmax(70px, 1fr)); gap:8px; }
+  .db-balk { position:relative; background:rgba(255,255,255,.06); border-radius:4px; height:40px; overflow:hidden; }
+  .db-balk span { position:absolute; left:0; top:0; bottom:0; background:rgba(255,107,26,.55); }
+  .db-balk b { position:absolute; left:8px; top:4px; font-size:13.5px; line-height:1.2; }
+  .db-balk small { position:absolute; left:8px; bottom:4px; font-size:10px; line-height:1.1; color:rgba(245,243,239,.75); }
   .keuze4 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .keuze4 button { padding:12px 8px; font-size:14px; }
   .gevoel3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
@@ -336,6 +344,7 @@ function teken() {
     else if (d.klaar) h += `<div class="blok kaart accent"><h2>Niveau 12 bereikt</h2><p>Knap gedaan. ${d.testNodig != null ? 'Doe hierboven je romptest en kijk wat het je heeft opgeleverd.' : 'Je Rompscore staat in je voortgang hieronder.'}</p>${d.magDoorlopen ? '' : `<p style="margin-top:10px">Wil je verder? De app beweegt met je mee: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller. Doorgaan doe je als lid van de MKC-app: &euro;19 per maand of &euro;149 per jaar, altijd opzegbaar.</p><a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word lid en ga door</a>`}</div>`;
     else {
       if (d.weekRond) h += weekklaarHtml(d);
+      if (d.kracht == null && d.week > 1) h += krachtVraagHtml();
       h += sessiesHtml(d);
       h += tipsHtml(d);
     }
@@ -405,6 +414,8 @@ function intakeHtml() {
       ${optie('freq', '2', '2x per week, 20 tot 25 minuten')}${optie('freq', '3', '3x per week, 15 tot 20 minuten <span class="muted">(meest gekozen)</span>')}${optie('freq', '4', '4x per week, 10 tot 15 minuten <span class="muted">(bijvoorbeeld vlak voor je rit)</span>')}</div>
     <div class="vraag"><div class="v">6. Op welke dag rijd je meestal je zwaarste training?</div>
       <select name="dag"><option value="">Wisselt, geen vaste dag</option><option value="ma">Maandag</option><option value="di">Dinsdag</option><option value="wo">Woensdag</option><option value="do">Donderdag</option><option value="vr">Vrijdag</option><option value="za">Zaterdag</option><option value="zo">Zondag</option></select></div>
+    <div class="vraag"><div class="v">7. Doe je ook krachttraining in de sportschool?</div>
+      ${optie('kracht', 'nee', 'Nee')}${optie('kracht', '1x', 'Ja, 1 keer per week')}${optie('kracht', '2x', 'Ja, 2 keer of vaker per week')}</div>
     <div class="vraag"><div class="v">Train je naar iets toe? <span class="muted" style="font-weight:400">(mag je overslaan)</span></div>
       <div class="rij2"><input type="text" name="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60">${datumVeld('name="doelDatum"', '')}</div></div>
     <button class="knop breed" data-actie="intake">Maak mijn plan</button><div class="fout" id="intakefout"></div></div>`;
@@ -520,18 +531,26 @@ function sessiesHtml(d) {
           <div><div class="titel">${esc(s.naam)}</div><div class="meta">${s.minuten} min &middot; ${s.werk}s werk, ${s.rust}s rust &middot; ${s.rondes} rondes${s.finisher ? ' + finisher' : ''}</div></div></div>
           ${klaar ? '<div class="vink">Gedaan</div>' : nieuwOpen === s.letter ? '<div class="ontgrendeld">Ontgrendeld</div>' : opslot ? `<div class="slotlabel" style="color:var(--muted)">${SLOT_SVG}</div>` : ''}</div>
         ${spierHtml(s.oefeningen)}
-        <div class="oefrij">${s.oefeningen.map((o) => `<div class="oefmini"><div data-anim="${o.id}"></div><span>${esc(o.naam)}${o.perKant ? ' (L+R)' : ''}</span></div>`).join('')}</div>
+        <div class="oefrij">${s.oefeningen.map((o) => `<div class="oefmini"><div data-anim="${o.id}"></div><span>${esc(o.naam)}${o.perKant ? (o.zwak ? ` (${o.zwak[0]} eerst +${o.extra}s)` : ' (L+R)') : ''}</span></div>`).join('')}</div>
         <button class="uitlegknop" data-actie="uitleg">Bekijk de oefeningen</button>
-        <div class="uitleglijst">${s.oefeningen.map((o) => `<div class="oef"><b>${esc(o.naam)}${o.perKant ? ' (links en rechts)' : ''}</b><ol>${(o.stappen || []).map((z) => `<li>${esc(z)}</li>`).join('')}</ol>${o.waarom ? `<div class="waarom">Waarom: ${esc(o.waarom)}</div>` : ''}</div>`).join('')}</div>
+        <div class="uitleglijst">${s.oefeningen.map((o) => `<div class="oef"><b>${esc(o.naam)}${o.perKant ? (o.zwak ? ` (begin ${o.zwak.toLowerCase()}, je zwakke kant: ${o.extra} s langer)` : ' (links en rechts)') : ''}</b><ol>${(o.stappen || []).map((z) => `<li>${esc(z)}</li>`).join('')}</ol>${o.waarom ? `<div class="waarom">Waarom: ${esc(o.waarom)}</div>` : ''}</div>`).join('')}</div>
         <div class="onder">${knop}</div>
       </div>`;
     }).join('')}</div></div>`;
+}
+
+// Sportschool: één vraag voor wie de intake al deed (09-10-2026).
+function krachtVraagHtml() {
+  return `<div class="blok kaart" id="krachtvraag"><h2 style="font-size:24px">Doe je ook krachttraining?</h2>
+    <p class="muted klein" style="margin-bottom:12px">Dan stem ik je tips en je coach daarop af, zodat sportschool, fiets en core elkaar niet in de weg zitten.</p>
+    <div class="keuze3"><button data-actie="kracht" data-k="nee">Nee</button><button data-actie="kracht" data-k="1x">1x per week</button><button data-actie="kracht" data-k="2x">2x of vaker</button></div></div>`;
 }
 
 function tipsHtml(d) {
   const tips = [];
   if (d.weektip) tips.push(d.weektip);
   if (d.week === 1) tips.push(...d.intakeTips);
+  else tips.push(...(d.intakeTips || []).filter((t) => /sportschool|zwakker/.test(t)));
   if (!tips.length) return '';
   return `<div class="blok"><h2>Tip van de week</h2>${tips.map((t) => `<div class="tip">${esc(t)}</div>`).join('')}</div>`;
 }
@@ -555,6 +574,21 @@ function lijnGrafiek(series, opts) {
   }
   return s + '</svg>';
 }
+// Disbalans-meter: het verschil links/rechts per romptest, met wat de app eraan doet.
+function disbalansHtml(d) {
+  const v = (d.disbalansVerloop || []).filter((x) => x.punten.some((p) => p.pct > 10) || x.punten.length > 1);
+  if (!v.length) return '';
+  const rij = (x) => {
+    const eerste = x.punten[0], laatste = x.punten[x.punten.length - 1];
+    const balk = (p) => `<div class="db-balk"><span style="width:${Math.min(100, p.pct * 2.5)}%"></span><b>${p.pct}%</b><small>${p.moment === 0 ? 'start' : 'na ' + p.moment}</small></div>`;
+    const actief = d.disbalans && d.disbalans[x.naam === 'Zijkant' ? 'zijkant' : 'bil'];
+    const tekst = laatste.pct <= 10
+      ? (eerste.pct > 10 ? `Van ${eerste.pct}% naar ${laatste.pct}%. Je ${x.naam.toLowerCase()} is weer in balans.` : `In balans (${laatste.pct}% verschil).`)
+      : `${laatste.zwakker === 'links' ? 'Links' : 'Rechts'} is ${laatste.pct}% zwakker${x.punten.length > 1 && eerste.pct !== laatste.pct ? ` (was ${eerste.pct}%)` : ''}.${actief ? ` Die kant gaat in je oefeningen eerst en werkt ${actief.extra} s langer.` : ''}`;
+    return `<div class="db-rij"><div class="db-kop"><b>${x.naam}</b><span>${esc(tekst)}</span></div><div class="db-balken">${x.punten.map(balk).join('')}</div></div>`;
+  };
+  return `<h3 style="margin:22px 0 6px;font-size:15px">Balans links en rechts <span class="muted klein" style="font-weight:400">(lager is beter, onder 10% is in balans)</span></h3><div class="db">${v.map(rij).join('')}</div>`;
+}
 function voortgangHtml(d) {
   const vak = d.vakjes, rijen = [...new Set(vak.map((v) => v.letter))].map((l) => vak.filter((v) => v.letter === l).map((v) =>
     `<div class="vakje ${v.gedaan ? 'aan' : ''} ${v.week === d.week && !d.klaar ? 'nu' : ''}" title="Niveau ${v.week} sessie ${NR[l]}"></div>`).join('')).join('');
@@ -572,7 +606,7 @@ function voortgangHtml(d) {
     <div class="weeklabels">${[...Array(12)].map((_, i) => `<div>${(d.blokStart || 0) + i + 1}</div>`).join('')}</div>
     <div class="badges">${d.badges.map((b) => `<div class="badge ${b.verdiend ? 'aan' : ''}" title="${esc(b.tekst)}"><div class="ic">${b.fase}</div><div class="nm">${esc(b.naam)}</div><div class="klein muted">${b.verdiend ? 'Verdiend' : 'Week ' + b.fase * 3}</div></div>`).join('')}</div>
     ${d.tests.length ? `<h3 style="margin:22px 0 6px;font-size:15px">Rompscore</h3><div class="grafiek">${lijnGrafiek([{ kleur: '#FF6B1A', punten: d.tests.map((t) => ({ x: t.moment, y: t.score })) }], { max: 100, raster: [0, 50, 100] })}</div>
-      ${balans.length ? balans.map((b) => `<div class="tip" style="margin-top:10px">Je ${b.naam.toLowerCase()} is ${b.pct}% zwakker ${b.zwakker}. Begin oefeningen per kant met die kant. Dat zie je vaak terug in een scheve zit op de fiets.</div>`).join('') : ''}` : ''}
+      ${disbalansHtml(d)}` : ''}
     ${d.meters.length ? `<h3 style="margin:22px 0 6px;font-size:15px">Klachten op de fiets <span class="muted klein" style="font-weight:400">(lager is beter)</span></h3><div class="grafiek">${lijnGrafiek([
         { kleur: '#FF6B1A', punten: d.meters.map((m) => ({ x: m.moment, y: m.onderrug })) },
         { kleur: '#8ab4ff', punten: d.meters.map((m) => ({ x: m.moment, y: m.nek })) }], { max: 10, raster: [0, 5, 10] })}</div>
@@ -685,7 +719,7 @@ document.addEventListener('click', async (e) => {
     k.disabled = true; k.textContent = 'Plan maken...';
     const freq = $('input[name=freq]:checked')?.value;
     if (!freq) { k.disabled = false; k.textContent = 'Maak mijn plan'; return (fout.textContent = 'Kies bij vraag 5 hoe vaak per week.'); }
-    const j = await post('intake', { klachten, rugErnst: rug, rodeVlag: vlag === 'ja', ervaring: erv, leeftijd, frequentie: Number(freq), zwaarsteDag: $('select[name=dag]').value,
+    const j = await post('intake', { klachten, rugErnst: rug, rodeVlag: vlag === 'ja', ervaring: erv, leeftijd, frequentie: Number(freq), zwaarsteDag: $('select[name=dag]').value, kracht: $('input[name=kracht]:checked')?.value || 'nee',
       doelNaam: $('input[name=doelNaam]').value.trim(), doelDatum: $('input[name=doelDatum]').value });
     if (!j.ok) { k.disabled = false; k.textContent = 'Maak mijn plan'; fout.textContent = j.fout || 'Mislukt.'; }
     else window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -713,6 +747,10 @@ document.addEventListener('click', async (e) => {
     if (keuzes.onderrug == null || keuzes.nek == null) return ($('#meterfout').textContent = 'Kies voor allebei een cijfer.');
     const j = await post('meter', keuzes);
     if (!j.ok) $('#meterfout').textContent = j.fout || 'Mislukt.'; else { keuzes.onderrug = keuzes.nek = null; melding('Opgeslagen.'); }
+  }
+  if (actie === 'kracht') {
+    const j = await post('kracht', { kracht: k.dataset.k });
+    if (j.ok) melding(k.dataset.k === 'nee' ? 'Genoteerd.' : 'Genoteerd. Je tips en je coach houden er nu rekening mee.', 3800);
   }
   if (actie === 'reactie') {
     k.parentElement.querySelectorAll('button').forEach((b) => (b.disabled = true));
@@ -792,9 +830,11 @@ function bouwStappen(s) {
     s.oefeningen.forEach((o, i) => {
       const extra = { id: o.id, naam: o.naam, cue: o.cue, ronde: r, stappen: o.stappen, waarom: o.waarom };
       if (o.perKant) {
-        st.push({ soort: 'werk', ...extra, sec: s.werk, kant: 'Links' });
-        st.push({ soort: 'wissel', ...extra, sec: 5, kant: 'Wissel naar rechts' });
-        st.push({ soort: 'werk', ...extra, sec: s.werk, kant: 'Rechts' });
+        // Disbalans: de zwakke kant gaat eerst en werkt een paar seconden langer.
+        const eerst = o.zwak || 'Links', dan = eerst === 'Links' ? 'Rechts' : 'Links';
+        st.push({ soort: 'werk', ...extra, sec: s.werk + (o.zwak ? o.extra : 0), kant: o.zwak ? eerst + ' · zwakke kant, ' + o.extra + ' s extra' : eerst });
+        st.push({ soort: 'wissel', ...extra, sec: 5, kant: 'Wissel naar ' + dan.toLowerCase() });
+        st.push({ soort: 'werk', ...extra, sec: s.werk, kant: dan });
       } else st.push({ soort: 'werk', ...extra, sec: s.werk });
       const laatste = r === s.rondes && i === s.oefeningen.length - 1;
       if (!laatste) {
