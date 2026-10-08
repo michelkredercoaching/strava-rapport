@@ -1,7 +1,8 @@
 // /api/lid.js
 // ---------------------------------------------------------------------------
-// Lidmaatschap van de MKC-app: €19 per maand, automatische incasso via Mollie
-// (besluit Michel 07-10-2026). Geen garantie, wel maandelijks opzegbaar.
+// Lidmaatschap van de MKC-app: €19 per maand of €149 per jaar, automatische
+// incasso via Mollie (besluit Michel 07-10 en 08-10-2026). Geen garantie, wel
+// opzegbaar: het abonnement stopt, de betaalde periode loopt gewoon door.
 // Zie APP-STAPPENPLAN.md.
 //
 // Zo werkt het bij Mollie:
@@ -40,7 +41,14 @@ const MC_KEY      = process.env.MAILCHIMP_API_KEY || '';
 const MC_LIST     = process.env.MAILCHIMP_LIST_ID || '';
 const APP_URL     = process.env.APP_URL || 'https://rapport.michelkredercoaching.nl/app';
 const WEBHOOK_URL = 'https://rapport.michelkredercoaching.nl/api/lid?actie=webhook';
-const BEDRAG      = '19.00';
+// Twee plannen. Het plan gaat mee in de metadata van de eerste betaling en
+// wordt bewaard in lid.plan, zodat elke volgende incasso de juiste periode verlengt.
+const PLANNEN = {
+  maand: { bedrag: '19.00', interval: '1 month', maanden: 1, label: 'per maand' },
+  jaar:  { bedrag: '149.00', interval: '12 months', maanden: 12, label: 'per jaar' }
+};
+const planVan = (x) => (x === 'jaar' ? 'jaar' : 'maand');
+const BEDRAG      = PLANNEN.maand.bedrag;
 const OMSCHRIJVING = 'MKC-app lidmaatschap';
 const SPELING_DAGEN = 5;     // na een mislukte incasso blijft de app nog zo lang open
 
@@ -120,6 +128,7 @@ function plusMaand(van) {
   if (doel.getDate() !== d.getDate()) doel.setDate(0);   // 31 jan -> 28/29 feb
   return doel;
 }
+function plusMaanden(van, n) { let d = new Date(van); for (let i = 0; i < n; i++) d = plusMaand(d); return d; }
 function plusDagen(van, n) { const d = new Date(van); d.setDate(d.getDate() + n); return d; }
 
 // ---- Helpers -------------------------------------------------------------------
@@ -131,7 +140,8 @@ async function leesBody(req) {
 function lidBeeld(lid) {
   if (!lid) return { status: 'geen' };
   const open = lid.tot && Date.now() < Date.parse(lid.tot);
-  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, bedrag: BEDRAG };
+  const plan = planVan(lid.plan);
+  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: PLANNEN[plan].bedrag };
 }
 
 // Kan Mollie al maandelijks incasseren? Zolang SEPA-incasso niet is goedgekeurd
@@ -171,7 +181,7 @@ export default async function handler(req, res) {
       // van €49/€29 vanzelf verdwijnt zodra de incasso is goedgekeurd.
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Cache-Control', 'public, max-age=300');
-      return res.status(200).json({ ok: true, open: await lidOpen(), bedrag: BEDRAG });
+      return res.status(200).json({ ok: true, open: await lidOpen(), bedrag: BEDRAG, jaarBedrag: PLANNEN.jaar.bedrag });
     }
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
@@ -201,18 +211,19 @@ async function routeStart(req, res) {
     await bewaarLid(email, lid);
   }
 
+  const plan = planVan(body.plan);
   const p = await mollie('/payments', {
     method: 'POST',
     body: JSON.stringify({
-      amount: { currency: 'EUR', value: BEDRAG },
-      description: `${OMSCHRIJVING}, eerste maand`,
+      amount: { currency: 'EUR', value: PLANNEN[plan].bedrag },
+      description: plan === 'jaar' ? `${OMSCHRIJVING}, eerste jaar` : `${OMSCHRIJVING}, eerste maand`,
       customerId: lid.customerId,
       sequenceType: 'first',
       // Login mee terug: wie in de app op zijn beginscherm begon, komt na de bank
       // vaak in Safari uit, en die heeft eigen opslag (zie api/app.js).
       redirectUrl: `${APP_URL}?lid=terug&t=${encodeURIComponent(String(body.t))}`,
       webhookUrl: WEBHOOK_URL,
-      metadata: { email, soort: 'lid-eerste' }
+      metadata: { email, soort: 'lid-eerste', plan }
     })
   });
   if (!p.ok) return res.status(502).json({ ok: false, fout: 'Betalen lukt nu even niet. Probeer het zo nog eens.' });
@@ -242,28 +253,30 @@ async function routeWebhook(req, res) {
     const betaaldOp = p.paidAt || new Date().toISOString();
 
     if (p.sequenceType === 'first') {
-      // Eerste maand binnen: abonnement aanmaken, eerste incasso over een maand.
-      const start = plusMaand(betaaldOp);
+      // Eerste periode binnen: abonnement aanmaken, eerste incasso na een maand of een jaar.
+      const plan = planVan(p.metadata && p.metadata.plan);
+      lid.plan = plan;
+      const start = plusMaanden(betaaldOp, PLANNEN[plan].maanden);
       const s = await mollie(`/customers/${p.customerId}/subscriptions`, {
         method: 'POST',
         body: JSON.stringify({
-          amount: { currency: 'EUR', value: BEDRAG }, interval: '1 month',
-          startDate: dag(start), description: OMSCHRIJVING, webhookUrl: WEBHOOK_URL,
-          metadata: { email: lidEmail }
+          amount: { currency: 'EUR', value: PLANNEN[plan].bedrag }, interval: PLANNEN[plan].interval,
+          startDate: dag(start), description: plan === 'jaar' ? `${OMSCHRIJVING} (jaar)` : OMSCHRIJVING, webhookUrl: WEBHOOK_URL,
+          metadata: { email: lidEmail, plan }
         })
       });
       // Lukt het abonnement niet (bv. geen incasso-machtiging), dan heeft de
       // klant wel betaald: de eerste maand gaat gewoon open en Michel krijgt
       // een mail om het abonnement handmatig te regelen.
-      if (!s.ok) await meldIntern(`ABONNEMENT MISLUKT - ${lidEmail}`, `${lidEmail} betaalde de eerste maand (${id}), maar Mollie maakte geen abonnement aan: ${JSON.stringify(s.j).slice(0, 300)}. De eerste maand staat open. Regel het abonnement in Mollie of neem contact op.`);
+      if (!s.ok) await meldIntern(`ABONNEMENT MISLUKT - ${lidEmail}`, `${lidEmail} betaalde de eerste ${plan} (${id}), maar Mollie maakte geen abonnement aan: ${JSON.stringify(s.j).slice(0, 300)}. De eerste ${plan} staat open. Regel het abonnement in Mollie of neem contact op.`);
       lid.customerId = p.customerId; lid.subscriptionId = s.ok ? s.j.id : null; lid.status = 'actief';
       lid.sinds = lid.sinds || betaaldOp;
       lid.tot = plusDagen(start, SPELING_DAGEN).toISOString();
       await redis(['SET', `lid:klant:${p.customerId}`, lidEmail]);
     } else {
-      // Maandincasso binnen: een maand verlengen vanaf de huidige einddatum.
+      // Incasso binnen: een maand of een jaar verlengen vanaf de huidige einddatum.
       const basis = lid.tot && Date.parse(lid.tot) > Date.now() ? plusDagen(lid.tot, -SPELING_DAGEN) : new Date(betaaldOp);
-      lid.tot = plusDagen(plusMaand(basis), SPELING_DAGEN).toISOString();
+      lid.tot = plusDagen(plusMaanden(basis, PLANNEN[planVan(lid.plan)].maanden), SPELING_DAGEN).toISOString();
       if (lid.status !== 'opgezegd') lid.status = 'actief';
     }
     await bewaarLid(lidEmail, lid);
@@ -276,7 +289,8 @@ async function routeWebhook(req, res) {
     if ((process.env.MOLLIE_FACTUUR || '').toLowerCase() === 'aan') {
       try {
         const maand = new Date(betaaldOp).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
-        const f = await maakMollieFactuur({ naam: lid.naam || lidEmail.split('@')[0], email: lidEmail, bedrag: (p.amount && p.amount.value) || BEDRAG, betaalId: id, omschrijving: `${OMSCHRIJVING}, ${maand}` });
+        const periode = planVan(lid.plan) === 'jaar' ? `jaar vanaf ${new Date(betaaldOp).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}` : maand;
+        const f = await maakMollieFactuur({ naam: lid.naam || lidEmail.split('@')[0], email: lidEmail, bedrag: (p.amount && p.amount.value) || PLANNEN[planVan(lid.plan)].bedrag, betaalId: id, omschrijving: `${OMSCHRIJVING}, ${periode}` });
         if (!f.ok) { console.error('Factuur lidmaatschap mislukt:', lidEmail, id, f.fout); await meldIntern(`FACTUUR MISLUKT - lidmaatschap - ${lidEmail}`, `Automatische factuur voor ${id} (${lidEmail}) mislukte: ${f.fout || 'onbekende fout'}. De toegang staat wel open. Maak de factuur even handmatig aan in Mollie.`); }
       } catch (e) { console.error('Factuur lidmaatschap fout:', e); }
     }
