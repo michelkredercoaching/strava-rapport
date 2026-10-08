@@ -75,6 +75,11 @@
   .beheer { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:8px 10px; background:#1d1408; border:1px dashed rgba(255,107,26,.5); border-radius:6px; padding:8px 10px; margin-bottom:16px; font-size:12px; color:var(--accent); font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
   .beheer button { background:transparent; border:1px solid rgba(255,255,255,.15); color:var(--muted); font-family:inherit; font-size:12px; padding:5px 10px; cursor:pointer; }
   .beheer button.aan { background:var(--accent); color:#0A0A0A; border-color:var(--accent); }
+  .sim { display:grid; grid-template-columns:1fr 1fr; gap:10px; background:#1d1408; border:1px dashed rgba(255,107,26,.5); border-top:0; border-radius:0 0 6px 6px; padding:12px 10px; margin:-16px 0 16px; }
+  .sim label { display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .sim label span { font-size:10.5px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); }
+  .sim select { width:100%; min-width:0; background:var(--black); color:var(--white); border:1px solid rgba(255,255,255,.18); border-radius:4px; padding:8px; font-family:inherit; font-size:13.5px; }
+  .sim button { grid-column:1 / -1; background:transparent; border:1px solid rgba(255,255,255,.15); color:var(--muted); font-family:inherit; font-size:12px; padding:7px; cursor:pointer; border-radius:4px; }
   .lidblok { border:1px solid rgba(255,107,26,.55); background:linear-gradient(160deg, rgba(255,107,26,.16), var(--surface) 60%); border-radius:8px; padding:20px; margin-bottom:6px; }
   .lidblok h2 { font-family:'Bebas Neue',sans-serif; font-size:32px; line-height:.95; text-transform:uppercase; margin:2px 0 8px; }
   .lidblok .prijs { font-family:'Bebas Neue',sans-serif; font-size:46px; line-height:1; }
@@ -355,7 +360,7 @@ const SITE = 'https://michelkredercoaching.nl';
 // Analyse kopen = direct naar de checkout met product 12131 in het mandje (de
 // korte checkout uit checkout-analyse-minimaal.php), niet via de productpagina.
 const ANALYSE_KOOP = SITE + '/checkout/?add-to-cart=12131';
-let BEKIJK = 'klant'; // beheerweergave: 'nieuw' (niet-lid, nog niets gekocht), 'klant' (je eigen account) of 'alles'
+let BEKIJK = (() => { try { return localStorage.getItem('mkcBekijk') || 'klant'; } catch { return 'klant'; } })(); // beheerweergave: 'nieuw' (niet-lid, nog niets gekocht), 'klant' (je eigen account) of 'alles'
 let D = null;
 
 function leesToken() { try { return localStorage.getItem(OPSLAG) || ''; } catch (e) { return ''; } }
@@ -475,9 +480,9 @@ function coreKaart(c) {
   }
   if (c.opSlot) {
     return `<div class="kaart actief"><div class="kaart-in"><span class="tag oranje">Proefweek klaar</span><div class="label">Core-app</div>
-      <h2>Week 2 staat klaar</h2><p>Je proefweek zit erop. Ga door en alles wat je deed blijft staan.</p>
+      <h2>Niveau 2 staat klaar</h2><p>Je proefweek zit erop. Ga door en alles wat je deed blijft staan.</p>
       ${c.rompscore != null ? `<div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore}</b></div><div class="cijfer"><span>Niveau</span><b>1</b></div><div class="cijfer"><span>Prijs</span><b>${kanLidNu() ? '&euro;19<em style="color:var(--muted)">/mnd</em>' : '&euro;49'}</b></div></div>` : ''}
-      ${kanLidNu() ? '<button class="knop" data-actie="naarlid">Word lid en ga door</button>' : `<a class="knop" href="${esc(c.link)}">Ga door met week 2</a>`}</div></div>`;
+      ${kanLidNu() ? '<button class="knop" data-actie="naarlid">Word lid en ga door</button>' : `<a class="knop" href="${esc(c.link)}">Ga door naar niveau 2</a>`}</div></div>`;
   }
   const winst = c.rompscore != null && c.startScore != null && c.rompscore > c.startScore ? `<em>+${c.rompscore - c.startScore}</em>` : '';
   // Balk: hoe ver je bent in dit niveau (sessies gedaan van wat nodig is).
@@ -990,7 +995,7 @@ function voorbeeldData(d) {
 function beheerHtml(d) {
   if (!d.beheer) return '';
   const ai = d.aiGebruik;
-  return `<div class="beheer"><span>Beheerweergave${ai ? ` <small class="ai-verbruik">AI deze maand: ${ai.vragen} vragen &middot; &plusmn; &euro;${String(ai.euro.toFixed(2)).replace('.', ',')}</small>` : ''}</span><div><button data-actie="bekijk" data-w="nieuw" class="${BEKIJK === 'nieuw' ? 'aan' : ''}">Niet-lid</button><button data-actie="bekijk" data-w="klant" class="${BEKIJK === 'klant' ? 'aan' : ''}">Als klant</button><button data-actie="bekijk" data-w="alles" class="${BEKIJK === 'alles' ? 'aan' : ''}">Alles open</button></div></div>`;
+  return `<div class="beheer"><span>Beheerweergave${ai ? ` <small class="ai-verbruik">AI deze maand: ${ai.vragen} vragen &middot; &plusmn; &euro;${String(ai.euro.toFixed(2)).replace('.', ',')}</small>` : ''}</span><div><button data-actie="bekijk" data-w="nieuw" class="${BEKIJK === 'nieuw' ? 'aan' : ''}">Niet-lid</button><button data-actie="bekijk" data-w="klant" class="${BEKIJK === 'klant' ? 'aan' : ''}">Als klant</button><button data-actie="bekijk" data-w="alles" class="${BEKIJK === 'alles' ? 'aan' : ''}">Alles open</button><button data-actie="bekijk" data-w="zelf" class="${BEKIJK === 'zelf' ? 'aan' : ''}">Zelf kiezen</button></div></div>${simHtml()}`;
 }
 
 // ---- Lidmaatschap MKC-app (07-10-2026): €19 per maand via Mollie ----
@@ -1048,7 +1053,49 @@ function isLid(d) { const l = d.lid || {}; return (l.status === 'actief' || l.st
 // Beheer "Niet-lid": zo ziet iemand de app die net binnenkomt, zonder Core,
 // analyse of lidmaatschap. Alleen de weergave, er verandert niets op de server.
 function alsNieuw(d) { return { ...d, core: null, analyse: null, banden: false, bandenSlim: false, bandenProfiel: null, lid: { status: 'geen' }, gratisOver: d.gratisMax || 3 }; }
-function zicht() { if (D && D.beheer && BEKIJK === 'nieuw') return alsNieuw(D); if (D && D.beheer && BEKIJK === 'alles') return voorbeeldData(D); return D; }
+function zicht() { if (D && D.beheer && BEKIJK === 'nieuw') return alsNieuw(D); if (D && D.beheer && BEKIJK === 'alles') return voorbeeldData(D); if (D && D.beheer && BEKIJK === 'zelf') return simuleer(D); return D; }
+
+// Beheer "Zelf kiezen": jij bepaalt per onderdeel hoe de klant binnenkomt.
+// Alleen de weergave verandert; er gaat niets naar de server. Keuze blijft
+// bewaard op dit apparaat (localStorage mkcSim).
+const SIM_OPTIES = {
+  core: [['echt', 'Mijn eigen'], ['geen', 'Niet gestart'], ['intake', 'Intake nog doen'], ['proef', 'In proefweek'], ['proefklaar', 'Proefweek klaar'], ['actief', 'Actief (lid)'], ['klaar', 'Niveau 12 (eenmalig)']],
+  analyse: [['echt', 'Mijn eigen'], ['geen', 'Niet gekocht'], ['vermogen', 'Gekocht: vermogen'], ['hartslag', 'Gekocht: hartslag']],
+  lid: [['echt', 'Mijn eigen'], ['geen', 'Geen lid'], ['maand', 'Lid per maand'], ['jaar', 'Jaarlid'], ['ideal', 'Lid via iDEAL (verlengen)'], ['opgezegd', 'Opgezegd'], ['achterstand', 'Betaling mislukt']],
+  lancering: [['echt', 'Zoals nu'], ['voor', 'Vóór 16 okt'], ['na', 'Na 16 okt']]
+};
+const SIM_NAMEN = { core: 'Core-app', analyse: 'Strava-analyse', lid: 'Lidmaatschap', lancering: 'Lancering' };
+let SIM = (() => { try { return { core: 'echt', analyse: 'echt', lid: 'echt', lancering: 'echt', ...JSON.parse(localStorage.getItem('mkcSim') || '{}') }; } catch { return { core: 'echt', analyse: 'echt', lid: 'echt', lancering: 'echt' }; } })();
+function simBewaar() { try { localStorage.setItem('mkcSim', JSON.stringify(SIM)); } catch {} }
+function simuleer(d) {
+  const vb = voorbeeldData({ ...d, core: null, analyse: null });
+  const n = { ...d };
+  const coreVb = { ...vb.core };
+  if (SIM.core === 'geen') n.core = null;
+  else if (SIM.core === 'intake') n.core = { ...coreVb, betaald: false, intakeNodig: true };
+  else if (SIM.core === 'proef') n.core = { ...coreVb, betaald: false, week: 1, faseNaam: 'Fundament', gedaan: 1, afgerond: 0, rompscore: 52 };
+  else if (SIM.core === 'proefklaar') n.core = { ...coreVb, betaald: false, opSlot: true, week: 1, rompscore: 52 };
+  else if (SIM.core === 'actief') n.core = coreVb;
+  else if (SIM.core === 'klaar') n.core = { ...coreVb, week: 12, klaar: true, rompscore: 78 };
+  if (SIM.analyse === 'geen') n.analyse = null;
+  else if (SIM.analyse === 'vermogen') n.analyse = { ...vb.analyse };
+  else if (SIM.analyse === 'hartslag') n.analyse = { ...vb.analyse, meet: 'hartslag', ftp: '', omslag: '163', type: 'Allrounder', decoupling: '', advies: 'Opbouw 12-wekenplan hartslag' };
+  const tot = (dagen) => new Date(Date.now() + dagen * 86400000).toISOString();
+  if (SIM.lid === 'geen') n.lid = { status: 'geen' };
+  else if (SIM.lid === 'maand') n.lid = { status: 'actief', open: true, plan: 'maand', bedrag: '19.00', tot: tot(24) };
+  else if (SIM.lid === 'jaar') n.lid = { status: 'actief', open: true, plan: 'jaar', bedrag: '149.00', tot: tot(300) };
+  else if (SIM.lid === 'ideal') n.lid = { status: 'actief', open: true, plan: 'maand', bedrag: '19.00', tot: tot(4), handmatig: true };
+  else if (SIM.lid === 'opgezegd') n.lid = { status: 'opgezegd', open: true, plan: 'maand', bedrag: '19.00', tot: tot(12) };
+  else if (SIM.lid === 'achterstand') n.lid = { status: 'achterstand', open: true, plan: 'maand', bedrag: '19.00', tot: tot(3) };
+  if (SIM.lancering === 'voor') { n.voorLancering = true; n.lidOpen = false; }
+  else if (SIM.lancering === 'na') { n.voorLancering = false; n.lidOpen = true; }
+  return n;
+}
+function simHtml() {
+  if (!D || !D.beheer || BEKIJK !== 'zelf') return '';
+  const keuze = (k) => `<label><span>${SIM_NAMEN[k]}</span><select data-sim="${k}">${SIM_OPTIES[k].map(([w, t]) => `<option value="${w}"${SIM[k] === w ? ' selected' : ''}>${t}</option>`).join('')}</select></label>`;
+  return `<div class="sim">${Object.keys(SIM_OPTIES).map(keuze).join('')}<button data-actie="simreset">Alles terug naar mijn eigen</button></div>`;
+}
 // Nog niets gekocht of gestart: dan tonen we de korte uitleg bovenaan.
 function binnenkortNu() { const d = zicht(); return !!(d && d.voorLancering && !(d.beheer && BEKIJK === 'alles')); }
 // Mag de lid-knop getoond worden? Pas na de lancering (Michel in "Alles open" altijd).
@@ -1077,10 +1124,15 @@ function teken() {
   if (document.getElementById('ccPaneel').classList.contains('open')) coachLijst();
 }
 
+document.addEventListener('change', (e) => {
+  const sel = e.target.closest('[data-sim]'); if (!sel) return;
+  SIM[sel.dataset.sim] = sel.value; simBewaar(); CC.berichten = null; teken();
+});
 document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-actie]'); if (!k) return;
   const actie = k.dataset.actie;
-  if (actie === 'bekijk') { BEKIJK = k.dataset.w; CC.berichten = null; teken(); }
+  if (actie === 'bekijk') { BEKIJK = k.dataset.w; try { localStorage.setItem('mkcBekijk', BEKIJK); } catch {} CC.berichten = null; teken(); }
+  if (actie === 'simreset') { SIM = { core: 'echt', analyse: 'echt', lid: 'echt', lancering: 'echt' }; simBewaar(); teken(); }
   if (actie === 'wordlid') wordLid(k);
   if (actie === 'startcore') startCore(k);
   if (actie === 'naarlid') {
