@@ -40,6 +40,7 @@ import { coreVoorEmail, emailVoorCoreToken } from './core.js';
 import { lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar, haalSchema, ledenOverzicht, lidZoek, geefToegang } from './lid.js';
 import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN } from '../lib/schema-app.js';
 import { haalMeldingen, leesMelding } from '../lib/app-melding.js';
+import { tel, overzicht as gebruikOverzicht, CLIENT_GEBEURTENISSEN } from '../lib/stat.js';
 import { COACH_KENNIS, COACH_REGELS } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
 import { kledingAdvies, kledingBijstel, kledingKort } from '../lib/kleding.js';
@@ -230,6 +231,7 @@ async function routeFeedback(req, res) {
   if (teller.ok && teller.result > 3) return res.status(429).json({ ok: false, fout: 'Dank je, ik heb je berichten binnen. Morgen kun je weer iets sturen.' });
   const item = { email, tekst, waar: String(body.waar || '').slice(0, 60), op: new Date().toISOString() };
   await redis(['LPUSH', 'app:feedback', JSON.stringify(item)]);
+  await tel(email, 'feedback');
   await redis(['LTRIM', 'app:feedback', 0, 199]);
   const key = process.env.RESEND_API_KEY;
   if (key) {
@@ -242,6 +244,23 @@ async function routeFeedback(req, res) {
     } catch (e) { console.error('Feedbackmail mislukt:', e); }
   }
   return res.status(200).json({ ok: true });
+}
+
+// ---- Gebruik per dag (09-10-2026) -----------------------------------------------
+//   POST stat { t, e }   -> gebeurtenis uit de app zelf (banden, kleding, schema, analyse)
+//   GET  gebruik?t=..    -> overzicht voor Michel (laatste 14 dagen)
+async function routeStat(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email) return res.status(401).json({ ok: false });
+  if (CLIENT_GEBEURTENISSEN.includes(body.e)) await tel(email, body.e);
+  return res.status(200).json({ ok: true });
+}
+async function routeGebruik(req, res) {
+  const email = leesAppToken(String(req.query?.t || ''));
+  if (!email || !BEHEER.includes(email)) return res.status(403).json({ ok: false });
+  return res.status(200).json({ ok: true, ...(await gebruikOverzicht(Math.min(30, Number(req.query?.dagen) || 14))) });
 }
 
 export default async function handler(req, res) {
@@ -268,6 +287,8 @@ export default async function handler(req, res) {
     if (actie === 'melding') return await routeMelding(req, res);
     if (actie === 'leden') return await routeLeden(req, res);
     if (actie === 'feedback') return await routeFeedback(req, res);
+    if (actie === 'stat') return await routeStat(req, res);
+    if (actie === 'gebruik') return await routeGebruik(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -308,6 +329,7 @@ async function routeOverzicht(req, res) {
   // Ingelogd via de knop in de mail (zonder code) en nog geen contact? Dan
   // ook hier het gratis account aanmaken.
   if (!lid || lid.status === 'archived') await nieuwAccount(email);
+  await tel(email, 'open');
   const mf = (lid && lid.merge_fields) || {};
   // Strava-analyse: de KOOP*-velden zijn de echte (betaalde) uitslag; FTP/OMSLAG
   // kunnen door een later afgehaakte funnelpoging overschreven zijn (lib/lever-rapport.js).
@@ -384,6 +406,7 @@ async function nieuwAccount(email) {
   try {
     const bestaand = await mcLid(email);
     if (bestaand && bestaand.status && bestaand.status !== 'archived') return;
+    await tel(email, 'nieuw');
     const dc = MC_KEY.split('-')[1];
     const hash = crypto.createHash('md5').update(email).digest('hex');
     const auth = { Authorization: 'Basic ' + Buffer.from('any:' + MC_KEY).toString('base64'), 'Content-Type': 'application/json' };
@@ -589,6 +612,7 @@ async function routeWeer(req, res) {
   try {
     const weer = await haalWeer(req.query?.lat, req.query?.lon);
     if (!weer) return res.status(400).json({ ok: false, fout: 'Geen geldige plek.' });
+    await tel(email, 'banden-slim');
     return res.status(200).json({ ok: true, weer });
   } catch (e) {
     console.error('weer fout:', e);
@@ -615,6 +639,8 @@ async function routeBandVraag(req, res) {
   const body = await leesBody(req);
   const recht = await vraagRecht(res, body.t); if (!recht) return;
   const email = recht.email;
+  if (String(body.tekst || '').trim()) await tel(email, 'coach');
+  await tel(email, 'bandvraag');
   const vraag = String(body.vraag || '').trim().slice(0, 500);
   if (vraag.length < 3) return res.status(400).json({ ok: false, fout: 'Typ je vraag.' });
   const datum = new Date().toISOString().slice(0, 10);
@@ -814,6 +840,7 @@ async function routeBandenRitten(req, res) {
     return res.status(200).json({ ok: true, ritten: await haalRitten(email) });
   }
   const body = await leesBody(req);
+  { const e = leesAppToken(String(body.t || '')); if (e && body.rit) await tel(e, 'rit'); }
   const email = await slimEmail(req, res, body.t); if (!email) return;
   let ritten = await haalRitten(email);
   const num = (x, min, max) => { const n = Math.round(Number(x) * 10) / 10; return isFinite(n) && n >= min && n <= max ? n : null; };
@@ -942,6 +969,7 @@ async function routePush(req, res) {
   const p = { sub, tijd, dagen, ochtend, core, laatste: oud.laatste || null, sinds: oud.sinds || new Date().toISOString() };
   await redis(['SET', `app:push:${email}`, JSON.stringify(p)]);
   await redis(['SADD', 'app:push:alle', email]);
+  if (body.sub && !oud.sub) await tel(email, 'push-aan');
   return res.status(200).json({ ok: true, instelling: pushBeeld(p) });
 }
 

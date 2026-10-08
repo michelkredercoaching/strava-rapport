@@ -311,7 +311,7 @@
   /* Jouw Strava-analyse (inklapbaar) */
   /* Beheer: leden (09-10-2026) */
   .led { background:#0d1520; border:1px solid rgba(138,180,255,.45); border-radius:8px; margin-bottom:16px; }
-  .led .opv-kop em { font-style:normal; color:#8ab4ff; font-size:12.5px; margin-left:6px; }
+  .led .opv-kop em { font-style:normal; background:rgba(138,180,255,.16); color:#8ab4ff; font-weight:600; font-size:12px; padding:2px 8px; border-radius:10px; margin-left:6px; }
   .led-in { padding:0 14px 14px; }
   .led-tel { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:12px; }
   .led-tel div { background:rgba(255,255,255,.04); border-radius:6px; padding:8px; text-align:center; }
@@ -327,6 +327,19 @@
   .led-res { background:rgba(255,255,255,.04); border-radius:6px; padding:10px; margin-top:8px; font-size:13px; line-height:1.6; }
   .led-fb { font-size:13px; padding:7px 0; border-bottom:1px dashed rgba(255,255,255,.07); }
   .led-fb small { color:var(--muted); display:block; }
+  /* Beheer: gebruik per dag */
+  .geb { background:#0d1a14; border:1px solid rgba(76,195,138,.45); border-radius:8px; margin-bottom:16px; }
+  .geb .opv-kop em { font-style:normal; background:rgba(76,195,138,.16); color:#4CC38A; font-weight:600; font-size:12px; padding:2px 8px; border-radius:10px; margin-left:6px; }
+  .geb-in { padding:0 14px 14px; overflow-x:auto; }
+  .geb table { width:100%; border-collapse:collapse; font-size:13px; }
+  .geb th { text-align:right; font-weight:600; color:var(--muted); font-size:11px; letter-spacing:.06em; text-transform:uppercase; padding:6px 4px; white-space:nowrap; }
+  .geb th:first-child, .geb td:first-child { text-align:left; }
+  .geb td { text-align:right; padding:6px 4px; border-top:1px dashed rgba(255,255,255,.07); white-space:nowrap; }
+  .geb td small { color:var(--muted); margin-left:3px; }
+  .geb tr.top td { font-weight:700; color:var(--white); }
+  .geb-dagen { display:flex; gap:3px; align-items:flex-end; height:46px; margin:4px 0 12px; }
+  .geb-dagen div { flex:1; background:rgba(76,195,138,.55); border-radius:2px 2px 0 0; min-height:2px; position:relative; }
+  .geb-dagen div.nu { background:#4CC38A; }
   /* Startlijst voor nieuwe leden */
   .start { background:var(--surface); border:1px solid rgba(255,107,26,.45); border-radius:8px; padding:16px; margin:0 0 14px; }
   .start-kop { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
@@ -657,6 +670,7 @@ function analyseBlok(a) {
 }
 document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-an="klap"]'); if (!k) return;
+  statEens('analyse');
   try { localStorage.setItem('mkcAnalyseOpen', analyseOpen() ? '0' : '1'); } catch (er) {}
   const el = document.getElementById('analyse'); if (el) el.outerHTML = analyseBlok(zicht().analyse);
 });
@@ -1045,6 +1059,7 @@ async function btReken() {
   const uit = document.getElementById('btUit'); if (!uit) return;
   const v = btWaarden();
   if (!(Number(v.gewicht) >= 40 && Number(v.gewicht) <= 150)) { uit.innerHTML = '<p class="klein">Vul je gewicht in, dan zie je je spanning.</p>'; return; }
+  statEens('banden');
   try { BT_LIB = BT_LIB || await import('/lib/bandendruk.js'); } catch (e) { uit.innerHTML = '<p class="klein">Rekenen lukt nu even niet.</p>'; return; }
   const a = BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: v.type, gewicht: v.gewicht, breedte: v.breedte, tubeless: v.tubeless ? 'tubeless' : 'binnenband' }));
   if (!a) { uit.innerHTML = ''; return; }
@@ -1334,7 +1349,7 @@ function isNieuw(d) { return !d.core && !d.analyse && !isLid(d); }
 function teken() {
   const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `<div class="kop"><div class="logo">MKC<span>.</span></div><button class="uit" data-actie="uitloggen">Uitloggen</button></div>
-    ${beheerHtml(d)}${ledenHtml()}${opvolgHtml()}${nakijkHtml()}
+    ${beheerHtml(d)}${ledenHtml()}${gebruikHtml()}${opvolgHtml()}${nakijkHtml()}
     <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
     ${meldingenHtml(d)}<div id="meldvraag">${meldVraagHtml()}</div><div id="startlijst">${startlijstHtml(d)}</div>
     ${isNieuw(d) ? `<div class="welkom"><b>Zo werkt je app</b>
@@ -1352,6 +1367,7 @@ function teken() {
     ${feedbackHtml()}
     <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
   if (toonSlim(d)) sbStart(); else btReken();
+  if (d.schema && !(d.beheer && BEKIJK !== 'klant')) statEens('schema');
   coachBouw();
   if (document.getElementById('ccPaneel').classList.contains('open')) coachLijst();
 }
@@ -1652,12 +1668,60 @@ document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-kl]'); if (!k) return;
   if (k.dataset.kl === 'hard') { sbBewaarKeuze({ klHard: k.dataset.w === '1' }); return sbTeken(); }
   if (k.dataset.kl === 'kou') { SB.profiel.kouType = k.dataset.w; sbTeken(); await sbBewaarProfiel(true); }
-  if (k.dataset.kl === 'tab') { sbBewaarKeuze({ tab: k.dataset.w }); return sbTeken(); }
+  if (k.dataset.kl === 'tab') { if (k.dataset.w === 'kleding') statEens('kleding'); sbBewaarKeuze({ tab: k.dataset.w }); return sbTeken(); }
   if (k.dataset.kl === 'vrijtab') { btBewaar({ ...btLees(), tab: k.dataset.w }); return teken(); }
 });
 document.addEventListener('change', (e) => {
   if (e.target.id === 'klOver') { sbBewaarKeuze({ klOver: Number(e.target.value) }); sbTeken(); }
   if (e.target.id === 'klDuur') { sbBewaarKeuze({ klDuur: Number(e.target.value) }); sbTeken(); }
+});
+
+// ---- Gebruik tellen (09-10-2026) ----
+// Eén keer per dag per gebeurtenis een seintje naar de server (alleen wat de
+// server zelf niet ziet: gratis bandenspanning, kledingtab, schema, analyse).
+function statEens(e) {
+  try {
+    const k = 'mkcStat:' + e + ':' + new Date().toISOString().slice(0, 10);
+    if (localStorage.getItem(k)) return;
+    localStorage.setItem(k, '1');
+  } catch (er) {}
+  try { fetch(API + '?actie=stat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), e }), keepalive: true }); } catch (er) {}
+}
+
+// ---- Beheer: gebruik per dag (09-10-2026) ----
+// Hoeveel mensen zaten er per dag in de app en wat deden ze (los van leden).
+let GEB = { open: false, data: null };
+function gebruikHtml() {
+  if (!D || !D.beheer) return '';
+  const x = GEB.data;
+  const vandaag = x ? x.dagen[0] : null;
+  const kop = `<button type="button" class="opv-kop" data-geb="klap"><span><b>Gebruik</b>${vandaag ? `<em>vandaag ${vandaag.actief} ${vandaag.actief === 1 ? 'persoon' : 'mensen'} in de app</em>` : ''}</span><span>${GEB.open ? '&#9650;' : '&#9660;'}</span></button>`;
+  if (!GEB.open) return `<div class="geb" id="gebruik">${kop}</div>`;
+  if (!x) return `<div class="geb" id="gebruik">${kop}<div class="geb-in"><p class="klein">Laden...</p></div></div>`;
+  const d = x.dagen, max = Math.max(1, ...d.map((y) => y.actief));
+  const som = (k, n) => d.slice(0, n).reduce((t, y) => t + (y.per[k] ? y.per[k].keer : 0), 0);
+  const cel = (y, k) => { const v = y && y.per[k]; return v && v.keer ? `${v.mensen}<small>(${v.keer}x)</small>` : '<small>&ndash;</small>'; };
+  const balken = d.slice().reverse().map((y, i, l) => `<div class="${i === l.length - 1 ? 'nu' : ''}" style="height:${Math.round(y.actief / max * 100)}%" title="${y.dag}: ${y.actief}"></div>`).join('');
+  const rijen = x.namen.map(([k, naam]) => `<tr><td>${naam}</td><td>${cel(d[0], k)}</td><td>${cel(d[1], k)}</td><td>${som(k, 7) ? som(k, 7) + "x" : "<small>&ndash;</small>"}</td></tr>`).join('');
+  return `<div class="geb" id="gebruik">${kop}<div class="geb-in">
+    <p class="klein" style="margin:0 0 4px">Mensen per dag in de app, laatste ${d.length} dagen (jouw eigen adressen tellen niet mee).</p>
+    <div class="geb-dagen">${balken}</div>
+    <table><tr><th></th><th>Vandaag</th><th>Gisteren</th><th>7 dagen</th></tr>
+      <tr class="top"><td>Mensen in de app</td><td>${d[0].actief}</td><td>${d[1] ? d[1].actief : 0}</td><td>&ndash;</td></tr>
+      ${rijen}</table>
+    <p class="klein" style="margin-top:8px">Getal = aantal mensen, tussen haakjes hoe vaak. Bij 7 dagen staat het totaal aantal keer.</p>
+    <button type="button" class="sb-link" data-geb="ververs">Ververs</button>
+  </div></div>`;
+}
+function gebTeken() { const el = document.getElementById('gebruik'); if (el) el.outerHTML = gebruikHtml(); }
+async function gebLaad() {
+  try { const j = await (await fetch(API + '?actie=gebruik&t=' + encodeURIComponent(leesToken()))).json(); if (j.ok) GEB.data = j; } catch (e) {}
+  gebTeken();
+}
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-geb]'); if (!k) return;
+  if (k.dataset.geb === 'klap') { GEB.open = !GEB.open; gebTeken(); if (GEB.open) gebLaad(); }
+  if (k.dataset.geb === 'ververs') { GEB.data = null; gebTeken(); gebLaad(); }
 });
 
 // ---- Beheer: leden (09-10-2026) ----

@@ -44,6 +44,7 @@ import {
 } from '../lib/core.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
 import { appMelding } from '../lib/app-melding.js';
+import { tel } from '../lib/stat.js';
 // Kringverwijzing met lid.js (die gebruikt zetLidmaatschap van hier). Mag, want
 // beide gebruiken elkaars functies pas binnen een aanvraag, niet bij het laden.
 import { lidOpen } from './lid.js';
@@ -518,6 +519,7 @@ async function routeNieuw(req, res) {
 
 async function routePlan(req, res) {
   const r = await metToken(req, res); if (!r) return;
+  await tel(r.d.email, 'core-open');
   return res.status(200).json({ ok: true, ...klantBeeld(r.d) });
 }
 
@@ -596,6 +598,7 @@ async function routeAfvink(req, res) {
   const letter = letters(d.intake).includes(body.letter) ? body.letter : null;
   if (!letter) return res.status(400).json({ ok: false, fout: 'welke sessie?' });
   if (!gedaanDezeWeek(d).includes(letter)) {
+    await tel(d.email, 'core-sessie');
     d.sessies.push({ week: d.week, letter, teller: d.teller, op: nu(),
       finisher: Number(body.finisher) > 0 ? Math.min(600, Math.round(Number(body.finisher))) : undefined });
   }
