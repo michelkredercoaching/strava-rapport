@@ -38,6 +38,7 @@
 import crypto from 'crypto';
 import { zetLidmaatschap } from './core.js';
 import { maakMollieFactuur } from '../lib/mollie-factuur.js';
+import { planNaam, laadPlan } from '../lib/schema-app.js';
 
 const MOLLIE_KEY  = process.env.MOLLIE_API_KEY || '';
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
@@ -147,7 +148,7 @@ function lidBeeld(lid) {
   if (!lid) return { status: 'geen' };
   const open = lid.tot && Date.now() < Date.parse(lid.tot);
   const plan = planVan(lid.plan);
-  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: PLANNEN[plan].bedrag, handmatig: !!lid.handmatig && !lid.subscriptionId };
+  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: PLANNEN[plan].bedrag, handmatig: !!lid.handmatig && !lid.subscriptionId, bron: lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? 'schema' : 'betaald' };
 }
 
 // Kan Mollie al maandelijks incasseren? Zolang SEPA-incasso niet is goedgekeurd
@@ -183,6 +184,7 @@ export default async function handler(req, res) {
     if (actie === 'status') return await routeStatus(req, res);
     if (actie === 'opzeggen') return await routeOpzeggen(req, res);
     if (actie === 'herinner') return await routeHerinner(req, res);
+    if (actie === 'schema') return await routeSchema(req, res);
     if (actie === 'open') {
       // Publiek: kunnen mensen al lid worden? De WordPress-pagina's (/core/,
       // bedankpagina, homepage, checkout) vragen dit, zodat het oude aanbod
@@ -267,7 +269,10 @@ async function routeWebhook(req, res) {
       // Eerste periode binnen: abonnement aanmaken, eerste incasso na een maand of een jaar.
       const plan = planVan(p.metadata && p.metadata.plan);
       lid.plan = plan;
-      const start = plusMaanden(betaaldOp, PLANNEN[plan].maanden);
+      // Nog app via een schema? Dan begint de betaalde periode pas daarna.
+      const vanaf = lid.bron === 'schema' && lid.tot && Date.parse(lid.tot) > Date.now() ? new Date(lid.tot) : new Date(betaaldOp);
+      lid.bron = 'betaald';
+      const start = plusMaanden(vanaf, PLANNEN[plan].maanden);
       const s = await mollie(`/customers/${p.customerId}/subscriptions`, {
         method: 'POST',
         body: JSON.stringify({
@@ -285,6 +290,7 @@ async function routeWebhook(req, res) {
       lid.tot = plusDagen(start, SPELING_DAGEN).toISOString();
       await redis(['SET', `lid:klant:${p.customerId}`, lidEmail]);
     } else if (p.metadata && p.metadata.soort === 'lid-periode') {
+      if (lid.bron === 'schema') lid.bron = 'betaald';
       // Eenmalige iDEAL-betaling (zonder incasso): een maand of jaar erbij,
       // vanaf de huidige einddatum als die nog loopt. Geen abonnement.
       const plan = planVan(p.metadata.plan);
@@ -356,7 +362,7 @@ async function routeOpzeggen(req, res) {
   const email = leesAppToken(String(body.t || ''));
   if (!email) return res.status(401).json({ ok: false, fout: 'Log eerst opnieuw in.' });
   const lid = await haalLid(email);
-  if (lid && lid.handmatig && !lid.subscriptionId) return res.status(400).json({ ok: false, fout: 'Je lidmaatschap verlengt niet automatisch; het stopt vanzelf op de einddatum.' });
+  if (lid && (lid.handmatig || lid.bron === 'schema') && !lid.subscriptionId) return res.status(400).json({ ok: false, fout: 'Je lidmaatschap verlengt niet automatisch; het stopt vanzelf op de einddatum.' });
   if (!lid || !lid.subscriptionId) return res.status(400).json({ ok: false, fout: 'Je hebt geen lopend lidmaatschap.' });
   const r = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'DELETE' });
   if (!r.ok && r.status !== 404 && r.status !== 422) return res.status(502).json({ ok: false, fout: 'Opzeggen lukte nu even niet. Probeer het zo nog eens.' });
@@ -375,7 +381,7 @@ async function routeHerinner(req, res) {
   const cron = process.env.CRON_SECRET || '';
   if (!cron || String(req.headers?.authorization || '') !== `Bearer ${cron}`) return res.status(401).json({ ok: false });
   const lijst = await redis(['SMEMBERS', 'lid:handmatig']);
-  let gemaild = 0;
+  let gemaild = await schemaEindeMails();
   for (const email of (lijst.ok && lijst.result) || []) {
     const lid = await haalLid(email);
     if (!lid || !lid.handmatig || lid.subscriptionId || !lid.tot) { await redis(['SREM', 'lid:handmatig', email]); continue; }
@@ -404,4 +410,112 @@ async function routeHerinner(req, res) {
   return res.status(200).json({ ok: true, gemaild });
 }
 
-export { lidOpen, lidBeeld, haalLid, incassoKlaar };
+// ---- Schema gekocht: de app hoort erbij (09-10-2026) -----------------------
+// Komt binnen vanuit WordPress (wordpress-snippets/schema-app-webhook.php) bij
+// een betaalde bestelling met een schema of het winterprogramma, vanaf de
+// lancering. De koper krijgt de MKC-app (Core, coach, slimme banden, kleding
+// en het schema-kopje) voor de looptijd plus 14 dagen. Betalende leden houden
+// hun eigen lidmaatschap; is dat korter, dan schuift de einddatum op.
+const SCHEMA_EXTRA_DAGEN = 14;
+async function haalSchema(email) {
+  const r = await redis(['GET', `schema:${email}`]);
+  if (!r.ok || !r.result) return null;
+  try { return JSON.parse(r.result); } catch { return null; }
+}
+async function routeSchema(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = typeof req.body === 'object' && req.body ? req.body : {};
+  const geheim = process.env.WOO_WEBHOOK_SECRET || '';
+  if (!geheim || body.secret !== geheim) return res.status(401).json({ ok: false });
+  const email = String(body.email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ ok: false, fout: 'mailadres?' });
+  const order = String(body.order || '').slice(0, 20);
+  if (order) {
+    const nieuw = await redis(['SET', `schema:order:${order}`, '1', 'NX', 'EX', 60 * 60 * 24 * 400]);
+    if (nieuw.ok && nieuw.result === null) return res.status(200).json({ ok: true, al: true });
+  }
+  const soort = body.soort === 'winter' ? 'winter' : body.soort === 'vervolg' ? 'vervolg' : 'schema';
+  const weken = Number(body.weken) || 12;
+  const naam = String(body.naam || '').slice(0, 80);
+  const start = /^\d{4}-\d{2}-\d{2}$/.test(String(body.start || '')) ? body.start : new Date().toISOString().slice(0, 10);
+  // Vervolgschema's hebben (nog) geen eigen plan in de app; dan alleen toegang.
+  const plan = soort === 'vervolg' ? null : planNaam({ soort, niveau: body.niveau, weken, meet: body.meet });
+  const niveauNaam = (String(body.niveau || '').match(/basis|opbouw|piek/i) || [''])[0].replace(/^./, (c) => c.toUpperCase());
+  const titel = soort === 'winter' ? `Indoor Winterprogramma ${niveauNaam}` : `${niveauNaam || 'Trainingsschema'} ${weken} weken`;
+  const huidig = { plan: plan && laadPlan(plan) ? plan : null, soort, weken, niveauNaam, titel, start, verschuif: 0, order, sinds: new Date().toISOString() };
+  const oud = await haalSchema(email);
+  const dossier = { huidig, eerder: oud ? [oud.huidig, ...(oud.eerder || [])].filter(Boolean).slice(0, 10) : [] };
+  await redis(['SET', `schema:${email}`, JSON.stringify(dossier)]);
+
+  // Toegang tot de app: van de startdatum (of vandaag) tot na de looptijd.
+  const basis = Math.max(Date.now(), Date.parse(start + 'T00:00:00Z') || 0);
+  const tot = new Date(basis + (weken * 7 + SCHEMA_EXTRA_DAGEN) * 86400000).toISOString();
+  const lid = (await haalLid(email)) || {};
+  const loptAbo = lid.subscriptionId && lid.status === 'actief';
+  if (!loptAbo && (!lid.tot || Date.parse(lid.tot) < Date.parse(tot))) {
+    if (!lid.handmatig) lid.bron = 'schema';
+    lid.status = 'actief'; lid.tot = tot; lid.sinds = lid.sinds || new Date().toISOString();
+    lid.naam = lid.naam || naam; lid.plan = lid.plan || 'maand';
+    await bewaarLid(email, lid);
+    await zetLidmaatschap({ email, naam, tot: lid.tot, stil: true });
+    await mcTag(email, 'mkc-lid');
+    if (lid.bron === 'schema') await redis(['SADD', 'lid:schema', email]);
+  }
+  await schemaWelkom(email, naam, huidig);
+  return res.status(200).json({ ok: true, plan: huidig.plan, tot: lid.tot });
+}
+async function schemaWelkom(email, naam, s) {
+  const key = process.env.RESEND_API_KEY; if (!key) return;
+  const voornaam = String(naam || '').split(' ')[0];
+  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.7;color:#1a1a1a;max-width:560px">
+    <p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
+    <p>Bij je ${s.soort === 'winter' ? 'winterprogramma' : 'schema'} hoort de MKC-app, voor de hele looptijd. Je traint gewoon in TrainingPeaks; in de app zie je elke dag wat er op je schema staat, met mijn uitleg erbij.</p>
+    <p>Daarnaast heb je je eigen coach voor al je vragen, de Core-app, je bandenspanning en kledingadvies voor elke rit.</p>
+    <p style="margin:22px 0 26px"><a href="${APP_URL}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Open de MKC-app</a></p>
+    <p style="color:#555;font-size:14px">Log in met dit mailadres, je krijgt dan een code. Tip: zet de app op je beginscherm, dan heb je hem altijd bij de hand.</p>
+    <p>Sportieve groet,<br>Michel</p></div>`;
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: email, subject: 'Je schema staat ook in de MKC-app', html }),
+      signal: AbortSignal.timeout(8000)
+    });
+  } catch (e) { console.error('Schema-welkom mislukt:', email, e); }
+}
+
+// Einde van een schema: 7 dagen voor de app-einddatum één mail met twee
+// keuzes, verder met een vervolgschema of lid blijven. Wie intussen betaald
+// lid werd (abonnement of iDEAL) valt eruit.
+async function schemaEindeMails() {
+  const key = process.env.RESEND_API_KEY;
+  const lijst = await redis(['SMEMBERS', 'lid:schema']);
+  let n = 0;
+  for (const email of (lijst.ok && lijst.result) || []) {
+    const lid = await haalLid(email);
+    if (!lid || lid.bron !== 'schema' || lid.subscriptionId || lid.handmatig || !lid.tot) { await redis(['SREM', 'lid:schema', email]); continue; }
+    const dagenOver = (Date.parse(lid.tot) - Date.now()) / 86400000;
+    if (dagenOver > 7 || dagenOver < -3 || lid.schemaEindeGemaild === lid.tot || !key) continue;
+    const voornaam = String(lid.naam || '').split(' ')[0];
+    const datum = new Date(lid.tot).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
+    const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.7;color:#1a1a1a;max-width:560px">
+      <p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
+      <p>Je schema zit erop, knap gedaan. De MKC-app die erbij hoorde loopt op <b>${datum}</b> af.</p>
+      <p>Je kunt op twee manieren verder:</p>
+      <p><b>Een vervolgschema.</b> Een nieuw blok dat aansluit op waar je nu staat. De app hoort er weer bij, voor de hele looptijd.</p>
+      <p style="margin:14px 0 22px"><a href="https://michelkredercoaching.nl/trainingsschema-vervolg/" style="background:#ff6b1a;color:#0a0a0a;padding:13px 24px;border-radius:4px;text-decoration:none;font-weight:700">Kies je vervolgschema</a></p>
+      <p><b>Lid blijven.</b> Je coach voor al je vragen, de Core-app, je bandenspanning en kledingadvies voor elke rit. €19 per maand of €149 per jaar.</p>
+      <p style="margin:14px 0 22px"><a href="${APP_URL}#lid" style="color:#ff6b1a;font-weight:700">Blijf lid van de MKC-app</a></p>
+      <p>Sportieve groet,<br>Michel</p></div>`;
+    try {
+      const r = await fetch('https://api.resend.com/emails', {
+        method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: email, subject: 'Je schema zit erop. Hoe ga je verder?', html }),
+        signal: AbortSignal.timeout(8000)
+      });
+      if (r.ok) { lid.schemaEindeGemaild = lid.tot; await bewaarLid(email, lid); n++; }
+    } catch (e) { console.error('Schema-einde mislukt:', email, e); }
+  }
+  return n;
+}
+
+export { lidOpen, lidBeeld, haalLid, incassoKlaar, haalSchema };
