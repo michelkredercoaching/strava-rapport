@@ -305,6 +305,39 @@
   .push-aan { color:var(--groen); font-size:14px; font-weight:600; }
   .push-rij .sb-link { margin-top:0; }
   /* Jouw Strava-analyse (inklapbaar) */
+  /* Schema in de app (09-10-2026) */
+  .sk { background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .sk-kop { padding:18px 18px 0; }
+  .sk-kop .label { margin-bottom:6px; }
+  .sk-kop h2 { font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1; text-transform:uppercase; margin-bottom:4px; }
+  .sk-sub { font-size:13px; color:var(--muted); }
+  .sk-week { display:grid; grid-template-columns:repeat(7,1fr); gap:4px; padding:14px 14px 4px; }
+  .sk-week button { background:var(--surface2); border:1px solid transparent; border-radius:6px; color:var(--muted); font-family:inherit; padding:7px 0 6px; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .sk-week button b { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; }
+  .sk-week button i { width:6px; height:6px; border-radius:50%; background:transparent; }
+  .sk-week button.tr i { background:var(--accent); }
+  .sk-week button.nu { border-color:rgba(255,107,26,.6); color:var(--white); }
+  .sk-week button.kies { background:var(--accent-dim); color:var(--white); }
+  .sk-dag { padding:12px 18px 18px; }
+  .sk-dagkop { font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; }
+  .sk-tr + .sk-tr { margin-top:18px; padding-top:16px; border-top:1px solid var(--border); }
+  .sk-tr h3 { font-size:18px; font-weight:700; margin-bottom:2px; }
+  .sk-meta { font-size:13px; color:var(--muted); margin-bottom:10px; }
+  .sk-graf { width:100%; height:48px; display:block; margin:6px 0 8px; }
+  .sk-opbouw { margin-bottom:10px; }
+  .sk-opbouw summary { font-size:13px; color:var(--accent); cursor:pointer; padding:2px 0 6px; }
+  .sk-blokken { list-style:none; font-size:13px; color:rgba(245,243,239,.82); margin-bottom:10px; }
+  .sk-blokken li { padding:3px 0; border-bottom:1px dashed rgba(255,255,255,.06); }
+  .sk-blokken li span { color:var(--muted); }
+  .sk-tekst { font-size:14.5px; line-height:1.6; color:rgba(245,243,239,.88); }
+  .sk-tekst.dicht { max-height:4.8em; overflow:hidden; -webkit-mask-image:linear-gradient(#000 55%, transparent); mask-image:linear-gradient(#000 55%, transparent); }
+  .sk-meer { background:none; border:0; color:var(--accent); font-family:inherit; font-size:13px; padding:4px 0 0; cursor:pointer; }
+  .sk-tip { background:var(--accent-dim); border-left:3px solid var(--accent); border-radius:4px; padding:10px 12px; font-size:13.5px; margin-top:12px; color:rgba(245,243,239,.9); }
+  .sk-rust { font-size:15px; color:rgba(245,243,239,.85); }
+  .sk-acties { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+  .sk-acties .knop { width:auto; flex:1 1 auto; font-size:17px; padding:10px 14px 8px; }
+  .sk-schuif { display:flex; justify-content:space-between; padding:0 18px 14px; font-size:12.5px; color:var(--muted); }
+  .sk-schuif button { background:none; border:0; color:var(--muted); text-decoration:underline; font-family:inherit; font-size:12.5px; cursor:pointer; padding:0; }
   .an { background:linear-gradient(160deg, rgba(255,107,26,.12), var(--surface) 70%); border:1px solid rgba(255,107,26,.45); border-radius:8px; margin:4px 0 6px; }
   .an-kop { width:100%; display:flex; justify-content:space-between; align-items:center; gap:10px; background:none; border:0; color:var(--white); font-family:inherit; padding:14px 16px; cursor:pointer; text-align:left; }
   .an-kop small { display:block; font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); font-weight:700; margin-bottom:3px; }
@@ -990,6 +1023,7 @@ function voorbeeldData(d) {
   return { ...d,
     core: d.core || { link: '#', naam: d.naam, betaald: true, opSlot: false, intakeNodig: false, klaar: false, week: 3, fase: 1, faseNaam: 'Fundament', gedaan: 1, frequentie: 3, afgerond: 7, startScore: 52, rompscore: 66, volgende: { letter: 'B', naam: 'Zijkant en rotatie', minuten: 11, oefeningen: ['zijplank-knieen', 'birddog', 'bridge', 'deadbug-gebogen'] } },
     analyse: d.analyse || { datum: '1 oktober 2026', ftp: '248', meet: 'vermogen', type: 'Klimmer', omslag: '', advies: 'Opbouw 12-wekenplan', score: '72', decoupling: '4.1', adviesPrijs: '49', adviesOud: '59', deadline: '15 oktober', tegoedLink: '#' },
+    schema: d.schema || SIM_SCHEMA['opbouw-12-w|18'] || null,
     banden: true };
 }
 function beheerHtml(d) {
@@ -997,6 +1031,92 @@ function beheerHtml(d) {
   const ai = d.aiGebruik;
   return `<div class="beheer"><span>Beheerweergave${ai ? ` <small class="ai-verbruik">AI deze maand: ${ai.vragen} vragen &middot; &plusmn; &euro;${String(ai.euro.toFixed(2)).replace('.', ',')}</small>` : ''}</span><div><button data-actie="bekijk" data-w="nieuw" class="${BEKIJK === 'nieuw' ? 'aan' : ''}">Niet-lid</button><button data-actie="bekijk" data-w="klant" class="${BEKIJK === 'klant' ? 'aan' : ''}">Als klant</button><button data-actie="bekijk" data-w="alles" class="${BEKIJK === 'alles' ? 'aan' : ''}">Alles open</button><button data-actie="bekijk" data-w="zelf" class="${BEKIJK === 'zelf' ? 'aan' : ''}">Zelf kiezen</button></div></div>${simHtml()}`;
 }
+
+// ---- Schema in de app (09-10-2026) ----
+// Wat er vandaag op je schema staat, met Michels uitleg uit TrainingPeaks.
+// De klant traint gewoon in TrainingPeaks; dit is de uitleg en de context.
+const SK = { dag: null, open: {} };
+function skUren(u) { if (!u) return ''; const m = Math.round(u * 60); return m >= 60 ? Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0') + ' uur' : m + ' min'; }
+function skMin(sec) { if (!sec) return ''; if (sec < 60) return sec + ' sec'; if (sec % 60) return String(Math.round(sec / 6) / 10).replace('.', ',') + ' min'; const m = sec / 60; return m >= 60 ? Math.floor(m / 60) + ' u' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : m + ' min'; }
+function skVlak(blokken) {
+  const uit = [];
+  const loop = (b, keer) => { for (let i = 0; i < keer; i++) b.forEach((x) => x.stappen ? loop(x.stappen, x.x || 1) : uit.push(x)); };
+  loop(blokken || [], 1);
+  return uit.filter((x) => x.s);
+}
+function skGrafiek(blokken) {
+  const stappen = skVlak(blokken); if (!stappen.length) return '';
+  const tot = stappen.reduce((t, x) => t + x.s, 0); let xpos = 0;
+  const rects = stappen.map((x) => { const pct = Math.min(130, x.hi || x.lo || 50); const h = Math.max(6, Math.round(pct / 130 * 46)); const w = x.s / tot * 300; const kleur = pct >= 100 ? '#FF6B1A' : pct >= 85 ? 'rgba(255,107,26,.75)' : pct >= 70 ? 'rgba(255,107,26,.45)' : 'rgba(245,243,239,.22)'; const r = `<rect x="${xpos.toFixed(2)}" y="${48 - h}" width="${Math.max(0.6, w - 0.6).toFixed(2)}" height="${h}" rx="1" fill="${kleur}"/>`; xpos += w; return r; }).join('');
+  return `<svg class="sk-graf" viewBox="0 0 300 48" preserveAspectRatio="none" aria-hidden="true">${rects}</svg>`;
+}
+function skDoel(x, meet) {
+  if (x.lo == null && x.hi == null) return '';
+  const ftp = meet === 'vermogen' && D && D.analyse && D.analyse.meet !== 'hartslag' ? Number(String(D.analyse.ftp).replace(/[^0-9]/g, '')) : 0;
+  const pct = x.hi ? x.lo + '-' + x.hi + '%' : x.lo + '%';
+  return ftp ? `${pct} (${Math.round(ftp * x.lo / 100)}${x.hi ? '-' + Math.round(ftp * x.hi / 100) : ''} W)` : pct;
+}
+function skBlokken(blokken, meet) {
+  if (!blokken || !blokken.length) return '';
+  const regel = (x) => x.stappen ? `<li>${x.x > 1 ? x.x + '&times; ' : ''}${x.stappen.map((y) => `${skMin(y.s)} <span>${esc(skDoel(y, meet))}</span>`).join(' &middot; ')}</li>` : `<li>${esc(x.n || 'Blok')}: ${skMin(x.s)} <span>${esc(skDoel(x, meet))}</span></li>`;
+  return `<details class="sk-opbouw"><summary>Opbouw van de training</summary><ul class="sk-blokken">${blokken.map(regel).join('')}</ul></details>`;
+}
+function skTraining(w, meet, sleutel) {
+  const tekst = (w.tekst || '').trim(), lang = tekst.length > 240, open = SK.open[sleutel];
+  const notitie = (w.notitie || '').replace(/\*+/g, '').trim();
+  return `<div class="sk-tr"><h3>${esc(w.titel)}</h3>
+    <div class="sk-meta">${skUren(w.duur)}${w.tss ? ' &middot; TSS ' + Math.round(w.tss) : ''}${w.blokken ? ' &middot; ' + (meet === 'hartslag' ? '% van je omslagpunt' : '% van je FTP') : ''}</div>
+    ${skGrafiek(w.blokken)}${skBlokken(w.blokken, meet)}
+    ${tekst ? `<div class="sk-tekst${lang && !open ? ' dicht' : ''}">${opmaak(tekst)}</div>${lang ? `<button class="sk-meer" data-sk="meer" data-k="${sleutel}">${open ? 'Minder' : 'Lees de hele uitleg'}</button>` : ''}` : ''}
+    ${notitie ? `<div class="sk-tip">${opmaak(notitie)}</div>` : ''}</div>`;
+}
+function datumKort(iso) { return new Date(iso + 'T12:00:00').toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' }); }
+function schemaKaart(d) {
+  const s = d.schema; if (!s) return '';
+  const kop = (h2, sub) => `<div class="sk-kop"><div class="label">Jouw ${s.winter ? 'winterprogramma' : 'schema'} &middot; ${esc(s.titel)}</div><h2>${h2}</h2><div class="sk-sub">${sub}</div></div>`;
+  if (s.status === 'voor') {
+    const v = s.volgende;
+    return `<div class="sk">${kop('Bijna begonnen', 'Je schema start op ' + esc(datumKort(s.start)) + '.')}
+      <div class="sk-dag">${v ? `<div class="sk-dagkop">Eerste training &middot; ${esc(datumKort(v.datum))}</div>${skTraining(v, s.meet, 'eerste')}` : ''}
+      <div class="sk-acties"><button class="knop leeg" data-sk="vraag" data-titel="${esc(v ? v.titel : '')}">Vraag je coach</button></div></div></div>`;
+  }
+  if (s.status === 'klaar') {
+    return `<div class="sk">${kop('Schema afgerond', 'Alle ' + s.weken + ' weken zitten erop. Knap gedaan.')}
+      <div class="sk-dag"><p class="sk-rust">Wat nu? Bouw verder met een vervolgschema dat aansluit op waar je nu staat, of blijf lid en houd je coach, de Core-app en je ritadvies.</p>
+      <div class="sk-acties"><a class="knop" href="https://michelkredercoaching.nl/trainingsschema-vervolg/">Kies je vervolgschema</a>${isLid(d) && d.lid && d.lid.bron !== 'schema' ? '' : '<button class="knop leeg" data-actie="naarlid">Blijf lid</button>'}</div></div></div>`;
+  }
+  const kiesDag = SK.dag != null ? SK.dag : s.dagNr;
+  const dagInfo = s.weekDagen.find((x) => x.dag === kiesDag) || s.weekDagen.find((x) => x.vandaag);
+  const isVandaag = dagInfo && dagInfo.vandaag;
+  const strook = s.weekDagen.map((x) => `<button data-sk="dag" data-dag="${x.dag}" class="${x.trainingen.length ? 'tr' : ''}${x.vandaag ? ' nu' : ''}${x.dag === kiesDag ? ' kies' : ''}"><b>${x.dagnaam}</b><i></i></button>`).join('');
+  const inhoud = dagInfo && dagInfo.trainingen.length
+    ? dagInfo.trainingen.map((w, i) => skTraining(w, s.meet, dagInfo.dag + '-' + i)).join('')
+    : `<p class="sk-rust">${isVandaag ? 'Vandaag staat er niets op je schema. Rust is ook training: hier word je sterker.' : 'Rustdag.'}${isVandaag && s.volgende ? ` Volgende training: <b>${esc(s.volgende.titel)}</b>, ${s.volgende.overDagen === 1 ? 'morgen' : esc(datumKort(s.volgende.datum))}.` : ''}</p>`;
+  const titel = dagInfo && dagInfo.trainingen.length ? dagInfo.trainingen[0].titel : '';
+  return `<div class="sk">${kop('Week ' + s.week + ' van ' + s.weken, (s.weekUren ? s.weekUren.toString().replace('.', ',') + ' uur fietsen deze week' : '') + ' &middot; je traint in TrainingPeaks')}
+    <div class="sk-week">${strook}</div>
+    <div class="sk-dag"><div class="sk-dagkop">${isVandaag ? 'Vandaag' : esc(datumKort(dagInfo.datum))}</div>${inhoud}
+      <div class="sk-acties"><button class="knop leeg" data-sk="vraag" data-titel="${esc(titel)}">Vraag je coach over ${titel ? 'deze training' : 'je schema'}</button></div></div>
+    <div class="sk-schuif"><span>Loopt je schema in TrainingPeaks anders?</span><span><button data-sk="schuif" data-r="-1">Ik loop een dag voor</button> &middot; <button data-sk="schuif" data-r="1">achter</button></span></div></div>`;
+}
+async function skSchuif(r) {
+  if (D && D.beheer && BEKIJK === 'zelf' && SIM.schema !== 'echt') return;
+  try {
+    const j = await fetch(API + '?actie=schema', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), verschuif: Number(r) }) }).then((x) => x.json());
+    if (j.ok) { D.schema = j.schema; SK.dag = null; teken(); }
+  } catch {}
+}
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-sk]'); if (!k) return;
+  const a = k.dataset.sk;
+  if (a === 'dag') { SK.dag = Number(k.dataset.dag); teken(); }
+  if (a === 'meer') { SK.open[k.dataset.k] = !SK.open[k.dataset.k]; teken(); }
+  if (a === 'schuif') skSchuif(k.dataset.r);
+  if (a === 'vraag') {
+    coachOpen(true);
+    setTimeout(() => { const t = document.getElementById('ccTekst'); if (t) { t.value = k.dataset.titel ? 'Over mijn training "' + k.dataset.titel + '": ' : 'Over mijn schema: '; t.focus(); } }, 250);
+  }
+});
 
 // ---- Lidmaatschap MKC-app (07-10-2026): €19 per maand via Mollie ----
 const LID_LIJST = ['De Core-app die met je meebeweegt: gaat het makkelijk, dan ga je sneller', 'Slimme bandenspanning: je fietsen, het weer van vandaag en een geheugen', 'Kledingadvies voor je rit, plus een ochtendbericht met weer, spanning en kleding', 'Onbeperkt vragen aan je eigen coach, met Michels kennis uit 9 jaar prof en zijn coachervaring', 'Per maand of voordelig per jaar, altijd opzegbaar'];
@@ -1035,6 +1155,7 @@ function lidPitchHtml() {
 }
 function lidStatusHtml(l) {
   if (!l || l.status === 'geen' || l.status === 'nieuw') return '';
+  if (l.status === 'actief' && l.bron === 'schema') return `<div class="lidrij" id="lid"><span><b>Inbegrepen bij je schema</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="naarlid">Daarna lid blijven</button></div>`;
   if (l.status === 'actief' && l.handmatig) return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid" data-plan="${l.plan === 'jaar' ? 'jaar' : 'maand'}">Verlengen</button></div>`;
   if (l.status === 'actief') return `<div class="lidrij"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; ${l.plan === 'jaar' ? 'verlengt automatisch rond' : 'volgende afschrijving rond'} ${esc(datumNl(l.tot, -5))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
   if (l.status === 'achterstand') return `<div class="lidrij waarschuw"><span><b>Betaling mislukt</b> &middot; je app blijft open tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid">Betaling bijwerken</button></div>`;
@@ -1062,10 +1183,17 @@ const SIM_OPTIES = {
   core: [['echt', 'Mijn eigen'], ['geen', 'Niet gestart'], ['intake', 'Intake nog doen'], ['proef', 'In proefweek'], ['proefklaar', 'Proefweek klaar'], ['actief', 'Actief (lid)'], ['klaar', 'Niveau 12 (eenmalig)']],
   analyse: [['echt', 'Mijn eigen'], ['geen', 'Niet gekocht'], ['vermogen', 'Gekocht: vermogen'], ['hartslag', 'Gekocht: hartslag']],
   lid: [['echt', 'Mijn eigen'], ['geen', 'Geen lid'], ['maand', 'Lid per maand'], ['jaar', 'Jaarlid'], ['ideal', 'Lid via iDEAL (verlengen)'], ['opgezegd', 'Opgezegd'], ['achterstand', 'Betaling mislukt']],
-  lancering: [['echt', 'Zoals nu'], ['voor', 'Vóór 16 okt'], ['na', 'Na 16 okt']]
+  lancering: [['echt', 'Zoals nu'], ['voor', 'Vóór 16 okt'], ['na', 'Na 16 okt']],
+  schema: [['echt', 'Mijn eigen'], ['geen', 'Geen schema'], ['opbouw-12-w|-2', 'Start over 3 dagen'], ['opbouw-12-w|1', 'Opbouw 12 · week 1'], ['opbouw-12-w|18', 'Opbouw 12 · week 3'], ['basis-8-hr|30', 'Basis 8 hartslag · week 5'], ['piek-16-w|80', 'Piek 16 · week 12'], ['winter-basis-w|9', 'Winterprogramma · week 2'], ['opbouw-12-w|90', 'Afgerond']]
 };
-const SIM_NAMEN = { core: 'Core-app', analyse: 'Strava-analyse', lid: 'Lidmaatschap', lancering: 'Lancering' };
-let SIM = (() => { try { return { core: 'echt', analyse: 'echt', lid: 'echt', lancering: 'echt', ...JSON.parse(localStorage.getItem('mkcSim') || '{}') }; } catch { return { core: 'echt', analyse: 'echt', lid: 'echt', lancering: 'echt' }; } })();
+const SIM_NAMEN = { core: 'Core-app', analyse: 'Strava-analyse', lid: 'Lidmaatschap', lancering: 'Lancering', schema: 'Schema' };
+const SIM_SCHEMA = {};
+async function simSchemaLaad(waarde) {
+  if (!waarde.includes('|') || SIM_SCHEMA[waarde]) return;
+  const [plan, dag] = waarde.split('|');
+  try { const j = await fetch(API + '?actie=schema&t=' + encodeURIComponent(leesToken()) + '&plan=' + plan + '&dag=' + dag).then((r) => r.json()); if (j.ok) SIM_SCHEMA[waarde] = j.schema; } catch {}
+}
+let SIM = (() => { try { return { core: 'echt', analyse: 'echt', lid: 'echt', lancering: 'echt', schema: 'echt', ...JSON.parse(localStorage.getItem('mkcSim') || '{}') }; } catch { return { core: 'echt', analyse: 'echt', lid: 'echt', lancering: 'echt', schema: 'echt' }; } })();
 function simBewaar() { try { localStorage.setItem('mkcSim', JSON.stringify(SIM)); } catch {} }
 function simuleer(d) {
   const vb = voorbeeldData({ ...d, core: null, analyse: null });
@@ -1087,6 +1215,8 @@ function simuleer(d) {
   else if (SIM.lid === 'ideal') n.lid = { status: 'actief', open: true, plan: 'maand', bedrag: '19.00', tot: tot(4), handmatig: true };
   else if (SIM.lid === 'opgezegd') n.lid = { status: 'opgezegd', open: true, plan: 'maand', bedrag: '19.00', tot: tot(12) };
   else if (SIM.lid === 'achterstand') n.lid = { status: 'achterstand', open: true, plan: 'maand', bedrag: '19.00', tot: tot(3) };
+  if (SIM.schema === 'geen') n.schema = null;
+  else if (SIM.schema && SIM.schema !== 'echt') n.schema = SIM_SCHEMA[SIM.schema] || null;
   if (SIM.lancering === 'voor') { n.voorLancering = true; n.lidOpen = false; }
   else if (SIM.lancering === 'na') { n.voorLancering = false; n.lidOpen = true; }
   return n;
@@ -1113,7 +1243,7 @@ function teken() {
       <li><span>3</span>${binnenkortNu() ? 'Zet de app op je beginscherm, dan heb je je bandenspanning altijd bij de hand.' : d.lidOpen ? 'Meer nodig? Als lid krijg je je eigen coach, de slimme bandenspanning en de Core-app doorlopend, voor &euro;19 per maand.' : 'Rechtsonder zit <em>Vraag je coach</em>: je eigen coach die je analyse en je plan kent, straks voor leden.'}</li></ol></div>`
       : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}
     ${analyseBlok(d.analyse)}
-    <div class="groepkop">Vandaag</div><div class="kaarten">${bandenKaart(d)}</div>
+    <div class="groepkop">Vandaag</div><div class="kaarten">${schemaKaart(d)}${bandenKaart(d)}</div>
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     ${isLid(d) ? '' : binnenkortNu() ? `<div class="groepkop">Meer uit de app</div>${binnenkortPitchHtml()}` : !kanLidNu(d) ? '' : `<div class="groepkop">Meer uit de app</div>${lidPitchHtml()}`}
     ${kaartenHtml(d)}
@@ -1126,13 +1256,14 @@ function teken() {
 
 document.addEventListener('change', (e) => {
   const sel = e.target.closest('[data-sim]'); if (!sel) return;
-  SIM[sel.dataset.sim] = sel.value; simBewaar(); CC.berichten = null; teken();
+  SIM[sel.dataset.sim] = sel.value; simBewaar(); CC.berichten = null; SK.dag = null;
+  if (sel.dataset.sim === 'schema') simSchemaLaad(sel.value).then(teken); else teken();
 });
 document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-actie]'); if (!k) return;
   const actie = k.dataset.actie;
   if (actie === 'bekijk') { BEKIJK = k.dataset.w; try { localStorage.setItem('mkcBekijk', BEKIJK); } catch {} CC.berichten = null; teken(); }
-  if (actie === 'simreset') { SIM = { core: 'echt', analyse: 'echt', lid: 'echt', lancering: 'echt' }; simBewaar(); teken(); }
+  if (actie === 'simreset') { SIM = { core: 'echt', analyse: 'echt', lid: 'echt', lancering: 'echt', schema: 'echt' }; simBewaar(); SK.dag = null; teken(); }
   if (actie === 'wordlid') wordLid(k);
   if (actie === 'startcore') startCore(k);
   if (actie === 'naarlid') {
@@ -1504,6 +1635,8 @@ async function laadOverzicht() {
     const j = await r.json();
     if (!j.ok) { wisToken(); return toonLogin(j.fout, 'fout'); }
     D = j; teken(); naarLidAnker();
+    if (D.beheer && BEKIJK === 'zelf' && SIM.schema && SIM.schema.includes('|')) simSchemaLaad(SIM.schema).then(teken);
+    if (D.beheer && !D.schema) simSchemaLaad('opbouw-12-w|18').then(() => { if (BEKIJK === 'alles') teken(); });
     if (D.beheer && OPV.meldingen === null) opvLaad();
   } catch { $('#app').innerHTML = '<div class="laden">Verbinding mislukt. Probeer het zo nog eens.</div>'; }
 }
