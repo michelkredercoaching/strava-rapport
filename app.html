@@ -305,6 +305,24 @@
   .push-aan { color:var(--groen); font-size:14px; font-weight:600; }
   .push-rij .sb-link { margin-top:0; }
   /* Jouw Strava-analyse (inklapbaar) */
+  /* Meldingen (09-10-2026) */
+  .meld { display:flex; gap:12px; align-items:flex-start; background:linear-gradient(160deg, rgba(76,195,138,.14), var(--surface) 70%); border:1px solid rgba(76,195,138,.45); border-radius:8px; padding:14px 14px 14px 16px; margin:0 0 10px; }
+  .meld-ic { flex:0 0 34px; height:34px; border-radius:50%; background:rgba(76,195,138,.18); display:flex; align-items:center; justify-content:center; }
+  .meld-ic svg { width:18px; height:18px; stroke:#4CC38A; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  .meld-in { flex:1; min-width:0; }
+  .meld-in b { display:block; font-size:15px; margin-bottom:2px; }
+  .meld-in p { font-size:13.5px; color:var(--muted); margin-bottom:10px; }
+  .meld-in .knop { width:auto; display:inline-block; font-size:16px; padding:8px 14px 6px; }
+  .meld-x { background:none; border:0; color:var(--muted); font-size:20px; line-height:1; cursor:pointer; padding:2px 4px; }
+  .meldvraag { background:var(--surface); border:1px dashed rgba(255,107,26,.5); border-radius:8px; padding:16px; margin:0 0 14px; }
+  .meldvraag b { display:block; font-size:15.5px; margin-bottom:4px; }
+  .meldvraag p { font-size:13.5px; color:var(--muted); margin-bottom:12px; }
+  .meldvraag .rij { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .meldvraag .knop { width:auto; font-size:17px; padding:9px 16px 7px; }
+  .meldinst { margin-top:22px; padding:14px 16px; border:1px solid var(--border); border-radius:8px; font-size:13.5px; color:var(--muted); }
+  .meldinst b { color:var(--white); }
+  .meldinst label { display:flex; align-items:center; gap:10px; margin-top:8px; cursor:pointer; }
+  .meldinst input { width:18px; height:18px; accent-color:#FF6B1A; }
   /* Schema in de app (09-10-2026) */
   .sk { background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
   .sk-kop { padding:18px 18px 0; }
@@ -1271,6 +1289,7 @@ function teken() {
   $('#app').innerHTML = `<div class="kop"><div class="logo">MKC<span>.</span></div><button class="uit" data-actie="uitloggen">Uitloggen</button></div>
     ${beheerHtml(d)}${opvolgHtml()}${nakijkHtml()}
     <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
+    ${meldingenHtml(d)}<div id="meldvraag">${meldVraagHtml()}</div>
     ${isNieuw(d) ? `<div class="welkom"><b>Zo werkt je app</b>
       <ol><li><span>1</span>Vul hieronder je gewicht en band in: je ziet meteen wat je pompt. Gratis, voor elke rit.</li>
       <li><span>2</span>${binnenkortNu() ? 'Binnenkort komt er veel bij: de Core-app, kledingadvies voor je rit en je eigen coach.' : 'Start je gratis week in de Core-app: korte sessies thuis, op de timer.'}</li>
@@ -1282,6 +1301,7 @@ function teken() {
     ${isLid(d) ? '' : binnenkortNu() ? `<div class="groepkop">Meer uit de app</div>${binnenkortPitchHtml()}` : !kanLidNu(d) ? '' : `<div class="groepkop">Meer uit de app</div>${lidPitchHtml()}`}
     ${kaartenHtml(d)}
     ${isLid(d) ? `<div class="groepkop">Mijn lidmaatschap</div>${lidStatusHtml(d.lid)}` : ''}
+    <div id="meldinst">${meldInstHtml()}</div>
     <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
   if (toonSlim(d)) sbStart(); else btReken();
   coachBouw();
@@ -1590,6 +1610,63 @@ document.addEventListener('change', (e) => {
   if (e.target.id === 'klDuur') { sbBewaarKeuze({ klDuur: Number(e.target.value) }); sbTeken(); }
 });
 
+// ---- Meldingen (09-10-2026) ----
+// Bovenaan de app: wat er voor je klaarstaat (bijv. de Core-herinnering op
+// maandag). Ook als je pushberichten uit hebt, zie je hem hier zodra je de app
+// opent. Wegtikken = gezien.
+const BEL_SVG = '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
+function meldingenHtml(d) {
+  const l = (d && d.meldingen) || [];
+  return l.map((m) => `<div class="meld" data-mid="${esc(m.id)}"><div class="meld-ic">${BEL_SVG}</div><div class="meld-in"><b>${esc(m.titel)}</b>${m.tekst ? `<p>${esc(m.tekst)}</p>` : ''}${m.link ? `<a class="knop" href="${esc(m.link)}" data-meldopen="${esc(m.id)}">${m.soort === 'core' ? 'Start je sessie' : 'Bekijk'}</a>` : ''}</div><button class="meld-x" data-meldweg="${esc(m.id)}" aria-label="Weg">&times;</button></div>`).join('');
+}
+async function meldWeg(id) {
+  try { const j = await (await fetch(API + '?actie=melding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), id }) })).json(); if (j.ok && D) D.meldingen = j.meldingen; } catch (e) {}
+}
+document.addEventListener('click', (e) => {
+  const w = e.target.closest('[data-meldweg]');
+  if (w) { const kaart = w.closest('.meld'); if (kaart) kaart.remove(); if (D) D.meldingen = (D.meldingen || []).filter((m) => m.id !== w.dataset.meldweg); meldWeg(w.dataset.meldweg); return; }
+  const o = e.target.closest('[data-meldopen]');
+  if (o) meldWeg(o.dataset.meldopen);
+});
+
+// Pushberichten "standaard aan": telefoons vragen altijd eerst toestemming,
+// dus we vragen het meteen en duidelijk. Na toestemming staat alles aan
+// (ochtendbericht en Core-herinnering), uitzetten kan onderaan. Gaf iemand al
+// toestemming maar kent de server dit toestel nog niet, dan koppelen we stil.
+function pushWeg() { try { return localStorage.getItem('mkcPushVraagWeg') === '1'; } catch (e) { return false; } }
+function meldVraagHtml() {
+  if (!pushKan() || !PUSH.key || !PUSH.inst || PUSH.inst.aan || pushWeg()) return '';
+  if (typeof Notification !== 'undefined' && Notification.permission === 'denied') return '';
+  return `<div class="meldvraag"><b>Mis niets: zet meldingen aan</b><p>Je Core-herinnering, ${zicht() && isLid(zicht()) ? 'je ochtendbericht met bandenspanning en kleding, ' : ''}en wat er verder voor je klaarstaat. Uitzetten kan altijd.</p>
+    <div class="rij"><button type="button" class="knop" data-push="aan" ${PUSH.bezig ? 'disabled' : ''}>${PUSH.bezig ? 'Even toestemming vragen...' : 'Zet meldingen aan'}</button><button type="button" class="sb-link" data-push="vraagweg">Nu niet</button></div>
+    ${PUSH.melding && !PUSH.inst.aan ? `<p class="klein" style="margin:10px 0 0">${esc(PUSH.melding)}</p>` : ''}</div>`;
+}
+function meldInstHtml() {
+  if (!PUSH.inst || !PUSH.inst.aan) return '';
+  const i = PUSH.inst;
+  return `<div class="meldinst"><b>Meldingen staan aan</b> op dit toestel.
+    <label><input type="checkbox" data-pushsoort="core" ${i.core ? 'checked' : ''}> Core-herinnering op maandag</label>
+    ${zicht() && isLid(zicht()) ? `<label><input type="checkbox" data-pushsoort="ochtend" ${i.ochtend ? 'checked' : ''}> Ochtendbericht (weer, banden en kleding)</label>` : ''}
+    <p class="klein" style="margin-top:8px">Staat iets uit, dan zie je het gewoon hier in de app zodra je hem opent.</p></div>`;
+}
+function meldTeken() {
+  const a = document.getElementById('meldvraag'); if (a) a.innerHTML = meldVraagHtml();
+  const b = document.getElementById('meldinst'); if (b) b.innerHTML = meldInstHtml();
+}
+document.addEventListener('change', async (e) => {
+  const c = e.target.closest('[data-pushsoort]'); if (!c) return;
+  await pushOpslaan({ [c.dataset.pushsoort]: c.checked });
+  meldTeken();
+});
+async function pushStilKoppelen() {
+  try {
+    if (!pushKan() || !PUSH.key || !PUSH.inst || PUSH.inst.aan || Notification.permission !== 'granted') return;
+    const reg = await navigator.serviceWorker.register('/sw.js');
+    const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64naarBytes(PUSH.key) });
+    await pushOpslaan({ sub: sub.toJSON() });
+  } catch (e) {}
+}
+
 // ---- Ochtendbericht ----
 let PUSH = { geladen: false, key: null, inst: null, bezig: false, melding: '' };
 const DAGNAMEN = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
@@ -1599,7 +1676,8 @@ function iosZonderApp() { return /iPhone|iPad|iPod/.test(navigator.userAgent) &&
 async function pushLaad() {
   if (PUSH.geladen) return; PUSH.geladen = true;
   try { const j = await (await fetch(`${API}?actie=push&t=${encodeURIComponent(leesToken())}`)).json(); if (j.ok) { PUSH.key = j.publicKey; PUSH.inst = j.instelling; } } catch (e) {}
-  sbTeken();
+  await pushStilKoppelen();
+  sbTeken(); meldTeken();
 }
 function pushHtml() {
   const i = PUSH.inst || { aan: false, tijd: '07:00', dagen: [0, 1, 2, 3, 4, 5, 6] };
@@ -1632,8 +1710,9 @@ document.addEventListener('click', async (e) => {
     PUSH.inst.dagen = l.includes(d) ? l.filter((x) => x !== d) : l.concat(d);
     if (PUSH.inst.aan) await pushOpslaan({}); return sbTeken();
   }
+  if (a === 'vraagweg') { try { localStorage.setItem('mkcPushVraagWeg', '1'); } catch (er) {} return meldTeken(); }
   if (a === 'aan') {
-    PUSH.bezig = true; sbTeken();
+    PUSH.bezig = true; sbTeken(); meldTeken();
     try {
       const reg = await navigator.serviceWorker.register('/sw.js');
       const toestemming = await Notification.requestPermission();
@@ -1643,9 +1722,9 @@ document.addEventListener('click', async (e) => {
         if (await pushOpslaan({ sub: sub.toJSON() })) PUSH.melding = 'Gelukt. Tik op "Stuur nu een test" om te zien hoe hij eruitziet.';
       }
     } catch (er) { PUSH.melding = 'Aanzetten lukte niet op dit toestel.'; }
-    PUSH.bezig = false; return sbTeken();
+    PUSH.bezig = false; sbTeken(); return meldTeken();
   }
-  if (a === 'uit') { await pushOpslaan({ uit: true }); return sbTeken(); }
+  if (a === 'uit') { await pushOpslaan({ uit: true }); sbTeken(); return meldTeken(); }
   if (a === 'test') {
     PUSH.bezig = true; sbTeken();
     try { const j = await (await fetch(`${API}?actie=pushtest`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken() }) })).json(); PUSH.melding = j.ok ? 'Verstuurd. Je melding komt zo binnen.' : (j.fout || 'Versturen lukte niet.'); }
@@ -1668,7 +1747,7 @@ async function laadOverzicht() {
     const r = await fetch(API + '?actie=overzicht&t=' + encodeURIComponent(t));
     const j = await r.json();
     if (!j.ok) { wisToken(); return toonLogin(j.fout, 'fout'); }
-    D = j; teken(); naarLidAnker();
+    D = j; teken(); naarLidAnker(); pushLaad();
     if (D.beheer && BEKIJK === 'zelf' && SIM.schema && SIM.schema.includes('|')) simSchemaLaad(SIM.schema).then(teken);
     if (D.beheer && !D.schema) simSchemaLaad('opbouw-12-w|18').then(() => { if (BEKIJK === 'alles') teken(); });
     if (D.beheer && OPV.meldingen === null) opvLaad();
