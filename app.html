@@ -1974,13 +1974,14 @@ function klRitWeer(over, duur) {
   const uren = w.uren || [];
   const stuk = uren.slice(Math.floor(over), Math.ceil(over + duur) + 1);
   if (!stuk.length) return { temp: w.laagste, start: w.temp, wind: w.wind, regen: w.nat || w.regenStraks };
-  return { temp: Math.min(...stuk.map((u) => u.temp)), start: stuk[0].temp, wind: Math.max(...stuk.map((u) => u.wind)), regen: (over < 1 && w.nat) || stuk.reduce((a, u) => a + u.regen, 0) >= 0.5 };
+  const mm = stuk.reduce((a, u) => a + u.regen, 0);
+  return { temp: Math.min(...stuk.map((u) => u.temp)), start: stuk[0].temp, wind: Math.max(...stuk.map((u) => u.wind)), regen: (over < 1 && w.nat) || mm >= 0.5, regenMm: mm };
 }
 function klReken() {
   if (!KL_LIB || !SB.weer) return null;
   const k = klKeuze(), rw = klRitWeer(k.over, k.duur);
   if (!rw) return null;
-  const a = KL_LIB.kledingAdvies({ temp: rw.temp, start: rw.start, wind: rw.wind, regen: rw.regen, intensiteit: k.hard ? 'hard' : 'rustig', kouType: (SB.profiel && SB.profiel.kouType) || 'normaal', bijstel: KL_LIB.kledingBijstel(SB.ritten || []), duurUur: k.duur });
+  const a = KL_LIB.kledingAdvies({ temp: rw.temp, start: rw.start, wind: rw.wind, regen: rw.regen, regenMm: rw.regenMm, intensiteit: k.hard ? 'hard' : 'rustig', kouType: (SB.profiel && SB.profiel.kouType) || 'normaal', bijstel: KL_LIB.kledingBijstel(SB.ritten || []), duurUur: k.duur });
   return a ? { ...a, rw } : null;
 }
 function kledingTabHtml() {
@@ -2154,7 +2155,7 @@ function grHtml() {
   let lidBlok = '';
   if (uren && uren.length && lid && KL_LIB && RV_LIB) {
     const tl = uren.map((u) => u.temp), temp = Math.round(tl.reduce((t, x) => t + x, 0) / tl.length);
-    const kl = KL_LIB.kledingAdvies({ temp: Math.min(...tl), start: tl[0], wind: Math.max(...uren.map((u) => u.wind)), regen: uren.reduce((t, u) => t + u.regen, 0) >= 0.5, intensiteit: rit.tempo === 'hard' ? 'hard' : 'rustig', kouType: (SB.profiel && SB.profiel.kouType) || 'normaal', bijstel: KL_LIB.kledingBijstel(SB.ritten || []), duurUur: rit.duur });
+    const kl = KL_LIB.kledingAdvies({ temp: Math.min(...tl), start: tl[0], wind: Math.max(...uren.map((u) => u.wind)), regen: uren.reduce((t, u) => t + u.regen, 0) >= 0.5, regenMm: uren.reduce((t, u) => t + u.regen, 0), intensiteit: rit.tempo === 'hard' ? 'hard' : 'rustig', kouType: (SB.profiel && SB.profiel.kouType) || 'normaal', bijstel: KL_LIB.kledingBijstel(SB.ritten || []), duurUur: rit.duur });
     const rv = RV_LIB.voedingAdvies({ duur: rit.duur, temp, hard: rit.tempo === 'hard' });
     lidBlok = (kl ? `<div class="gr-blok"><h4>Wat trek je aan &middot; voelt als ${kl.gevoel}&deg;</h4><ul class="kl-lijst">${kl.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${kl.tips && kl.tips[0] ? `<p class="klein">${esc(kl.tips[0])}</p>` : ''}</div>` : '')
       + `<div class="gr-blok"><h4>Wat neem je mee &middot; ${esc(rv.kort)}</h4><ul class="kl-lijst">${rv.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
@@ -2254,7 +2255,7 @@ function rkData() {
     if (SB.weer) {
       const st = ritUren(), w = SB.weer;
       d.weer = `${st.length ? Math.round(st.reduce((t, x) => t + x.temp, 0) / st.length) : w.temp}° · wind ${w.wind} km/u${w.nat ? ' · nat wegdek' : ''}`;
-      const kl = klReken(); if (kl) d.kleding = { gevoel: kl.gevoel, items: kl.items.slice(0, 4) };
+      const kl = klReken(); if (kl) d.kleding = { gevoel: kl.gevoel, items: kl.items.filter((x) => !/ondershirt|zomersokken/i.test(x)).slice(0, 4) };
       if (RV_LIB) { const k = klKeuze(); const temp = st.length ? Math.round(st.reduce((t, x) => t + x.temp, 0) / st.length) : w.temp; const rv = RV_LIB.voedingAdvies({ duur: k.duur, temp, hard: k.hard }); d.voeding = { kort: rv.kort, items: rv.items.slice(0, 3) }; }
       if (WIND_LIB) { const a = WIND_LIB.windAdvies(st); if (a) { d.wind = rkWind(a); d.windKort = a.kracht >= 10 ? 'Wind: ' + a.kort : ''; } }
     }
