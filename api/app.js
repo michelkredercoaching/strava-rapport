@@ -43,6 +43,7 @@ import { haalMeldingen, leesMelding } from '../lib/app-melding.js';
 import { tel, overzicht as gebruikOverzicht, CLIENT_GEBEURTENISSEN, GAST_GEBEURTENISSEN } from '../lib/stat.js';
 import { COACH_KENNIS, COACH_REGELS, COACH_TOON } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
+import { meld as meldActief, opruimen, wisPersoon } from '../lib/app-opruimen.js';
 import { kledingAdvies, kledingBijstel, kledingKort } from '../lib/kleding.js';
 import { bandenAdvies, leesInvoer, nl, HOOKLESS_MAX } from '../lib/bandendruk.js';
 import { stuurPush } from '../lib/webpush.js';
@@ -298,6 +299,19 @@ async function routePlaatsVrij(req, res) {
   } catch (e) { return res.status(502).json({ ok: false, fout: 'Zoeken lukte niet.' }); }
 }
 
+// ---- Appgegevens opruimen (09-10-2026), zie lib/app-opruimen.js ----------------
+// Cron (wekelijks): wist wie een jaar niets deed. Beheer: GET ?proef=1 telt alleen,
+// POST { email } wist iemand op verzoek (lidmaatschap en facturen blijven).
+async function routeOpruimen(req, res) {
+  const cron = process.env.CRON_SECRET || '';
+  if (cron && String(req.headers?.authorization || '') === `Bearer ${cron}`) return res.status(200).json(await opruimen());
+  const body = req.method === 'POST' ? await leesBody(req) : null;
+  const ik = leesAppToken(String(body ? body.t : req.query?.t) || '');
+  if (!ik || !BEHEER.includes(ik)) return res.status(403).json({ ok: false });
+  if (body) return res.status(200).json(await wisPersoon(body.email));
+  return res.status(200).json(await opruimen({ proef: true }));
+}
+
 // ---- Groepsrit-link (09-10-2026) ------------------------------------------------
 // Iemand met een account plant een rit (dag, tijd, duur, startplaats) en deelt de
 // link. Iedereen die hem opent ziet het weer en windadvies tijdens die rit, en
@@ -396,6 +410,7 @@ export default async function handler(req, res) {
     if (actie === 'wind') return await routeWind(req, res);
     if (actie === 'plaatsvrij') return await routePlaatsVrij(req, res);
     if (actie === 'groepsrit') return await routeGroepsrit(req, res);
+    if (actie === 'opruimen') return await routeOpruimen(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -432,6 +447,7 @@ async function routeLogin(req, res) {
 async function routeOverzicht(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email) return res.status(401).json({ ok: false, fout: 'Je inloglink is verlopen. Vraag hieronder een nieuwe aan.' });
+  meldActief(email);
   const [core, lid, lidmaatschap, kanLid, bandenProfiel, ritten, schemaDossier, meldingen, coachBerichten] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen(), haalBandenProfiel(email), haalRitten(email), haalSchema(email), haalMeldingen(email), haalCoachBerichten(email)]);
   // Ingelogd via de knop in de mail (zonder code) en nog geen contact? Dan
   // ook hier het gratis account aanmaken.

@@ -65,6 +65,10 @@
       "schedule": "0 7 * * *"
     },
     {
+      "path": "/api/app?actie=opruimen",
+      "schedule": "30 3 * * 1"
+    },
+    {
       "path": "/api/lid?actie=cadeaumail",
       "schedule": "5 10 16 10 *"
     },

@@ -2246,7 +2246,7 @@ function ledenHtml() {
     <div class="led-tel">${blok('betaald-maand')}${blok('betaald-jaar')}<div><b>&euro;${x.mrr}</b><span>per maand</span></div>${blok('coaching-flex')}${blok('coaching-premium')}${blok('schema')}${blok('gratis-maand')}${blok('opgezegd')}${blok('verlopen')}</div>
     <h4>Zoek een lid</h4>
     <div style="display:flex;gap:8px"><input id="ledZoek" type="email" placeholder="mailadres" value="${z ? esc(z.email) : ''}"><button type="button" class="opv-k" data-led="zoek">Zoek</button></div>
-    ${z ? `<div class="led-res"><b>${esc(z.naam || z.email)}</b> &middot; ${LED_NAMEN[z.soort] || z.soort}${z.tot ? ' &middot; tot ' + z.tot : ''}${z.sinds ? '<br>Sinds ' + z.sinds : ''}${z.abonnement ? ' &middot; abonnement loopt' : ''}${z.akkoord ? ' &middot; akkoord ' + z.akkoord : ''}${z.schema ? `<br>Schema: ${esc(z.schema.titel)}, start ${z.schema.start}` : ''}</div>` : ''}
+    ${z ? `<div class="led-res"><b>${esc(z.naam || z.email)}</b> &middot; ${LED_NAMEN[z.soort] || z.soort}${z.tot ? ' &middot; tot ' + z.tot : ''}${z.sinds ? '<br>Sinds ' + z.sinds : ''}${z.abonnement ? ' &middot; abonnement loopt' : ''}${z.akkoord ? ' &middot; akkoord ' + z.akkoord : ''}${z.schema ? `<br>Schema: ${esc(z.schema.titel)}, start ${z.schema.start}` : ''}<br><button type="button" class="opv-k" data-led="wis" data-email="${esc(z.email)}" style="margin-top:6px">Wis appgegevens (op verzoek)</button></div>` : ''}
     <h4>Geef toegang</h4>
     <input id="ledMail" type="email" placeholder="mailadres" value="${z ? esc(z.email) : ''}">
     <div class="rij2"><select id="ledSoort"><option value="coaching-flex">Coaching Flexibel</option><option value="coaching-premium">Coaching Premium</option><option value="schema">Schema</option><option value="gratis">Gratis periode</option><option value="intrekken">Toegang intrekken</option></select>
@@ -2274,6 +2274,12 @@ document.addEventListener('click', async (e) => {
   if (a === 'zoek') {
     const m = document.getElementById('ledZoek').value.trim(); if (!m) return;
     try { const j = await (await fetch(API + '?actie=leden&t=' + encodeURIComponent(leesToken()) + '&zoek=' + encodeURIComponent(m))).json(); if (j.ok) LED.zoek = j.lid; } catch (er) {}
+    return ledTeken();
+  }
+  if (a === 'wis') {
+    const email = k.dataset.email;
+    if (!confirm('Alle appgegevens van ' + email + ' wissen? Banden, ritten, coachgesprek, meldingen en schema. Lidmaatschap en facturen blijven staan.')) return;
+    try { const j = await (await fetch(API + '?actie=opruimen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), email }) })).json(); LED.melding = j.ok ? 'Appgegevens van ' + email + ' gewist.' : 'Dat lukte niet.'; } catch (er) { LED.melding = 'Verbinding mislukt.'; }
     return ledTeken();
   }
   if (a === 'geef') {

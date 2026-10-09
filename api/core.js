@@ -49,6 +49,7 @@ import { tel } from '../lib/stat.js';
 // Kringverwijzing met lid.js (die gebruikt zetLidmaatschap van hier). Mag, want
 // beide gebruiken elkaars functies pas binnen een aanvraag, niet bij het laden.
 import { lidOpen } from './lid.js';
+import { meld as meldActief } from '../lib/app-opruimen.js';
 
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || process.env.KV_REST_API_URL;
@@ -95,6 +96,9 @@ async function haalDossier(id) {
 }
 async function bewaarDossier(d) {
   d.gewijzigd = new Date().toISOString();
+  // Koppeling mailadres -> dossier even lang laten leven als het dossier zelf
+  // (stond vast op 400 dagen na aanmaken; actieve leden raakten hem dan kwijt).
+  if (d.email) redis(['EXPIRE', `core:email:${d.email}`, String(BEWAAR_S)]);
   return redis(['SET', `core:d:${d.id}`, JSON.stringify(d), 'EX', String(BEWAAR_S)]);
 }
 
@@ -521,6 +525,8 @@ async function routeNieuw(req, res) {
 async function routePlan(req, res) {
   const r = await metToken(req, res); if (!r) return;
   await tel(r.d.email, 'core-open');
+  meldActief(r.d.email);
+  redis(['EXPIRE', `core:email:${r.d.email}`, String(BEWAAR_S)]);
   return res.status(200).json({ ok: true, ...klantBeeld(r.d) });
 }
 
