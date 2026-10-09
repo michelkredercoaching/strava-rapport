@@ -803,12 +803,12 @@ function analyseKaart(a) {
       <a class="knop leeg" href="${ANALYSE_KOOP}">Doe een nieuwe analyse</a>
       <p class="klein">Na een paar weken trainen zie je zo of je FTP gestegen is.</p></div></div>`;
   }
-  return `<div class="kaart"><div class="kaart-in"><span class="tag slot">Op slot</span>
+  return `<div class="kaart"><div class="kaart-in"><span class="tag oranje">&euro;29 eenmalig</span>
     <div class="label">Strava-analyse</div><h2>Weet waar je staat</h2>
     <p>Koppel je Strava en zie in een paar minuten je FTP, je sterke en zwakke punten en wat het meeste oplevert.</p>
     <div class="wazig"><div class="achter"><div class="cijfers"><div class="cijfer"><span>FTP</span><b>241</b></div><div class="cijfer"><span>W/kg</span><b>3,4</b></div><div class="cijfer"><span>Score</span><b>78</b></div></div>${nepGrafiek()}</div>
-      <div class="slotje">${SLOT}<b>${binnenkortNu() ? 'Binnenkort' : 'Ontgrendel voor &euro;29'}</b></div></div>
-    ${binnenkortNu() ? BINNENKORT : `<a class="knop" href="${ANALYSE_KOOP}">Ontgrendel je analyse</a>`}</div></div>`;
+      <div class="slotje">${SLOT}<b>Ontgrendel voor &euro;29</b></div></div>
+    <a class="knop" href="${ANALYSE_KOOP}">Doe je Strava-analyse voor &euro;29</a><p class="klein">Eenmalig, werkt met vermogen en met hartslag. Je uitslag komt daarna ook in je app.</p></div></div>`;
 }
 
 function pacingKaart() {
