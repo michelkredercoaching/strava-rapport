@@ -39,6 +39,7 @@ import crypto from 'crypto';
 import { zetLidmaatschap } from './core.js';
 import { maakMollieFactuur } from '../lib/mollie-factuur.js';
 import { planNaam, laadPlan } from '../lib/schema-app.js';
+import { browserContext, stuurPurchase } from '../lib/meta-capi.js';
 
 const MOLLIE_KEY  = process.env.MOLLIE_API_KEY || '';
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
@@ -247,6 +248,8 @@ async function routeStart(req, res) {
     })
   });
   if (!p.ok) return res.status(502).json({ ok: false, fout: 'Betalen lukt nu even niet. Probeer het zo nog eens.' });
+  // Toestemming en klik-ID voor Meta vastleggen; de webhook stuurt de Purchase.
+  try { await redis(['SET', `lid:meta:${p.j.id}`, JSON.stringify(browserContext(req, body.fbclid)), 'EX', '2592000']); } catch (e) {}
   return res.status(200).json({ ok: true, url: p.j._links && p.j._links.checkout && p.j._links.checkout.href });
 }
 
@@ -315,6 +318,12 @@ async function routeWebhook(req, res) {
     await bewaarLid(lidEmail, lid);
     await zetLidmaatschap({ email: lidEmail, naam: lid.naam, tot: lid.tot });
     await mcTag(lidEmail, 'mkc-lid');
+    // Nieuwe aankoop (geen verlenging): Purchase naar Meta, event_id = betaal-id.
+    if (p.sequenceType === 'first' || (p.metadata && p.metadata.soort === 'lid-periode')) {
+      const m = await redis(['GET', `lid:meta:${id}`]);
+      let ctx = null; try { ctx = m.ok && m.result ? JSON.parse(m.result) : null; } catch (e) {}
+      await stuurPurchase({ ctx, email: lidEmail, naam: lid.naam, waarde: p.amount && p.amount.value, eventId: id, product: 'MKC-app lidmaatschap (' + planVan(p.metadata && p.metadata.plan) + ')', bronUrl: APP_URL });
+    }
     // Factuur via Mollie Invoicing, zelfde route en schakelaar als de analyse
     // (MOLLIE_FACTUUR=aan). Fail-safe: de toegang staat al open, een factuurfout
     // mag niets blokkeren. Geen adres bekend: Mollie krijgt de placeholder uit
@@ -384,11 +393,29 @@ async function routeOpzeggen(req, res) {
 
 // Leden zonder incasso: 5 dagen voor de einddatum een mail met een knop om te
 // verlengen (de app opent dan het lidblok). Eén keer per periode.
+// Coaching-klanten houden de app zolang ze in coaching zitten: loopt hun
+// toegang binnen 14 dagen af, dan schuift hij 90 dagen door. Stopt iemand,
+// dan trekt Michel de toegang in via Beheer > Leden (haalt hem uit lid:coaching).
+async function coachingVerlengen() {
+  const l = await redis(['SMEMBERS', 'lid:coaching']);
+  let n = 0;
+  for (const email of (l.ok && l.result) || []) {
+    const lid = await haalLid(email);
+    if (!lid || lid.bron !== 'coaching' || lid.subscriptionId || !lid.tot) continue;
+    if (Date.parse(lid.tot) - Date.now() > 14 * 86400000) continue;
+    lid.tot = new Date(Math.max(Date.now(), Date.parse(lid.tot)) + 90 * 86400000).toISOString(); lid.status = 'actief';
+    await bewaarLid(email, lid);
+    await zetLidmaatschap({ email, naam: lid.naam, tot: lid.tot, stil: true });
+    n++;
+  }
+  return n;
+}
 async function routeHerinner(req, res) {
   const cron = process.env.CRON_SECRET || '';
   if (!cron || String(req.headers?.authorization || '') !== `Bearer ${cron}`) return res.status(401).json({ ok: false });
   const lijst = await redis(['SMEMBERS', 'lid:handmatig']);
   let gemaild = await schemaEindeMails();
+  const verlengd = await coachingVerlengen();
   for (const email of (lijst.ok && lijst.result) || []) {
     const lid = await haalLid(email);
     if (!lid || !lid.handmatig || lid.subscriptionId || !lid.tot) { await redis(['SREM', 'lid:handmatig', email]); continue; }
@@ -414,7 +441,7 @@ async function routeHerinner(req, res) {
       if (r.ok) { lid.herinnerd = lid.tot; await bewaarLid(email, lid); gemaild++; }
     } catch (e) { console.error('Herinnering mislukt:', email, e); }
   }
-  return res.status(200).json({ ok: true, gemaild });
+  return res.status(200).json({ ok: true, gemaild, verlengd });
 }
 
 // ---- Schema gekocht: de app hoort erbij (09-10-2026) -----------------------
@@ -708,6 +735,8 @@ export async function geefToegang({ email, naam = '', soort, tot, plan, start })
   if (soort === 'intrekken') {
     if (lid.subscriptionId) return { ok: false, fout: 'Dit lid heeft een lopend abonnement. Zeg dat eerst op (de klant zelf in de app, of in Mollie).' };
     lid.tot = new Date().toISOString(); lid.status = 'verlopen';
+    if (lid.bron === 'coaching') lid.bron = 'verlopen';
+    await redis(['SREM', 'lid:coaching', email]);
     await bewaarLid(email, lid);
     await zetLidmaatschap({ email, naam: lid.naam, tot: lid.tot, stil: true });
     return { ok: true, lid: await lidZoek(email) };

@@ -1511,7 +1511,7 @@ async function wordLid(knop) {
   if (vink && !vink.checked) { const l = vink.closest('.lid-akkoord'); l.classList.add('fout'); l.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => l.classList.remove('fout'), 2500); return; }
   knop.disabled = true; const oud = knop.textContent; knop.textContent = 'Even naar iDEAL...';
   try {
-    const r = await fetch('/api/lid?actie=start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: D && D.naam, plan: knop.dataset.plan === 'jaar' ? 'jaar' : 'maand', akkoord: !vink || vink.checked }) });
+    const r = await fetch('/api/lid?actie=start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: D && D.naam, plan: knop.dataset.plan === 'jaar' ? 'jaar' : 'maand', akkoord: !vink || vink.checked, fbclid: (() => { try { return localStorage.getItem('mkcFbclid') || ''; } catch (e) { return ''; } })() }) });
     const j = await r.json();
     if (j.ok && j.url) { location.href = j.url; return; }
     if (j.ok && j.alLid) { return laadOverzicht(); }
@@ -1886,6 +1886,9 @@ document.addEventListener('click', (e) => {
   if (k.dataset.geb === 'klap') { GEB.open = !GEB.open; gebTeken(); if (GEB.open) gebLaad(); }
   if (k.dataset.geb === 'ververs') { GEB.data = null; gebTeken(); gebLaad(); }
 });
+
+// Klik-ID van een Meta-advertentie bewaren, voor de Purchase bij lid worden (api/lid.js).
+try { const fc = new URLSearchParams(location.search).get("fbclid"); if (fc) localStorage.setItem("mkcFbclid", fc.slice(0, 200)); } catch (e) {}
 
 // ---- Groepsrit-link (09-10-2026) ----
 // Plan een rit, deel de link. Wie hem opent ziet het weer en het windadvies voor
