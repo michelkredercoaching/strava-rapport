@@ -267,6 +267,37 @@ async function routeGebruik(req, res) {
   return res.status(200).json({ ok: true, ...(await gebruikOverzicht(Math.min(30, Number(req.query?.dagen) || 14))) });
 }
 
+// ---- Gratis windadvies (09-10-2026) -------------------------------------------
+// Zonder account: het weer per uur voor een plek, alleen wind en temperatuur.
+// Max 30 aanvragen per IP per uur.
+async function vrijGrens(req) {
+  const ip = String(req.headers?.['x-forwarded-for'] || '').split(',')[0].trim() || 'onbekend';
+  const k = `app:vrij:${ip}:${new Date().toISOString().slice(0, 13)}`;
+  const r = await redis(['INCR', k]);
+  if (r.ok && r.result === 1) await redis(['EXPIRE', k, 3700]);
+  return !(r.ok && r.result > 30);
+}
+async function routeWind(req, res) {
+  if (!(await vrijGrens(req))) return res.status(429).json({ ok: false, fout: 'Even rustig aan, probeer het zo nog eens.' });
+  try {
+    const weer = await haalWeer(req.query?.lat, req.query?.lon);
+    if (!weer) return res.status(400).json({ ok: false, fout: 'Geen geldige plek.' });
+    return res.status(200).json({ ok: true, uren: weer.uren.map(({ uur, temp, wind, richting, regen }) => ({ uur, temp, wind, richting, regen })) });
+  } catch (e) { return res.status(502).json({ ok: false, fout: 'Het weer laden lukte niet.' }); }
+}
+async function routePlaatsVrij(req, res) {
+  if (!(await vrijGrens(req))) return res.status(429).json({ ok: false, fout: 'Even rustig aan, probeer het zo nog eens.' });
+  const q = String(req.query?.q || '').trim().slice(0, 60);
+  if (q.length < 2) return res.status(400).json({ ok: false, fout: 'Typ een plaatsnaam.' });
+  try {
+    const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=nl&format=json`, { signal: AbortSignal.timeout(8000) });
+    const j = await r.json();
+    const l = (j.results || []).map((x) => ({ naam: x.name, regio: x.admin1 || '', land: x.country_code || '', lat: x.latitude, lon: x.longitude }))
+      .sort((a, b) => (['NL', 'BE'].includes(b.land) ? 1 : 0) - (['NL', 'BE'].includes(a.land) ? 1 : 0));
+    return res.status(200).json({ ok: true, plaatsen: l.slice(0, 5) });
+  } catch (e) { return res.status(502).json({ ok: false, fout: 'Zoeken lukte niet.' }); }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   const actie = String(req.query?.actie || '');
@@ -293,6 +324,8 @@ export default async function handler(req, res) {
     if (actie === 'feedback') return await routeFeedback(req, res);
     if (actie === 'stat') return await routeStat(req, res);
     if (actie === 'gebruik') return await routeGebruik(req, res);
+    if (actie === 'wind') return await routeWind(req, res);
+    if (actie === 'plaatsvrij') return await routePlaatsVrij(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -573,14 +606,14 @@ const weerCache = new Map();
 async function haalWeer(lat, lon) {
   lat = Math.round(Number(lat) * 100) / 100; lon = Math.round(Number(lon) * 100) / 100;
   if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
-  const sleutel = `${lat},${lon}`, c = weerCache.get(sleutel);
+  const sleutel = `${lat},${lon},2`, c = weerCache.get(sleutel);
   if (c && Date.now() - c.op < 15 * 60 * 1000) return c.weer;
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,weather_code,wind_speed_10m&hourly=precipitation,temperature_2m,wind_speed_10m&past_hours=3&forecast_hours=13&timezone=Europe%2FAmsterdam&wind_speed_unit=kmh`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m&hourly=precipitation,temperature_2m,wind_speed_10m,wind_direction_10m&past_hours=3&forecast_hours=13&timezone=Europe%2FAmsterdam&wind_speed_unit=kmh`;
   const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
   if (!r.ok) throw new Error('weer ' + r.status);
   const j = await r.json();
   const nu = j.current || {}, uur = j.hourly || {};
-  const tijden = uur.time || [], regen = uur.precipitation || [], temps = uur.temperature_2m || [], winden = uur.wind_speed_10m || [];
+  const tijden = uur.time || [], regen = uur.precipitation || [], temps = uur.temperature_2m || [], winden = uur.wind_speed_10m || [], richtingen = uur.wind_direction_10m || [];
   const nuIso = String(nu.time || '').slice(0, 13);
   const idx = Math.max(0, tijden.findIndex((t) => String(t).slice(0, 13) === nuIso));
   const somVoor = regen.slice(Math.max(0, idx - 3), idx + 1).reduce((a, b) => a + (b || 0), 0);
@@ -592,9 +625,10 @@ async function haalWeer(lat, lon) {
     nat: (nu.precipitation || 0) > 0 || somVoor >= 0.2,
     regenStraks: somNa >= 0.5,
     wind: Math.round(nu.wind_speed_10m || 0),
+    richting: Math.round(nu.wind_direction_10m ?? 0),
     code: nu.weather_code ?? null,
     // Per uur vanaf nu: { uur: '14', temp, regen (mm), wind (km/u) }
-    uren: tijden.slice(idx, idx + 13).map((t, i) => ({ uur: String(t).slice(11, 13), temp: Math.round(temps[idx + i] ?? 0), regen: Math.round((regen[idx + i] || 0) * 10) / 10, wind: Math.round(winden[idx + i] || 0) }))
+    uren: tijden.slice(idx, idx + 13).map((t, i) => ({ uur: String(t).slice(11, 13), temp: Math.round(temps[idx + i] ?? 0), regen: Math.round((regen[idx + i] || 0) * 10) / 10, wind: Math.round(winden[idx + i] || 0), richting: Math.round(richtingen[idx + i] ?? 0) }))
   };
   weerCache.set(sleutel, { op: Date.now(), weer });
   return weer;

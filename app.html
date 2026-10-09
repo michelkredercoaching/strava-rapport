@@ -284,8 +284,8 @@
   .nak-correctie small { display:block; font-size:11px; color:var(--groen); letter-spacing:.06em; margin-bottom:2px; }
   .nak-tekst { width:100%; margin-top:6px; background:var(--black); border:1px solid rgba(255,255,255,.18); color:var(--white); font-family:inherit; font-size:15px; padding:10px; border-radius:4px; resize:vertical; }
   /* Vandaag rijden: tabbladen, kleding, ochtendbericht */
-  .vr-tabs { display:grid; grid-template-columns:1fr 1fr; gap:4px; background:var(--black); border:1px solid var(--border); border-radius:8px; padding:4px; margin:12px 0 12px; }
-  .vr-tabs button { background:none; border:0; color:var(--muted); font-family:'Bebas Neue',sans-serif; font-size:19px; letter-spacing:.05em; padding:8px 6px 6px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; }
+  .vr-tabs { display:grid; grid-template-columns:1fr 1fr 1fr; gap:4px; background:var(--black); border:1px solid var(--border); border-radius:8px; padding:4px; margin:12px 0 12px; }
+  .vr-tabs button { background:none; border:0; color:var(--muted); font-family:'Bebas Neue',sans-serif; font-size:17px; letter-spacing:.05em; padding:8px 6px 6px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; }
   .vr-tabs button.aan { background:var(--accent); color:#0A0A0A; }
   .tab-slot { width:14px; height:14px; }
   .kl-plan { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px; }
@@ -309,6 +309,22 @@
   .push-aan { color:var(--groen); font-size:14px; font-weight:600; }
   .push-rij .sb-link { margin-top:0; }
   /* Jouw Strava-analyse (inklapbaar) */
+  /* Ritvoeding en wind (09-10-2026) */
+  .rv-kop { display:flex; gap:10px; margin:10px 0 12px; }
+  .rv-kop div { flex:1; background:rgba(255,255,255,.04); border-radius:8px; padding:10px; text-align:center; }
+  .rv-kop b { display:block; font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:.02em; line-height:1; color:var(--white); }
+  .rv-kop span { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+  .sb-wind { display:flex; gap:10px; align-items:flex-start; background:rgba(138,180,255,.08); border:1px solid rgba(138,180,255,.25); border-radius:8px; padding:10px 12px; margin:10px 0; font-size:13.5px; line-height:1.5; color:rgba(245,243,239,.9); }
+  .sb-wind svg { flex:0 0 20px; width:20px; height:20px; stroke:#8ab4ff; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; margin-top:1px; }
+  .wk { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px; margin-top:12px; }
+  .wk .label { margin-bottom:6px; }
+  .wk h3 { font-family:'Bebas Neue',sans-serif; font-size:24px; text-transform:uppercase; margin-bottom:4px; }
+  .wk p { font-size:13.5px; color:var(--muted); }
+  .wk .sb-rij { display:flex; gap:8px; margin-top:10px; }
+  .wk input { flex:1; min-width:0; background:var(--black); border:1px solid rgba(255,255,255,.18); color:var(--white); border-radius:6px; padding:11px 12px; font-family:inherit; font-size:15px; }
+  .wk .knop { width:auto; font-size:16px; padding:9px 14px 7px; }
+  .wk-plaatsen button { display:block; width:100%; text-align:left; background:none; border:0; border-top:1px solid var(--border); color:var(--white); font-family:inherit; font-size:14px; padding:9px 2px; cursor:pointer; }
+  .wk-plaatsen small { color:var(--muted); }
   /* Gastmodus: de gratis bandentool zonder account (09-10-2026) */
   .gast-kop { display:flex; align-items:center; justify-content:space-between; padding:8px 2px 18px; }
   .gast-kop button { background:none; border:1px solid rgba(255,255,255,.25); color:var(--white); font-family:inherit; font-size:13px; padding:7px 12px; border-radius:6px; cursor:pointer; }
@@ -743,8 +759,15 @@ function bandenKaart(d) {
       <div class="sb-kou">Het wordt 6&deg;. Pomp je binnen, pomp dan iets harder. Buiten zit je dan precies goed.</div></div>
     <div class="voor">${SLOT}<b>Weer, kou en je fietsen meegerekend</b><span>Nat wegdek, kasseien of een koude ochtend: de slimme versie past je spanning zelf aan.</span>
       ${kanLid ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met de MKC-app</button>' : BINNENKORT}</div></div>`;
-  const vtab = btLees().tab === 'kleding' ? 'kleding' : 'banden';
-  const vtabs = `<div class="vr-tabs"><button type="button" data-kl="vrijtab" data-w="banden" class="${vtab === 'banden' ? 'aan' : ''}">Banden</button><button type="button" data-kl="vrijtab" data-w="kleding" class="${vtab === 'kleding' ? 'aan' : ''}">Kleding ${SLOT.replace('<svg', '<svg class="tab-slot"')}</button></div>`;
+  const vtab = ['kleding', 'voeding'].includes(btLees().tab) ? btLees().tab : 'banden';
+  const vtabs = `<div class="vr-tabs"><button type="button" data-kl="vrijtab" data-w="banden" class="${vtab === 'banden' ? 'aan' : ''}">Banden</button><button type="button" data-kl="vrijtab" data-w="kleding" class="${vtab === 'kleding' ? 'aan' : ''}">Kleding ${SLOT.replace('<svg', '<svg class="tab-slot"')}</button><button type="button" data-kl="vrijtab" data-w="voeding" class="${vtab === 'voeding' ? 'aan' : ''}">Voeding ${SLOT.replace('<svg', '<svg class="tab-slot"')}</button></div>`;
+  if (vtab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag oranje">Lid</span>
+    <div class="label">Vandaag rijden</div><h2>Wat neem je mee?</h2>${vtabs}
+    <div class="bt-slot"><div class="achter">
+      <div class="rv-kop"><div><b>70</b><span>gram per uur</span></div><div><b>3</b><span>bidons</span></div></div>
+      <ul class="kl-lijst"><li>2 bidons sportdrank</li><li>2 repen</li><li>1 gel voor het laatste uur</li><li>Onderweg 1 bidon bijvullen</li></ul></div>
+    <div class="voor">${SLOT}<b>Nooit meer de man met de hamer</b><span>Voor jouw rit precies hoeveel koolhydraten en bidons je meeneemt, afgestemd op hoe lang en hoe hard je rijdt en hoe warm het wordt. Met Michels eigen regels.</span>
+      ${kanLidNu(d) ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met de MKC-app</button>' : BINNENKORT}</div></div></div></div>`;
   if (vtab === 'kleding') return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag oranje">Lid</span>
     <div class="label">Vandaag rijden</div><h2>Wat trek je aan?</h2>${vtabs}
     <div class="bt-slot"><div class="achter">
@@ -925,8 +948,8 @@ function slimBandenKaart() {
     p.fietsen = [{ id: 'f' + Date.now().toString(36), naam: v.type === 'gravel' ? 'Gravelbike' : 'Racefiets', type: v.type, breedte: Number(v.breedte), tubeless: !!v.tubeless, hookless: false }];
     SB.bewerk = true;
   }
-  const tab = sbKeuze().tab === 'kleding' ? 'kleding' : 'banden';
-  const kop = `<span class="tag oranje">Lid</span><div class="label">Vandaag rijden</div><h2>${tab === 'kleding' && !SB.bewerk ? 'Wat trek je aan?' : 'Wat pomp je vandaag?'}</h2>`;
+  const tab = ['kleding', 'voeding'].includes(sbKeuze().tab) ? sbKeuze().tab : 'banden';
+  const kop = `<span class="tag oranje">Lid</span><div class="label">Vandaag rijden</div><h2>${SB.bewerk ? 'Wat pomp je vandaag?' : tab === 'kleding' ? 'Wat trek je aan?' : tab === 'voeding' ? 'Wat neem je mee?' : 'Wat pomp je vandaag?'}</h2>`;
   if (SB.bewerk) return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}<p>Zet je fietsen erin. Dan hoef je straks alleen nog te kiezen op welke je rijdt.</p>${sbBewerkHtml()}</div></div>`;
   const f = sbFiets(), uit = sbReken(f), nat = sbNat();
   const chips = p.fietsen.map((x) => `<button type="button" data-sb="fiets" data-id="${x.id}" class="${f && x.id === f.id ? 'aan' : ''}">${esc(x.naam)} <small>${x.breedte}</small></button>`).join('');
@@ -936,12 +959,21 @@ function slimBandenKaart() {
     ${sbGeheugenHtml(uit)}
     ${uit.redenen.length ? `<p class="klein">Meegerekend: ${uit.redenen.join(', ')}.</p>` : ''}
     ${sbRijdHtml(f, uit)}`;
-  const tabs = `<div class="vr-tabs"><button type="button" data-kl="tab" data-w="banden" class="${tab === 'banden' ? 'aan' : ''}">Banden</button><button type="button" data-kl="tab" data-w="kleding" class="${tab === 'kleding' ? 'aan' : ''}">Kleding</button></div>`;
+  const tabs = `<div class="vr-tabs"><button type="button" data-kl="tab" data-w="banden" class="${tab === 'banden' ? 'aan' : ''}">Banden</button><button type="button" data-kl="tab" data-w="kleding" class="${tab === 'kleding' ? 'aan' : ''}">Kleding</button><button type="button" data-kl="tab" data-w="voeding" class="${tab === 'voeding' ? 'aan' : ''}">Voeding</button></div>`;
+  if (tab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
+    ${sbOordeelHtml()}
+    ${sbWeerHtml()}
+    ${tabs}
+    ${voedingTabHtml()}
+    ${uit && SB.weer ? sbRijdHtml(f, uit) : ''}
+    ${pushHtml()}
+    <button type="button" class="sb-link" data-sb="bewerk">Mijn fietsen en gewicht</button></div></div>`;
   if (tab === 'kleding') return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${sbOordeelHtml()}
     ${sbWeerHtml()}
     ${tabs}
     ${kledingTabHtml()}
+    ${windRegelHtml()}
     ${uit && SB.weer ? sbRijdHtml(f, uit) : ''}
     ${pushHtml()}
     <button type="button" class="sb-link" data-sb="bewerk">Mijn fietsen en gewicht</button></div></div>`;
@@ -949,6 +981,7 @@ function slimBandenKaart() {
     ${sbOordeelHtml()}
     ${sbWeerHtml()}
     ${tabs}
+    ${windRegelHtml()}
     <div class="sb-chips">${chips}</div>
     <div class="bt-keuze sb-grond">${grond}</div>
     <div class="bt-keuze"><button type="button" data-sb="nat" data-w="false" class="${!nat ? 'aan' : ''}">Droog</button><button type="button" data-sb="nat" data-w="true" class="${nat ? 'aan' : ''}">Nat wegdek</button></div>
@@ -961,6 +994,9 @@ function slimBandenKaart() {
 }
 
 function sbTeken() {
+  // Alleen de ledenversie hertekenen; bij de gratis versie niets doen (09-10-2026 fix:
+  // pushLaad riep dit voor iedereen aan en verving zo de gratis kaart).
+  const dz = zicht(); if (!dz || !toonSlim(dz)) return;
   const el = document.getElementById('banden'); if (!el) return;
   el.outerHTML = slimBandenKaart();
 }
@@ -983,7 +1019,7 @@ async function sbBewaarProfiel(stil) {
   return false;
 }
 async function sbStart() {
-  await Promise.all([sbLaadLib(), klLaadLib()]);
+  await Promise.all([sbLaadLib(), klLaadLib(), rvLaadLib()]);
   pushLaad();
   sbTeken();
   if (SB.profiel && SB.profiel.plaats && !SB.weer) sbHaalWeer();
@@ -1377,7 +1413,7 @@ function teken() {
       <li><span>3</span>${binnenkortNu() ? 'Zet de app op je beginscherm, dan heb je je bandenspanning altijd bij de hand.' : d.lidOpen ? 'Meer nodig? Als lid krijg je je eigen coach, de slimme bandenspanning en de Core-app doorlopend, voor &euro;19 per maand.' : 'Rechtsonder zit <em>Vraag je coach</em>: je eigen coach die je analyse en je plan kent, straks voor leden.'}</li></ol></div>`
       : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}
     ${analyseBlok(d.analyse)}
-    <div class="groepkop">Vandaag</div><div class="kaarten">${schemaKaart(d)}${bandenKaart(d)}</div>
+    <div class="groepkop">Vandaag</div><div class="kaarten">${schemaKaart(d)}${bandenKaart(d)}${toonSlim(d) ? '' : windKaartHtml()}</div>
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     ${isLid(d) ? '' : binnenkortNu() ? `<div class="groepkop">Meer uit de app</div>${binnenkortPitchHtml()}` : !kanLidNu(d) ? '' : `<div class="groepkop">Meer uit de app</div>${lidPitchHtml()}`}
     ${kaartenHtml(d)}
@@ -1385,7 +1421,7 @@ function teken() {
     <div id="meldinst">${meldInstHtml()}</div>
     ${feedbackHtml()}
     <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
-  if (toonSlim(d)) sbStart(); else btReken();
+  if (toonSlim(d)) sbStart(); else { btReken(); if (WK.plaats && !WK.uren) wkLaad(); else if (WK.plaats) rvLaadLib().then(wkTeken); }
   if (d.schema && !(d.beheer && BEKIJK !== 'klant')) statEens('schema');
   coachBouw();
   if (document.getElementById('ccPaneel').classList.contains('open')) coachLijst();
@@ -1647,6 +1683,69 @@ document.addEventListener('click', (e) => {
 // ---- Kledingadvies en ochtendbericht (07-10-2026, alleen leden) ----
 // Rekent met /lib/kleding.js (Michels eigen indeling uit zondagmail 5), met het
 // weer tijdens je rit (vertrek + duur, per uur van Open-Meteo).
+let RV_LIB = null, WIND_LIB = null;
+async function rvLaadLib() { try { if (!RV_LIB) RV_LIB = await import('/lib/ritvoeding.js'); if (!WIND_LIB) WIND_LIB = await import('/lib/wind.js'); } catch (e) {} }
+const KOMPAS = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>';
+// Het weer tijdens de gekozen rit (vertrek + duur uit de kledingkeuze).
+function ritUren() { const w = SB.weer; if (!w) return []; const k = klKeuze(); return (w.uren || []).slice(Math.floor(k.over), Math.ceil(k.over + k.duur) + 1); }
+function windRegelHtml() {
+  if (!WIND_LIB || !SB.weer) return '';
+  const a = WIND_LIB.windAdvies(ritUren());
+  return a ? `<div class="sb-wind">${KOMPAS}<span>${esc(a.tekst)}</span></div>` : '';
+}
+function voedingTabHtml() {
+  if (!SB.weer) return '<p class="klein" style="margin-top:12px">Kies hierboven je plek, dan reken ik met de temperatuur tijdens je rit.</p>';
+  if (!RV_LIB) return '<p class="klein">Even rekenen...</p>';
+  const k = klKeuze(), uren = SB.weer.uren || [], stuk = ritUren();
+  const temp = stuk.length ? Math.round(stuk.reduce((t, u) => t + u.temp, 0) / stuk.length) : SB.weer.temp;
+  const a = RV_LIB.voedingAdvies({ duur: k.duur, temp, hard: k.hard });
+  const vertrek = [`<option value="0" ${k.over === 0 ? 'selected' : ''}>Nu</option>`].concat(uren.slice(1, 11).map((u, i) => `<option value="${i + 1}" ${k.over === i + 1 ? 'selected' : ''}>${u.uur}:00</option>`)).join('');
+  return `<div class="kl-plan">
+      <div><label for="klOver">Vertrek</label><select id="klOver">${vertrek}</select></div>
+      <div><label for="klDuur">Hoe lang</label><select id="klDuur">${KL_DUUR.map(([v, t]) => `<option value="${v}" ${k.duur === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+    </div>
+    <div class="bt-keuze"><button type="button" data-kl="hard" data-w="0" class="${!k.hard ? 'aan' : ''}">Rustige rit</button><button type="button" data-kl="hard" data-w="1" class="${k.hard ? 'aan' : ''}">Harde training</button></div>
+    <div class="rv-kop"><div><b>${a.gPerUur || '0'}</b><span>gram per uur</span></div><div><b>${a.bidons}</b><span>${a.bidons === 1 ? 'bidon' : 'bidons'}</span></div><div><b>${temp}&deg;</b><span>onderweg</span></div></div>
+    <ul class="kl-lijst">${a.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
+    <div class="kl-tips">${a.tips.map((t) => `<p>${esc(t)}</p>`).join('')}</div>
+    ${windRegelHtml()}`;
+}
+
+// ---- Gratis windadvies: lokkertje voor wie nog geen lid is (09-10-2026) ----
+let WK = { plaats: null, uren: null, zoek: null, fout: '' };
+try { WK.plaats = JSON.parse(localStorage.getItem('mkcWindPlaats') || 'null'); } catch (e) {}
+function windKaartHtml() {
+  const kop = '<div class="label">Gratis windadvies</div><h3>Welke kant start je op?</h3>';
+  if (!WK.plaats) return `<div class="wk" id="windkaart">${kop}<p>Start tegen de wind in, dan heb je hem op de terugweg mee, als je moe bent. Waar fiets je?</p>
+    <div class="sb-rij"><input id="wkZoek" type="text" placeholder="Je woonplaats" autocomplete="address-level2"><button type="button" class="knop" data-wk="zoek">Zoek</button></div>
+    ${WK.zoek ? `<div class="wk-plaatsen">${WK.zoek.map((x, i) => `<button type="button" data-wk="kies" data-i="${i}">${esc(x.naam)} <small>${esc(x.regio || '')} ${esc(x.land || '')}</small></button>`).join('') || '<p class="klein">Niets gevonden.</p>'}</div>` : ''}
+    ${WK.fout ? `<p class="klein" style="color:#ff8a5c">${esc(WK.fout)}</p>` : ''}</div>`;
+  const a = WK.uren && WIND_LIB ? WIND_LIB.windAdvies(WK.uren.slice(0, 3)) : null;
+  return `<div class="wk" id="windkaart">${kop}<p style="margin-bottom:8px">${esc(WK.plaats.naam)}, de komende twee uur &middot; <a href="#" data-wk="anders" style="color:var(--accent)">andere plek</a></p>
+    ${a ? `<div class="sb-wind">${KOMPAS}<span>${esc(a.tekst)}</span></div>` : '<p class="klein">Even het weer ophalen...</p>'}
+    <p class="klein">Met de MKC-app reken ik dit voor je hele rit uit, samen met je bandenspanning, kleding en voeding.</p></div>`;
+}
+function wkTeken() { const el = document.getElementById('windkaart'); if (el) el.outerHTML = windKaartHtml(); }
+async function wkLaad() {
+  if (!WK.plaats) return;
+  await rvLaadLib();
+  try { const j = await (await fetch(API + '?actie=wind&lat=' + WK.plaats.lat + '&lon=' + WK.plaats.lon)).json(); if (j.ok) WK.uren = j.uren; else WK.fout = j.fout || ''; } catch (e) {}
+  wkTeken();
+}
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-wk]'); if (!k) return;
+  e.preventDefault();
+  const a = k.dataset.wk;
+  if (a === 'zoek') {
+    const q = (document.getElementById('wkZoek').value || '').trim(); if (q.length < 2) return;
+    try { const j = await (await fetch(API + '?actie=plaatsvrij&q=' + encodeURIComponent(q))).json(); WK.zoek = j.ok ? j.plaatsen : []; WK.fout = j.ok ? '' : (j.fout || ''); } catch (er) { WK.fout = 'Zoeken lukte niet.'; }
+    return wkTeken();
+  }
+  if (a === 'kies') { WK.plaats = WK.zoek[Number(k.dataset.i)]; WK.zoek = null; try { localStorage.setItem('mkcWindPlaats', JSON.stringify(WK.plaats)); } catch (er) {} wkTeken(); return wkLaad(); }
+  if (a === 'anders') { WK.plaats = null; WK.uren = null; try { localStorage.removeItem('mkcWindPlaats'); } catch (er) {} return wkTeken(); }
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'wkZoek') { e.preventDefault(); const b = document.querySelector('[data-wk="zoek"]'); if (b) b.click(); } });
+
 let KL_LIB = null;
 async function klLaadLib() { if (!KL_LIB) { try { KL_LIB = await import('/lib/kleding.js'); } catch (e) {} } }
 const KL_DUUR = [[1, '1 uur'], [1.5, '1,5 uur'], [2, '2 uur'], [3, '3 uur'], [4, '4 uur'], [5, '5 uur of meer']];
@@ -1780,12 +1879,14 @@ function tekenGast() {
     <p class="gast-intro">Gratis van <b>Michel Kreder</b>, 9 jaar profwielrenner en coach. Vul je gewicht en band in en zie direct wat je pompt.</p>
     <div class="kaarten">${bandenKaart(d)}</div>
     <div id="gastLead">${gastLeadHtml()}</div>
+    ${windKaartHtml()}
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     <div class="gast-meer"><div class="groepkop" style="margin-left:0">Meer in de MKC-app</div>
       <ul>${LID_LIJST.slice(0, 4).map((x) => `<li>${x}</li>`).join('')}</ul>
       <button type="button" class="knop leeg" data-actie="gastlogin">Maak je gratis account</button></div>
     <div class="voet" style="margin-top:26px"><a href="/privacy">Privacy</a> &middot; <a href="/voorwaarden">Voorwaarden</a> &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
   btReken();
+  if (WK.plaats && !WK.uren) wkLaad(); else if (WK.plaats) rvLaadLib().then(wkTeken);
 }
 function gastLeadTeken() { const el = document.getElementById('gastLead'); if (el) el.innerHTML = gastLeadHtml(); }
 document.addEventListener('click', async (e) => {
