@@ -1866,11 +1866,6 @@ document.addEventListener('click', (e) => {
   if (a === 'bewerk') { NAK.bewerk = k.dataset.id; nakTeken(); setTimeout(() => document.getElementById('nakTekst')?.focus(), 30); }
   if (a === 'annuleer') { NAK.bewerk = null; nakTeken(); }
   if (a === 'bewaar') { const t = document.getElementById('nakTekst').value.trim(); if (!t) return; NAK.bewerk = null; k.disabled = true; nakLaad(k.dataset.id, t); }
-  if (a === 'voorbeeld') {
-    k.disabled = true;
-    try { const j = await (await fetch('/api/lid?actie=voorbeeld', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken() }) })).json(); LED.melding = j.ok ? 'Verstuurd: de welkomstmail en de terugkom-mail staan zo in je inbox.' : 'Versturen lukte niet.'; } catch (er) { LED.melding = 'Verbinding mislukt.'; }
-    return ledTeken();
-  }
   if (a === 'wis') { NAK.bewerk = null; nakLaad(k.dataset.id, ''); }
 });
 
@@ -2430,6 +2425,11 @@ document.addEventListener('click', async (e) => {
   if (a === 'zoek') {
     const m = document.getElementById('ledZoek').value.trim(); if (!m) return;
     try { const j = await (await fetch(API + '?actie=leden&t=' + encodeURIComponent(leesToken()) + '&zoek=' + encodeURIComponent(m))).json(); if (j.ok) LED.zoek = j.lid; } catch (er) {}
+    return ledTeken();
+  }
+  if (a === 'voorbeeld') {
+    k.disabled = true;
+    try { const j = await (await fetch('/api/lid?actie=voorbeeld', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken() }) })).json(); LED.melding = j.ok ? 'Verstuurd: de welkomstmail en de terugkom-mail staan zo in je inbox.' : 'Versturen lukte niet.'; } catch (er) { LED.melding = 'Verbinding mislukt.'; }
     return ledTeken();
   }
   if (a === 'wis') {
