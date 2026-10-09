@@ -40,7 +40,7 @@ import { coreVoorEmail, emailVoorCoreToken } from './core.js';
 import { lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar, haalSchema, ledenOverzicht, lidZoek, geefToegang } from './lid.js';
 import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN } from '../lib/schema-app.js';
 import { haalMeldingen, leesMelding } from '../lib/app-melding.js';
-import { tel, overzicht as gebruikOverzicht, CLIENT_GEBEURTENISSEN } from '../lib/stat.js';
+import { tel, overzicht as gebruikOverzicht, CLIENT_GEBEURTENISSEN, GAST_GEBEURTENISSEN } from '../lib/stat.js';
 import { COACH_KENNIS, COACH_REGELS, COACH_TOON } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
 import { kledingAdvies, kledingBijstel, kledingKort } from '../lib/kleding.js';
@@ -253,8 +253,12 @@ async function routeStat(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const body = await leesBody(req);
   const email = leesAppToken(String(body.t || ''));
-  if (!email) return res.status(401).json({ ok: false });
-  if (CLIENT_GEBEURTENISSEN.includes(body.e)) await tel(email, body.e);
+  // Zonder account (gastmodus): alleen de bandentool, met een anoniem id.
+  if (!email) {
+    if (GAST_GEBEURTENISSEN.includes(body.e) && /^[a-z0-9]{8,24}$/.test(String(body.anon || ''))) await tel('anon:' + body.anon, body.e);
+    return res.status(200).json({ ok: true });
+  }
+  if (CLIENT_GEBEURTENISSEN.includes(body.e) || GAST_GEBEURTENISSEN.includes(body.e)) await tel(email, body.e);
   return res.status(200).json({ ok: true });
 }
 async function routeGebruik(req, res) {

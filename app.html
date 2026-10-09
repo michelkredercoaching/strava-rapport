@@ -309,6 +309,21 @@
   .push-aan { color:var(--groen); font-size:14px; font-weight:600; }
   .push-rij .sb-link { margin-top:0; }
   /* Jouw Strava-analyse (inklapbaar) */
+  /* Gastmodus: de gratis bandentool zonder account (09-10-2026) */
+  .gast-kop { display:flex; align-items:center; justify-content:space-between; padding:8px 2px 18px; }
+  .gast-kop button { background:none; border:1px solid rgba(255,255,255,.25); color:var(--white); font-family:inherit; font-size:13px; padding:7px 12px; border-radius:6px; cursor:pointer; }
+  .gast-intro { font-size:14.5px; color:var(--muted); margin:-6px 0 16px; }
+  .gast-intro b { color:var(--white); font-weight:600; }
+  .gast-lead { background:var(--surface); border:1px solid rgba(255,107,26,.45); border-radius:8px; padding:16px; margin-top:12px; }
+  .gast-lead b { display:block; font-size:16px; margin-bottom:4px; }
+  .gast-lead p { font-size:13.5px; color:var(--muted); margin-bottom:12px; }
+  .gast-lead input { width:100%; background:var(--black); border:1px solid rgba(255,255,255,.18); color:var(--white); border-radius:6px; padding:13px 14px; font-family:inherit; font-size:16px; margin-bottom:10px; }
+  .gast-lead .knop { margin-top:2px; }
+  .gast-lead .klein { margin-top:10px; }
+  .gast-meer { margin-top:22px; }
+  .gast-meer ul { list-style:none; margin:10px 0 16px; display:grid; gap:8px; }
+  .gast-meer li { font-size:14px; color:rgba(245,243,239,.85); padding-left:22px; position:relative; }
+  .gast-meer li::before { content:''; position:absolute; left:4px; top:8px; width:8px; height:8px; border-radius:50%; background:var(--accent); }
   /* Beheer: leden (09-10-2026) */
   .led { background:#0d1520; border:1px solid rgba(138,180,255,.45); border-radius:8px; margin-bottom:16px; }
   .led .opv-kop em { font-style:normal; background:rgba(138,180,255,.16); color:#8ab4ff; font-weight:600; font-size:12px; padding:2px 8px; border-radius:10px; margin-left:6px; }
@@ -530,14 +545,15 @@ function loginHtml(melding, soort) {
       <div class="melding ${soort || ''}" id="loginMelding">${melding ? esc(melding) : ''}</div>
     </div>
     <div class="login-bewijs"><img src="/icoon-192.png" alt=""><div><b>Gebouwd door Michel Kreder</b>, 9 jaar profwielrenner en coach.<br><span class="ster">&#9733;&#9733;&#9733;&#9733;&#9733;</span> 4,9 &middot; 1000+ renners getraind</div></div>
+    <p class="login-voet" style="margin-bottom:-14px"><a href="#" data-actie="naargast" style="color:var(--accent)">Eerst zonder account je bandenspanning berekenen</a></p>
     <p class="login-voet">Nieuw hier? Met je mailadres maak je meteen een gratis account. Je krijgt af en toe een tip van Michel per mail, afmelden kan altijd.</p>
   </div>`;
 }
 function toonLogin(melding, soort) {
   $('#app').innerHTML = loginHtml(melding, soort);
   const m = $('#loginMelding');
-  // Vanuit de analyse-uitslag (?mail=): adres alvast invullen.
-  try { const voor = new URLSearchParams(location.search).get('mail'); if (voor && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(voor)) { $('#loginMail').value = voor; if (!melding) { m.className = 'melding'; m.textContent = 'Je mailadres staat er al. Tik op Ga verder, dan krijg je een code.'; } } } catch (e) {}
+  // Vanuit de analyse-uitslag (?mail=) of de gastmodus: adres alvast invullen.
+  try { const voor = new URLSearchParams(location.search).get('mail') || gastMail(); if (voor && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(voor)) { $('#loginMail').value = voor; if (!melding) { m.className = 'melding'; m.textContent = 'Je mailadres staat er al. Tik op Ga verder, dan krijg je een code.'; } } } catch (e) {}
   const naarCode = (email) => {
     $('#loginForm').style.display = 'none'; $('#codeForm').style.display = 'block';
     $('#loginNaar').textContent = email; $('#loginCode').value = ''; $('#loginCode').focus();
@@ -747,10 +763,10 @@ function bandenKaart(d) {
       <div class="bt-keuze">${knop('tubeless', 'false', 'Binnenband')}${knop('tubeless', 'true', 'Tubeless')}</div>
     </div>
     <div id="btUit"></div>
-    <div class="sb-vraag"><label for="btVraag">Vraag het je bandencoach</label>
+    ${d.gast ? `<div class="sb-vraag"><label>Vraag het je bandencoach</label><p class="klein" style="margin:0">Rijd je morgen over kasseien of in de regen? Met een gratis account stel je je vraag aan de bandencoach. <a href="#" data-actie="gastlogin" style="color:var(--accent)">Maak je account</a></p></div>` : `<div class="sb-vraag"><label for="btVraag">Vraag het je bandencoach</label>
       ${gratisOver() === 0 ? '' : `<div class="sb-rij"><input id="btVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen over kasseien" value="${esc(BTV.vraag)}"><button type="button" class="knop" data-btv="vraag" ${BTV.bezig ? 'disabled' : ''}>${BTV.bezig ? '...' : 'Vraag'}</button></div>`}
       ${BTV.antwoord ? `<div class="sb-antwoord">${opmaak(BTV.antwoord)}</div>` : ''}
-      ${gratisTellerHtml('btVraagTeller')}</div>
+      ${gratisTellerHtml('btVraagTeller')}</div>`}
     ${slim}</div></div>`;
 }
 let BT_LIB = null;
@@ -1061,7 +1077,7 @@ async function btReken() {
   const uit = document.getElementById('btUit'); if (!uit) return;
   const v = btWaarden();
   if (!(Number(v.gewicht) >= 40 && Number(v.gewicht) <= 150)) { uit.innerHTML = '<p class="klein">Vul je gewicht in, dan zie je je spanning.</p>'; return; }
-  statEens('banden');
+  if (D && D.gast) { gastStat('banden-gast'); gastLeadTeken(); } else statEens('banden');
   try { BT_LIB = BT_LIB || await import('/lib/bandendruk.js'); } catch (e) { uit.innerHTML = '<p class="klein">Rekenen lukt nu even niet.</p>'; return; }
   const a = BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: v.type, gewicht: v.gewicht, breedte: v.breedte, tubeless: v.tubeless ? 'tubeless' : 'binnenband' }));
   if (!a) { uit.innerHTML = ''; return; }
@@ -1349,6 +1365,7 @@ function kanLidNu(d) { d = d || zicht(); return !!(d && (d.lidOpen || d.beheer) 
 const BINNENKORT = '<span class="binnenkort-label">Binnenkort beschikbaar</span>';
 function isNieuw(d) { return !d.core && !d.analyse && !isLid(d); }
 function teken() {
+  if (D && D.gast) return tekenGast();
   const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `<div class="kop"><div class="logo">MKC<span>.</span></div><button class="uit" data-actie="uitloggen">Uitloggen</button></div>
     ${beheerHtml(d)}${ledenHtml()}${gebruikHtml()}${opvolgHtml()}${nakijkHtml()}
@@ -1386,6 +1403,8 @@ document.addEventListener('click', (e) => {
   if (actie === 'simreset') { SIM = { core: 'echt', analyse: 'echt', lid: 'echt', lancering: 'echt', schema: 'echt' }; simBewaar(); SK.dag = null; teken(); }
   if (actie === 'wordlid') wordLid(k);
   if (actie === 'startcore') startCore(k);
+  if (actie === 'naargast') { e.preventDefault(); return toonGast(); }
+  if (actie === 'gastlogin' || (actie === 'naarlid' && D && D.gast)) { e.preventDefault(); const m = gastMail(); return toonLogin(); }
   if (actie === 'naarlid') {
     e.preventDefault();
     const pan = document.getElementById('ccPaneel'); if (pan && pan.classList.contains('open')) coachOpen(false);
@@ -1726,6 +1745,68 @@ document.addEventListener('click', (e) => {
   if (k.dataset.geb === 'ververs') { GEB.data = null; gebTeken(); gebLaad(); }
 });
 
+// ---- Gastmodus (09-10-2026) ----
+// Wie de app opent zonder account (of via /banden), krijgt meteen de gratis
+// bandentool: invullen, direct je spanning. Daaronder: uitkomst mailen (lead,
+// zelfde route als de website), app op je beginscherm, en wat er nog meer in zit.
+const GAST_LANCERING = 1792144800000;
+function gastAnon() { try { let a = localStorage.getItem('mkcAnon'); if (!a) { a = Math.random().toString(36).slice(2, 12) + Date.now().toString(36); localStorage.setItem('mkcAnon', a); } return a; } catch (e) { return ''; } }
+function gastStat(e) {
+  try { const k = 'mkcStat:' + e + ':' + new Date().toISOString().slice(0, 10); if (localStorage.getItem(k)) return; localStorage.setItem(k, '1'); } catch (er) {}
+  try { fetch(API + '?actie=stat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ e, anon: gastAnon() }), keepalive: true }); } catch (er) {}
+}
+function gastMail() { try { return localStorage.getItem('mkcGastMail') || ''; } catch (e) { return ''; } }
+let GAST = { verstuurd: false, bezig: false, fout: '' };
+function toonGast() {
+  const na = Date.now() >= GAST_LANCERING;
+  D = { gast: true, beheer: false, naam: '', email: '', voorLancering: !na, lidOpen: na, lid: { status: 'geen' }, bandenSlim: false, core: null, analyse: null };
+  tekenGast();
+}
+function gastLeadHtml() {
+  const v = btWaarden();
+  if (!(Number(v.gewicht) >= 40 && Number(v.gewicht) <= 150)) return '';
+  if (GAST.verstuurd) return `<div class="gast-lead"><b>Check je mail</b><p>Je uitkomst komt eraan, als pdf om bij je pomp te hangen. Zie je hem niet binnen een paar minuten, kijk dan even in je spam.</p>
+    <button type="button" class="knop" data-actie="gastlogin">Maak je gratis account</button><p class="klein">Dan bewaart de app je fietsen en zie je je spanning op elk toestel.</p></div>`;
+  return `<div class="gast-lead"><b>Stuur me mijn uitkomst als pdf</b><p>Handig om bij je pomp te hangen. Je krijgt hem meteen in je mail.</p>
+    <input type="text" id="gastNaam" placeholder="Je voornaam (mag je overslaan)" autocomplete="given-name">
+    <input type="email" id="gastMail" placeholder="Je e-mailadres" autocomplete="email" value="${esc(gastMail())}">
+    <button type="button" class="knop" data-actie="gastlead" ${GAST.bezig ? 'disabled' : ''}>${GAST.bezig ? 'Even versturen...' : 'Stuur mijn uitkomst'}</button>
+    ${GAST.fout ? `<p class="klein" style="color:#ff8a5c">${esc(GAST.fout)}</p>` : ''}
+    <p class="klein">Je krijgt ook af en toe een mail met tips van Michel. Afmelden kan onderaan elke mail. <a href="/privacy" target="_blank" rel="noopener" style="color:var(--accent)">Privacy</a></p></div>`;
+}
+function tekenGast() {
+  const d = D;
+  $('#app').innerHTML = `<div class="gast-kop"><div class="logo">MKC<span>.</span></div><button type="button" data-actie="gastlogin">Inloggen</button></div>
+    <p class="gast-intro">Gratis van <b>Michel Kreder</b>, 9 jaar profwielrenner en coach. Vul je gewicht en band in en zie direct wat je pompt.</p>
+    <div class="kaarten">${bandenKaart(d)}</div>
+    <div id="gastLead">${gastLeadHtml()}</div>
+    ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
+    <div class="gast-meer"><div class="groepkop" style="margin-left:0">Meer in de MKC-app</div>
+      <ul>${LID_LIJST.slice(0, 4).map((x) => `<li>${x}</li>`).join('')}</ul>
+      <button type="button" class="knop leeg" data-actie="gastlogin">Maak je gratis account</button></div>
+    <div class="voet" style="margin-top:26px"><a href="/privacy">Privacy</a> &middot; <a href="/voorwaarden">Voorwaarden</a> &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
+  btReken();
+}
+function gastLeadTeken() { const el = document.getElementById('gastLead'); if (el) el.innerHTML = gastLeadHtml(); }
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-actie="gastlead"]'); if (!k) return;
+  const email = (document.getElementById('gastMail').value || '').trim();
+  const naam = (document.getElementById('gastNaam').value || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { GAST.fout = 'Vul een geldig e-mailadres in.'; return gastLeadTeken(); }
+  const v = btWaarden();
+  GAST.bezig = true; GAST.fout = ''; gastLeadTeken();
+  try {
+    const r = await fetch('/api/keuzehulp-inschrijving', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      route: 'bandenspanning', email, naam, bandtype: v.type === 'gravel' ? 'gravel' : 'weg', gewicht: Math.round(Number(v.gewicht)), breedte: Number(v.breedte),
+      tubeless: String(v.tubeless) === 'true' ? 'tubeless' : 'binnenband', nuVoor: '', nuAchter: '', _pagina: location.href }) });
+    const j = await r.json();
+    if (!r.ok || !j.ok) throw new Error(j.fout || 'mislukt');
+    try { localStorage.setItem('mkcGastMail', email); } catch (er) {}
+    GAST.verstuurd = true; gastStat('banden-lead');
+  } catch (er) { GAST.fout = 'Versturen lukte niet. Probeer het zo nog eens.'; }
+  GAST.bezig = false; gastLeadTeken();
+});
+
 // ---- Beheer: leden (09-10-2026) ----
 // Tellers, recente leden, zoeken op mailadres en zelf toegang geven of
 // intrekken (coaching, schema, gratis maand). Plus de feedback uit de app.
@@ -1978,7 +2059,7 @@ document.addEventListener('change', async (e) => {
 
 async function laadOverzicht() {
   const t = leesToken();
-  if (!t) return toonLogin();
+  if (!t) { const p = new URLSearchParams(location.search); return (p.get('mail') || p.get('login')) ? toonLogin() : toonGast(); }
   zetLoginInApp(t);
   try {
     const r = await fetch(API + '?actie=overzicht&t=' + encodeURIComponent(t));

@@ -37,6 +37,10 @@
     {
       "source": "/app",
       "destination": "/app.html"
+    },
+    {
+      "source": "/banden",
+      "destination": "/app.html"
     }
   ],
   "crons": [
