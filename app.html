@@ -309,6 +309,32 @@
   .push-aan { color:var(--groen); font-size:14px; font-weight:600; }
   .push-rij .sb-link { margin-top:0; }
   /* Jouw Strava-analyse (inklapbaar) */
+  /* Groepsrit (09-10-2026) */
+  .gr { background:linear-gradient(160deg, rgba(255,107,26,.13), rgba(255,107,26,.02) 60%), var(--surface); border:1px solid rgba(255,107,26,.45); border-radius:8px; padding:16px; margin:14px 0 4px; }
+  .gr .label { margin-bottom:6px; }
+  .gr h3 { font-family:'Bebas Neue',sans-serif; font-size:28px; text-transform:uppercase; line-height:1; margin-bottom:6px; }
+  .gr .gr-wanneer { font-size:14.5px; color:var(--white); font-weight:600; }
+  .gr .gr-door { font-size:13px; color:var(--muted); margin-top:2px; }
+  .gr .gr-weer { display:flex; flex-wrap:wrap; gap:6px 14px; margin:12px 0 2px; font-size:13.5px; color:rgba(245,243,239,.9); }
+  .gr .gr-weer b { color:var(--white); }
+  .gr .gr-blok { border-top:1px solid var(--border); margin-top:12px; padding-top:12px; }
+  .gr .gr-blok h4 { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin-bottom:6px; }
+  .gr .gr-blok p { font-size:13.5px; color:var(--muted); line-height:1.5; }
+  .gr .gr-slot { display:flex; gap:10px; align-items:flex-start; }
+  .gr .gr-slot svg { flex:0 0 18px; width:18px; height:18px; color:var(--accent); margin-top:2px; }
+  .gr .gr-kijk { font-size:12.5px; color:var(--muted); margin-top:12px; }
+  .gr .bt-uit { margin-top:6px; }
+  .gr-maak { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px; margin-top:12px; }
+  .gr-maak h3 { font-family:'Bebas Neue',sans-serif; font-size:24px; text-transform:uppercase; margin-bottom:4px; }
+  .gr-maak p { font-size:13.5px; color:var(--muted); }
+  .gr-maak label { display:block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:12px 0 5px; }
+  .gr-maak input, .gr-maak select { width:100%; background:var(--black); border:1px solid rgba(255,255,255,.18); color:var(--white); border-radius:6px; padding:10px 12px; font-family:inherit; font-size:16px; }
+  .gr-maak .rij2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .gr-maak .rij2 label { margin-top:12px; }
+  .gr-maak .knop { margin-top:14px; }
+  .gr-link { background:var(--black); border:1px dashed rgba(255,107,26,.5); border-radius:6px; padding:10px 12px; font-size:14px; word-break:break-all; margin-top:10px; color:var(--white); }
+  .gr-plan-knop { display:block; width:100%; margin-top:10px; background:none; border:1px solid var(--border); color:var(--white); border-radius:6px; padding:11px; font-family:inherit; font-size:14px; cursor:pointer; }
+  .gr-plan-knop b { color:var(--accent); }
   /* Ritkaart */
   .rk-knop { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:12px; background:transparent !important; border:1.5px solid var(--accent) !important; color:var(--accent) !important; }
   .rk-knop svg { stroke:var(--accent); }
@@ -1000,6 +1026,7 @@ function sbTeken() {
   // Alleen de ledenversie hertekenen; bij de gratis versie niets doen (09-10-2026 fix:
   // pushLaad riep dit voor iedereen aan en verving zo de gratis kaart).
   const dz = zicht(); if (!dz || !toonSlim(dz)) return;
+  if (GR.data) grTeken();
   const el = document.getElementById('banden'); if (!el) return;
   el.outerHTML = slimBandenKaart();
 }
@@ -1125,6 +1152,7 @@ async function btReken() {
   const voor = Math.max(min, a.voor - eraf), achter = Math.max(min, a.achter - eraf);
   uit.innerHTML = `<div class="bt-uit"><div><span>Voor</span><b>${BT_LIB.nl(voor)}</b><small>bar &middot; ${BT_LIB.psi(voor)} psi</small></div><div><span>Achter</span><b>${BT_LIB.nl(achter)}</b><small>bar &middot; ${BT_LIB.psi(achter)} psi</small></div></div>
     <p class="klein">${achter > BT_LIB.HOOKLESS_MAX ? 'Hookless velg? Ga nooit boven de 5,0 bar.' : ''}</p>${RK_KNOP}`;
+  if (GR.data) grTeken();
 }
 document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-bt]'); if (!k) return;
@@ -1409,6 +1437,7 @@ function teken() {
   $('#app').innerHTML = `<div class="kop"><div class="logo">MKC<span>.</span></div><button class="uit" data-actie="uitloggen">Uitloggen</button></div>
     ${beheerHtml(d)}${ledenHtml()}${gebruikHtml()}${opvolgHtml()}${nakijkHtml()}
     <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
+    <div id="groepsrit">${grHtml()}</div>
     ${meldingenHtml(d)}<div id="meldvraag">${meldVraagHtml()}</div><div id="startlijst">${startlijstHtml(d)}</div>
     ${isNieuw(d) ? `<div class="welkom"><b>Zo werkt je app</b>
       <ol><li><span>1</span>Vul hieronder je gewicht en band in: je ziet meteen wat je pompt. Gratis, voor elke rit.</li>
@@ -1417,6 +1446,7 @@ function teken() {
       : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}
     ${analyseBlok(d.analyse)}
     <div class="groepkop">Vandaag</div><div class="kaarten">${schemaKaart(d)}${bandenKaart(d)}${toonSlim(d) ? '' : windKaartHtml()}</div>
+    ${grPlanKnop()}<div id="grmaak">${grMaakHtml()}</div>
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     ${isLid(d) ? '' : binnenkortNu() ? `<div class="groepkop">Meer uit de app</div>${binnenkortPitchHtml()}` : !kanLidNu(d) ? '' : `<div class="groepkop">Meer uit de app</div>${lidPitchHtml()}`}
     ${kaartenHtml(d)}
@@ -1426,6 +1456,7 @@ function teken() {
     <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
   if (toonSlim(d)) sbStart(); else { btReken(); if (WK.plaats && !WK.uren) wkLaad(); else if (WK.plaats) rvLaadLib().then(wkTeken); }
   if (d.schema && !(d.beheer && BEKIJK !== 'klant')) statEens('schema');
+  if (GR.id && !GR.data) grLaad();
   coachBouw();
   if (document.getElementById('ccPaneel').classList.contains('open')) coachLijst();
 }
@@ -1847,6 +1878,150 @@ document.addEventListener('click', (e) => {
   if (k.dataset.geb === 'ververs') { GEB.data = null; gebTeken(); gebLaad(); }
 });
 
+// ---- Groepsrit-link (09-10-2026) ----
+// Plan een rit, deel de link. Wie hem opent ziet het weer en het windadvies voor
+// precies die rit en rekent zijn eigen bandenspanning uit. Leden zien ook kleding
+// en voeding. Geen deelnemerslijst: alleen hoeveel renners meekeken.
+const GR_PAD = (location.pathname.match(/^\/rit\/([A-Za-z0-9]{8})/) || [])[1] || null;
+let GR = { id: GR_PAD, data: null, fout: '', laden: false, maak: null, gemaakt: null };
+if (GR_PAD) { try { localStorage.setItem('mkcGroepsrit', GR_PAD); } catch (e) {} }
+else { try { GR.id = localStorage.getItem('mkcGroepsrit') || null; } catch (e) {} }
+function grDag(ms) { return new Date(ms).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Amsterdam' }); }
+function grTijd(ms) { return new Date(ms).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' }); }
+async function grLaad() {
+  if (!GR.id || GR.laden) return;
+  GR.laden = true;
+  await Promise.all([rvLaadLib(), klLaadLib(), sbLaadLib()]);
+  try {
+    const t = D && !D.gast ? leesToken() : '';
+    const r = await fetch(API + '?actie=groepsrit&id=' + GR.id + '&k=' + encodeURIComponent(gastAnon()) + (t ? '&t=' + encodeURIComponent(t) : ''));
+    const j = await r.json();
+    if (j.ok) {
+      GR.data = j;
+      // Na de rit (plus een dag) niet meer bovenaan tonen, behalve via de link zelf.
+      if (!GR_PAD && j.rit.start + j.rit.duur * 3600e3 + 864e5 < Date.now()) { GR.data = null; try { localStorage.removeItem('mkcGroepsrit'); } catch (e) {} }
+      if (GR_PAD && !GR.geteld) { GR.geteld = true; if (D && D.gast) gastStat('groepsrit'); else statEens('groepsrit'); }
+    } else { GR.fout = j.fout || ''; if (!GR_PAD) { GR.id = null; try { localStorage.removeItem('mkcGroepsrit'); } catch (e) {} } }
+  } catch (e) { GR.fout = 'De rit laden lukte niet.'; }
+  GR.laden = false; grTeken();
+}
+function grTeken() { const el = document.getElementById('groepsrit'); if (el) el.innerHTML = grHtml(); }
+function grBanden(uren) {
+  if (!BT_LIB) return null;
+  const nat = (uren || []).slice(0, 2).some((u) => u.regen >= 0.3);
+  const d = zicht() || {};
+  let f = null, gewicht = null;
+  if (D && !D.gast && toonSlim(d) && SB.profiel && SB.profiel.gewicht) { f = sbFiets(); gewicht = SB.profiel.gewicht; }
+  if (!f) { const v = btWaarden(); if (Number(v.gewicht) >= 40) { f = { type: v.type, breedte: Number(v.breedte), tubeless: !!v.tubeless && String(v.tubeless) !== 'false', naam: v.type === 'gravel' ? 'Gravel' : 'Racefiets' }; gewicht = Number(v.gewicht); } }
+  if (!f || !gewicht) return null;
+  const a = BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: f.type, gewicht, breedte: f.breedte, tubeless: f.tubeless ? 'tubeless' : 'binnenband' }));
+  if (!a) return null;
+  const min = f.type === 'gravel' ? 1.3 : 2.5, eraf = nat ? 0.3 : 0;
+  return { voor: Math.max(min, a.voor - eraf), achter: Math.max(min, a.achter - eraf), nat, fiets: f.naam + ' ' + f.breedte + ' mm' };
+}
+function grHtml() {
+  if (!GR.id) return '';
+  if (!GR.data) return GR_PAD ? `<div class="gr"><div class="label">Groepsrit</div><p class="klein">${GR.fout ? esc(GR.fout) : 'Even de rit ophalen...'}</p></div>` : '';
+  const { rit, uren, kijkers } = GR.data, d = zicht() || {};
+  const eind = rit.start + rit.duur * 3600e3, voorbij = eind < Date.now();
+  const lid = D && !D.gast && toonSlim(d);
+  let weer = '';
+  if (uren && uren.length) {
+    const tl = uren.map((u) => u.temp), regen = Math.round(uren.reduce((t, u) => t + u.regen, 0) * 10) / 10;
+    const tMin = Math.min(...tl), tMax = Math.max(...tl);
+    weer = `<div class="gr-weer"><span><b>${tMin === tMax ? tMin : tMin + ' tot ' + tMax}&deg;</b></span><span>wind tot <b>${Math.max(...uren.map((u) => u.wind))} km/u</b></span><span>${regen >= 0.5 ? '<b>kans op regen</b> (' + String(regen).replace('.', ',') + ' mm)' : 'droog'}</span></div>`;
+  }
+  const wind = uren && WIND_LIB ? WIND_LIB.windAdvies(uren) : null;
+  const b = uren ? grBanden(uren) : null;
+  const bandenBlok = `<div class="gr-blok"><h4>Jouw banden${b ? ' &middot; ' + esc(b.fiets) : ''}</h4>${b ? `<div class="bt-uit"><div><span>Voor</span><b>${BT_LIB.nl(b.voor)}</b><small>bar</small></div><div><span>Achter</span><b>${BT_LIB.nl(b.achter)}</b><small>bar</small></div></div>${b.nat ? '<p class="klein">Nat wegdek bij de start, daarom 0,3 bar minder.</p>' : ''}` : `<p>${D && D.gast ? 'Vul hieronder je gewicht en band in, dan zie je hier je spanning voor deze rit.' : 'Vul je gewicht en band in bij Vandaag rijden, dan zie je hier je spanning voor deze rit.'}</p>`}</div>`;
+  let lidBlok = '';
+  if (uren && uren.length && lid && KL_LIB && RV_LIB) {
+    const tl = uren.map((u) => u.temp), temp = Math.round(tl.reduce((t, x) => t + x, 0) / tl.length);
+    const kl = KL_LIB.kledingAdvies({ temp: Math.min(...tl), start: tl[0], wind: Math.max(...uren.map((u) => u.wind)), regen: uren.reduce((t, u) => t + u.regen, 0) >= 0.5, intensiteit: rit.tempo === 'hard' ? 'hard' : 'rustig', kouType: (SB.profiel && SB.profiel.kouType) || 'normaal', bijstel: KL_LIB.kledingBijstel(SB.ritten || []), duurUur: rit.duur });
+    const rv = RV_LIB.voedingAdvies({ duur: rit.duur, temp, hard: rit.tempo === 'hard' });
+    lidBlok = (kl ? `<div class="gr-blok"><h4>Wat trek je aan &middot; voelt als ${kl.gevoel}&deg;</h4><ul class="kl-lijst">${kl.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${kl.tips && kl.tips[0] ? `<p class="klein">${esc(kl.tips[0])}</p>` : ''}</div>` : '')
+      + `<div class="gr-blok"><h4>Wat neem je mee &middot; ${esc(rv.kort)}</h4><ul class="kl-lijst">${rv.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+  } else if (uren && uren.length && !lid) {
+    lidBlok = `<div class="gr-blok"><div class="gr-slot">${SLOT}<div><b>Wat trek je aan en wat neem je mee?</b><p>Leden zien hier hun kleding en voeding voor precies deze rit: het weer van start tot finish, hoe lang en hoe hard jullie rijden.</p>
+      ${kanLidNu(d) ? '<button type="button" class="knop leeg" data-actie="naarlid" style="margin-top:10px">Bekijk de MKC-app</button>' : ''}</div></div></div>`;
+  }
+  return `<div class="gr"><div class="label">Groepsrit${rit.eigen ? ' &middot; jouw rit' : ''}</div><h3>${esc(rit.naam)}</h3>
+    <div class="gr-wanneer">${esc(grDag(rit.start).replace(/^./, (c) => c.toUpperCase()))} &middot; ${grTijd(rit.start)} tot ${grTijd(eind)}</div>
+    <div class="gr-door">Vanuit ${esc(rit.plaats.naam || 'de start')}${rit.door ? ' &middot; uitnodiging van ' + esc(rit.door) : ''} &middot; ${rit.tempo === 'hard' ? 'stevig tempo' : 'rustig tempo'}</div>
+    ${voorbij ? '<p class="klein" style="margin-top:10px">Deze rit is al gereden.</p>' : !uren ? '<p class="klein" style="margin-top:10px">Het weer voor deze rit verschijnt zodra hij binnen twee weken valt.</p>' : weer
+      + (wind ? `<div class="sb-wind">${KOMPAS}<span>${esc(wind.tekst)}</span></div>` : '') + bandenBlok + lidBlok}
+    ${kijkers >= 2 ? `<div class="gr-kijk">${kijkers} renners keken al naar deze rit</div>` : ''}
+    ${voorbij ? '' : '<button type="button" class="knop" data-gr="deel" style="margin-top:14px">Deel deze rit</button>'}</div>`;
+}
+// Plannen: iedereen met een (gratis) account.
+function grDagOpties() { const l = []; for (let i = 0; i < 14; i++) { const t = new Date(Date.now() + i * 864e5); const w = t.toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }); l.push([w, i === 0 ? 'Vandaag' : i === 1 ? 'Morgen' : t.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Europe/Amsterdam' })]); } return l; }
+function grPlanKnop() { return '<button type="button" class="gr-plan-knop" data-gr="open">Rij je samen? <b>Plan een groepsrit en deel de link</b></button>'; }
+function grMaakHtml() {
+  const m = GR.maak; if (!m) return '';
+  if (GR.gemaakt) return `<div class="gr-maak"><h3>Je link staat klaar</h3><p>Stuur hem in je groepsapp. Iedereen ziet het weer, de wind en zijn eigen bandenspanning voor jullie rit.</p>
+    <div class="gr-link">${esc(GR.gemaakt.url)}</div>
+    <button type="button" class="knop" data-gr="deelnieuw">Deel de link</button>
+    <button type="button" class="gr-plan-knop" data-gr="bekijk">Bekijk de rit</button>
+    <button type="button" class="sb-link" data-gr="dicht">Sluiten</button></div>`;
+  const pl = m.plaats;
+  return `<div class="gr-maak"><h3>Plan een groepsrit</h3><p>Je krijgt een link voor je groepsapp. Geen aanmelden of namen, gewoon het weer en het advies voor jullie rit.</p>
+    <label for="grNaam">Naam van de rit</label><input id="grNaam" maxlength="40" placeholder="Zondagrit" value="${esc(m.naam || '')}">
+    <label for="grDoor">Je voornaam</label><input id="grDoor" maxlength="30" value="${esc(m.door || '')}">
+    <div class="rij2"><div><label for="grDatum">Dag</label><select id="grDatum">${grDagOpties().map(([w, t]) => `<option value="${w}" ${m.datum === w ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+      <div><label for="grTijd">Vertrek</label><input id="grTijd" type="time" value="${esc(m.tijd || '09:00')}"></div></div>
+    <div class="rij2"><div><label for="grDuur">Hoe lang</label><select id="grDuur">${KL_DUUR.map(([v, t]) => `<option value="${v}" ${Number(m.duur || 3) === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
+      <div><label for="grTempo">Tempo</label><select id="grTempo"><option value="rustig">Rustig</option><option value="hard" ${m.tempo === 'hard' ? 'selected' : ''}>Stevig</option></select></div></div>
+    <label>Startplaats</label>
+    ${pl ? `<div class="gr-link" style="border-style:solid">${esc(pl.naam)} <a href="#" data-gr="plekweg" style="color:var(--accent);margin-left:6px">andere plek</a></div>`
+      : `<div class="sb-rij"><input id="grZoek" placeholder="Plaats van vertrek"><button type="button" class="knop leeg" data-gr="zoek" style="width:auto;margin:0">Zoek</button></div>
+        ${m.zoek ? `<div class="wk-plaatsen">${m.zoek.map((x, i) => `<button type="button" data-gr="kies" data-i="${i}">${esc(x.naam)} <small>${esc(x.regio || '')} ${esc(x.land || '')}</small></button>`).join('') || '<p class="klein">Niets gevonden.</p>'}</div>` : ''}`}
+    ${m.fout ? `<p class="klein" style="color:#ff8a5c;margin-top:8px">${esc(m.fout)}</p>` : ''}
+    <button type="button" class="knop" data-gr="maak" ${m.bezig ? 'disabled' : ''}>${m.bezig ? 'Even maken...' : 'Maak de link'}</button>
+    <button type="button" class="sb-link" data-gr="dicht">Annuleren</button></div>`;
+}
+function grMaakTeken() { const el = document.getElementById('grmaak'); if (el) el.innerHTML = grMaakHtml(); }
+function grLeesVelden() { const m = GR.maak; if (!m) return; const v = (id) => { const el = document.getElementById(id); return el ? el.value : undefined; }; ['naam:grNaam', 'door:grDoor', 'datum:grDatum', 'tijd:grTijd', 'duur:grDuur', 'tempo:grTempo'].forEach((x) => { const [k, id] = x.split(':'); const w = v(id); if (w !== undefined) m[k] = w; }); }
+async function grDeel(url, naam) {
+  const tekst = `${naam}: het weer, de wind en je bandenspanning voor onze rit`;
+  if (navigator.share) { try { await navigator.share({ title: naam, text: tekst, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(url); alert('Link gekopieerd. Plak hem in je groepsapp.'); } catch (e) { prompt('Kopieer de link:', url); }
+}
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-gr]'); if (!k) return;
+  e.preventDefault();
+  const a = k.dataset.gr;
+  if (a === 'deel' && GR.data) return grDeel(location.origin + '/rit/' + GR.data.rit.id, GR.data.rit.naam);
+  if (a === 'open') {
+    if (!D || D.gast) { const b = document.querySelector('[data-actie="gastlogin"]'); if (b) b.click(); return; }
+    const vn = String((D && D.naam) || '').trim().split(' ')[0];
+    GR.maak = { door: vn, datum: new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }), tijd: '09:00', duur: 3, tempo: 'rustig', plaats: (SB.profiel && SB.profiel.plaats) || WK.plaats || null };
+    GR.gemaakt = null; grMaakTeken(); const el = document.getElementById('grmaak'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return;
+  }
+  if (a === 'dicht') { GR.maak = null; GR.gemaakt = null; return grMaakTeken(); }
+  if (a === 'plekweg') { grLeesVelden(); GR.maak.plaats = null; return grMaakTeken(); }
+  if (a === 'zoek') {
+    grLeesVelden(); const q = (document.getElementById('grZoek').value || '').trim(); if (q.length < 2) return;
+    try { const j = await (await fetch(API + '?actie=plaatsvrij&q=' + encodeURIComponent(q))).json(); GR.maak.zoek = j.ok ? j.plaatsen : []; } catch (er) { GR.maak.zoek = []; }
+    return grMaakTeken();
+  }
+  if (a === 'kies') { grLeesVelden(); GR.maak.plaats = GR.maak.zoek[Number(k.dataset.i)]; GR.maak.zoek = null; return grMaakTeken(); }
+  if (a === 'maak') {
+    grLeesVelden(); const m = GR.maak;
+    if (!m.plaats) { m.fout = 'Kies een startplaats.'; return grMaakTeken(); }
+    m.bezig = true; m.fout = ''; grMaakTeken();
+    try {
+      const r = await fetch(API + '?actie=groepsrit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: m.naam, door: m.door, datum: m.datum, tijd: m.tijd, duur: Number(m.duur), tempo: m.tempo, plaats: m.plaats }) });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.fout || 'Maken lukte niet.');
+      GR.gemaakt = { id: j.id, url: j.url, naam: m.naam || 'Groepsrit' };
+    } catch (er) { m.fout = er.message || 'Maken lukte niet.'; }
+    m.bezig = false; return grMaakTeken();
+  }
+  if (a === 'deelnieuw' && GR.gemaakt) return grDeel(GR.gemaakt.url, GR.gemaakt.naam);
+  if (a === 'bekijk' && GR.gemaakt) { location.href = '/rit/' + GR.gemaakt.id; }
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'grZoek') { e.preventDefault(); const b = document.querySelector('[data-gr="zoek"]'); if (b) b.click(); } });
+
 // ---- Ritkaart om te delen (09-10-2026) ----
 // Een story-plaatje (1080x1920) van je rit: banden, en voor leden ook kleding,
 // voeding en wind. Delen via de deelknop van je telefoon (Instagram, WhatsApp,
@@ -1977,16 +2152,19 @@ function gastLeadHtml() {
 function tekenGast() {
   const d = D;
   $('#app').innerHTML = `<div class="gast-kop"><div class="logo">MKC<span>.</span></div><button type="button" data-actie="gastlogin">Inloggen</button></div>
-    <p class="gast-intro">Gratis van <b>Michel Kreder</b>, 9 jaar profwielrenner en coach. Vul je gewicht en band in en zie direct wat je pompt.</p>
+    <p class="gast-intro">Gratis van <b>Michel Kreder</b>, 9 jaar profwielrenner en coach. ${GR_PAD ? 'Je bent uitgenodigd voor een rit. Hieronder zie je het weer, de wind en je eigen bandenspanning.' : 'Vul je gewicht en band in en zie direct wat je pompt.'}</p>
+    <div id="groepsrit">${grHtml()}</div>
     <div class="kaarten">${bandenKaart(d)}</div>
     <div id="gastLead">${gastLeadHtml()}</div>
     ${windKaartHtml()}
+    ${grPlanKnop()}
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     <div class="gast-meer"><div class="groepkop" style="margin-left:0">Meer in de MKC-app</div>
       <ul>${LID_LIJST.slice(0, 4).map((x) => `<li>${x}</li>`).join('')}</ul>
       <button type="button" class="knop leeg" data-actie="gastlogin">Maak je gratis account</button></div>
     <div class="voet" style="margin-top:26px"><a href="/privacy">Privacy</a> &middot; <a href="/voorwaarden">Voorwaarden</a> &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
   btReken();
+  if (GR.id && !GR.data) grLaad();
   if (WK.plaats && !WK.uren) wkLaad(); else if (WK.plaats) rvLaadLib().then(wkTeken);
 }
 function gastLeadTeken() { const el = document.getElementById('gastLead'); if (el) el.innerHTML = gastLeadHtml(); }

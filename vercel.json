@@ -41,6 +41,10 @@
     {
       "source": "/banden",
       "destination": "/app.html"
+    },
+    {
+      "source": "/rit/:id",
+      "destination": "/app.html"
     }
   ],
   "crons": [

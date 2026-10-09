@@ -298,6 +298,75 @@ async function routePlaatsVrij(req, res) {
   } catch (e) { return res.status(502).json({ ok: false, fout: 'Zoeken lukte niet.' }); }
 }
 
+// ---- Groepsrit-link (09-10-2026) ------------------------------------------------
+// Iemand met een account plant een rit (dag, tijd, duur, startplaats) en deelt de
+// link. Iedereen die hem opent ziet het weer en windadvies tijdens die rit, en
+// rekent zijn eigen bandenspanning uit. Leden zien ook kleding en voeding.
+// Geen deelnemerslijst of namen: alleen een teller hoeveel renners meekeken.
+const GR_ID = /^[A-Za-z0-9]{8}$/;
+const grCache = new Map();
+function grAmsterdamNaarMs(datum, tijd) {
+  // Lokale tijd in Amsterdam naar epoch (zomer/wintertijd via Intl).
+  const guess = Date.parse(`${datum}T${tijd}:00Z`);
+  const deel = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date(guess));
+  const v = Object.fromEntries(deel.map((x) => [x.type, x.value]));
+  const alsLokaal = Date.parse(`${v.year}-${v.month}-${v.day}T${v.hour === '24' ? '00' : v.hour}:${v.minute}:00Z`);
+  return guess - (alsLokaal - guess);
+}
+async function grWeer(rit) {
+  const c = grCache.get(rit.id);
+  if (c && Date.now() - c.op < 30 * 60 * 1000) return c.uren;
+  const start = new Date(rit.start), dagen = (rit.start - Date.now()) / 864e5;
+  if (dagen > 15) return null;
+  const uurStr = (ms) => new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false }).format(new Date(ms)).replace(' ', 'T') + ':00';
+  const eind = rit.start + Math.ceil(rit.duur) * 3600 * 1000;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${rit.plaats.lat}&longitude=${rit.plaats.lon}&hourly=temperature_2m,precipitation,wind_speed_10m,wind_direction_10m&timezone=Europe%2FAmsterdam&start_hour=${uurStr(start.getTime())}&end_hour=${uurStr(eind)}`;
+  const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+  const j = await r.json(); const h = j.hourly || {};
+  const uren = (h.time || []).map((t, i) => ({ uur: Number(t.slice(11, 13)), temp: Math.round(h.temperature_2m[i]), regen: Math.round((h.precipitation[i] || 0) * 10) / 10, wind: Math.round(h.wind_speed_10m[i] || 0), richting: Math.round(h.wind_direction_10m[i] ?? 0) }));
+  grCache.set(rit.id, { op: Date.now(), uren });
+  return uren;
+}
+async function routeGroepsrit(req, res) {
+  if (req.method === 'POST') {
+    const body = await leesBody(req);
+    const email = pushEmail(res, body.t); if (!email) return;
+    const datum = String(body.datum || ''), tijd = String(body.tijd || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(datum) || !/^\d{2}:\d{2}$/.test(tijd)) return res.status(400).json({ ok: false, fout: 'Kies een dag en tijd.' });
+    const start = grAmsterdamNaarMs(datum, tijd);
+    if (!(start > Date.now() - 3600 * 1000 && start < Date.now() + 15 * 864e5)) return res.status(400).json({ ok: false, fout: 'Kies een moment in de komende twee weken.' });
+    const pl = body.plaats || {};
+    const lat = Number(pl.lat), lon = Number(pl.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return res.status(400).json({ ok: false, fout: 'Kies een startplaats.' });
+    const duur = Math.min(8, Math.max(1, Number(body.duur) || 2));
+    const schoon = (x, n) => String(x || '').replace(/[<>]/g, '').trim().slice(0, n);
+    const lim = await redis(['INCR', `groepsrit:maak:${email}:${new Date().toISOString().slice(0, 10)}`]);
+    if (lim.ok && lim.result === 1) await redis(['EXPIRE', `groepsrit:maak:${email}:${new Date().toISOString().slice(0, 10)}`, 90000]);
+    if (lim.ok && lim.result > 10) return res.status(429).json({ ok: false, fout: 'Je hebt vandaag al genoeg ritten gepland.' });
+    const id = Array.from(crypto.randomBytes(8)).map((b) => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'[b % 56]).join('');
+    const rit = { id, naam: schoon(body.naam, 40) || 'Groepsrit', door: schoon(body.door, 30), start, duur, tempo: body.tempo === 'hard' ? 'hard' : 'rustig',
+      plaats: { naam: schoon(pl.naam, 50), lat: Math.round(lat * 1000) / 1000, lon: Math.round(lon * 1000) / 1000 }, maker: email, op: Date.now() };
+    const ttl = Math.ceil((start - Date.now()) / 1000) + 3 * 86400;
+    await redis(['SET', `groepsrit:${id}`, JSON.stringify(rit), 'EX', ttl]);
+    await tel(email, 'groepsrit-maak');
+    return res.status(200).json({ ok: true, id, url: `https://rapport.michelkredercoaching.nl/rit/${id}` });
+  }
+  const id = String(req.query?.id || '');
+  if (!GR_ID.test(id)) return res.status(400).json({ ok: false, fout: 'Onbekende rit.' });
+  if (!(await vrijGrens(req))) return res.status(429).json({ ok: false, fout: 'Even rustig aan, probeer het zo nog eens.' });
+  const r = await redis(['GET', `groepsrit:${id}`]);
+  if (!r.ok || !r.result) return res.status(404).json({ ok: false, fout: 'Deze rit bestaat niet meer.' });
+  const rit = JSON.parse(r.result);
+  const kijker = String(req.query?.k || '').replace(/[^a-z0-9]/gi, '').slice(0, 24);
+  if (kijker) { await redis(['SADD', `groepsrit:${id}:kijk`, kijker]); await redis(['EXPIRE', `groepsrit:${id}:kijk`, Math.max(3600, Math.ceil((rit.start - Date.now()) / 1000) + 3 * 86400)]); }
+  const n = await redis(['SCARD', `groepsrit:${id}:kijk`]);
+  let uren = null;
+  try { uren = await grWeer(rit); } catch (e) {}
+  const ik = leesAppToken(String(req.query?.t || ''));
+  return res.status(200).json({ ok: true, rit: { id: rit.id, naam: rit.naam, door: rit.door, start: rit.start, duur: rit.duur, tempo: rit.tempo, plaats: rit.plaats, eigen: !!ik && ik === rit.maker },
+    uren, kijkers: n.ok ? Number(n.result) || 0 : 0 });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   const actie = String(req.query?.actie || '');
@@ -326,6 +395,7 @@ export default async function handler(req, res) {
     if (actie === 'gebruik') return await routeGebruik(req, res);
     if (actie === 'wind') return await routeWind(req, res);
     if (actie === 'plaatsvrij') return await routePlaatsVrij(req, res);
+    if (actie === 'groepsrit') return await routeGroepsrit(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
