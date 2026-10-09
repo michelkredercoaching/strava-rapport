@@ -309,6 +309,9 @@
   .push-aan { color:var(--groen); font-size:14px; font-weight:600; }
   .push-rij .sb-link { margin-top:0; }
   /* Jouw Strava-analyse (inklapbaar) */
+  /* Ritkaart */
+  .rk-knop { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:12px; background:transparent !important; border:1.5px solid var(--accent) !important; color:var(--accent) !important; }
+  .rk-knop svg { stroke:var(--accent); }
   /* Ritvoeding en wind (09-10-2026) */
   .rv-kop { display:flex; gap:10px; margin:10px 0 12px; }
   .rv-kop div { flex:1; background:rgba(255,255,255,.04); border-radius:8px; padding:10px; text-align:center; }
@@ -899,8 +902,8 @@ function sbGeheugenHtml(u) {
 function sbRijdHtml(f, u) {
   const vandaag = new Date().toISOString().slice(0, 10);
   const al = (SB.ritten || []).find((r) => r.fiets === f.id && String(r.op).slice(0, 10) === vandaag && r.voor === u.voor && r.achter === u.achter);
-  if (al) return '<div class="sb-bewaard">&#10003; Bewaard. Na je rit vraag ik hoe het was.</div>';
-  return '<div class="sb-rijd"><button type="button" class="knop leeg" data-sb="rijd">Ik rijd hiermee</button><p class="klein">Dan vraag ik na je rit hoe je banden en je kleding waren, en onthoud ik het voor de volgende keer.</p></div>';
+  if (al) return '<div class="sb-bewaard">&#10003; Bewaard. Na je rit vraag ik hoe het was.</div>' + RK_KNOP;
+  return RK_KNOP + '<div class="sb-rijd"><button type="button" class="knop leeg" data-sb="rijd">Ik rijd hiermee</button><p class="klein">Dan vraag ik na je rit hoe je banden en je kleding waren, en onthoud ik het voor de volgende keer.</p></div>';
 }
 
 function sbWeerHtml() {
@@ -1121,7 +1124,7 @@ async function btReken() {
   const min = v.type === 'gravel' ? 1.3 : 2.5, eraf = 0;
   const voor = Math.max(min, a.voor - eraf), achter = Math.max(min, a.achter - eraf);
   uit.innerHTML = `<div class="bt-uit"><div><span>Voor</span><b>${BT_LIB.nl(voor)}</b><small>bar &middot; ${BT_LIB.psi(voor)} psi</small></div><div><span>Achter</span><b>${BT_LIB.nl(achter)}</b><small>bar &middot; ${BT_LIB.psi(achter)} psi</small></div></div>
-    <p class="klein">${achter > BT_LIB.HOOKLESS_MAX ? 'Hookless velg? Ga nooit boven de 5,0 bar.' : ''}</p>`;
+    <p class="klein">${achter > BT_LIB.HOOKLESS_MAX ? 'Hookless velg? Ga nooit boven de 5,0 bar.' : ''}</p>${RK_KNOP}`;
 }
 document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-bt]'); if (!k) return;
@@ -1843,6 +1846,104 @@ document.addEventListener('click', (e) => {
   if (k.dataset.geb === 'klap') { GEB.open = !GEB.open; gebTeken(); if (GEB.open) gebLaad(); }
   if (k.dataset.geb === 'ververs') { GEB.data = null; gebTeken(); gebLaad(); }
 });
+
+// ---- Ritkaart om te delen (09-10-2026) ----
+// Een story-plaatje (1080x1920) van je rit: banden, en voor leden ook kleding,
+// voeding en wind. Delen via de deelknop van je telefoon (Instagram, WhatsApp,
+// opslaan voor Strava), anders downloaden. Onderaan de link naar de gratis tool.
+function rkData() {
+  const dz = zicht() || {};
+  const d = { datum: new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' }) };
+  if (toonSlim(dz) && SB.profiel) {
+    const f = sbFiets(), u = sbReken(f);
+    if (u) d.banden = { voor: u.voor, achter: u.achter, fiets: f.naam + ' ' + f.breedte + ' mm' };
+    if (SB.weer) {
+      const st = ritUren(), w = SB.weer;
+      d.weer = `${st.length ? Math.round(st.reduce((t, x) => t + x.temp, 0) / st.length) : w.temp}° · wind ${w.wind} km/u${w.nat ? ' · nat wegdek' : ''}`;
+      const kl = klReken(); if (kl) d.kleding = { gevoel: kl.gevoel, items: kl.items.slice(0, 4) };
+      if (RV_LIB) { const k = klKeuze(); const temp = st.length ? Math.round(st.reduce((t, x) => t + x.temp, 0) / st.length) : w.temp; const rv = RV_LIB.voedingAdvies({ duur: k.duur, temp, hard: k.hard }); d.voeding = { kort: rv.kort, items: rv.items.slice(0, 3) }; }
+      if (WIND_LIB) { const a = WIND_LIB.windAdvies(st); if (a) { d.wind = rkWind(a); d.windKort = a.kracht >= 10 ? 'Wind: ' + a.kort : ''; } }
+    }
+  } else {
+    const v = btWaarden();
+    if (BT_LIB && Number(v.gewicht) >= 40) { const a = BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: v.type, gewicht: v.gewicht, breedte: v.breedte, tubeless: v.tubeless ? 'tubeless' : 'binnenband' })); if (a) d.banden = { voor: a.voor, achter: a.achter, fiets: (v.type === 'gravel' ? 'Gravel ' : 'Racefiets ') + v.breedte + ' mm' }; }
+    if (WK.uren && WIND_LIB) { const a = WIND_LIB.windAdvies(WK.uren.slice(0, 3)); if (a) { d.wind = rkWind(a); d.weer = `${WK.uren[0].temp}° · wind ${WK.uren[0].wind} km/u`; } }
+  }
+  return d;
+}
+function rkWind(a) { const z = a.tekst.split(". ").slice(0, 2).join(". "); return z.endsWith(".") ? z : z + "."; }
+function rkRegels(ctx, tekst, max) {
+  const woorden = String(tekst).split(' '), regels = []; let r = '';
+  for (const w of woorden) { const t = r ? r + ' ' + w : w; if (ctx.measureText(t).width > max && r) { regels.push(r); r = w; } else r = t; }
+  if (r) regels.push(r); return regels;
+}
+async function rkTeken(d) {
+  try { await Promise.all([document.fonts.load('120px "Bebas Neue"'), document.fonts.load('600 40px "DM Sans"'), document.fonts.load('40px "DM Sans"')]); } catch (e) {}
+  const W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H;
+  let x = c.getContext('2d'); const hoofd = x, OR = '#FF6B1A', WIT = '#F5F3EF', GRIJS = 'rgba(245,243,239,0.6)', VLAK = '#161616', L = 80;
+  x.fillStyle = '#0A0A0A'; x.fillRect(0, 0, W, H);
+  const g = x.createRadialGradient(W, 0, 50, W, 0, 900); g.addColorStop(0, 'rgba(255,107,26,0.28)'); g.addColorStop(1, 'rgba(255,107,26,0)'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  const bebas = (px) => `${px}px "Bebas Neue", Impact, sans-serif`, dm = (px, w = 400) => `${w} ${px}px "DM Sans", Arial, sans-serif`;
+  const vlak = (y, h) => { x.fillStyle = VLAK; x.beginPath(); x.roundRect(L, y, W - 2 * L, h, 28); x.fill(); };
+  const label = (t, y) => { x.fillStyle = OR; x.font = dm(30, 700); x.fillText(t.toUpperCase(), L + 44, y); };
+  x.fillStyle = WIT; x.font = bebas(130); x.fillText('MKC', L, 200); const w1 = x.measureText('MKC').width; x.fillStyle = OR; x.fillText('.', L + w1, 200);
+  x.font = dm(30, 700); x.fillStyle = OR; x.textAlign = 'right'; x.fillText('VANDAAG RIJDEN', W - L, 150); x.textAlign = 'left';
+  x.fillStyle = GRIJS; x.font = dm(42); x.fillText(d.datum.charAt(0).toUpperCase() + d.datum.slice(1), L, 280);
+  // Blokken eerst op een los vel, daarna verticaal gecentreerd tussen kop en voet.
+  const vel = document.createElement('canvas'); vel.width = W; vel.height = H; x = vel.getContext('2d');
+  let y = 0;
+  if (d.weer) { x.fillStyle = WIT; x.font = dm(46, 600); x.fillText(d.weer, L, y + 46); y += 96; if (d.windKort && d.kleding) { x.fillStyle = OR; x.font = dm(38, 600); x.fillText(d.windKort, L, y + 4); y += 60; } }
+  if (d.banden) {
+    vlak(y, 430); label('Banden · ' + d.banden.fiets, y + 70);
+    const kol = (t, v, xx) => { x.fillStyle = GRIJS; x.font = dm(34, 600); x.fillText(t, xx, y + 140); x.fillStyle = WIT; x.font = bebas(190); x.fillText(String(v.toFixed(1)).replace('.', ','), xx, y + 320); const ww = x.measureText(String(v.toFixed(1)).replace('.', ',')).width; x.font = dm(40, 600); x.fillStyle = GRIJS; x.fillText('bar', xx + ww + 14, y + 320); };
+    kol('VOOR', d.banden.voor, L + 44); kol('ACHTER', d.banden.achter, W / 2 + 20);
+    x.fillStyle = GRIJS; x.font = dm(32); x.fillText(Math.round(d.banden.voor * 14.5038) + ' psi', L + 44, y + 390); x.fillText(Math.round(d.banden.achter * 14.5038) + ' psi', W / 2 + 20, y + 390);
+    y += 470;
+  }
+  if (d.kleding) {
+    const h = 110 + d.kleding.items.length * 62; vlak(y, h); label('Kleding · voelt als ' + d.kleding.gevoel + '°', y + 70);
+    x.font = dm(42); x.fillStyle = WIT; d.kleding.items.forEach((t, i) => { x.fillStyle = OR; x.beginPath(); x.arc(L + 56, y + 128 + i * 62, 8, 0, 7); x.fill(); x.fillStyle = WIT; x.fillText(t, L + 84, y + 142 + i * 62); });
+    y += h + 40;
+  }
+  if (d.voeding) {
+    x.font = dm(40); const regels = d.voeding.items.flatMap((t) => rkRegels(x, t, W - 2 * L - 130).slice(0, 2));
+    const h = 110 + regels.length * 56; vlak(y, h); label('Voeding · ' + d.voeding.kort, y + 70);
+    x.font = dm(40); x.fillStyle = WIT; regels.forEach((t, i) => x.fillText(t, L + 44, y + 138 + i * 56));
+    y += h + 40;
+  }
+  if (d.wind && y < H - 850) {
+    x.font = dm(42, 600); const regels = rkRegels(x, d.wind, W - 2 * L - 88).slice(0, 3);
+    const h = 100 + regels.length * 58; vlak(y, h); label('Wind', y + 66);
+    x.fillStyle = WIT; regels.forEach((t, i) => x.fillText(t, L + 44, y + 130 + i * 58)); y += h + 40;
+  }
+  x = hoofd; const ruimte = (H - 290) - 330, h = y - 40;
+  x.drawImage(vel, 0, 0, W, Math.max(h, 1), 0, 330 + Math.max(0, Math.round((ruimte - h) / 2.6)), W, Math.max(h, 1));
+  x.fillStyle = 'rgba(245,243,239,0.12)'; x.fillRect(L, H - 250, W - 2 * L, 2);
+  x.fillStyle = WIT; x.font = dm(38, 700); x.fillText('Bereken jouw bandenspanning gratis', L, H - 180);
+  x.fillStyle = OR; x.font = dm(38, 600); x.fillText('rapport.michelkredercoaching.nl/banden', L, H - 125);
+  x.fillStyle = GRIJS; x.font = dm(30); x.fillText('MKC-app van Michel Kreder, 9 jaar profwielrenner', L, H - 75);
+  return new Promise((ok) => c.toBlob(ok, 'image/png'));
+}
+async function deelRitkaart(knop) {
+  const oud = knop ? knop.textContent : '';
+  if (knop) { knop.disabled = true; knop.textContent = 'Even maken...'; }
+  try {
+    const d = rkData();
+    if (!d.banden) { alert('Vul eerst je gewicht en band in, dan maak ik je ritkaart.'); return; }
+    const blob = await rkTeken(d);
+    const file = new File([blob], 'mkc-ritkaart.png', { type: 'image/png' });
+    const tekst = 'Mijn bandenspanning voor vandaag. Bereken de jouwe gratis: https://rapport.michelkredercoaching.nl/banden';
+    if (D && D.gast) gastStat('deel'); else statEens('deel');
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], text: tekst }); return; } catch (e) { if (e && e.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mkc-ritkaart.png'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  } catch (e) { alert('Je ritkaart maken lukte niet op dit toestel.'); }
+  finally { if (knop) { knop.disabled = false; knop.textContent = oud; } }
+}
+document.addEventListener('click', (e) => { const k = e.target.closest('[data-ritkaart]'); if (k) { e.preventDefault(); deelRitkaart(k); } });
+const RK_KNOP = '<button type="button" class="knop rk-knop" data-ritkaart><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> Deel je ritkaart</button>';
 
 // ---- Gastmodus (09-10-2026) ----
 // Wie de app opent zonder account (of via /banden), krijgt meteen de gratis
