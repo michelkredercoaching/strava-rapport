@@ -217,6 +217,9 @@ async function routeStart(req, res) {
   // en vastgelegd met tijdstip (09-10-2026).
   if (body.akkoord !== true) return res.status(400).json({ ok: false, fout: 'Vink eerst aan dat je direct toegang wil en akkoord gaat met de voorwaarden.' });
   lid.akkoord = { op: new Date().toISOString(), versie: 'voorwaarden-2026-10-09' };
+  // Factuurgegevens (09-10-2026), bewaard voor alle facturen van dit lid.
+  const fb = body.factuur && typeof body.factuur === 'object' ? body.factuur : null;
+  if (fb) { const k = (x, n) => String(x || '').replace(/[<>]/g, '').trim().slice(0, n); lid.factuur = { naam: k(fb.naam, 80), land: fb.land === 'BE' ? 'BE' : 'NL', postcode: k(fb.postcode, 10), huisnummer: k(fb.huisnummer, 12), straat: k(fb.straat, 80), plaats: k(fb.plaats, 60) }; if (lid.factuur.naam) lid.naam = lid.factuur.naam; }
   const automatisch = await incassoKlaar();
 
   // Eén Mollie-klant per mailadres, hergebruiken bij opnieuw lid worden.
@@ -332,7 +335,7 @@ async function routeWebhook(req, res) {
       try {
         const maand = new Date(betaaldOp).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
         const periode = planVan(lid.plan) === 'jaar' ? `jaar vanaf ${new Date(betaaldOp).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}` : maand;
-        const f = await maakMollieFactuur({ naam: lid.naam || lidEmail.split('@')[0], email: lidEmail, bedrag: (p.amount && p.amount.value) || PLANNEN[planVan(lid.plan)].bedrag, betaalId: id, omschrijving: `${OMSCHRIJVING}, ${periode}` });
+        const f = await maakMollieFactuur({ naam: (lid.factuur && lid.factuur.naam) || lid.naam || lidEmail.split('@')[0], postcode: lid.factuur && lid.factuur.postcode, huisnummer: lid.factuur && lid.factuur.huisnummer, land: lid.factuur && lid.factuur.land, straat: lid.factuur && lid.factuur.straat, plaats: lid.factuur && lid.factuur.plaats, email: lidEmail, bedrag: (p.amount && p.amount.value) || PLANNEN[planVan(lid.plan)].bedrag, betaalId: id, omschrijving: `${OMSCHRIJVING}, ${periode}` });
         if (!f.ok) { console.error('Factuur lidmaatschap mislukt:', lidEmail, id, f.fout); await meldIntern(`FACTUUR MISLUKT - lidmaatschap - ${lidEmail}`, `Automatische factuur voor ${id} (${lidEmail}) mislukte: ${f.fout || 'onbekende fout'}. De toegang staat wel open. Maak de factuur even handmatig aan in Mollie.`); }
       } catch (e) { console.error('Factuur lidmaatschap fout:', e); }
     }

@@ -97,6 +97,10 @@
   .binnenkort h2 { color:rgba(245,243,239,.85); }
 
   .plan .knop[disabled] { opacity:.45; cursor:default; }
+  .lid-factuur { margin:16px 0 4px; padding:6px; border-radius:6px; transition:background .2s; }
+  .lid-factuur.fout { background:rgba(255,107,26,.15); }
+  .lid-factuur input, .lid-factuur select { width:100%; background:var(--black); border:1px solid rgba(255,255,255,.18); color:var(--white); border-radius:6px; padding:10px 12px; font-family:inherit; font-size:16px; margin-top:8px; }
+  .lid-factuur .lf-rij { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .lid-akkoord { display:flex; gap:10px; align-items:flex-start; font-size:13px; color:rgba(245,243,239,.8); margin:14px 0 4px; line-height:1.45; cursor:pointer; border-radius:6px; padding:6px; transition:background .2s; }
   .lid-akkoord input { flex:0 0 18px; width:18px; height:18px; margin-top:1px; accent-color:#FF6B1A; }
   .lid-akkoord a { color:#FF6B1A; }
@@ -1348,11 +1352,32 @@ function plannenHtml(dicht) {
         ${knop('maand', 'Kies per maand', true)}</div>
     </div>`;
 }
+// Factuurgegevens (09-10-2026): naam en adres voor een nette factuur.
+// NL: postcode + huisnummer (straat en plaats zoekt de server erbij), BE: zelf invullen.
+let LF = (() => { try { return JSON.parse(localStorage.getItem('mkcFactuur') || 'null') || {}; } catch (e) { return {}; } })();
+function lidFactuurHtml() {
+  const land = LF.land === 'BE' ? 'BE' : 'NL', naam = LF.naam || (D && D.naam) || '';
+  return `<div class="lid-factuur"><div class="label" style="margin-bottom:6px">Voor je factuur</div>
+    <input id="lfNaam" placeholder="Voor- en achternaam" autocomplete="name" value="${esc(naam)}">
+    <div class="lf-rij"><select id="lfLand"><option value="NL">Nederland</option><option value="BE" ${land === 'BE' ? 'selected' : ''}>Belgi&euml;</option></select>
+      <input id="lfPostcode" placeholder="Postcode" autocomplete="postal-code" value="${esc(LF.postcode || '')}"></div>
+    ${land === 'BE' ? `<input id="lfStraat" placeholder="Straat en huisnummer" autocomplete="street-address" value="${esc(LF.straat || '')}"><input id="lfPlaats" placeholder="Gemeente" autocomplete="address-level2" value="${esc(LF.plaats || '')}">`
+      : `<input id="lfHuisnr" placeholder="Huisnummer (en toevoeging)" value="${esc(LF.huisnummer || '')}">`}</div>`;
+}
+function lidFactuurLees() {
+  const v = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  LF = { naam: v('lfNaam'), land: v('lfLand') === 'BE' ? 'BE' : 'NL', postcode: v('lfPostcode').toUpperCase(), huisnummer: v('lfHuisnr'), straat: v('lfStraat'), plaats: v('lfPlaats') };
+  try { localStorage.setItem('mkcFactuur', JSON.stringify(LF)); } catch (e) {}
+  const goed = LF.naam.includes(' ') && LF.postcode && (LF.land === 'NL' ? LF.huisnummer : LF.straat && LF.plaats);
+  return goed ? LF : null;
+}
+document.addEventListener('change', (e) => { if (e.target.id === 'lfLand') { lidFactuurLees(); LF.land = e.target.value; const el = document.querySelector('.lid-factuur'); if (el) el.outerHTML = lidFactuurHtml(); } });
 // Twee keuzes, zoals bij JOIN: per maand (lage drempel) of per jaar (beste keuze).
 // €19 x 12 = €228, jaar €149: €79 voordeel, ongeveer 35%.
 function lidPitchHtml() {
   return `<div class="lidblok"><div class="label">MKC-app</div><h2>Word lid</h2>
     <ul>${LID_LIJST.map((x) => `<li>${x}</li>`).join('')}</ul>
+    ${lidFactuurHtml()}
     <label class="lid-akkoord"><input type="checkbox" id="lidAkkoord"> <span>Ik wil direct toegang en weet dat ik daarmee afzie van mijn bedenktijd van 14 dagen. Ik ga akkoord met de <a href="/voorwaarden" target="_blank" rel="noopener">voorwaarden</a> en de <a href="/privacy#app" target="_blank" rel="noopener">privacyverklaring</a>.</span></label>
     ${plannenHtml(false)}
     <p class="klein">${D && D.automatisch ? 'Je betaalt de eerste keer met iDEAL. Daarna wordt het bedrag automatisch afgeschreven, elke maand of elk jaar. Opzeggen kan altijd in de app; je houdt toegang tot het einde van wat je al betaalde.' : 'Je betaalt met iDEAL voor een maand of een jaar. Er wordt niets automatisch afgeschreven: vlak voor de einddatum krijg je een mail om te verlengen.'}</p></div>`;
@@ -1508,10 +1533,12 @@ async function startCore(knop) {
 }
 async function wordLid(knop) {
   const vink = document.getElementById('lidAkkoord');
+  const fact = document.getElementById('lfNaam') ? lidFactuurLees() : null;
+  if (document.getElementById('lfNaam') && !fact) { const l = document.querySelector('.lid-factuur'); l.classList.add('fout'); l.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => l.classList.remove('fout'), 2500); alert('Vul je voor- en achternaam en je adres in voor je factuur.'); return; }
   if (vink && !vink.checked) { const l = vink.closest('.lid-akkoord'); l.classList.add('fout'); l.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => l.classList.remove('fout'), 2500); return; }
   knop.disabled = true; const oud = knop.textContent; knop.textContent = 'Even naar iDEAL...';
   try {
-    const r = await fetch('/api/lid?actie=start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: D && D.naam, plan: knop.dataset.plan === 'jaar' ? 'jaar' : 'maand', akkoord: !vink || vink.checked, fbclid: (() => { try { return localStorage.getItem('mkcFbclid') || ''; } catch (e) { return ''; } })() }) });
+    const r = await fetch('/api/lid?actie=start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: (fact && fact.naam) || (D && D.naam), factuur: fact, plan: knop.dataset.plan === 'jaar' ? 'jaar' : 'maand', akkoord: !vink || vink.checked, fbclid: (() => { try { return localStorage.getItem('mkcFbclid') || ''; } catch (e) { return ''; } })() }) });
     const j = await r.json();
     if (j.ok && j.url) { location.href = j.url; return; }
     if (j.ok && j.alLid) { return laadOverzicht(); }
