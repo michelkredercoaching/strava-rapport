@@ -252,7 +252,7 @@ async function routeStart(req, res) {
   });
   if (!p.ok) return res.status(502).json({ ok: false, fout: 'Betalen lukt nu even niet. Probeer het zo nog eens.' });
   // Toestemming en klik-ID voor Meta vastleggen; de webhook stuurt de Purchase.
-  try { await redis(['SET', `lid:meta:${p.j.id}`, JSON.stringify(browserContext(req, body.fbclid)), 'EX', '2592000']); } catch (e) {}
+  try { await redis(['SET', `lid:meta:${p.j.id}`, JSON.stringify(browserContext(req, body.fbclid, { meting: body.meting, fbp: body.fbp, fbc: body.fbc })), 'EX', '2592000']); } catch (e) {}
   return res.status(200).json({ ok: true, url: p.j._links && p.j._links.checkout && p.j._links.checkout.href });
 }
 

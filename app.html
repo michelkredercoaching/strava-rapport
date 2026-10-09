@@ -201,6 +201,14 @@
   .bt-slot .voor span { font-size:13px; color:rgba(245,243,239,.8); max-width:280px; }
   .bt-slot .voor .knop { width:auto; font-size:16px; padding:8px 14px 6px; margin-top:4px; }
   /* MKC-coach */
+  /* Toestemming advertentiemeting (09-10-2026) */
+  .meting { position:fixed; left:12px; right:12px; bottom:max(12px, env(safe-area-inset-bottom)); z-index:60; max-width:520px; margin:0 auto; background:#161616; border:1px solid rgba(255,255,255,.14); border-radius:10px; padding:14px 16px; box-shadow:0 14px 40px rgba(0,0,0,.6); font-size:13.5px; line-height:1.5; color:rgba(245,243,239,.88); }
+  .meting b { color:var(--white); display:block; margin-bottom:3px; font-size:14.5px; }
+  .meting a { color:var(--accent); }
+  .meting .rij { display:flex; gap:8px; margin-top:12px; }
+  .meting button { flex:1; border-radius:6px; padding:10px; font-family:inherit; font-size:14px; font-weight:600; cursor:pointer; }
+  .meting .ja { background:var(--accent); color:#0A0A0A; border:0; }
+  .meting .nee { background:none; color:var(--white); border:1px solid rgba(255,255,255,.25); }
   .cc-fab { position:fixed; right:16px; bottom:max(16px, env(safe-area-inset-bottom)); z-index:40; display:flex; align-items:center; gap:10px; background:var(--accent); color:#0A0A0A; border:none; border-radius:99px; padding:6px 18px 6px 6px; font-family:'Bebas Neue',sans-serif; font-size:19px; letter-spacing:.05em; cursor:pointer; box-shadow:0 10px 30px rgba(0,0,0,.5), 0 0 0 1px rgba(255,107,26,.4); }
   .cc-fab .cc-av { width:38px; height:38px; }
   .cc-av { border-radius:50%; background:#0A0A0A; border:2px solid var(--accent); overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
@@ -1538,7 +1546,7 @@ async function wordLid(knop) {
   if (vink && !vink.checked) { const l = vink.closest('.lid-akkoord'); l.classList.add('fout'); l.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => l.classList.remove('fout'), 2500); return; }
   knop.disabled = true; const oud = knop.textContent; knop.textContent = 'Even naar iDEAL...';
   try {
-    const r = await fetch('/api/lid?actie=start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: (fact && fact.naam) || (D && D.naam), factuur: fact, plan: knop.dataset.plan === 'jaar' ? 'jaar' : 'maand', akkoord: !vink || vink.checked, fbclid: (() => { try { return localStorage.getItem('mkcFbclid') || ''; } catch (e) { return ''; } })() }) });
+    const r = await fetch('/api/lid?actie=start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: (fact && fact.naam) || (D && D.naam), factuur: fact, plan: knop.dataset.plan === 'jaar' ? 'jaar' : 'maand', akkoord: !vink || vink.checked, fbclid: (() => { try { return localStorage.getItem('mkcFbclid') || ''; } catch (e) { return ''; } })(), ...metingVelden() }) });
     const j = await r.json();
     if (j.ok && j.url) { location.href = j.url; return; }
     if (j.ok && j.alLid) { return laadOverzicht(); }
@@ -1914,8 +1922,34 @@ document.addEventListener('click', (e) => {
   if (k.dataset.geb === 'ververs') { GEB.data = null; gebTeken(); gebLaad(); }
 });
 
+// ---- Toestemming advertentiemeting (09-10-2026) ----
+// De app heeft geen cookiebanner van de hoofdsite (beginscherm-apps hebben eigen
+// cookies), dus vragen we het hier zelf. Ja = de server mag een aankoop of
+// aanmelding gehasht aan Meta melden (api/lid.js, api/keuzehulp-inschrijving.js).
+// Keuze in localStorage en als cookie mkc_meting op dit domein.
+function metingKeuze() { try { return localStorage.getItem('mkcMeting') || ''; } catch (e) { return ''; } }
+function metingFbp() {
+  try { let f = localStorage.getItem('mkcFbp'); if (!f) { f = 'fb.1.' + Date.now() + '.' + Math.floor(Math.random() * 1e10); localStorage.setItem('mkcFbp', f); } return f; } catch (e) { return ''; }
+}
+function metingFbc() { try { const c = localStorage.getItem('mkcFbclid'); const t = localStorage.getItem('mkcFbclidOp') || Date.now(); return c ? 'fb.1.' + t + '.' + c : ''; } catch (e) { return ''; } }
+function metingVelden() { const ja = metingKeuze() === 'ja'; return { meting: metingKeuze() ? ja : null, fbp: ja ? metingFbp() : '', fbc: ja ? metingFbc() : '' }; }
+function metingToon() {
+  if (metingKeuze() || document.getElementById('meting')) return;
+  const el = document.createElement('div'); el.className = 'meting'; el.id = 'meting';
+  el.innerHTML = '<b>Mag ik meten waar je vandaan komt?</b>Dan weet ik welke posts en advertenties werken. Ik gebruik daarvoor een gehashte versie van je mailadres bij Meta, nooit je trainings- of gezondheidsgegevens. <a href="/privacy#app" target="_blank" rel="noopener">Privacy</a><div class="rij"><button type="button" class="nee" data-meting="nee">Liever niet</button><button type="button" class="ja" data-meting="ja">Prima</button></div>';
+  document.body.appendChild(el);
+}
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-meting]'); if (!k) return;
+  const w = k.dataset.meting === 'ja' ? 'ja' : 'nee';
+  try { localStorage.setItem('mkcMeting', w); } catch (er) {}
+  document.cookie = 'mkc_meting=' + w + '; path=/; max-age=31536000; SameSite=Lax; Secure';
+  const el = document.getElementById('meting'); if (el) el.remove();
+});
+setTimeout(metingToon, 1500);
+
 // Klik-ID van een Meta-advertentie bewaren, voor de Purchase bij lid worden (api/lid.js).
-try { const fc = new URLSearchParams(location.search).get("fbclid"); if (fc) localStorage.setItem("mkcFbclid", fc.slice(0, 200)); } catch (e) {}
+try { const fc = new URLSearchParams(location.search).get("fbclid"); if (fc) { localStorage.setItem("mkcFbclid", fc.slice(0, 200)); localStorage.setItem("mkcFbclidOp", String(Date.now())); } } catch (e) {}
 
 // ---- Groepsrit-link (09-10-2026) ----
 // Plan een rit, deel de link. Wie hem opent ziet het weer en het windadvies voor
@@ -2218,7 +2252,7 @@ document.addEventListener('click', async (e) => {
   try {
     const r = await fetch('/api/keuzehulp-inschrijving', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
       route: 'bandenspanning', email, naam, bandtype: v.type === 'gravel' ? 'gravel' : 'weg', gewicht: Math.round(Number(v.gewicht)), breedte: Number(v.breedte),
-      tubeless: String(v.tubeless) === 'true' ? 'tubeless' : 'binnenband', nuVoor: '', nuAchter: '', _pagina: location.href }) });
+      tubeless: String(v.tubeless) === 'true' ? 'tubeless' : 'binnenband', nuVoor: '', nuAchter: '', _pagina: location.href, _toestemming: metingKeuze() === 'ja', _fbp: metingVelden().fbp, _fbc: metingVelden().fbc }) });
     const j = await r.json();
     if (!r.ok || !j.ok) throw new Error(j.fout || 'mislukt');
     try { localStorage.setItem('mkcGastMail', email); } catch (er) {}
