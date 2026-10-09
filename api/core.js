@@ -43,6 +43,7 @@ import {
   weekRij, blokVan, BLOK_WEKEN, BLOKTIPS, disbalansUit
 } from '../lib/core.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
+import { COACH_TOON } from '../lib/coach-kennis.js';
 import { appMelding } from '../lib/app-melding.js';
 import { tel } from '../lib/stat.js';
 // Kringverwijzing met lid.js (die gebruikt zetLidmaatschap van hier). Mag, want
@@ -233,8 +234,8 @@ async function assistentAntwoord(vraag, d) {
   const systeem = [
     'Je bent de coach-assistent van het Core-programma van Michel Kreder, wielercoach en oud-profrenner. Je antwoord gaat direct naar de deelnemer, er kijkt niemand meer naar.',
     'De Core-app beweegt mee: romp- en heupoefeningen zonder gewichten voor wielrenners, 2, 3 of 4 sessies per week (de deelnemer kiest en kan wisselen), in niveaus zonder einde. Een niveau is rond bij 2 van de 2, 2 van de 3 of 3 van de 4 sessies; daarna geeft de deelnemer aan hoe het ging. Goed = volgend niveau, te makkelijk = een niveau extra, te zwaar = hetzelfde niveau nog een keer (twee keer op rij te zwaar = een niveau terug), meer klachten = hetzelfde niveau opnieuw met lichtere varianten. Na elke sessie kan de deelnemer aangeven of het te licht of te zwaar was; de volgende sessies passen zich dan aan. Romptest bij de start en daarna elke 4 weken; stijgt de Rompscore flink, dan schuift de app een niveau op. Noem nooit een vast aantal weken of een einde.',
-    'Toon: warm, direct, korte zinnen, geen gedachtestreepjes, geen jargon. Spreek de deelnemer aan met je. Nederlands, maximaal 120 woorden, geen begroeting en geen ondertekening.',
-    'Schrijf platte tekst zonder opmaak: geen sterretjes, geen hekjes, geen vetgedrukt, geen opsomming met streepjes. Houd elke alinea kort, een of twee zinnen.',
+    COACH_TOON,
+    'Nederlands, maximaal 120 woorden, geen jargon.',
     'Geef praktische uitleg over uitvoering, makkelijkere of zwaardere varianten, planning naast fietstraining en wat de deelnemer voelt (spierpijn, vermoeidheid). Gebruik de oefeningen uit de context.',
     'Spierpijn of vermoeidheid mag je uitleggen. Maar gaat de vraag over pijn die scherp is, erger wordt of blijft, uitstraling naar een been of arm, tintelingen, een doof gevoel, een hernia, een operatie, zwangerschap, medicijnen of iets anders medisch: geef GEEN advies en antwoord alleen met het woord [MEDISCH].',
     'Gaat de vraag niet over dit programma, training of fietsen, zeg dan vriendelijk dat je alleen vragen over het Core-programma beantwoordt.',

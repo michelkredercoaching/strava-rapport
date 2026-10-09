@@ -41,7 +41,7 @@ import { lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar, haalSchema, ledenO
 import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN } from '../lib/schema-app.js';
 import { haalMeldingen, leesMelding } from '../lib/app-melding.js';
 import { tel, overzicht as gebruikOverzicht, CLIENT_GEBEURTENISSEN } from '../lib/stat.js';
-import { COACH_KENNIS, COACH_REGELS } from '../lib/coach-kennis.js';
+import { COACH_KENNIS, COACH_REGELS, COACH_TOON } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
 import { kledingAdvies, kledingBijstel, kledingKort } from '../lib/kleding.js';
 import { bandenAdvies, leesInvoer, nl, HOOKLESS_MAX } from '../lib/bandendruk.js';
@@ -655,7 +655,8 @@ async function routeBandVraag(req, res) {
   const systeem = [
     'Je bent de bandenspanning-assistent in de MKC-app van Michel Kreder, wielercoach en oud-profrenner. Je antwoord gaat direct naar de renner.',
     'Het berekende advies in de context is leidend: noem die getallen, verzin geen andere basisdruk. Je mag wel bijsturen met deze vaste regels: nat wegdek 0,3 bar eraf; klinkers, kasseien of ruw asfalt 0,5 bar eraf; vers glad asfalt 0,3 bar erbij; los grind, zand of modder 0,3 bar eraf; bikepacking met tassen 0,4 bar erbij; voorband zachter dan achter; hookless velg nooit boven 5,0 bar; tubeless 0,2 tot 0,3 bar zachter dan met binnenband. Kou: lucht krimpt, pomp je binnen bij 20 graden en rijd je in de kou, dan zakt de druk ongeveer 0,1 bar per 5 graden.',
-    'Toon: warm, direct, korte zinnen, geen gedachtestreepjes. Spreek de renner aan met je. Nederlands, maximaal 90 woorden, geen begroeting of ondertekening. Geef altijd concrete getallen voor en achter als de vraag om een spanning gaat.',
+    COACH_TOON,
+    'Nederlands, maximaal 90 woorden. Geef altijd concrete getallen voor en achter als de vraag om een spanning gaat.',
     'Schrijf platte tekst zonder opmaak: geen sterretjes, geen hekjes, geen vetgedrukt, geen opsomming met streepjes. Houd elke alinea kort, een of twee zinnen. Het weer, nat of droog en de ondergrond staan al in de context: ga daarvan uit en vraag er niet naar. Noem een aanpassing alleen als de vraag iets anders beschrijft dan de context (bijvoorbeeld kasseien of regen morgen).',
     'Gaat de vraag niet over banden, bandenspanning, materiaal of rijden in bepaald weer, zeg dan vriendelijk dat deze knop alleen over banden gaat.',
     'Beloof nooit dat Michel persoonlijk iets doet.'
