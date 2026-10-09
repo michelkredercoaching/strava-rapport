@@ -265,6 +265,7 @@
   .muurkaart li { padding-left:16px; position:relative; font-size:14px; margin-bottom:6px; color:rgba(245,243,239,.85); }
   .muurkaart li::before { content:''; position:absolute; left:0; top:8px; width:5px; height:5px; border-radius:50%; background:var(--accent); }
   @media (max-width:560px) { .test { grid-template-columns:72px 1fr; } .test .testknoppen { grid-column:1 / -1; } .badges { grid-template-columns:repeat(2,1fr); } }
+  .vg-deel { background:transparent !important; border:1.5px solid var(--accent, #FF6B1A) !important; color:var(--accent, #FF6B1A) !important; }
 </style>
 </head>
 <body>
@@ -593,7 +594,62 @@ function disbalansHtml(d) {
   };
   return `<h3 style="margin:22px 0 6px;font-size:15px">Balans links en rechts <span class="muted klein" style="font-weight:400">(lager is beter, onder 10% is in balans)</span></h3><div class="db">${v.map(rij).join('')}</div>`;
 }
+// ---- Deelkaart voor je vooruitgang (09-10-2026) ----
+// Story-plaatje (1080x1920) met je Rompscore, sessies, balans en klachten.
+// Delen via de deelknop van je telefoon, anders downloaden.
+let VG = null;
+function vgPunten(d) {
+  const eerste = d.tests[0], laatste = d.tests[d.tests.length - 1];
+  const regels = [];
+  (d.disbalansVerloop || []).forEach((x) => { const a = x.punten[0], b = x.punten[x.punten.length - 1]; if (x.punten.length > 1 && a.pct > 10 && b.pct < a.pct) regels.push([x.naam + ' links/rechts', a.pct + '% → ' + b.pct + '%']); });
+  if (d.meters && d.meters.length > 1) { const a = d.meters[0], b = d.meters[d.meters.length - 1]; if (b.onderrug < a.onderrug) regels.push(['Klachten onderrug (op 10)', a.onderrug + ' → ' + b.onderrug]); if (b.nek < a.nek) regels.push(['Klachten nek (op 10)', a.nek + ' → ' + b.nek]); }
+  return { score: laatste ? laatste.score : null, winst: eerste && laatste && laatste !== eerste ? laatste.score - eerste.score : null, start: eerste ? eerste.score : null,
+    sessies: d.vakjes.filter((v) => v.gedaan).length, niveau: d.klaar ? (d.blokStart || 0) + 12 : d.week, regels: regels.slice(0, 3) };
+}
+function vgRond(x, X, Y, w, h, r, kleur) { x.fillStyle = kleur; x.beginPath(); x.roundRect(X, Y, w, h, r); x.fill(); }
+async function vgTeken(v) {
+  try { await Promise.all([document.fonts.load('120px "Bebas Neue"'), document.fonts.load('700 40px "DM Sans"'), document.fonts.load('40px "DM Sans"')]); } catch (e) {}
+  const W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d'), OR = '#FF6B1A', WIT = '#F5F3EF', GRIJS = 'rgba(245,243,239,0.6)', VLAK = '#161616', L = 80;
+  const bebas = (px) => px + 'px "Bebas Neue", Impact, sans-serif', dm = (px, w = 400) => w + ' ' + px + 'px "DM Sans", Arial, sans-serif';
+  x.fillStyle = '#0A0A0A'; x.fillRect(0, 0, W, H);
+  const g = x.createRadialGradient(0, H * 0.35, 50, 0, H * 0.35, 1000); g.addColorStop(0, 'rgba(255,107,26,0.25)'); g.addColorStop(1, 'rgba(255,107,26,0)'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  x.fillStyle = WIT; x.font = bebas(130); x.fillText('MKC', L, 200); const w1 = x.measureText('MKC').width; x.fillStyle = OR; x.fillText('.', L + w1, 200);
+  x.font = dm(30, 700); x.fillStyle = OR; x.textAlign = 'right'; x.fillText('MIJN CORE', W - L, 150); x.textAlign = 'left';
+  x.fillStyle = GRIJS; x.font = dm(42); x.fillText('Niveau ' + v.niveau + ' · ' + v.sessies + ' sessies gedaan', L, 280);
+  let y = 420;
+  if (v.score != null) {
+    x.fillStyle = OR; x.font = dm(34, 700); x.fillText('ROMPSCORE', L, y);
+    x.fillStyle = WIT; x.font = bebas(420); x.fillText(String(v.score), L - 10, y + 370);
+    const sw = x.measureText(String(v.score)).width;
+    if (v.winst != null && v.winst !== 0) { x.fillStyle = v.winst > 0 ? OR : GRIJS; x.font = bebas(150); x.fillText((v.winst > 0 ? '+' : '') + v.winst, L + sw + 30, y + 250); x.fillStyle = GRIJS; x.font = dm(36, 600); x.fillText('sinds de start (' + v.start + ')', L + sw + 36, y + 320); }
+    y += 470;
+  } else {
+    x.fillStyle = WIT; x.font = bebas(300); x.fillText(String(v.sessies), L - 6, y + 250); x.fillStyle = GRIJS; x.font = dm(44, 600); x.fillText('core-sessies gedaan', L, y + 330); y += 420;
+  }
+  v.regels.forEach(([t, w]) => { vgRond(x, L, y, W - 2 * L, 180, 28, VLAK); x.fillStyle = GRIJS; x.font = dm(32, 600); x.fillText(t.toUpperCase(), L + 44, y + 60); x.fillStyle = WIT; x.font = bebas(84); x.fillText(w, L + 44, y + 150); y += 210; });
+  x.fillStyle = 'rgba(245,243,239,0.12)'; x.fillRect(L, H - 250, W - 2 * L, 2);
+  x.fillStyle = WIT; x.font = dm(38, 700); x.fillText('Sterker op de fiets met korte core-sessies', L, H - 180);
+  x.fillStyle = OR; x.font = dm(38, 600); x.fillText('michelkredercoaching.nl/core', L, H - 125);
+  x.fillStyle = GRIJS; x.font = dm(30); x.fillText('MKC-app van Michel Kreder, 9 jaar profwielrenner', L, H - 75);
+  return new Promise((ok) => c.toBlob(ok, 'image/png'));
+}
+async function vgDeel(knop) {
+  if (!VG) return;
+  const oud = knop.textContent; knop.disabled = true; knop.textContent = 'Even maken...';
+  try {
+    const v = vgPunten(VG), blob = await vgTeken(v);
+    const file = new File([blob], 'mkc-core-voortgang.png', { type: 'image/png' });
+    const tekst = v.winst > 0 ? 'Mijn Rompscore ging van ' + v.start + ' naar ' + v.score + '. Korte core-sessies voor wielrenners: https://michelkredercoaching.nl/core' : 'Mijn core-voortgang in de MKC-app: https://michelkredercoaching.nl/core';
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: tekst }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mkc-core-voortgang.png'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  } catch (e) { alert('Je kaart maken lukte niet op dit toestel.'); }
+  finally { knop.disabled = false; knop.textContent = oud; }
+}
+document.addEventListener('click', (e) => { const k = e.target.closest('[data-vgdeel]'); if (k) { e.preventDefault(); vgDeel(k); } });
+
 function voortgangHtml(d) {
+  VG = d;
   const vak = d.vakjes, rijen = [...new Set(vak.map((v) => v.letter))].map((l) => vak.filter((v) => v.letter === l).map((v) =>
     `<div class="vakje ${v.gedaan ? 'aan' : ''} ${v.week === d.week && !d.klaar ? 'nu' : ''}" title="Niveau ${v.week} sessie ${NR[l]}"></div>`).join('')).join('');
   const eerste = d.tests[0], laatste = d.tests[d.tests.length - 1];
@@ -615,6 +671,7 @@ function voortgangHtml(d) {
         { kleur: '#FF6B1A', punten: d.meters.map((m) => ({ x: m.moment, y: m.onderrug })) },
         { kleur: '#8ab4ff', punten: d.meters.map((m) => ({ x: m.moment, y: m.nek })) }], { max: 10, raster: [0, 5, 10] })}</div>
       <p class="klein muted"><span style="color:#FF6B1A">&#9679;</span> onderrug &nbsp; <span style="color:#8ab4ff">&#9679;</span> nek en schouders</p>` : ''}
+    ${totaal >= 3 ? '<button type="button" class="knop breed vg-deel" data-vgdeel style="margin-top:18px">Deel je vooruitgang</button>' : ''}
   </div></div>`;
 }
 
