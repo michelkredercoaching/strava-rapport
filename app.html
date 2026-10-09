@@ -1378,7 +1378,7 @@ function plannenHtml(dicht) {
       <div class="plan">
         <div class="plan-naam">Per maand</div>
         <div class="prijs">&euro;19<small>per maand</small></div>
-        <div class="plan-sub">${vriendCodeLs() ? 'via je maat: eerste maand &euro;9,50' : 'op elk moment opzegbaar'}</div>
+        <div class="plan-sub">${vriendCodeLs() ? 'via je maat: eerste maand &euro;9,50' : D && D.lid && D.lid.terugAanbod ? 'welkom terug: eerste maand &euro;9,50' : 'op elk moment opzegbaar'}</div>
         ${knop('maand', 'Kies per maand', true)}</div>
     </div>`;
 }

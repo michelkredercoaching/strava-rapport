@@ -42,6 +42,8 @@ import { maakMollieFactuur } from '../lib/mollie-factuur.js';
 import { planNaam, laadPlan } from '../lib/schema-app.js';
 import { browserContext, stuurPurchase } from '../lib/meta-capi.js';
 import { appMelding } from '../lib/app-melding.js';
+import { overzicht as gebruikOverzicht } from '../lib/stat.js';
+import zlib from 'node:zlib';
 
 const MOLLIE_KEY  = process.env.MOLLIE_API_KEY || '';
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
@@ -148,6 +150,110 @@ async function leesBody(req) {
   const tekst = typeof req.body === 'string' ? req.body : '';
   try { return JSON.parse(tekst || '{}'); } catch { return Object.fromEntries(new URLSearchParams(tekst)); }
 }
+// ---- Na lid worden (09-10-2026): welkom, win-back, weekoverzicht, back-up ----
+const knopHtml = (url, tekst) => `<p style="margin:22px 0 26px"><a href="${url}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">${tekst}</a></p>`;
+async function welkomMail(email, lid) {
+  const voornaam = String(lid.naam || '').split(' ')[0];
+  const code = vriendCode(email);
+  await redis(['SET', `lid:vriend:${code}`, email]);
+  return jaarMail(email, voornaam ? `Welkom in de MKC-app, ${voornaam}` : 'Welkom in de MKC-app', mailHuls(`<p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
+    <p>Wat leuk dat je erbij bent. Vanaf nu heb je alles op één plek: je bandenspanning, kleding en ritvoeding voor elke rit, de Core-app en je eigen coach die je vragen beantwoordt.</p>
+    <p>Drie dingen die ik je deze week zou aanraden:</p>
+    <p><b>Zet de app op je beginscherm.</b> Open de app op je telefoon, tik op delen en kies Zet op beginscherm. Dan heb je hem altijd bij de hand, en krijg je je ochtendbericht met het weer van je rit.</p>
+    <p><b>Vul je fietsen en gewicht in</b> bij Vandaag rijden. Dan zie je voor elke rit wat je pompt, wat je aantrekt en wat je meeneemt.</p>
+    <p><b>Start de Core-app.</b> Korte sessies van een kwartier, een paar keer per week. Je merkt het het eerst op lange ritten, in je onderrug en je nek.</p>
+    ${knopHtml(APP_URL, 'Open de app')}
+    <p>Rij je samen met anderen? Met jouw link krijgt je maat zijn eerste maand voor €9,50, en jij 50% korting op je volgende maand: <a href="${APP_URL}?vriend=${code}" style="color:#ff6b1a">${APP_URL}?vriend=${code}</a></p>
+    <p>Loop je ergens tegenaan of heb je een vraag? Stel hem aan de coach in de app, of mail me gewoon terug.</p>`));
+}
+// Oud-leden terughalen: 14 dagen na het einde één persoonlijke mail, afgestemd op
+// hun opzegreden. Winterstop krijgt hem in het voorjaar (maart of april).
+const WINBACK_REGEL = {
+  'te-duur': 'Je gaf aan dat het te duur was. Daarom mag je terugkomen voor €9,50 voor je eerste maand. Daarna €19 per maand, en altijd opzegbaar.',
+  'te-weinig': 'Je gaf aan dat je de app te weinig gebruikte. Een tip als je terugkomt: zet het ochtendbericht aan. Dan krijg je elke ochtend vanzelf je bandenspanning en kleding voor je rit, zonder dat je eraan hoeft te denken.',
+  winterstop: 'Het voorjaar komt eraan en de eerste lange ritten staan weer op de planning. Een mooi moment om weer in te stappen.',
+  'mist-iets': 'Je gaf aan dat je iets miste. Vertel me gerust wat je zocht, mail me gewoon terug. Ik bouw de app elke maand verder uit.'
+};
+async function winbackRonde() {
+  const l = await redis(['SMEMBERS', 'lid:alle']);
+  let n = 0; const maand = new Date().getMonth();
+  for (const email of (l.ok && l.result) || []) {
+    const lid = await haalLid(email);
+    if (!lid || lid.winbackGemaild || lid.verwijderdOp || !lid.betaaldOoit || lid.subscriptionId || !lid.tot) continue;
+    if (!['opgezegd', 'verlopen', 'achterstand'].includes(lid.status)) continue;
+    const dagenWeg = (Date.now() - Date.parse(lid.tot)) / 86400000;
+    if (dagenWeg < 14 || dagenWeg > 200) continue;
+    const reden = (lid.opzegReden && lid.opzegReden.reden) || '';
+    if (reden === 'winterstop' && !(maand === 2 || maand === 3)) continue;
+    if (reden !== 'winterstop' && dagenWeg > 30) continue;
+    const voornaam = String(lid.naam || '').split(' ')[0];
+    lid.winbackTot = new Date(Date.now() + 30 * 86400000).toISOString();
+    const ok = await jaarMail(email, 'Ik mis je in de MKC-app', mailHuls(`<p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
+      <p>Je lidmaatschap van de MKC-app is een tijdje geleden gestopt. Je fietsen, je ritten en je Core-voortgang staan nog gewoon voor je klaar.</p>
+      ${WINBACK_REGEL[reden] ? `<p>${WINBACK_REGEL[reden]}</p>` : ''}
+      <p>Kom je terug, dan is je eerste maand €9,50 in plaats van €19. Dat aanbod staat 30 dagen voor je klaar.</p>
+      ${knopHtml(APP_URL + '#lid', 'Kom terug voor €9,50')}
+      <p style="color:#555;font-size:14px">Geen interesse? Dan hoor je hierover niets meer van me.</p>`));
+    if (ok) { lid.winbackGemaild = new Date().toISOString(); await bewaarLid(email, lid); n++; }
+  }
+  return n;
+}
+// Weekoverzicht voor Michel, maandagochtend.
+async function routeWeekoverzicht(req, res) {
+  const cron = process.env.CRON_SECRET || '';
+  if (!cron || String(req.headers?.authorization || '') !== `Bearer ${cron}`) return res.status(401).json({ ok: false });
+  const week = Date.now() - 7 * 86400000, binnen = (x) => x && Date.parse(x) > week;
+  const l = await redis(['SMEMBERS', 'lid:alle']);
+  const nieuw = [], weg = [], mislukt = [], terug = [];
+  for (const email of (l.ok && l.result) || []) {
+    const lid = await haalLid(email); if (!lid) continue;
+    if (binnen(lid.sinds) && lid.bron === 'betaald') nieuw.push(`${lid.naam || email} (${planVan(lid.plan) === 'jaar' ? 'jaar' : 'maand'}${lid.vriendVan ? ', via een maat' : ''})`);
+    if (binnen(lid.opgezegdOp)) weg.push(`${lid.naam || email}: ${OPZEG_NAMEN_MAIL[(lid.opzegReden && lid.opzegReden.reden) || 'geen'] || 'geen reden'}${lid.opzegReden && lid.opzegReden.toelichting ? ' (&ldquo;' + lid.opzegReden.toelichting + '&rdquo;)' : ''}`);
+    if (lid.mislukt && binnen(lid.mislukt.op)) mislukt.push(lid.naam || email);
+    if (binnen(lid.winbackGemaild)) terug.push(lid.naam || email);
+  }
+  const ov = await ledenOverzicht();
+  const g = await gebruikOverzicht(7);
+  const gem = Math.round(g.dagen.reduce((t, d) => t + d.actief, 0) / Math.max(1, g.dagen.length));
+  const top = g.namen.map(([k, naam]) => [naam, g.dagen.reduce((t, d) => t + ((d.per[k] && d.per[k].keer) || 0), 0)]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const lijst = (titel, xs) => `<h3 style="margin:18px 0 4px;font-size:16px">${titel} (${xs.length})</h3>${xs.length ? '<ul style="margin:0;padding-left:18px">' + xs.map((x) => `<li>${x}</li>`).join('') + '</ul>' : '<p style="margin:0;color:#777">Geen.</p>'}`;
+  const tel = ov.tel || {};
+  const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:15px;line-height:1.6;color:#1a1a1a;max-width:600px">
+    <h2 style="margin:0 0 6px">De MKC-app deze week</h2>
+    <p style="margin:0"><b>€${ov.mrr} per maand</b> aan lidmaatschappen &middot; ${(tel['betaald-maand'] || 0) + (tel['betaald-jaar'] || 0)} betalende leden (${tel['betaald-maand'] || 0} per maand, ${tel['betaald-jaar'] || 0} per jaar) &middot; ${(tel['coaching-flex'] || 0) + (tel['coaching-premium'] || 0)} via coaching &middot; ${tel.schema || 0} via een schema</p>
+    ${lijst('Nieuwe leden', nieuw)}${lijst('Opgezegd', weg)}${lijst('Betaling mislukt', mislukt)}${lijst('Terugkom-mail gestuurd', terug)}
+    <h3 style="margin:18px 0 4px;font-size:16px">Gebruik</h3>
+    <p style="margin:0">Gemiddeld ${gem} mensen per dag in de app.</p>
+    ${top.length ? '<ul style="margin:4px 0 0;padding-left:18px">' + top.map(([n, k]) => `<li>${n}: ${k}x</li>`).join('') + '</ul>' : ''}
+    <p style="margin-top:20px;color:#777;font-size:13px">Alles in detail: Beheer in de app.</p></div>`;
+  await jaarMail('michel.kredercoaching@gmail.com', `MKC-app week: ${nieuw.length} nieuw, ${weg.length} opgezegd, €${ov.mrr}/mnd`, html);
+  return res.status(200).json({ ok: true, nieuw: nieuw.length, weg: weg.length });
+}
+const OPZEG_NAMEN_MAIL = { 'te-duur': 'te duur', 'te-weinig': 'gebruikt het te weinig', winterstop: 'even geen tijd of winterstop', 'mist-iets': 'mist iets', anders: 'iets anders', geen: 'geen reden' };
+// Wekelijkse back-up van de ledengegevens als bijlage naar Michel (zondagnacht).
+// Lidmaatschappen, schema-koppelingen en de sets. Geen Core-dossiers: daar staan
+// gezondheidsgegevens in, die gaan niet per mail. Betalingen staan ook in Mollie.
+async function routeBackup(req, res) {
+  const cron = process.env.CRON_SECRET || '';
+  if (!cron || String(req.headers?.authorization || '') !== `Bearer ${cron}`) return res.status(401).json({ ok: false });
+  const sets = {};
+  for (const k of ['lid:alle', 'lid:coaching', 'lid:schema', 'lid:handmatig', 'lid:cadeau']) { const r = await redis(['SMEMBERS', k]); sets[k] = (r.ok && r.result) || []; }
+  const leden = {}, schemas = {};
+  for (const email of sets['lid:alle']) {
+    const r = await redis(['GET', `lid:${email}`]); if (r.ok && r.result) { try { leden[email] = JSON.parse(r.result); } catch {} }
+    const s = await redis(['GET', `schema:${email}`]); if (s.ok && s.result) { try { schemas[email] = JSON.parse(s.result); } catch {} }
+  }
+  const datum = new Date().toISOString().slice(0, 10);
+  const inhoud = zlib.gzipSync(Buffer.from(JSON.stringify({ gemaakt: new Date().toISOString(), sets, leden, schemas })));
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return res.status(500).json({ ok: false });
+  const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: 'michel.kredercoaching@gmail.com', subject: `Back-up MKC-app leden ${datum}`,
+      html: `<p style="font-family:Arial,sans-serif">Wekelijkse back-up van de MKC-app: ${Object.keys(leden).length} leden en ${Object.keys(schemas).length} schema's. Bewaar deze mail; bij een probleem zet Claude alles hiermee terug. Core-voortgang zit er bewust niet in (gezondheidsgegevens).</p>`,
+      attachments: [{ filename: `mkc-app-backup-${datum}.json.gz`, content: inhoud.toString('base64') }] }), signal: AbortSignal.timeout(15000) });
+  return res.status(200).json({ ok: r.ok, leden: Object.keys(leden).length, kb: Math.round(inhoud.length / 1024) });
+}
+
 // ---- Leden extra (09-10-2026): pauze, verwijderen, facturen, maat uitnodigen ----
 export const OPZEG_REDENEN = ['te-duur', 'te-weinig', 'winterstop', 'mist-iets', 'anders'];
 const VRIEND_BEDRAG = '9.50', VRIEND_MAX = 12;
@@ -323,7 +429,7 @@ function lidBeeld(lid) {
   if (!lid) return { status: 'geen' };
   const open = lid.tot && Date.now() < Date.parse(lid.tot);
   const plan = planVan(lid.plan);
-  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: PLANNEN[plan].bedrag, handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, vriendKan: !!lid.subscriptionId && lid.status === 'actief', bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
+  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: PLANNEN[plan].bedrag, handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, terugAanbod: !!(lid.winbackTot && Date.parse(lid.winbackTot) > Date.now()), vriendKan: !!lid.subscriptionId && lid.status === 'actief', bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
 }
 
 // Kan Mollie al maandelijks incasseren? Zolang SEPA-incasso niet is goedgekeurd
@@ -360,6 +466,8 @@ export default async function handler(req, res) {
     if (actie === 'opzeggen') return await routeOpzeggen(req, res);
     if (actie === 'jaarkeuze') return await routeJaarKeuze(req, res);
     if (actie === 'pauze') return await routePauze(req, res);
+    if (actie === 'weekoverzicht') return await routeWeekoverzicht(req, res);
+    if (actie === 'backup') return await routeBackup(req, res);
     if (actie === 'verwijder') return await routeVerwijder(req, res);
     if (actie === 'facturen') return await routeFacturen(req, res);
     if (actie === 'factuur') return await routeFactuurPdf(req, res);
@@ -412,6 +520,9 @@ async function routeStart(req, res) {
     if (v.ok && v.result && v.result !== email) vriendVan = vc;
   }
 
+  // Terugkomen na een win-back-mail: eerste maand ook €9,50 (30 dagen geldig).
+  const terug = !herstel && !vriendVan && automatisch && planVan(body.plan) === 'maand' && lid.winbackTot && Date.parse(lid.winbackTot) > Date.now();
+
   // Eén Mollie-klant per mailadres, hergebruiken bij opnieuw lid worden.
   if (!lid.customerId) {
     const k = await mollie('/customers', { method: 'POST', body: JSON.stringify({ name: String(body.naam || '').slice(0, 80) || email, email, metadata: { bron: 'mkc-app' } }) });
@@ -427,7 +538,7 @@ async function routeStart(req, res) {
   const p = await mollie('/payments', {
     method: 'POST',
     body: JSON.stringify({
-      amount: { currency: 'EUR', value: vriendVan ? VRIEND_BEDRAG : PLANNEN[plan].bedrag },
+      amount: { currency: 'EUR', value: vriendVan || terug ? VRIEND_BEDRAG : PLANNEN[plan].bedrag },
       description: herstel ? `${OMSCHRIJVING}, betaling bijwerken` : vriendVan ? `${OMSCHRIJVING}, eerste maand (via een maat)` : automatisch
         ? (plan === 'jaar' ? `${OMSCHRIJVING}, eerste jaar` : `${OMSCHRIJVING}, eerste maand`)
         : (plan === 'jaar' ? `${OMSCHRIJVING}, 1 jaar` : `${OMSCHRIJVING}, 1 maand`),
@@ -437,7 +548,7 @@ async function routeStart(req, res) {
       // vaak in Safari uit, en die heeft eigen opslag (zie api/app.js).
       redirectUrl: `${APP_URL}?lid=terug&t=${encodeURIComponent(String(body.t))}`,
       webhookUrl: WEBHOOK_URL,
-      metadata: { email, soort: herstel ? 'lid-herstel' : automatisch ? 'lid-eerste' : 'lid-periode', plan, akkoord: lid.akkoord.op, ...(vriendVan ? { vriend: vriendVan } : {}) }
+      metadata: { email, soort: herstel ? 'lid-herstel' : automatisch ? 'lid-eerste' : 'lid-periode', plan, akkoord: lid.akkoord.op, ...(vriendVan ? { vriend: vriendVan } : {}), ...(terug ? { terug: true } : {}) }
     })
   });
   if (!p.ok) return res.status(502).json({ ok: false, fout: 'Betalen lukt nu even niet. Probeer het zo nog eens.' });
@@ -526,6 +637,10 @@ async function routeWebhook(req, res) {
     await bewaarLid(lidEmail, lid);
     await zetLidmaatschap({ email: lidEmail, naam: lid.naam, tot: lid.tot });
     await mcTag(lidEmail, 'mkc-lid');
+    // Welkomstmail van Michel (09-10-2026), één keer per lid.
+    if ((soort === 'lid-eerste' || soort === 'lid-periode') && !lid.welkomGemaild) {
+      if (await welkomMail(lidEmail, lid)) { lid.welkomGemaild = new Date().toISOString(); lid.winbackTot = null; await bewaarLid(lidEmail, lid); }
+    }
     // Nieuwe aankoop (geen verlenging): Purchase naar Meta, event_id = betaal-id.
     if ((p.sequenceType === 'first' && soort !== 'lid-herstel') || soort === 'lid-periode') {
       const m = await redis(['GET', `lid:meta:${id}`]);
@@ -643,6 +758,7 @@ async function routeHerinner(req, res) {
   let gemaild = await schemaEindeMails();
   const verlengd = await coachingVerlengen();
   const jaar = await jaarKeuzeRonde();
+  const terugmails = await winbackRonde();
   for (const email of (lijst.ok && lijst.result) || []) {
     const lid = await haalLid(email);
     if (!lid || !lid.handmatig || lid.subscriptionId || !lid.tot) { await redis(['SREM', 'lid:handmatig', email]); continue; }
@@ -668,7 +784,7 @@ async function routeHerinner(req, res) {
       if (r.ok) { lid.herinnerd = lid.tot; await bewaarLid(email, lid); gemaild++; }
     } catch (e) { console.error('Herinnering mislukt:', email, e); }
   }
-  return res.status(200).json({ ok: true, gemaild, verlengd, jaar });
+  return res.status(200).json({ ok: true, gemaild, verlengd, jaar, terugmails });
 }
 
 // ---- Schema gekocht: de app hoort erbij (09-10-2026) -----------------------

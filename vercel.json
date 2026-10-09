@@ -69,6 +69,14 @@
       "schedule": "30 3 * * 1"
     },
     {
+      "path": "/api/lid?actie=weekoverzicht",
+      "schedule": "0 6 * * 1"
+    },
+    {
+      "path": "/api/lid?actie=backup",
+      "schedule": "0 2 * * 0"
+    },
+    {
       "path": "/api/lid?actie=cadeaumail",
       "schedule": "5 10 16 10 *"
     },
