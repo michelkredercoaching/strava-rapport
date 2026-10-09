@@ -44,6 +44,7 @@ import { tel, overzicht as gebruikOverzicht, CLIENT_GEBEURTENISSEN, GAST_GEBEURT
 import { COACH_KENNIS, COACH_REGELS, COACH_TOON } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
 import { meld as meldActief, opruimen, wisPersoon } from '../lib/app-opruimen.js';
+import { reviewMoment, reviewOpen, reviewKeuze, REVIEW_LINK } from '../lib/review.js';
 import { kledingAdvies, kledingBijstel, kledingKort } from '../lib/kleding.js';
 import { bandenAdvies, leesInvoer, nl, HOOKLESS_MAX } from '../lib/bandendruk.js';
 import { stuurPush } from '../lib/webpush.js';
@@ -299,6 +300,17 @@ async function routePlaatsVrij(req, res) {
   } catch (e) { return res.status(502).json({ ok: false, fout: 'Zoeken lukte niet.' }); }
 }
 
+// ---- Review-moment (09-10-2026), zie lib/review.js ----
+async function routeReview(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email) return res.status(401).json({ ok: false });
+  await reviewKeuze(email, body.keuze);
+  if (body.keuze === 'geklikt') await tel(email, 'review');
+  return res.status(200).json({ ok: true });
+}
+
 // ---- Appgegevens opruimen (09-10-2026), zie lib/app-opruimen.js ----------------
 // Cron (wekelijks): wist wie een jaar niets deed. Beheer: GET ?proef=1 telt alleen,
 // POST { email } wist iemand op verzoek (lidmaatschap en facturen blijven).
@@ -411,6 +423,7 @@ export default async function handler(req, res) {
     if (actie === 'plaatsvrij') return await routePlaatsVrij(req, res);
     if (actie === 'groepsrit') return await routeGroepsrit(req, res);
     if (actie === 'opruimen') return await routeOpruimen(req, res);
+    if (actie === 'review') return await routeReview(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -449,6 +462,7 @@ async function routeOverzicht(req, res) {
   if (!email) return res.status(401).json({ ok: false, fout: 'Je inloglink is verlopen. Vraag hieronder een nieuwe aan.' });
   meldActief(email);
   const [core, lid, lidmaatschap, kanLid, bandenProfiel, ritten, schemaDossier, meldingen, coachBerichten] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen(), haalBandenProfiel(email), haalRitten(email), haalSchema(email), haalMeldingen(email), haalCoachBerichten(email)]);
+  const reviewNu = await reviewOpen(email);
   // Ingelogd via de knop in de mail (zonder code) en nog geen contact? Dan
   // ook hier het gratis account aanmaken.
   if (!lid || lid.status === 'archived') await nieuwAccount(email);
@@ -463,7 +477,7 @@ async function routeOverzicht(req, res) {
     ...adviesBedragen(mf), deadline: mf.DEADLINE || '',
     tegoedLink: mf.PPTOKEN ? `https://michelkredercoaching.nl/trainingsschemas/?pp=${encodeURIComponent(mf.PPTOKEN)}` : ''
   } : null;
-  return res.status(200).json({
+  return res.status(200).json({ review: reviewNu ? REVIEW_LINK : null, 
     ok: true,
     email,
     beheer: BEHEER.includes(email),
@@ -975,6 +989,7 @@ async function routeBandenRitten(req, res) {
     if (body.oordeel) { if (!['zacht', 'goed', 'hard'].includes(body.oordeel)) return res.status(400).json({ ok: false }); rit.oordeel = body.oordeel; }
     if (body.oordeelKleding) { if (!['koud', 'goed', 'warm'].includes(body.oordeelKleding)) return res.status(400).json({ ok: false }); rit.oordeelKleding = body.oordeelKleding; }
     rit.oordeelOp = new Date().toISOString();
+    if (rit.oordeel === 'goed' && (!rit.oordeelKleding || rit.oordeelKleding === 'goed')) await reviewMoment(email, 'rit');
   } else {
     const r = body.rit || {};
     const rit = {

@@ -50,6 +50,7 @@ import { tel } from '../lib/stat.js';
 // beide gebruiken elkaars functies pas binnen een aanvraag, niet bij het laden.
 import { lidOpen } from './lid.js';
 import { meld as meldActief } from '../lib/app-opruimen.js';
+import { reviewMoment } from '../lib/review.js';
 
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || process.env.KV_REST_API_URL;
@@ -735,6 +736,7 @@ async function routeTest(req, res) {
   const vorige = (d.tests || []).filter((t) => t.moment < moment).pop();
   if (vorige && [4, 8].includes(moment % BLOK_WEKEN) && score - vorige.score < 5) d.vasthouden = true;
   d.tests.push({ moment, uitslag, score, op: nu() });
+  if (vorige && score > vorige.score) await reviewMoment(d.email, 'rompscore');
   // De romptest stuurt mee (08-10-2026): 10 punten of meer erbij sinds de vorige
   // test = de app schuift je een niveau op (eenmalige kopers niet voorbij niveau 12).
   let melding = null;

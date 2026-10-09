@@ -98,6 +98,13 @@
 
   .plan .knop[disabled] { opacity:.45; cursor:default; }
   /* Leden extra (09-10-2026) */
+  .bk-ig { margin-top:12px; }
+  .bk-ig b { display:block; font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.03em; color:var(--white); }
+  .bk-ig span { display:block; font-size:13.5px; color:var(--muted); margin:2px 0 10px; }
+  .review { background:linear-gradient(160deg, rgba(255,107,26,.14), rgba(255,107,26,.02) 60%), var(--surface); border:1px solid rgba(255,107,26,.45); border-radius:8px; padding:14px; margin:12px 0; }
+  .review b { display:block; font-size:15px; }
+  .review p { font-size:13.5px; color:var(--muted); margin:4px 0 10px; }
+  .review .sterren { color:#FFB400; letter-spacing:2px; font-size:18px; }
   .lid-extra { display:grid; gap:8px; margin-top:10px; }
   .lid-extra .vriend { background:linear-gradient(160deg, rgba(255,107,26,.14), rgba(255,107,26,.02) 60%), var(--surface); border:1px solid rgba(255,107,26,.45); border-radius:8px; padding:14px; }
   .lid-extra .vriend b { display:block; font-size:15px; }
@@ -715,13 +722,14 @@ function nepGrafiek() {
   return `<div class="nepgrafiek"><svg viewBox="0 0 300 86" preserveAspectRatio="none"><polyline fill="none" stroke="#FF6B1A" stroke-width="3" points="0,70 40,62 80,66 120,48 160,52 200,34 240,30 300,14"/></svg></div>`;
 }
 
+const BINNENKORT_IG = '<div class="bk-ig"><b>Binnenkort beschikbaar</b><span>Ik kondig de datum aan op Instagram. Hou hem daar in de gaten.</span><a class="knop leeg" href="https://www.instagram.com/michelkredercoaching/" target="_blank" rel="noopener">Volg op Instagram</a></div>';
 function afvalKaart() {
   return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Binnenkort</span>
     <div class="label">Afvalprogramma</div><h2>Lichter, zonder in te leveren</h2>
     <p>Je eigen richtlijn per dag, wekelijkse bijsturing en je gewicht in een grafiek. Afvallen zonder dat je watts zakken.</p>
     <div class="wazig"><div class="achter"><div class="cijfers"><div class="cijfer"><span>Rustdag</span><b>1950</b></div><div class="cijfer"><span>Trainingsdag</span><b>2850</b></div><div class="cijfer"><span>Deze week</span><b>-0,4</b></div></div>${nepGrafiek()}</div>
       <div class="slotje">${SLOT}<b>Binnenkort</b></div></div>
-    <a class="knop leeg" href="${SITE}/afvalcheck/">Doe alvast de gratis afvalcheck</a></div></div>`;
+    ${BINNENKORT_IG}</div></div>`;
 }
 
 // ---- Jouw Strava-analyse: inklapbaar blok bovenaan (08-10-2026) ----
@@ -796,9 +804,9 @@ function analyseKaart(a) {
 }
 
 function pacingKaart() {
-  return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Coming soon</span>
+  return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Binnenkort</span>
     <div class="label">Pacingplan</div><h2>Je grote tocht, slim ingedeeld</h2>
-    <p>Hoe hard je per klim, per strook en per uur kunt rijden zonder stuk te gaan, berekend uit je eigen ritten. Voor granfondo's, gravelfondo's en toertochten zoals de Amstel Gold Race of Luik-Bastenaken-Luik. Komt eraan.</p></div></div>`;
+    <p>Hoe hard je per klim, per strook en per uur kunt rijden zonder stuk te gaan, berekend uit je eigen ritten. Voor granfondo's, gravelfondo's en toertochten zoals de Amstel Gold Race of Luik-Bastenaken-Luik.</p>${BINNENKORT_IG}</div></div>`;
 }
 
 // Bandenspanning staat altijd bovenaan (besluit Michel 07-10-2026): de gratis
@@ -1519,6 +1527,7 @@ function teken() {
     ${beheerHtml(d)}${ledenHtml()}${gebruikHtml()}${opvolgHtml()}${nakijkHtml()}
     <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
     <div id="groepsrit">${grHtml()}</div>
+    ${reviewHtml(d)}
     ${meldingenHtml(d)}<div id="meldvraag">${meldVraagHtml()}</div><div id="startlijst">${startlijstHtml(d)}</div>
     ${isNieuw(d) ? `<div class="welkom"><b>Zo werkt je app</b>
       <ol><li><span>1</span>Vul hieronder je gewicht en band in: je ziet meteen wat je pompt. Gratis, voor elke rit.</li>
@@ -1619,6 +1628,19 @@ async function zegOpNu(knop) {
   } catch { alert('Verbinding mislukt.'); }
   lxDicht(); laadOverzicht();
 }
+function reviewHtml(d) {
+  if (!d || !d.review || REV_WEG) return '';
+  return `<div class="review" id="review"><span class="sterren">&#9733;&#9733;&#9733;&#9733;&#9733;</span><b>Help je me met een review?</b><p>Fijn dat het goed gaat. Een korte Google-review kost je een minuut en helpt andere renners kiezen. Dank je wel!</p>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:8px"><a class="knop" href="${esc(d.review)}" target="_blank" rel="noopener" data-review="geklikt">Schrijf een review</a><button type="button" class="knop leeg" data-review="later" style="width:auto;padding-left:16px;padding-right:16px">Later</button></div></div>`;
+}
+let REV_WEG = false;
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-review]'); if (!k) return;
+  if (k.dataset.review === 'later') e.preventDefault();
+  REV_WEG = true;
+  fetch(API + '?actie=review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), keuze: k.dataset.review }) }).catch(() => {});
+  setTimeout(() => { const el = document.getElementById('review'); if (el) el.remove(); }, k.dataset.review === 'later' ? 0 : 400);
+});
 function lidExtraHtml(l) {
   if (!l || l.bron === 'coaching' || l.bron === 'schema' || l.bron === 'cadeau') return '';
   return `<div class="lid-extra">

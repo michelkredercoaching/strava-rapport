@@ -43,6 +43,7 @@ import { planNaam, laadPlan } from '../lib/schema-app.js';
 import { browserContext, stuurPurchase } from '../lib/meta-capi.js';
 import { appMelding } from '../lib/app-melding.js';
 import { overzicht as gebruikOverzicht } from '../lib/stat.js';
+import { reviewMoment } from '../lib/review.js';
 import zlib from 'node:zlib';
 
 const MOLLIE_KEY  = process.env.MOLLIE_API_KEY || '';
@@ -778,6 +779,9 @@ async function routeHerinner(req, res) {
   const verlengd = await coachingVerlengen();
   const jaar = await jaarKeuzeRonde();
   const terugmails = await winbackRonde();
+  // Review-moment na 4 weken betaald lid.
+  const ll = await redis(['SMEMBERS', 'lid:alle']);
+  for (const e of (ll.ok && ll.result) || []) { const x = await haalLid(e); if (x && x.bron === 'betaald' && x.status === 'actief' && x.sinds) { const d = (Date.now() - Date.parse(x.sinds)) / 86400000; if (d >= 28 && d < 35) await reviewMoment(e, 'lid'); } }
   for (const email of (lijst.ok && lijst.result) || []) {
     const lid = await haalLid(email);
     if (!lid || !lid.handmatig || lid.subscriptionId || !lid.tot) { await redis(['SREM', 'lid:handmatig', email]); continue; }
