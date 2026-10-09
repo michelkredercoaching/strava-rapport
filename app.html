@@ -114,6 +114,7 @@
   .lid-extra .vriend { background:linear-gradient(160deg, rgba(255,107,26,.14), rgba(255,107,26,.02) 60%), var(--surface); border:1px solid rgba(255,107,26,.45); border-radius:8px; padding:14px; }
   .lid-extra .vriend b { display:block; font-size:15px; }
   .lid-extra .vriend p { font-size:13.5px; color:var(--muted); margin:4px 0 10px; }
+  .wa-coach { display:inline-block; margin-top:10px; background:#25D366; color:#fff !important; text-decoration:none; font-weight:600; font-size:14px; padding:9px 14px; border-radius:6px; white-space:normal; }
   .wa-knop { background:#25D366 !important; color:#fff !important; border:0 !important; }
   .lid-link { background:none; border:1px solid var(--border); color:var(--white); border-radius:6px; padding:11px; font-family:inherit; font-size:14px; cursor:pointer; text-align:left; }
   .fact-lijst a { display:flex; justify-content:space-between; gap:10px; padding:10px 2px; border-top:1px solid var(--border); color:var(--white); text-decoration:none; font-size:14px; }
@@ -570,8 +571,10 @@ function opmaak(t) {
     s = s.replace(/^\s*[-*•]\s+/, '&bull; ');
     s = s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/__(.+?)__/g, '<b>$1</b>').replace(/\*/g, '');
     return s;
-  }).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  }).join('\n').replace(/\n{3,}/g, '\n\n').trim() + (/whats ?app/i.test(String(t || '')) ? WA_KNOP : '');
 }
+// Verwijst de coach naar Michel (weet het antwoord niet), dan een knop naar WhatsApp (09-10-2026).
+const WA_KNOP = '<a class="wa-coach" href="https://wa.me/31639771314?text=' + encodeURIComponent('Hoi Michel, ik heb een vraag over mijn training:') + '" target="_blank" rel="noopener">Stuur Michel een WhatsApp</a>';
 const SLOT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
 const SITE = 'https://michelkredercoaching.nl';
 // Analyse kopen = direct naar de checkout met product 12131 in het mandje (de
