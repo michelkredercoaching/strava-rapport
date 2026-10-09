@@ -152,6 +152,8 @@ async function leesBody(req) {
 }
 // ---- Na lid worden (09-10-2026): welkom, win-back, weekoverzicht, back-up ----
 const knopHtml = (url, tekst) => `<p style="margin:22px 0 26px"><a href="${url}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">${tekst}</a></p>`;
+// WhatsApp-link met een kant-en-klaar berichtje en de persoonlijke link erin.
+const waLink = (code) => 'https://wa.me/?text=' + encodeURIComponent(`Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding en voeding voor elke rit, core-oefeningen en een eigen coach. Via mijn link krijgen we allebei 50% korting op een maand: ${APP_URL}?vriend=${code}`);
 async function welkomMail(email, lid) {
   const voornaam = String(lid.naam || '').split(' ')[0];
   const code = vriendCode(email);
@@ -163,7 +165,8 @@ async function welkomMail(email, lid) {
     <p><b>Vul je fietsen en gewicht in</b> bij Vandaag rijden. Dan zie je voor elke rit wat je pompt, wat je aantrekt en wat je meeneemt.</p>
     <p><b>Start de Core-app.</b> Korte sessies van een kwartier, een paar keer per week. Je merkt het het eerst op lange ritten, in je onderrug en je nek.</p>
     ${knopHtml(APP_URL, 'Open de app')}
-    <p>Rij je samen met anderen? Met jouw link krijgt je maat zijn eerste maand voor €9,50, en jij 50% korting op je volgende maand: <a href="${APP_URL}?vriend=${code}" style="color:#ff6b1a">${APP_URL}?vriend=${code}</a></p>
+    <p>Fiets je samen met anderen? Nodig een vriend of vriendin uit. Die krijgt de eerste maand voor €9,50, en jij 50% korting op je volgende maand.</p>
+    <p><a href="${waLink(code)}" style="display:inline-block;background:#25D366;color:#fff;padding:12px 22px;border-radius:4px;text-decoration:none;font-weight:700">Nodig uit via WhatsApp</a></p>
     <p>Loop je ergens tegenaan of heb je een vraag? Stel hem aan de coach in de app, of mail me gewoon terug.</p>`));
 }
 // Oud-leden terughalen: 14 dagen na het einde één persoonlijke mail, afgestemd op
@@ -321,7 +324,7 @@ async function routeVriend(req, res) {
   if (!lid || !lidBeeld(lid).vriendKan) return res.status(400).json({ ok: false, fout: 'Uitnodigen kan als je lid bent.' });
   const code = vriendCode(email);
   await redis(['SET', `lid:vriend:${code}`, email]);
-  return res.status(200).json({ ok: true, code, url: `${APP_URL}?vriend=${code}`, beloningen: lid.vriendBeloningen || 0 });
+  return res.status(200).json({ ok: true, code, url: `${APP_URL}?vriend=${code}`, whatsapp: waLink(code), beloningen: lid.vriendBeloningen || 0 });
 }
 async function beloonVriend(code, maatEmail, maatNaam) {
   const v = await redis(['GET', `lid:vriend:${code}`]);

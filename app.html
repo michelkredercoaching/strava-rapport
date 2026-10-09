@@ -102,6 +102,7 @@
   .lid-extra .vriend { background:linear-gradient(160deg, rgba(255,107,26,.14), rgba(255,107,26,.02) 60%), var(--surface); border:1px solid rgba(255,107,26,.45); border-radius:8px; padding:14px; }
   .lid-extra .vriend b { display:block; font-size:15px; }
   .lid-extra .vriend p { font-size:13.5px; color:var(--muted); margin:4px 0 10px; }
+  .wa-knop { background:#25D366 !important; color:#fff !important; border:0 !important; }
   .lid-link { background:none; border:1px solid var(--border); color:var(--white); border-radius:6px; padding:11px; font-family:inherit; font-size:14px; cursor:pointer; text-align:left; }
   .fact-lijst a { display:flex; justify-content:space-between; gap:10px; padding:10px 2px; border-top:1px solid var(--border); color:var(--white); text-decoration:none; font-size:14px; }
   .fact-lijst a span { color:var(--muted); }
@@ -1621,7 +1622,7 @@ async function zegOpNu(knop) {
 function lidExtraHtml(l) {
   if (!l || l.bron === 'coaching' || l.bron === 'schema' || l.bron === 'cadeau') return '';
   return `<div class="lid-extra">
-    ${l.vriendKan ? '<div class="vriend"><b>Nodig een maat uit, samen voor de helft</b><p>Je maat krijgt zijn eerste maand voor &euro;9,50, en jij ' + (l.plan === 'jaar' ? 'krijgt er een halve maand gratis bij' : 'krijgt 50% korting op je volgende maand') + ' zodra hij lid is.</p><button type="button" class="knop" data-lx="vriend">Deel je link</button></div>' : ''}
+    ${l.vriendKan ? '<div class="vriend"><b>Nodig een vriend of vriendin uit, samen voor de helft</b><p>Die krijgt de eerste maand voor &euro;9,50, en jij ' + (l.plan === 'jaar' ? 'krijgt er een halve maand gratis bij' : 'krijgt 50% korting op je volgende maand') + ' zodra die lid is.</p><div class="rij2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app</button></div></div>' : ''}
     ${l.facturen ? '<button type="button" class="lid-link" data-lx="facturen">Mijn facturen</button>' : ''}</div>`;
 }
 document.addEventListener('click', async (e) => {
@@ -1642,6 +1643,14 @@ document.addEventListener('click', async (e) => {
       const t = encodeURIComponent(leesToken());
       modal('<h3>Mijn facturen</h3>' + (j.facturen && j.facturen.length ? '<div class="fact-lijst">' + j.facturen.map((f) => '<a href="/api/lid?actie=factuur&id=' + encodeURIComponent(f.id) + '&t=' + t + '" target="_blank" rel="noopener">' + esc(f.nr || 'Factuur') + ' <span>' + esc(datumNl(f.op)) + ' &middot; &euro;' + esc(String(f.bedrag).replace('.', ',')) + '</span></a>').join('') + '</div>' : '<p>Nog geen facturen.</p>') + '<button type="button" class="sb-link" data-lx="dicht">Sluiten</button>');
     } catch (er) { alert('Verbinding mislukt.'); }
+    return;
+  }
+  if (a === 'whatsapp') {
+    const w = window.open('', '_blank');
+    try { const j = await (await fetch('/api/lid?actie=vriend&t=' + encodeURIComponent(leesToken()))).json();
+      if (!j.ok) { if (w) w.close(); return alert(j.fout || 'Dat lukte niet.'); }
+      if (w) w.location.href = j.whatsapp; else location.href = j.whatsapp;
+    } catch (er) { if (w) w.close(); alert('Verbinding mislukt.'); }
     return;
   }
   if (a === 'vriend') {
