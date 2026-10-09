@@ -335,6 +335,8 @@
   .gr-link { background:var(--black); border:1px dashed rgba(255,107,26,.5); border-radius:6px; padding:10px 12px; font-size:14px; word-break:break-all; margin-top:10px; color:var(--white); }
   .gr-plan-knop { display:block; width:100%; margin-top:10px; background:none; border:1px solid var(--border); color:var(--white); border-radius:6px; padding:11px; font-family:inherit; font-size:14px; cursor:pointer; }
   .gr-plan-knop b { color:var(--accent); }
+  .gr-in-kaart { margin:14px 0 4px; }
+  .gr-in-kaart .gr-maak { margin-top:10px; background:var(--black); }
   /* Ritkaart */
   .rk-knop { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:12px; background:transparent !important; border:1.5px solid var(--accent) !important; color:var(--accent) !important; }
   .rk-knop svg { stroke:var(--accent); }
@@ -815,6 +817,7 @@ function bandenKaart(d) {
       <div class="bt-keuze">${knop('tubeless', 'false', 'Binnenband')}${knop('tubeless', 'true', 'Tubeless')}</div>
     </div>
     <div id="btUit"></div>
+    <div class="gr-in-kaart">${grPlanKnop()}<div id="grmaak">${grMaakHtml()}</div></div>
     ${d.gast ? `<div class="sb-vraag"><label>Vraag het je bandencoach</label><p class="klein" style="margin:0">Rijd je morgen over kasseien of in de regen? Met een gratis account stel je je vraag aan de bandencoach. <a href="#" data-actie="gastlogin" style="color:var(--accent)">Maak je account</a></p></div>` : `<div class="sb-vraag"><label for="btVraag">Vraag het je bandencoach</label>
       ${gratisOver() === 0 ? '' : `<div class="sb-rij"><input id="btVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen over kasseien" value="${esc(BTV.vraag)}"><button type="button" class="knop" data-btv="vraag" ${BTV.bezig ? 'disabled' : ''}>${BTV.bezig ? '...' : 'Vraag'}</button></div>`}
       ${BTV.antwoord ? `<div class="sb-antwoord">${opmaak(BTV.antwoord)}</div>` : ''}
@@ -1015,6 +1018,7 @@ function slimBandenKaart() {
     <div class="bt-keuze sb-grond">${grond}</div>
     <div class="bt-keuze"><button type="button" data-sb="nat" data-w="false" class="${!nat ? 'aan' : ''}">Droog</button><button type="button" data-sb="nat" data-w="true" class="${nat ? 'aan' : ''}">Nat wegdek</button></div>
     ${res}
+    <div class="gr-in-kaart">${grPlanKnop()}<div id="grmaak">${grMaakHtml()}</div></div>
     <div class="sb-vraag"><label for="sbVraag">Vraag het je bandencoach</label>
       <div class="sb-rij"><input id="sbVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen de Ronde met kasseien" value="${esc(SB.vraag)}"><button type="button" class="knop" data-sb="vraag" ${SB.vraagBezig ? 'disabled' : ''}>${SB.vraagBezig ? '...' : 'Vraag'}</button></div>
       ${SB.antwoord ? `<div class="sb-antwoord">${opmaak(SB.antwoord)}</div>` : ''}</div>
@@ -1027,6 +1031,7 @@ function sbTeken() {
   // pushLaad riep dit voor iedereen aan en verving zo de gratis kaart).
   const dz = zicht(); if (!dz || !toonSlim(dz)) return;
   if (GR.data) grTeken();
+  grLeesVelden();
   const el = document.getElementById('banden'); if (!el) return;
   el.outerHTML = slimBandenKaart();
 }
@@ -1446,7 +1451,6 @@ function teken() {
       : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}
     ${analyseBlok(d.analyse)}
     <div class="groepkop">Vandaag</div><div class="kaarten">${schemaKaart(d)}${bandenKaart(d)}${toonSlim(d) ? '' : windKaartHtml()}</div>
-    ${grPlanKnop()}<div id="grmaak">${grMaakHtml()}</div>
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     ${isLid(d) ? '' : binnenkortNu() ? `<div class="groepkop">Meer uit de app</div>${binnenkortPitchHtml()}` : !kanLidNu(d) ? '' : `<div class="groepkop">Meer uit de app</div>${lidPitchHtml()}`}
     ${kaartenHtml(d)}
@@ -1942,8 +1946,9 @@ function grHtml() {
     lidBlok = (kl ? `<div class="gr-blok"><h4>Wat trek je aan &middot; voelt als ${kl.gevoel}&deg;</h4><ul class="kl-lijst">${kl.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${kl.tips && kl.tips[0] ? `<p class="klein">${esc(kl.tips[0])}</p>` : ''}</div>` : '')
       + `<div class="gr-blok"><h4>Wat neem je mee &middot; ${esc(rv.kort)}</h4><ul class="kl-lijst">${rv.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
   } else if (uren && uren.length && !lid) {
-    lidBlok = `<div class="gr-blok"><div class="gr-slot">${SLOT}<div><b>Wat trek je aan en wat neem je mee?</b><p>Leden zien hier hun kleding en voeding voor precies deze rit: het weer van start tot finish, hoe lang en hoe hard jullie rijden.</p>
-      ${kanLidNu(d) ? '<button type="button" class="knop leeg" data-actie="naarlid" style="margin-top:10px">Bekijk de MKC-app</button>' : ''}</div></div></div>`;
+    lidBlok = `<div class="gr-blok"><h4>Wat trek je aan</h4><div class="gr-slot">${SLOT}<p>Je kleding voor precies deze rit, op basis van het weer van start tot finish, de wind en het tempo. Voor leden.</p></div></div>
+      <div class="gr-blok"><h4>Wat neem je mee</h4><div class="gr-slot">${SLOT}<p>Hoeveel koolhydraten en bidons je meeneemt voor deze rit, afgestemd op de duur, het tempo en de temperatuur. Voor leden.</p></div>
+      ${kanLidNu(d) ? '<button type="button" class="knop leeg" data-actie="naarlid" style="margin-top:10px">Ontgrendel met de MKC-app</button>' : ''}</div>`;
   }
   return `<div class="gr"><div class="label">Groepsrit${rit.eigen ? ' &middot; jouw rit' : ''}</div><h3>${esc(rit.naam)}</h3>
     <div class="gr-wanneer">${esc(grDag(rit.start).replace(/^./, (c) => c.toUpperCase()))} &middot; ${grTijd(rit.start)} tot ${grTijd(eind)}</div>
@@ -2157,7 +2162,6 @@ function tekenGast() {
     <div class="kaarten">${bandenKaart(d)}</div>
     <div id="gastLead">${gastLeadHtml()}</div>
     ${windKaartHtml()}
-    ${grPlanKnop()}
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     <div class="gast-meer"><div class="groepkop" style="margin-left:0">Meer in de MKC-app</div>
       <ul>${LID_LIJST.slice(0, 4).map((x) => `<li>${x}</li>`).join('')}</ul>
