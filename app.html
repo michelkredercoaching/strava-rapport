@@ -704,7 +704,7 @@ function coreKaart(c) {
   if (c.opSlot) {
     return `<div class="kaart actief"><div class="kaart-in"><span class="tag oranje">Proefweek klaar</span><div class="label">Core-app</div>
       <h2>Niveau 2 staat klaar</h2><p>Je proefweek zit erop. Ga door en alles wat je deed blijft staan.</p>
-      ${c.rompscore != null ? `<div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore}</b></div><div class="cijfer"><span>Niveau</span><b>1</b></div><div class="cijfer"><span>Prijs</span><b>${kanLidNu() ? '&euro;19<em style="color:var(--muted)">/mnd</em>' : '&euro;49'}</b></div></div>` : ''}
+      ${c.rompscore != null ? `<div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore}</b></div><div class="cijfer"><span>Niveau</span><b>1</b></div><div class="cijfer"><span>Prijs</span><b>${kanLidNu() ? '&euro;' + APP_PRIJS.maand + '<em style="color:var(--muted)">/mnd</em>' : '&euro;49'}</b></div></div>` : ''}
       ${kanLidNu() ? '<button class="knop" data-actie="naarlid">Word lid en ga door</button>' : `<a class="knop" href="${esc(c.link)}">Ga door naar niveau 2</a>`}</div></div>`;
   }
   const winst = c.rompscore != null && c.startScore != null && c.rompscore > c.startScore ? `<em>+${c.rompscore - c.startScore}</em>` : '';
@@ -1373,7 +1373,8 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// ---- Lidmaatschap MKC-app (07-10-2026): €19 per maand via Mollie ----
+// ---- Lidmaatschap MKC-app: €9,99 per maand of €89 per jaar via Mollie (sinds 09-10-2026, was €19/€149) ----
+const APP_PRIJS = { maand: '9,99', jaar: '89', jaarPerMaand: '7,42', half: '5' };
 const LID_LIJST = ['De Core-app die met je meebeweegt: gaat het makkelijk, dan ga je sneller', 'Slimme bandenspanning: je fietsen, het weer van vandaag en een geheugen', 'Kledingadvies voor je rit, plus een ochtendbericht met weer, spanning en kleding', 'Onbeperkt vragen aan je eigen coach, met Michels kennis uit 9 jaar prof en zijn coachervaring', 'Per maand, altijd opzegbaar, of voordelig per jaar'];
 function binnenkortPitchHtml() {
   // Vóór de lancering: prijzen al zichtbaar, knoppen nog dicht (09-10-2026).
@@ -1388,15 +1389,15 @@ function plannenHtml(dicht) {
     ? `<button class="knop${leeg ? ' leeg' : ''}" disabled>Vanaf 16 oktober</button>`
     : `<button class="knop${leeg ? ' leeg' : ''}" data-actie="wordlid" data-plan="${plan}">${tekst}</button>`;
   return `<div class="plannen">
-      <div class="plan jaar"><span class="plan-badge">Beste keuze &middot; bespaar 35%</span>
+      <div class="plan jaar"><span class="plan-badge">Beste keuze &middot; ruim 3 maanden gratis</span>
         <div class="plan-naam">Per jaar</div>
-        <div class="prijs">&euro;12,42<small>per maand</small></div>
-        <div class="plan-sub">&euro;149 per jaar in &eacute;&eacute;n keer</div>
+        <div class="prijs">&euro;${APP_PRIJS.jaarPerMaand}<small>per maand</small></div>
+        <div class="plan-sub">&euro;${APP_PRIJS.jaar} per jaar in &eacute;&eacute;n keer</div>
         ${knop('jaar', 'Kies per jaar')}</div>
       <div class="plan">
         <div class="plan-naam">Per maand</div>
-        <div class="prijs">&euro;19<small>per maand</small></div>
-        <div class="plan-sub">${vriendCodeLs() ? 'via je maat: eerste maand &euro;9,50' : D && D.lid && D.lid.terugAanbod ? 'welkom terug: eerste maand &euro;9,50' : 'op elk moment opzegbaar'}</div>
+        <div class="prijs">&euro;${APP_PRIJS.maand}<small>per maand</small></div>
+        <div class="plan-sub">${vriendCodeLs() ? 'via je maat: eerste maand &euro;' + APP_PRIJS.half : D && D.lid && D.lid.terugAanbod ? 'welkom terug: eerste maand &euro;' + APP_PRIJS.half : 'op elk moment opzegbaar'}</div>
         ${knop('maand', 'Kies per maand', true)}</div>
     </div>`;
 }
@@ -1421,7 +1422,7 @@ function lidFactuurLees() {
 }
 document.addEventListener('change', (e) => { if (e.target.id === 'lfLand') { lidFactuurLees(); LF.land = e.target.value; const el = document.querySelector('.lid-factuur'); if (el) el.outerHTML = lidFactuurHtml(); } });
 // Twee keuzes, zoals bij JOIN: per maand (lage drempel) of per jaar (beste keuze).
-// €19 x 12 = €228, jaar €149: €79 voordeel, ongeveer 35%.
+// €9,99 x 12 = €119,88, jaar €89: bijna €31 voordeel, ruim 3 maanden.
 function lidPitchHtml() {
   return `<div class="lidblok"><div class="label">MKC-app</div><h2>Word lid</h2>
     <ul>${LID_LIJST.map((x) => `<li>${x}</li>`).join('')}</ul>
@@ -1437,7 +1438,7 @@ function lidStatusHtml(l) {
   if (l.status === 'actief' && l.bron === 'schema') return `<div class="lidrij" id="lid"><span><b>Inbegrepen bij je schema</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="naarlid">Daarna lid blijven</button></div>`;
   if (l.status === 'actief' && l.handmatig) return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid" data-plan="${l.plan === 'jaar' ? 'jaar' : 'maand'}">Verlengen</button></div>`;
   if (l.status === 'actief' && l.jaarKeuze && !l.jaarKeuze.gekozen) return `<div class="lidkeuze" id="lid"><b>Je jaar zit er op ${esc(datumNl(l.jaarKeuze.op))} op</b><p>Hoe wil je verder? Kies je niets, dan ga je per maand verder.</p>
-      <div class="rij"><button type="button" class="knop" data-jaarkeuze="jaar">Nog een jaar &middot; &euro;149</button><button type="button" class="knop leeg" data-jaarkeuze="maand">Per maand &middot; &euro;19</button></div></div>`;
+      <div class="rij"><button type="button" class="knop" data-jaarkeuze="jaar">Nog een jaar &middot; &euro;${esc(String(((l.prijs || {}).jaar) || '89').replace('.00', '').replace('.', ','))}</button><button type="button" class="knop leeg" data-jaarkeuze="maand">Per maand &middot; &euro;${esc(String(((l.prijs || {}).maand) || '9.99').replace('.00', '').replace('.', ','))}</button></div></div>`;
   if (l.status === 'actief' && l.jaarKeuze && l.jaarKeuze.gekozen) return `<div class="lidrij" id="lid"><span><b>Jaarlid</b> &middot; nog een jaar, verlengt rond ${esc(datumNl(l.jaarKeuze.op))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
   if (l.status === 'actief') return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; ${l.plan === 'jaar' ? 'verlengt automatisch rond' : 'volgende afschrijving rond'} ${esc(datumNl(l.tot, -5))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
   if (l.status === 'achterstand') return `<div class="lidrij waarschuw" id="lid"><span><b>Betaling mislukt</b> &middot; je app blijft open tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid" data-plan="${l.plan === 'jaar' ? 'jaar' : 'maand'}">Betaling bijwerken</button></div>`;
@@ -1447,7 +1448,7 @@ function lidStatusHtml(l) {
 document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-jaarkeuze]'); if (!k) return;
   const keuze = k.dataset.jaarkeuze;
-  if (keuze === 'maand' && !confirm('Per maand verder voor €19? Je kunt dan elke maand opzeggen.')) return;
+  if (keuze === 'maand' && !confirm('Per maand verder? Je kunt dan elke maand opzeggen.')) return;
   k.disabled = true;
   try {
     const j = await (await fetch('/api/lid?actie=jaarkeuze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), keuze }) })).json();
@@ -1504,8 +1505,8 @@ function simuleer(d) {
   const tot = (dagen) => new Date(Date.now() + dagen * 86400000).toISOString();
   if (SIM.lid === 'geen') n.lid = { status: 'geen' };
   else if (SIM.lid === 'maand') n.lid = { status: 'actief', open: true, plan: 'maand', bedrag: '19.00', tot: tot(24), pauzeKan: true, vriendKan: true, facturen: 2, bron: 'betaald' };
-  else if (SIM.lid === 'jaar') n.lid = { status: 'actief', open: true, plan: 'jaar', bedrag: '149.00', tot: tot(300) };
-  else if (SIM.lid === 'jaarkeuze') n.lid = { status: 'actief', open: true, plan: 'jaar', bedrag: '149.00', tot: tot(25), jaarKeuze: { open: true, gekozen: null, op: tot(20).slice(0, 10) } };
+  else if (SIM.lid === 'jaar') n.lid = { status: 'actief', open: true, plan: 'jaar', bedrag: '89.00', tot: tot(300) };
+  else if (SIM.lid === 'jaarkeuze') n.lid = { status: 'actief', open: true, plan: 'jaar', bedrag: '89.00', tot: tot(25), jaarKeuze: { open: true, gekozen: null, op: tot(20).slice(0, 10) } };
   else if (SIM.lid === 'ideal') n.lid = { status: 'actief', open: true, plan: 'maand', bedrag: '19.00', tot: tot(4), handmatig: true };
   else if (SIM.lid === 'opgezegd') n.lid = { status: 'opgezegd', open: true, plan: 'maand', bedrag: '19.00', tot: tot(12) };
   else if (SIM.lid === 'achterstand') n.lid = { status: 'achterstand', open: true, plan: 'maand', bedrag: '19.00', tot: tot(3) };
@@ -1541,7 +1542,7 @@ function teken() {
     ${isNieuw(d) ? `<div class="welkom"><b>Zo werkt je app</b>
       <ol><li><span>1</span>Vul hieronder je gewicht en band in: je ziet meteen wat je pompt. Gratis, voor elke rit.</li>
       <li><span>2</span>${binnenkortNu() ? 'Binnenkort komt er veel bij: de Core-app, kledingadvies voor je rit en je eigen coach.' : 'Start je gratis week in de Core-app: korte sessies thuis, op de timer.'}</li>
-      <li><span>3</span>${binnenkortNu() ? 'Zet de app op je beginscherm, dan heb je je bandenspanning altijd bij de hand.' : d.lidOpen ? 'Meer nodig? Als lid krijg je je eigen coach, de slimme bandenspanning en de Core-app doorlopend, voor &euro;19 per maand.' : 'Rechtsonder zit <em>Vraag je coach</em>: je eigen coach die je analyse en je plan kent, straks voor leden.'}</li></ol></div>`
+      <li><span>3</span>${binnenkortNu() ? 'Zet de app op je beginscherm, dan heb je je bandenspanning altijd bij de hand.' : d.lidOpen ? 'Meer nodig? Als lid krijg je je eigen coach, de slimme bandenspanning en de Core-app doorlopend, voor &euro;' + APP_PRIJS.maand + ' per maand.' : 'Rechtsonder zit <em>Vraag je coach</em>: je eigen coach die je analyse en je plan kent, straks voor leden.'}</li></ol></div>`
       : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}
     ${analyseBlok(d.analyse)}
     <div class="groepkop">Vandaag</div><div class="kaarten">${schemaKaart(d)}${bandenKaart(d)}${toonSlim(d) ? '' : windKaartHtml()}</div>
@@ -1654,7 +1655,7 @@ document.addEventListener('click', (e) => {
 function lidExtraHtml(l) {
   if (!l || l.bron === 'coaching' || l.bron === 'schema' || l.bron === 'cadeau') return '';
   return `<div class="lid-extra">
-    ${l.vriendKan ? '<div class="vriend"><b>Nodig een vriend of vriendin uit, samen voor de helft</b><p>Die krijgt de eerste maand voor &euro;9,50, en jij ' + (l.plan === 'jaar' ? 'krijgt er een halve maand gratis bij' : 'krijgt 50% korting op je volgende maand') + ' zodra die lid is.</p><div class="rij2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app</button></div></div>' : ''}
+    ${l.vriendKan ? '<div class="vriend"><b>Nodig een vriend of vriendin uit, samen voor de helft</b><p>Die krijgt de eerste maand voor de helft, en jij ' + (l.plan === 'jaar' ? 'krijgt er een halve maand gratis bij' : 'krijgt 50% korting op je volgende maand') + ' zodra die lid is.</p><div class="rij2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app</button></div></div>' : ''}
     ${l.facturen ? '<button type="button" class="lid-link" data-lx="facturen">Mijn facturen</button>' : ''}</div>`;
 }
 document.addEventListener('click', async (e) => {
@@ -1730,7 +1731,7 @@ function gratisTellerHtml(id) {
 function gratisOpHtml() {
   return `<div class="cc-slotkaart"><div class="label">Je gratis vragen zijn op</div><h3>Wil je verder vragen?</h3>
     <p>Maandag heb je weer 3 gratis vragen. Als lid vraag je zoveel je wilt, en kent je coach ook je fietsen en je Core-voortgang.</p>
-    ${kanLidNu() ? '<button class="knop" data-actie="wordlid">Word lid voor &euro;19 per maand</button><p class="klein">Maandelijks opzegbaar.</p>' : '<p class="klein">Het lidmaatschap gaat binnenkort open.</p>'}</div>`;
+    ${kanLidNu() ? '<button class="knop" data-actie="wordlid">Word lid voor &euro;' + APP_PRIJS.maand + ' per maand</button><p class="klein">Maandelijks opzegbaar.</p>' : '<p class="klein">Het lidmaatschap gaat binnenkort open.</p>'}</div>`;
 }
 function coachBouw() {
   if (document.getElementById('ccPaneel')) return;

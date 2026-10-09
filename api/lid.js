@@ -1,6 +1,6 @@
 // /api/lid.js
 // ---------------------------------------------------------------------------
-// Lidmaatschap van de MKC-app: €19 per maand of €149 per jaar, automatische
+// Lidmaatschap van de MKC-app: €9,99 per maand of €89 per jaar (sinds 09-10-2026, was €19/€149), automatische
 // incasso via Mollie (besluit Michel 07-10 en 08-10-2026). Geen garantie, wel
 // opzegbaar: het abonnement stopt, de betaalde periode loopt gewoon door.
 // Zie APP-STAPPENPLAN.md.
@@ -15,7 +15,7 @@
 //   1. Eerste betaling met sequenceType 'first' (iDEAL). Daarmee geeft de klant
 //      een machtiging voor SEPA-incasso. VEREIST: SEPA-incasso staat aan in het
 //      Mollie-dashboard, anders maakt Mollie geen machtiging aan.
-//   2. Is die betaald, dan maakt de webhook een abonnement aan: elke maand €19,
+//   2. Is die betaald, dan maakt de webhook een abonnement aan: elke maand €9,99,
 //      eerste incasso een maand na vandaag.
 //   3. Elke incasso komt weer via de webhook binnen. Betaald = toegang een maand
 //      verlengen. Mislukt = status 'achterstand', toegang loopt nog 5 dagen door.
@@ -57,11 +57,15 @@ const WEBHOOK_URL = 'https://rapport.michelkredercoaching.nl/api/lid?actie=webho
 // Twee plannen. Het plan gaat mee in de metadata van de eerste betaling en
 // wordt bewaard in lid.plan, zodat elke volgende incasso de juiste periode verlengt.
 const PLANNEN = {
-  maand: { bedrag: '19.00', interval: '1 month', maanden: 1, label: 'per maand' },
-  jaar:  { bedrag: '149.00', interval: '12 months', maanden: 12, label: 'per jaar' }
+  maand: { bedrag: '9.99', interval: '1 month', maanden: 1, label: 'per maand' },
+  jaar:  { bedrag: '89.00', interval: '12 months', maanden: 12, label: 'per jaar' }
 };
 const planVan = (x) => (x === 'jaar' ? 'jaar' : 'maand');
 const BEDRAG      = PLANNEN.maand.bedrag;
+// Prijs per lid: wat iemand betaalt blijft vastliggen als de prijs later stijgt.
+const prijzenVan = (lid) => (lid && lid.prijs) || { maand: PLANNEN.maand.bedrag, jaar: PLANNEN.jaar.bedrag };
+const halve = (v) => (Math.round(Number(v) * 50) / 100).toFixed(2);
+const euro = (v) => '€' + String(Number(v).toFixed(2)).replace('.00', '').replace('.', ',');
 const OMSCHRIJVING = 'MKC-app lidmaatschap';
 const SPELING_DAGEN = 5;     // na een mislukte incasso blijft de app nog zo lang open
 
@@ -166,14 +170,14 @@ async function welkomMail(email, lid, naar) {
     <p><b>Vul je fietsen en gewicht in</b> bij Vandaag rijden. Dan zie je voor elke rit wat je pompt, wat je aantrekt en wat je meeneemt.</p>
     <p><b>Start de Core-app.</b> Korte sessies van een kwartier, een paar keer per week. Je merkt het het eerst op lange ritten, in je onderrug en je nek.</p>
     ${knopHtml(APP_URL, 'Open de app')}
-    <p>Fiets je samen met anderen? Nodig een vriend of vriendin uit. Die krijgt de eerste maand voor €9,50, en jij 50% korting op je volgende maand.</p>
+    <p>Fiets je samen met anderen? Nodig een vriend of vriendin uit. Die krijgt de eerste maand voor de helft, en jij 50% korting op je volgende maand.</p>
     <p><a href="${waLink(code)}" style="display:inline-block;background:#25D366;color:#fff;padding:12px 22px;border-radius:4px;text-decoration:none;font-weight:700">Nodig uit via WhatsApp</a></p>
     <p>Loop je ergens tegenaan of heb je een vraag? Stel hem aan de coach in de app, of mail me gewoon terug.</p>`));
 }
 // Oud-leden terughalen: 14 dagen na het einde één persoonlijke mail, afgestemd op
 // hun opzegreden. Winterstop krijgt hem in het voorjaar (maart of april).
 const WINBACK_REGEL = {
-  'te-duur': 'Je gaf aan dat het te duur was. Daarom mag je terugkomen voor €9,50 voor je eerste maand. Daarna €19 per maand, en altijd opzegbaar.',
+  'te-duur': `Je gaf aan dat het te duur was. Daarom mag je terugkomen voor ${euro(halve(PLANNEN.maand.bedrag))} voor je eerste maand. Daarna ${euro(PLANNEN.maand.bedrag)} per maand, en altijd opzegbaar.`,
   'te-weinig': 'Je gaf aan dat je de app te weinig gebruikte. Een tip als je terugkomt: zet het ochtendbericht aan. Dan krijg je elke ochtend vanzelf je bandenspanning en kleding voor je rit, zonder dat je eraan hoeft te denken.',
   winterstop: 'Het voorjaar komt eraan en de eerste lange ritten staan weer op de planning. Een mooi moment om weer in te stappen.',
   'mist-iets': 'Je gaf aan dat je iets miste. Vertel me gerust wat je zocht, mail me gewoon terug. Ik bouw de app elke maand verder uit.'
@@ -202,8 +206,8 @@ function winbackHtml(voornaam, reden) {
   return mailHuls(`<p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
       <p>Je lidmaatschap van de MKC-app is een tijdje geleden gestopt. Je fietsen, je ritten en je Core-voortgang staan nog gewoon voor je klaar.</p>
       ${WINBACK_REGEL[reden] ? `<p>${WINBACK_REGEL[reden]}</p>` : ''}
-      <p>Kom je terug, dan is je eerste maand €9,50 in plaats van €19. Dat aanbod staat 30 dagen voor je klaar.</p>
-      ${knopHtml(APP_URL + '#lid', 'Kom terug voor €9,50')}
+      <p>Kom je terug, dan is je eerste maand ${euro(halve(PLANNEN.maand.bedrag))} in plaats van ${euro(PLANNEN.maand.bedrag)}. Dat aanbod staat 30 dagen voor je klaar.</p>
+      ${knopHtml(APP_URL + '#lid', 'Kom terug voor ' + euro(halve(PLANNEN.maand.bedrag)))}
       <p style="color:#555;font-size:14px">Geen interesse? Dan hoor je hierover niets meer van me.</p>`);
 }
 async function routeVoorbeeld(req, res) {
@@ -275,7 +279,7 @@ async function routeBackup(req, res) {
 
 // ---- Leden extra (09-10-2026): pauze, verwijderen, facturen, maat uitnodigen ----
 export const OPZEG_REDENEN = ['te-duur', 'te-weinig', 'winterstop', 'mist-iets', 'anders'];
-const VRIEND_BEDRAG = '9.50', VRIEND_MAX = 12;
+const VRIEND_MAX = 12;
 function vriendCode(email) { return crypto.createHmac('sha256', SECRET || 'mkc').update('vriend|' + email).digest('hex').slice(0, 8); }
 async function lidUitToken(req, res, t) {
   const email = leesAppToken(String(t || ''));
@@ -350,17 +354,17 @@ async function beloonVriend(code, maatEmail, maatNaam) {
   if (lid.vriendJaar !== jaar) { lid.vriendJaar = jaar; lid.vriendBeloningen = 0; }
   if ((lid.vriendBeloningen || 0) >= VRIEND_MAX) return;
   // Beide 50% (besluit Michel 09-10-2026): maandlid betaalt zijn volgende maand
-  // €9,50 (abonnement tijdelijk omlaag, na die incasso weer €19). Jaarlid of
+  // de halve prijs (abonnement tijdelijk omlaag, na die incasso weer de gewone prijs). Jaarlid of
   // zonder abonnement: 15 dagen erbij, dezelfde waarde.
   let tekstBeloning;
   if (lid.subscriptionId && lid.status === 'actief' && planVan(lid.plan) === 'maand') {
     lid.kortingTegoed = (lid.kortingTegoed || 0) + 1;
     if (!lid.kortingActief) {
-      const s = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'PATCH', body: JSON.stringify({ amount: { currency: 'EUR', value: VRIEND_BEDRAG } }) });
-      if (!s.ok) { await meldIntern(`MAAT-BELONING MISLUKT - ${email}`, `50% voor ${email} (maat ${maatEmail}) lukte niet in Mollie: ${JSON.stringify(s.j).slice(0, 300)}. Zet de volgende incasso met de hand op €9,50.`); return; }
+      const s = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'PATCH', body: JSON.stringify({ amount: { currency: 'EUR', value: halve(prijzenVan(lid).maand) } }) });
+      if (!s.ok) { await meldIntern(`MAAT-BELONING MISLUKT - ${email}`, `50% voor ${email} (maat ${maatEmail}) lukte niet in Mollie: ${JSON.stringify(s.j).slice(0, 300)}. Zet de volgende incasso met de hand op ${euro(halve(prijzenVan(lid).maand))}.`); return; }
       lid.kortingActief = true;
     }
-    tekstBeloning = 'Je volgende maand kost de helft: €9,50.';
+    tekstBeloning = `Je volgende maand kost de helft: ${euro(halve(prijzenVan(lid).maand))}.`;
   } else if (lid.tot && Date.parse(lid.tot) > Date.now()) {
     lid.tot = plusDagen(lid.tot, 15).toISOString();
     tekstBeloning = 'Je krijgt er een halve maand bij.';
@@ -374,7 +378,7 @@ async function beloonVriend(code, maatEmail, maatNaam) {
 
 // ---- Jaarlid: na een jaar zelf kiezen (09-10-2026) -----------------------------
 // Zoals in de voorwaarden: een maand voor de verlenging krijgt een jaarlid
-// bericht en kiest nog een jaar (€149) of per maand verder (€19). Kiest hij
+// bericht en kiest nog een jaar of per maand verder. Kiest hij
 // niets, dan zetten we het abonnement 7 dagen voor de verlenging om naar per
 // maand (maandelijks opzegbaar). De incassodatum blijft hetzelfde.
 const KEUZE_VANAF = 30, KEUZE_STANDAARD = 7;
@@ -387,9 +391,9 @@ function jaarKeuzeBeeld(lid) {
 }
 async function naarMaand(lid, email) {
   const s = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'PATCH', body: JSON.stringify({
-    amount: { currency: 'EUR', value: PLANNEN.maand.bedrag }, interval: PLANNEN.maand.interval, description: OMSCHRIJVING,
+    amount: { currency: 'EUR', value: prijzenVan(lid).maand }, interval: PLANNEN.maand.interval, description: OMSCHRIJVING,
     startDate: dag(Math.max(incassoOp(lid), Date.now() + 86400000)), metadata: { email, plan: 'maand' } }) });
-  if (!s.ok) { await meldIntern(`JAARLID OMZETTEN MISLUKT - ${email}`, `Het jaarabonnement ${lid.subscriptionId} van ${email} kon niet naar per maand: ${JSON.stringify(s.j).slice(0, 300)}. Zet het handmatig om in Mollie (€19, 1 month).`); return false; }
+  if (!s.ok) { await meldIntern(`JAARLID OMZETTEN MISLUKT - ${email}`, `Het jaarabonnement ${lid.subscriptionId} van ${email} kon niet naar per maand: ${JSON.stringify(s.j).slice(0, 300)}. Zet het handmatig om in Mollie (${euro(prijzenVan(lid).maand)}, 1 month).`); return false; }
   lid.plan = 'maand'; lid.jaarKeuze = null;
   return true;
 }
@@ -414,16 +418,16 @@ async function jaarKeuzeRonde() {
     if (dagen > KEUZE_STANDAARD && lid.jaarVraagVoor !== lid.tot && lid.jaarKeuze !== lid.tot) {
       await jaarMail(email, 'Je jaar in de MKC-app zit er bijna op', mailHuls(`<p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
         <p>Over een maand zit je eerste jaar in de MKC-app erop. Fijn dat je erbij bent. Nu mag je zelf kiezen hoe je verdergaat.</p>
-        <p><b>Nog een jaar</b> voor €149, dan blijf je het voordeligst uit. Of <b>per maand verder</b> voor €19, dan kun je elke maand opzeggen.</p>
+        <p><b>Nog een jaar</b> voor ${euro(prijzenVan(lid).jaar)}, dan blijf je het voordeligst uit. Of <b>per maand verder</b> voor ${euro(prijzenVan(lid).maand)}, dan kun je elke maand opzeggen.</p>
         <p style="margin:22px 0 26px"><a href="${APP_URL}#lid" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Kies in de app</a></p>
         <p style="color:#555;font-size:14px">Kies je niets, dan ga je vanaf ${datum} gewoon per maand verder. Alles wat je deed blijft staan.</p>`));
-      await appMelding(email, { soort: 'lid', titel: 'Kies hoe je verdergaat', tekst: `Je jaar zit er op ${datum} op. Nog een jaar voor €149 of per maand verder voor €19? Kies onder Mijn lidmaatschap.`, link: '/app#lid' });
+      await appMelding(email, { soort: 'lid', titel: 'Kies hoe je verdergaat', tekst: `Je jaar zit er op ${datum} op. Nog een jaar voor ${euro(prijzenVan(lid).jaar)} of per maand verder voor ${euro(prijzenVan(lid).maand)}? Kies onder Mijn lidmaatschap.`, link: '/app#lid' });
       lid.jaarVraagVoor = lid.tot; await bewaarLid(email, lid); gevraagd++;
     } else if (dagen <= KEUZE_STANDAARD && lid.jaarKeuze !== lid.tot) {
       if (await naarMaand(lid, email)) {
         await bewaarLid(email, lid); omgezet++;
         await jaarMail(email, 'Je gaat per maand verder in de MKC-app', mailHuls(`<p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
-          <p>Je hebt geen keuze gemaakt voor na je eerste jaar, dus je gaat vanaf ${datum} per maand verder voor €19. Je kunt elke maand opzeggen in de app.</p>
+          <p>Je hebt geen keuze gemaakt voor na je eerste jaar, dus je gaat vanaf ${datum} per maand verder voor ${euro(prijzenVan(lid).maand)}. Je kunt elke maand opzeggen in de app.</p>
           <p style="color:#555;font-size:14px">Toch liever nog een jaar? Mail me even terug, dan zet ik het voor je om.</p>`));
       }
     }
@@ -448,7 +452,7 @@ function lidBeeld(lid) {
   if (!lid) return { status: 'geen' };
   const open = lid.tot && Date.now() < Date.parse(lid.tot);
   const plan = planVan(lid.plan);
-  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: PLANNEN[plan].bedrag, handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, terugAanbod: !!(lid.winbackTot && Date.parse(lid.winbackTot) > Date.now()), vriendKan: !!lid.subscriptionId && lid.status === 'actief', bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
+  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: prijzenVan(lid)[plan], prijs: prijzenVan(lid), handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, terugAanbod: !!(lid.winbackTot && Date.parse(lid.winbackTot) > Date.now()), vriendKan: !!lid.subscriptionId && lid.status === 'actief', bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
 }
 
 // Kan Mollie al maandelijks incasseren? Zolang SEPA-incasso niet is goedgekeurd
@@ -540,7 +544,7 @@ async function routeStart(req, res) {
     if (v.ok && v.result && v.result !== email) vriendVan = vc;
   }
 
-  // Terugkomen na een win-back-mail: eerste maand ook €9,50 (30 dagen geldig).
+  // Terugkomen na een win-back-mail: eerste maand voor de helft (30 dagen geldig).
   const terug = !herstel && !vriendVan && automatisch && planVan(body.plan) === 'maand' && lid.winbackTot && Date.parse(lid.winbackTot) > Date.now();
 
   // Eén Mollie-klant per mailadres, hergebruiken bij opnieuw lid worden.
@@ -558,7 +562,7 @@ async function routeStart(req, res) {
   const p = await mollie('/payments', {
     method: 'POST',
     body: JSON.stringify({
-      amount: { currency: 'EUR', value: vriendVan || terug ? VRIEND_BEDRAG : PLANNEN[plan].bedrag },
+      amount: { currency: 'EUR', value: vriendVan || terug ? halve(herstel ? prijzenVan(lid).maand : PLANNEN.maand.bedrag) : (herstel ? prijzenVan(lid)[plan] : PLANNEN[plan].bedrag) },
       description: herstel ? `${OMSCHRIJVING}, betaling bijwerken` : vriendVan ? `${OMSCHRIJVING}, eerste maand (via een maat)` : automatisch
         ? (plan === 'jaar' ? `${OMSCHRIJVING}, eerste jaar` : `${OMSCHRIJVING}, eerste maand`)
         : (plan === 'jaar' ? `${OMSCHRIJVING}, 1 jaar` : `${OMSCHRIJVING}, 1 maand`),
@@ -613,11 +617,12 @@ async function routeWebhook(req, res) {
       lid.mislukt = null;
       if (p.metadata && p.metadata.vriend && !lid.vriendVan) { lid.vriendVan = p.metadata.vriend; await beloonVriend(p.metadata.vriend, lidEmail, lid.naam); }
       lid.bron = 'betaald';
+      if (soort !== 'lid-herstel' || !lid.prijs) lid.prijs = { maand: PLANNEN.maand.bedrag, jaar: PLANNEN.jaar.bedrag };
       const start = plusMaanden(vanaf, PLANNEN[plan].maanden);
       const s = await mollie(`/customers/${p.customerId}/subscriptions`, {
         method: 'POST',
         body: JSON.stringify({
-          amount: { currency: 'EUR', value: PLANNEN[plan].bedrag }, interval: PLANNEN[plan].interval,
+          amount: { currency: 'EUR', value: prijzenVan(lid)[plan] }, interval: PLANNEN[plan].interval,
           startDate: dag(start), description: plan === 'jaar' ? `${OMSCHRIJVING} (jaar)` : OMSCHRIJVING, webhookUrl: WEBHOOK_URL,
           metadata: { email: lidEmail, plan }
         })
@@ -646,11 +651,11 @@ async function routeWebhook(req, res) {
       lid.tot = plusDagen(plusMaanden(basis, PLANNEN[planVan(lid.plan)].maanden), SPELING_DAGEN).toISOString();
       if (lid.status !== 'opgezegd') lid.status = 'actief';
       lid.jaarVraagVoor = null;
-      if (lid.kortingActief && p.amount && p.amount.value === VRIEND_BEDRAG) {
+      if (lid.kortingActief && p.amount && p.amount.value === halve(prijzenVan(lid).maand)) {
         lid.kortingTegoed = Math.max(0, (lid.kortingTegoed || 1) - 1);
         if (!lid.kortingTegoed && lid.subscriptionId) {
-          const s = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'PATCH', body: JSON.stringify({ amount: { currency: 'EUR', value: PLANNEN.maand.bedrag } }) });
-          if (s.ok) lid.kortingActief = false; else await meldIntern(`KORTING TERUGZETTEN MISLUKT - ${lidEmail}`, `Abonnement ${lid.subscriptionId} staat nog op €9,50. Zet het in Mollie terug op €19.`);
+          const s = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'PATCH', body: JSON.stringify({ amount: { currency: 'EUR', value: prijzenVan(lid).maand } }) });
+          if (s.ok) lid.kortingActief = false; else await meldIntern(`KORTING TERUGZETTEN MISLUKT - ${lidEmail}`, `Abonnement ${lid.subscriptionId} staat nog op de halve prijs. Zet het in Mollie terug op ${euro(prijzenVan(lid).maand)}.`);
         }
       }
     }
@@ -793,7 +798,7 @@ async function routeHerinner(req, res) {
       <p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
       <p>${dagenOver > 0 ? `Je lidmaatschap van de MKC-app loopt op <b>${datum}</b> af.` : 'Je lidmaatschap van de MKC-app is afgelopen.'} Wil je doorgaan met je Core-app, je coach en het kledingadvies? Verlengen doe je met een paar tikken.</p>
       <p style="margin:22px 0 26px"><a href="${APP_URL}#lid" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Verleng mijn lidmaatschap</a></p>
-      <p style="color:#555;font-size:14px">${plan === 'jaar' ? 'Een jaar kost €149.' : 'Een maand kost €19, een jaar €149 (35% voordeliger).'} Alles wat je deed blijft staan.</p>
+      <p style="color:#555;font-size:14px">${plan === 'jaar' ? `Een jaar kost ${euro(prijzenVan(lid).jaar)}.` : `Een maand kost ${euro(prijzenVan(lid).maand)}, een jaar ${euro(prijzenVan(lid).jaar)} (ruim 3 maanden voordeliger).`} Alles wat je deed blijft staan.</p>
       <p>Sportieve groet,<br>Michel</p></div>`;
     const key = process.env.RESEND_API_KEY;
     if (!key) continue;
@@ -973,7 +978,7 @@ async function schemaEindeMails() {
       <p>Je kunt op twee manieren verder:</p>
       <p><b>Een vervolgschema.</b> Een nieuw blok dat aansluit op waar je nu staat. De app hoort er weer bij, voor de hele looptijd.</p>
       <p style="margin:14px 0 22px"><a href="https://michelkredercoaching.nl/trainingsschema-vervolg/" style="background:#ff6b1a;color:#0a0a0a;padding:13px 24px;border-radius:4px;text-decoration:none;font-weight:700">Kies je vervolgschema</a></p>
-      <p><b>Lid blijven.</b> Je coach voor al je vragen, de Core-app, je bandenspanning en kledingadvies voor elke rit. €19 per maand of €149 per jaar.</p>
+      <p><b>Lid blijven.</b> Je coach voor al je vragen, de Core-app, je bandenspanning en kledingadvies voor elke rit. ${euro(PLANNEN.maand.bedrag)} per maand of ${euro(PLANNEN.jaar.bedrag)} per jaar.</p>
       <p style="margin:14px 0 22px"><a href="${APP_URL}#lid" style="color:#ff6b1a;font-weight:700">Blijf lid van de MKC-app</a></p>
       <p>Sportieve groet,<br>Michel</p></div>`;
     try {
