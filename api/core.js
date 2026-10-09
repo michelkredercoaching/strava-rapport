@@ -379,6 +379,14 @@ function klantBeeld(d) {
 // ---- Voor de app-startpagina (api/app.js, 06-10-2026) ----------------------
 // Korte samenvatting van iemands Core-dossier op mailadres. Geeft null als er
 // geen dossier is. Alleen wat de startpagina nodig heeft, nooit het dossier.
+// Account verwijderen op verzoek (09-10-2026): Core-dossier en koppeling weg.
+export async function wisCore(email) {
+  email = String(email || '').toLowerCase(); if (!email) return false;
+  const r = await redis(['GET', `core:email:${email}`]);
+  if (r.ok && r.result) await redis(['DEL', `core:d:${r.result}`]);
+  await redis(['DEL', `core:email:${email}`]);
+  return true;
+}
 export async function coreVoorEmail(email) {
   if (!email) return null;
   const d = await dossierVoorEmail(String(email).toLowerCase());

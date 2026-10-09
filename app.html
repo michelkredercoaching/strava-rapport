@@ -97,6 +97,23 @@
   .binnenkort h2 { color:rgba(245,243,239,.85); }
 
   .plan .knop[disabled] { opacity:.45; cursor:default; }
+  /* Leden extra (09-10-2026) */
+  .lid-extra { display:grid; gap:8px; margin-top:10px; }
+  .lid-extra .vriend { background:linear-gradient(160deg, rgba(255,107,26,.14), rgba(255,107,26,.02) 60%), var(--surface); border:1px solid rgba(255,107,26,.45); border-radius:8px; padding:14px; }
+  .lid-extra .vriend b { display:block; font-size:15px; }
+  .lid-extra .vriend p { font-size:13.5px; color:var(--muted); margin:4px 0 10px; }
+  .lid-link { background:none; border:1px solid var(--border); color:var(--white); border-radius:6px; padding:11px; font-family:inherit; font-size:14px; cursor:pointer; text-align:left; }
+  .fact-lijst a { display:flex; justify-content:space-between; gap:10px; padding:10px 2px; border-top:1px solid var(--border); color:var(--white); text-decoration:none; font-size:14px; }
+  .fact-lijst a span { color:var(--muted); }
+  .modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.7); z-index:80; display:flex; align-items:flex-end; justify-content:center; padding:12px; }
+  .modal { background:#141414; border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:18px; width:100%; max-width:480px; max-height:88vh; overflow:auto; }
+  .modal h3 { font-family:'Bebas Neue',sans-serif; font-size:26px; text-transform:uppercase; margin-bottom:6px; }
+  .modal p { font-size:14px; color:rgba(245,243,239,.82); line-height:1.5; }
+  .modal label.rd { display:flex; gap:10px; align-items:center; padding:10px 4px; border-top:1px solid var(--border); font-size:14.5px; cursor:pointer; }
+  .modal label.rd input { accent-color:#FF6B1A; width:18px; height:18px; }
+  .modal textarea { width:100%; min-height:70px; margin-top:8px; background:var(--black); border:1px solid rgba(255,255,255,.18); color:var(--white); border-radius:6px; padding:10px; font-family:inherit; font-size:15px; }
+  .modal .knop { margin-top:12px; }
+  .modal .pauze { background:rgba(255,107,26,.1); border:1px solid rgba(255,107,26,.45); border-radius:8px; padding:12px; margin-top:12px; }
   .lidkeuze { background:var(--surface); border:1px solid rgba(255,107,26,.5); border-radius:8px; padding:14px; }
   .lidkeuze b { display:block; font-size:15px; }
   .lidkeuze p { font-size:13.5px; color:var(--muted); margin:4px 0 0; }
@@ -1361,7 +1378,7 @@ function plannenHtml(dicht) {
       <div class="plan">
         <div class="plan-naam">Per maand</div>
         <div class="prijs">&euro;19<small>per maand</small></div>
-        <div class="plan-sub">op elk moment opzegbaar</div>
+        <div class="plan-sub">${vriendCodeLs() ? 'via je maat: eerste maand &euro;9,50' : 'op elk moment opzegbaar'}</div>
         ${knop('maand', 'Kies per maand', true)}</div>
     </div>`;
 }
@@ -1405,7 +1422,7 @@ function lidStatusHtml(l) {
       <div class="rij"><button type="button" class="knop" data-jaarkeuze="jaar">Nog een jaar &middot; &euro;149</button><button type="button" class="knop leeg" data-jaarkeuze="maand">Per maand &middot; &euro;19</button></div></div>`;
   if (l.status === 'actief' && l.jaarKeuze && l.jaarKeuze.gekozen) return `<div class="lidrij" id="lid"><span><b>Jaarlid</b> &middot; nog een jaar, verlengt rond ${esc(datumNl(l.jaarKeuze.op))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
   if (l.status === 'actief') return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; ${l.plan === 'jaar' ? 'verlengt automatisch rond' : 'volgende afschrijving rond'} ${esc(datumNl(l.tot, -5))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
-  if (l.status === 'achterstand') return `<div class="lidrij waarschuw"><span><b>Betaling mislukt</b> &middot; je app blijft open tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid">Betaling bijwerken</button></div>`;
+  if (l.status === 'achterstand') return `<div class="lidrij waarschuw" id="lid"><span><b>Betaling mislukt</b> &middot; je app blijft open tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid" data-plan="${l.plan === 'jaar' ? 'jaar' : 'maand'}">Betaling bijwerken</button></div>`;
   if (l.status === 'opgezegd' && l.open) return `<div class="lidrij"><span>Opgezegd &middot; je kunt nog alles gebruiken tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid">Opnieuw lid</button></div>`;
   return '';
 }
@@ -1468,7 +1485,7 @@ function simuleer(d) {
   else if (SIM.analyse === 'hartslag') n.analyse = { ...vb.analyse, meet: 'hartslag', ftp: '', omslag: '163', type: 'Allrounder', decoupling: '', advies: 'Opbouw 12-wekenplan hartslag' };
   const tot = (dagen) => new Date(Date.now() + dagen * 86400000).toISOString();
   if (SIM.lid === 'geen') n.lid = { status: 'geen' };
-  else if (SIM.lid === 'maand') n.lid = { status: 'actief', open: true, plan: 'maand', bedrag: '19.00', tot: tot(24) };
+  else if (SIM.lid === 'maand') n.lid = { status: 'actief', open: true, plan: 'maand', bedrag: '19.00', tot: tot(24), pauzeKan: true, vriendKan: true, facturen: 2, bron: 'betaald' };
   else if (SIM.lid === 'jaar') n.lid = { status: 'actief', open: true, plan: 'jaar', bedrag: '149.00', tot: tot(300) };
   else if (SIM.lid === 'jaarkeuze') n.lid = { status: 'actief', open: true, plan: 'jaar', bedrag: '149.00', tot: tot(25), jaarKeuze: { open: true, gekozen: null, op: tot(20).slice(0, 10) } };
   else if (SIM.lid === 'ideal') n.lid = { status: 'actief', open: true, plan: 'maand', bedrag: '19.00', tot: tot(4), handmatig: true };
@@ -1512,10 +1529,10 @@ function teken() {
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     ${isLid(d) ? '' : binnenkortNu() ? `<div class="groepkop">Meer uit de app</div>${binnenkortPitchHtml()}` : !kanLidNu(d) ? '' : `<div class="groepkop">Meer uit de app</div>${lidPitchHtml()}`}
     ${kaartenHtml(d)}
-    ${isLid(d) ? `<div class="groepkop">Mijn lidmaatschap</div>${lidStatusHtml(d.lid)}` : ''}
+    ${isLid(d) ? `<div class="groepkop">Mijn lidmaatschap</div>${lidStatusHtml(d.lid)}${lidExtraHtml(d.lid)}` : ''}
     <div id="meldinst">${meldInstHtml()}</div>
     ${feedbackHtml()}
-    <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
+    <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a> &middot; <a href="#" data-lx="verwijder">Account verwijderen</a></div>`;
   if (toonSlim(d)) sbStart(); else { btReken(); if (WK.plaats && !WK.uren) wkLaad(); else if (WK.plaats) rvLaadLib().then(wkTeken); }
   if (d.schema && !(d.beheer && BEKIJK !== 'klant')) statEens('schema');
   if (GR.id && !GR.data) grLaad();
@@ -1566,7 +1583,7 @@ async function wordLid(knop) {
   if (vink && !vink.checked) { const l = vink.closest('.lid-akkoord'); l.classList.add('fout'); l.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => l.classList.remove('fout'), 2500); return; }
   knop.disabled = true; const oud = knop.textContent; knop.textContent = 'Even naar iDEAL...';
   try {
-    const r = await fetch('/api/lid?actie=start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: (fact && fact.naam) || (D && D.naam), factuur: fact, plan: knop.dataset.plan === 'jaar' ? 'jaar' : 'maand', akkoord: !vink || vink.checked, fbclid: (() => { try { return localStorage.getItem('mkcFbclid') || ''; } catch (e) { return ''; } })(), ...metingVelden() }) });
+    const r = await fetch('/api/lid?actie=start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: (fact && fact.naam) || (D && D.naam), factuur: fact, plan: knop.dataset.plan === 'jaar' ? 'jaar' : 'maand', akkoord: !vink || vink.checked, fbclid: (() => { try { return localStorage.getItem('mkcFbclid') || ''; } catch (e) { return ''; } })(), vriend: vriendCodeLs(), ...metingVelden() }) });
     const j = await r.json();
     if (j.ok && j.url) { location.href = j.url; return; }
     if (j.ok && j.alLid) { return laadOverzicht(); }
@@ -1574,16 +1591,81 @@ async function wordLid(knop) {
   } catch { alert('Verbinding mislukt. Probeer het zo nog eens.'); }
   knop.disabled = false; knop.textContent = oud;
 }
-async function zegOp(knop) {
-  if (!confirm('Weet je het zeker? Je kunt alles blijven gebruiken tot het einde van de maand waarvoor je betaald hebt.')) return;
+const OPZEG_NAMEN = { 'te-duur': 'Te duur', 'te-weinig': 'Gebruik het te weinig', winterstop: 'Even geen tijd of winterstop', 'mist-iets': 'Ik mis iets', anders: 'Iets anders', geen: 'Geen reden', 'pauze-gekozen': 'Koos pauze i.p.v. opzeggen' };
+function modal(html) { lxDicht(); const bg = document.createElement('div'); bg.className = 'modal-bg'; bg.id = 'lxModal'; bg.innerHTML = '<div class="modal">' + html + '</div>'; bg.addEventListener('click', (e) => { if (e.target === bg) lxDicht(); }); document.body.appendChild(bg); }
+function lxDicht() { const m = document.getElementById('lxModal'); if (m) m.remove(); }
+function zegOp() {
+  const l = (zicht() || {}).lid || {};
+  modal(`<h3>Jammer dat je gaat</h3><p>Mag ik vragen waarom? Daar leer ik van. Je kunt alles blijven gebruiken tot het einde van wat je al betaalde.</p>
+    <div style="margin-top:10px">${['te-duur', 'te-weinig', 'winterstop', 'mist-iets', 'anders'].map((k) => `<label class="rd"><input type="radio" name="lxReden" value="${k}"> ${OPZEG_NAMEN[k]}</label>`).join('')}</div>
+    <textarea id="lxToel" maxlength="300" placeholder="Wil je er iets over kwijt? (mag je overslaan)"></textarea>
+    <div id="lxPauze"></div>
+    <button type="button" class="knop leeg" data-lx="opzeg">Zeg op</button>
+    <button type="button" class="sb-link" data-lx="dicht">Toch niet</button>`);
+  document.querySelectorAll('input[name="lxReden"]').forEach((r) => r.addEventListener('change', () => {
+    const el = document.getElementById('lxPauze'); if (!el) return;
+    el.innerHTML = l.pauzeKan && ['winterstop', 'te-weinig', 'te-duur'].includes(r.value) ? '<div class="pauze"><b>Liever even pauzeren?</b><p style="margin-top:4px">Je krijgt een maand gratis: je volgende afschrijving schuift een maand op en alles blijft staan. Daarna loopt het gewoon door, en opzeggen kan altijd nog.</p><button type="button" class="knop" data-lx="pauze">Pauzeer een maand gratis</button></div>' : '';
+  }));
+}
+async function zegOpNu(knop) {
+  const reden = (document.querySelector('input[name="lxReden"]:checked') || {}).value || '';
+  const toelichting = (document.getElementById('lxToel') || {}).value || '';
   knop.disabled = true;
   try {
-    const r = await fetch('/api/lid?actie=opzeggen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken() }) });
+    const r = await fetch('/api/lid?actie=opzeggen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), reden, toelichting }) });
     const j = await r.json();
     if (!j.ok) alert(j.fout || 'Opzeggen lukte niet.');
   } catch { alert('Verbinding mislukt.'); }
-  laadOverzicht();
+  lxDicht(); laadOverzicht();
 }
+function lidExtraHtml(l) {
+  if (!l || l.bron === 'coaching' || l.bron === 'schema' || l.bron === 'cadeau') return '';
+  return `<div class="lid-extra">
+    ${l.vriendKan ? '<div class="vriend"><b>Nodig een maat uit, samen voor de helft</b><p>Je maat krijgt zijn eerste maand voor &euro;9,50, en jij ' + (l.plan === 'jaar' ? 'krijgt er een halve maand gratis bij' : 'krijgt 50% korting op je volgende maand') + ' zodra hij lid is.</p><button type="button" class="knop" data-lx="vriend">Deel je link</button></div>' : ''}
+    ${l.facturen ? '<button type="button" class="lid-link" data-lx="facturen">Mijn facturen</button>' : ''}</div>`;
+}
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-lx]'); if (!k) return;
+  e.preventDefault();
+  const a = k.dataset.lx;
+  if (a === 'dicht') return lxDicht();
+  if (a === 'opzeg') return zegOpNu(k);
+  if (a === 'pauze') {
+    k.disabled = true;
+    try { const j = await (await fetch('/api/lid?actie=pauze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken() }) })).json();
+      if (j.ok) { modal('<h3>Gepauzeerd</h3><p>Je krijgt een maand gratis. Je volgende afschrijving is rond ' + esc(datumNl(j.lid.tot, -5)) + '. Alles blijft gewoon staan.</p><button type="button" class="knop" data-lx="dicht">Top</button>'); return laadOverzicht(); }
+      alert(j.fout || 'Dat lukte niet.'); } catch (er) { alert('Verbinding mislukt.'); }
+    k.disabled = false; return;
+  }
+  if (a === 'facturen') {
+    try { const j = await (await fetch('/api/lid?actie=facturen&t=' + encodeURIComponent(leesToken()))).json();
+      const t = encodeURIComponent(leesToken());
+      modal('<h3>Mijn facturen</h3>' + (j.facturen && j.facturen.length ? '<div class="fact-lijst">' + j.facturen.map((f) => '<a href="/api/lid?actie=factuur&id=' + encodeURIComponent(f.id) + '&t=' + t + '" target="_blank" rel="noopener">' + esc(f.nr || 'Factuur') + ' <span>' + esc(datumNl(f.op)) + ' &middot; &euro;' + esc(String(f.bedrag).replace('.', ',')) + '</span></a>').join('') + '</div>' : '<p>Nog geen facturen.</p>') + '<button type="button" class="sb-link" data-lx="dicht">Sluiten</button>');
+    } catch (er) { alert('Verbinding mislukt.'); }
+    return;
+  }
+  if (a === 'vriend') {
+    try { const j = await (await fetch('/api/lid?actie=vriend&t=' + encodeURIComponent(leesToken()))).json();
+      if (!j.ok) return alert(j.fout || 'Dat lukte niet.');
+      const tekst = 'Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding, voeding, core en een eigen coach. Via mijn link krijgen we allebei 50% korting op een maand.';
+      if (navigator.share) { try { await navigator.share({ title: 'MKC-app', text: tekst, url: j.url }); return; } catch (er) { if (er && er.name === 'AbortError') return; } }
+      try { await navigator.clipboard.writeText(j.url); alert('Link gekopieerd: ' + j.url); } catch (er) { prompt('Kopieer je link:', j.url); }
+    } catch (er) { alert('Verbinding mislukt.'); }
+    return;
+  }
+  if (a === 'verwijder') {
+    modal('<h3>Account verwijderen</h3><p>Hiermee wis je je appgegevens: je fietsen, ritten, Core-voortgang, coachgesprekken en meldingen. Een lopend lidmaatschap stopt direct, zonder terugbetaling van de lopende periode. Facturen bewaren we 7 jaar, dat moet wettelijk.</p><p style="margin-top:8px">Typ <b>VERWIJDER</b> om te bevestigen.</p><textarea id="lxBev" style="min-height:44px"></textarea><button type="button" class="knop leeg" data-lx="verwijdernu">Verwijder mijn account</button><button type="button" class="sb-link" data-lx="dicht">Annuleren</button>');
+    return;
+  }
+  if (a === 'verwijdernu') {
+    if (String((document.getElementById('lxBev') || {}).value || '').trim().toUpperCase() !== 'VERWIJDER') return alert('Typ VERWIJDER om te bevestigen.');
+    k.disabled = true;
+    try { const j = await (await fetch('/api/lid?actie=verwijder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), bevestig: true }) })).json();
+      if (j.ok) { lxDicht(); wisToken(); modal('<h3>Je account is verwijderd</h3><p>Bedankt dat je erbij was. Je bent altijd welkom terug.</p>'); setTimeout(() => location.replace('/app'), 3500); return; }
+      alert(j.fout || 'Dat lukte niet.'); } catch (er) { alert('Verbinding mislukt.'); }
+    k.disabled = false;
+  }
+});
 
 // ===========================================================================
 // MKC-COACH (stap 4, 07-10-2026): één coach-knop in de hele app. Leden chatten
@@ -1941,6 +2023,10 @@ document.addEventListener('click', (e) => {
   if (k.dataset.geb === 'klap') { GEB.open = !GEB.open; gebTeken(); if (GEB.open) gebLaad(); }
   if (k.dataset.geb === 'ververs') { GEB.data = null; gebTeken(); gebLaad(); }
 });
+
+// Uitnodiging van een maat (?vriend=code) bewaren voor bij lid worden.
+try { const vr = new URLSearchParams(location.search).get('vriend'); if (vr) localStorage.setItem('mkcVriend', vr.replace(/[^a-z0-9]/gi, '').slice(0, 12)); } catch (e) {}
+function vriendCodeLs() { try { return localStorage.getItem('mkcVriend') || ''; } catch (e) { return ''; } }
 
 // ---- Toestemming advertentiemeting (09-10-2026) ----
 // De app heeft geen cookiebanner van de hoofdsite (beginscherm-apps hebben eigen
@@ -2309,6 +2395,7 @@ function ledenHtml() {
     <p class="klein" style="margin:6px 0 8px">Leeg laten bij "tot" = standaard: coaching 3 maanden, schema looptijd + 2 weken, gratis periode 30 dagen.</p>
     <button type="button" class="opv-k oranje" data-led="geef">Geef toegang</button>
     ${LED.melding ? `<p class="klein" style="margin-top:8px">${esc(LED.melding)}</p>` : ''}
+    ${x.redenen && Object.keys(x.redenen).length ? `<h4>Waarom mensen opzeggen</h4><div class="led-tel">${Object.entries(x.redenen).map(([k, n]) => `<div><b>${n}</b><span>${esc(OPZEG_NAMEN[k] || k)}</span></div>`).join('')}</div>${(x.toelichting || []).slice(0, 5).map((t) => `<p class="klein" style="margin-top:6px">&ldquo;${esc(t.tekst)}&rdquo; &middot; ${esc(OPZEG_NAMEN[t.reden] || t.reden)}</p>`).join('')}` : ''}
     <h4>Laatst bijgekomen</h4>
     <div class="led-lijst">${(x.recent || []).map((r) => `<div><span>${esc(r.naam || r.email)}</span><small>${LED_NAMEN[r.soort] || r.soort} &middot; ${r.sinds}</small></div>`).join('') || '<p class="klein">Nog niemand.</p>'}</div>
     <h4>Feedback uit de app</h4>
