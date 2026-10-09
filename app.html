@@ -105,6 +105,11 @@
   .review b { display:block; font-size:15px; }
   .review p { font-size:13.5px; color:var(--muted); margin:4px 0 10px; }
   .review .sterren { color:#FFB400; letter-spacing:2px; font-size:18px; }
+  .gast-poort { margin-top:14px; display:grid; gap:8px; }
+  .gast-poort input { width:100%; background:var(--black); border:1px solid rgba(255,255,255,.18); color:var(--white); border-radius:6px; padding:11px 12px; font-family:inherit; font-size:16px; }
+  .gast-poort .klein { margin:0; }
+  .gp-fout { color:#ff8a5c; }
+  .gp-welkom { background:rgba(75,203,123,.12); border:1px solid rgba(75,203,123,.4); color:#bff0cf; border-radius:6px; padding:10px 12px; font-size:13.5px; margin-bottom:10px; }
   .lid-extra { display:grid; gap:8px; margin-top:10px; }
   .lid-extra .vriend { background:linear-gradient(160deg, rgba(255,107,26,.14), rgba(255,107,26,.02) 60%), var(--surface); border:1px solid rgba(255,107,26,.45); border-radius:8px; padding:14px; }
   .lid-extra .vriend b { display:block; font-size:15px; }
@@ -863,6 +868,7 @@ function bandenKaart(d) {
       <div class="bt-keuze">${knop('tubeless', 'false', 'Binnenband')}${knop('tubeless', 'true', 'Tubeless')}</div>
     </div>
     <div id="btUit"></div>
+    ${d.gast ? gastPoortHtml() : ''}
     ${d.gast ? `<div class="sb-vraag"><label>Vraag het je bandencoach</label><p class="klein" style="margin:0">Rijd je morgen over kasseien of in de regen? Met een gratis account stel je je vraag aan de bandencoach. <a href="#" data-actie="gastlogin" style="color:var(--accent)">Maak je account</a></p></div>` : `<div class="sb-vraag"><label for="btVraag">Vraag het je bandencoach</label>
       ${gratisOver() === 0 ? '' : `<div class="sb-rij"><input id="btVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen over kasseien" value="${esc(BTV.vraag)}"><button type="button" class="knop" data-btv="vraag" ${BTV.bezig ? 'disabled' : ''}>${BTV.bezig ? '...' : 'Vraag'}</button></div>`}
       ${BTV.antwoord ? `<div class="sb-antwoord">${opmaak(BTV.antwoord)}</div>` : ''}
@@ -1196,7 +1202,7 @@ async function btReken() {
   const uit = document.getElementById('btUit'); if (!uit) return;
   const v = btWaarden();
   if (!(Number(v.gewicht) >= 40 && Number(v.gewicht) <= 150)) { uit.innerHTML = '<p class="klein">Vul je gewicht in, dan zie je je spanning.</p>'; return; }
-  if (D && D.gast) { gastStat('banden-gast'); gastLeadTeken(); } else statEens('banden');
+  if (D && D.gast) { gastStat('banden-gast'); uit.innerHTML = ''; return; } else statEens('banden');
   try { BT_LIB = BT_LIB || await import('/lib/bandendruk.js'); } catch (e) { uit.innerHTML = '<p class="klein">Rekenen lukt nu even niet.</p>'; return; }
   const a = BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: v.type, gewicht: v.gewicht, breedte: v.breedte, tubeless: v.tubeless ? 'tubeless' : 'binnenband' }));
   if (!a) { uit.innerHTML = ''; return; }
@@ -1546,6 +1552,7 @@ function teken() {
   if (toonSlim(d)) sbStart(); else { btReken(); if (WK.plaats && !WK.uren) wkLaad(); else if (WK.plaats) rvLaadLib().then(wkTeken); }
   if (d.schema && !(d.beheer && BEKIJK !== 'klant')) statEens('schema');
   if (GR.id && !GR.data) grLaad();
+  if (NA_POORT) { NA_POORT = false; setTimeout(() => { const el = document.getElementById('banden'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); const m = document.getElementById('btUit'); if (m) m.insertAdjacentHTML('afterbegin', '<p class="gp-welkom">Welkom in de MKC-app! Dit is jouw spanning. Hij staat ook in je mail als pdf.</p>'); }, 700); }
   coachBouw();
   if (document.getElementById('ccPaneel').classList.contains('open')) coachLijst();
 }
@@ -2367,8 +2374,6 @@ function tekenGast() {
     <p class="gast-intro">Gratis van <b>Michel Kreder</b>, 9 jaar profwielrenner en coach. ${GR_PAD ? 'Je bent uitgenodigd voor een rit. Hieronder zie je het weer, de wind en je eigen bandenspanning.' : 'Vul je gewicht en band in en zie direct wat je pompt.'}</p>
     <div id="groepsrit">${grHtml()}</div>
     <div class="kaarten">${bandenKaart(d)}</div>
-    <div id="gastLead">${gastLeadHtml()}</div>
-    ${windKaartHtml()}
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     <div class="gast-meer"><div class="groepkop" style="margin-left:0">Meer in de MKC-app</div>
       <ul>${LID_LIJST.slice(0, 4).map((x) => `<li>${x}</li>`).join('')}</ul>
@@ -2378,6 +2383,37 @@ function tekenGast() {
   if (GR.id && !GR.data) grLaad();
   if (WK.plaats && !WK.uren) wkLaad(); else if (WK.plaats) rvLaadLib().then(wkTeken);
 }
+// Bandenpagina zonder account (09-10-2026): naam + mailadres eronder, en de
+// uitslag op de volgende pagina, in de app (gratis account, zie api/app.js).
+function gastPoortHtml() {
+  return `<div class="gast-poort"><input type="text" id="gpNaam" placeholder="Je voornaam" autocomplete="given-name">
+    <input type="email" id="gpMail" placeholder="Je e-mailadres" autocomplete="email" value="${esc(gastMail())}">
+    <button type="button" class="knop" data-actie="gastpoort">Bekijk mijn bandenspanning</button>
+    <p class="klein">Hiermee maak je ook meteen een gratis account voor de gratis versie van de MKC-app. Je uitslag staat op de volgende pagina, en je krijgt hem ook als pdf in je mail. Af en toe krijg je een tip van Michel, afmelden kan onderaan elke mail. <a href="/privacy" target="_blank" rel="noopener" style="color:var(--accent)">Privacy</a></p>
+    <p class="klein gp-fout" id="gpFout"></p></div>`;
+}
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-actie="gastpoort"]'); if (!k) return;
+  const fout = (t) => { const el = document.getElementById('gpFout'); if (el) el.textContent = t; };
+  const v = btWaarden();
+  if (!(Number(v.gewicht) >= 40 && Number(v.gewicht) <= 150)) { fout('Vul eerst je gewicht in.'); document.getElementById('btGewicht')?.focus(); return; }
+  const email = (document.getElementById('gpMail').value || '').trim(), naam = (document.getElementById('gpNaam').value || '').trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { fout('Vul een geldig e-mailadres in.'); return; }
+  try { localStorage.setItem('mkcGastMail', email); } catch (er) {}
+  k.disabled = true; k.textContent = 'Even rekenen...'; fout('');
+  try {
+    const j = await (await fetch(API + '?actie=gastaccount', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, naam }) })).json();
+    if (!j.ok) throw new Error(j.fout || 'mislukt');
+    // De pdf en de aanmelding (zoals altijd), op de achtergrond.
+    fetch('/api/keuzehulp-inschrijving', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      route: 'bandenspanning', email, naam, bandtype: v.type === 'gravel' ? 'gravel' : 'weg', gewicht: Math.round(Number(v.gewicht)), breedte: Number(v.breedte),
+      tubeless: String(v.tubeless) === 'true' ? 'tubeless' : 'binnenband', nuVoor: '', nuAchter: '', _pagina: location.href, _toestemming: metingKeuze() === 'ja', _fbp: metingVelden().fbp, _fbc: metingVelden().fbc }) }).catch(() => {});
+    gastStat('banden-lead');
+    if (j.bestaand) { toonLogin('Je hebt al een account. Ik stuur je een inlogcode, daarna zie je je spanning in de app.'); setTimeout(() => { const b = document.getElementById('loginKnop'); if (b) b.click(); }, 300); return; }
+    bewaarToken(j.t); NA_POORT = true; return laadOverzicht();
+  } catch (er) { fout(er.message && er.message !== 'mislukt' ? er.message : 'Dat lukte niet. Probeer het zo nog eens.'); k.disabled = false; k.textContent = 'Bekijk mijn bandenspanning'; }
+});
+let NA_POORT = false;
 function gastLeadTeken() { const el = document.getElementById('gastLead'); if (el) el.innerHTML = gastLeadHtml(); }
 document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-actie="gastlead"]'); if (!k) return;

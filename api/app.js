@@ -300,6 +300,27 @@ async function routePlaatsVrij(req, res) {
   } catch (e) { return res.status(502).json({ ok: false, fout: 'Zoeken lukte niet.' }); }
 }
 
+// ---- Gratis account vanuit de bandenpagina (09-10-2026) ----------------------
+// Iemand vult op /banden zijn fiets en gewicht in plus naam en mailadres. Is het
+// mailadres nieuw voor de app, dan maken we meteen een gratis account en loggen
+// we in: de uitslag staat op de volgende pagina, in de app. Bestaat het adres al
+// (lid, Core, appgegevens of al een app-account), dan eerst een inlogcode, zodat
+// niemand met andermans mailadres in een bestaand account komt.
+async function routeGastAccount(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  if (!(await vrijGrens(req))) return res.status(429).json({ ok: false, fout: 'Even rustig aan, probeer het zo nog eens.' });
+  const body = await leesBody(req);
+  const email = String(body.email || '').trim().toLowerCase();
+  if (!geldigMail(email)) return res.status(400).json({ ok: false, fout: 'Vul een geldig e-mailadres in.' });
+  const [core, lid, mc, banden, push, coach] = await Promise.all([coreVoorEmail(email), haalLid(email), mcLid(email),
+    redis(['EXISTS', `app:banden:${email}`]), redis(['EXISTS', `app:push:${email}`]), redis(['EXISTS', `app:coach:${email}`])]);
+  const bestaand = !!core || !!lid || heeftTag(mc, 'mkc-app') || [banden, push, coach].some((r) => r.ok && Number(r.result) > 0) || BEHEER.includes(email);
+  if (bestaand) return res.status(200).json({ ok: true, bestaand: true });
+  await nieuwAccount(email);
+  await tel(email, 'banden-account');
+  return res.status(200).json({ ok: true, t: maakAppToken(email) });
+}
+
 // ---- Review-moment (09-10-2026), zie lib/review.js ----
 async function routeReview(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
@@ -424,6 +445,7 @@ export default async function handler(req, res) {
     if (actie === 'groepsrit') return await routeGroepsrit(req, res);
     if (actie === 'opruimen') return await routeOpruimen(req, res);
     if (actie === 'review') return await routeReview(req, res);
+    if (actie === 'gastaccount') return await routeGastAccount(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
