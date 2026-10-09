@@ -97,6 +97,11 @@
   .binnenkort h2 { color:rgba(245,243,239,.85); }
 
   .plan .knop[disabled] { opacity:.45; cursor:default; }
+  .lidkeuze { background:var(--surface); border:1px solid rgba(255,107,26,.5); border-radius:8px; padding:14px; }
+  .lidkeuze b { display:block; font-size:15px; }
+  .lidkeuze p { font-size:13.5px; color:var(--muted); margin:4px 0 0; }
+  .lidkeuze .rij { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+  .lidkeuze .knop { font-size:15px; padding:10px 6px 8px; }
   .lid-factuur { margin:16px 0 4px; padding:6px; border-radius:6px; transition:background .2s; }
   .lid-factuur.fout { background:rgba(255,107,26,.15); }
   .lid-factuur input, .lid-factuur select { width:100%; background:var(--black); border:1px solid rgba(255,255,255,.18); color:var(--white); border-radius:6px; padding:10px 12px; font-family:inherit; font-size:16px; margin-top:8px; }
@@ -1396,11 +1401,25 @@ function lidStatusHtml(l) {
   if (l.status === 'actief' && l.bron === 'cadeau') return `<div class="lidrij" id="lid"><span><b>Gratis maand</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="naarlid">Daarna lid blijven</button></div>`;
   if (l.status === 'actief' && l.bron === 'schema') return `<div class="lidrij" id="lid"><span><b>Inbegrepen bij je schema</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="naarlid">Daarna lid blijven</button></div>`;
   if (l.status === 'actief' && l.handmatig) return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid" data-plan="${l.plan === 'jaar' ? 'jaar' : 'maand'}">Verlengen</button></div>`;
-  if (l.status === 'actief') return `<div class="lidrij"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; ${l.plan === 'jaar' ? 'verlengt automatisch rond' : 'volgende afschrijving rond'} ${esc(datumNl(l.tot, -5))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
+  if (l.status === 'actief' && l.jaarKeuze && !l.jaarKeuze.gekozen) return `<div class="lidkeuze" id="lid"><b>Je jaar zit er op ${esc(datumNl(l.jaarKeuze.op))} op</b><p>Hoe wil je verder? Kies je niets, dan ga je per maand verder.</p>
+      <div class="rij"><button type="button" class="knop" data-jaarkeuze="jaar">Nog een jaar &middot; &euro;149</button><button type="button" class="knop leeg" data-jaarkeuze="maand">Per maand &middot; &euro;19</button></div></div>`;
+  if (l.status === 'actief' && l.jaarKeuze && l.jaarKeuze.gekozen) return `<div class="lidrij" id="lid"><span><b>Jaarlid</b> &middot; nog een jaar, verlengt rond ${esc(datumNl(l.jaarKeuze.op))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
+  if (l.status === 'actief') return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; ${l.plan === 'jaar' ? 'verlengt automatisch rond' : 'volgende afschrijving rond'} ${esc(datumNl(l.tot, -5))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
   if (l.status === 'achterstand') return `<div class="lidrij waarschuw"><span><b>Betaling mislukt</b> &middot; je app blijft open tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid">Betaling bijwerken</button></div>`;
   if (l.status === 'opgezegd' && l.open) return `<div class="lidrij"><span>Opgezegd &middot; je kunt nog alles gebruiken tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid">Opnieuw lid</button></div>`;
   return '';
 }
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-jaarkeuze]'); if (!k) return;
+  const keuze = k.dataset.jaarkeuze;
+  if (keuze === 'maand' && !confirm('Per maand verder voor €19? Je kunt dan elke maand opzeggen.')) return;
+  k.disabled = true;
+  try {
+    const j = await (await fetch('/api/lid?actie=jaarkeuze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), keuze }) })).json();
+    if (!j.ok) { alert(j.fout || 'Dat lukte niet.'); k.disabled = false; return; }
+    return laadOverzicht();
+  } catch (er) { alert('Verbinding mislukt.'); k.disabled = false; }
+});
 function datumNl(iso, dagenErbij = 0) {
   if (!iso) return '';
   const d = new Date(iso); d.setDate(d.getDate() + dagenErbij);
@@ -1421,7 +1440,7 @@ function zicht() { if (D && D.beheer && BEKIJK === 'nieuw') return alsNieuw(D); 
 const SIM_OPTIES = {
   core: [['echt', 'Mijn eigen'], ['geen', 'Niet gestart'], ['intake', 'Intake nog doen'], ['proef', 'In proefweek'], ['proefklaar', 'Proefweek klaar'], ['actief', 'Actief (lid)'], ['klaar', 'Niveau 12 (eenmalig)']],
   analyse: [['echt', 'Mijn eigen'], ['geen', 'Niet gekocht'], ['vermogen', 'Gekocht: vermogen'], ['hartslag', 'Gekocht: hartslag']],
-  lid: [['echt', 'Mijn eigen'], ['geen', 'Geen lid'], ['maand', 'Lid per maand'], ['jaar', 'Jaarlid'], ['ideal', 'Lid via iDEAL (verlengen)'], ['opgezegd', 'Opgezegd'], ['achterstand', 'Betaling mislukt'], ['coaching-flex', 'Coaching Flexibel'], ['coaching-premium', 'Coaching Premium'], ['schema', 'Via schema (inbegrepen)'], ['cadeau', 'Gratis maand (cadeau)']],
+  lid: [['echt', 'Mijn eigen'], ['geen', 'Geen lid'], ['maand', 'Lid per maand'], ['jaar', 'Jaarlid'], ['jaarkeuze', 'Jaarlid, keuze na een jaar'], ['ideal', 'Lid via iDEAL (verlengen)'], ['opgezegd', 'Opgezegd'], ['achterstand', 'Betaling mislukt'], ['coaching-flex', 'Coaching Flexibel'], ['coaching-premium', 'Coaching Premium'], ['schema', 'Via schema (inbegrepen)'], ['cadeau', 'Gratis maand (cadeau)']],
   lancering: [['echt', 'Zoals nu'], ['voor', 'Vóór 16 okt'], ['na', 'Na 16 okt']],
   schema: [['echt', 'Mijn eigen'], ['geen', 'Geen schema'], ['opbouw-12-w|-2', 'Start over 3 dagen'], ['opbouw-12-w|1', 'Opbouw 12 · week 1'], ['opbouw-12-w|18', 'Opbouw 12 · week 3'], ['basis-8-hr|30', 'Basis 8 hartslag · week 5'], ['piek-16-w|80', 'Piek 16 · week 12'], ['winter-basis-w|9', 'Winterprogramma · week 2'], ['opbouw-12-w|90', 'Afgerond']]
 };
@@ -1451,6 +1470,7 @@ function simuleer(d) {
   if (SIM.lid === 'geen') n.lid = { status: 'geen' };
   else if (SIM.lid === 'maand') n.lid = { status: 'actief', open: true, plan: 'maand', bedrag: '19.00', tot: tot(24) };
   else if (SIM.lid === 'jaar') n.lid = { status: 'actief', open: true, plan: 'jaar', bedrag: '149.00', tot: tot(300) };
+  else if (SIM.lid === 'jaarkeuze') n.lid = { status: 'actief', open: true, plan: 'jaar', bedrag: '149.00', tot: tot(25), jaarKeuze: { open: true, gekozen: null, op: tot(20).slice(0, 10) } };
   else if (SIM.lid === 'ideal') n.lid = { status: 'actief', open: true, plan: 'maand', bedrag: '19.00', tot: tot(4), handmatig: true };
   else if (SIM.lid === 'opgezegd') n.lid = { status: 'opgezegd', open: true, plan: 'maand', bedrag: '19.00', tot: tot(12) };
   else if (SIM.lid === 'achterstand') n.lid = { status: 'achterstand', open: true, plan: 'maand', bedrag: '19.00', tot: tot(3) };

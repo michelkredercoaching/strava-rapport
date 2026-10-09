@@ -40,6 +40,7 @@ import { zetLidmaatschap } from './core.js';
 import { maakMollieFactuur } from '../lib/mollie-factuur.js';
 import { planNaam, laadPlan } from '../lib/schema-app.js';
 import { browserContext, stuurPurchase } from '../lib/meta-capi.js';
+import { appMelding } from '../lib/app-melding.js';
 
 const MOLLIE_KEY  = process.env.MOLLIE_API_KEY || '';
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
@@ -146,11 +147,83 @@ async function leesBody(req) {
   const tekst = typeof req.body === 'string' ? req.body : '';
   try { return JSON.parse(tekst || '{}'); } catch { return Object.fromEntries(new URLSearchParams(tekst)); }
 }
+// ---- Jaarlid: na een jaar zelf kiezen (09-10-2026) -----------------------------
+// Zoals in de voorwaarden: een maand voor de verlenging krijgt een jaarlid
+// bericht en kiest nog een jaar (€149) of per maand verder (€19). Kiest hij
+// niets, dan zetten we het abonnement 7 dagen voor de verlenging om naar per
+// maand (maandelijks opzegbaar). De incassodatum blijft hetzelfde.
+const KEUZE_VANAF = 30, KEUZE_STANDAARD = 7;
+const incassoOp = (lid) => lid.tot ? Date.parse(lid.tot) - SPELING_DAGEN * 86400000 : null;
+function jaarKeuzeBeeld(lid) {
+  if (planVan(lid.plan) !== 'jaar' || !lid.subscriptionId || lid.status !== 'actief') return {};
+  const dagen = (incassoOp(lid) - Date.now()) / 86400000;
+  if (!(dagen <= KEUZE_VANAF && dagen > 0)) return {};
+  return { jaarKeuze: { open: true, gekozen: lid.jaarKeuze === lid.tot ? 'jaar' : null, op: dag(incassoOp(lid)) } };
+}
+async function naarMaand(lid, email) {
+  const s = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'PATCH', body: JSON.stringify({
+    amount: { currency: 'EUR', value: PLANNEN.maand.bedrag }, interval: PLANNEN.maand.interval, description: OMSCHRIJVING,
+    startDate: dag(Math.max(incassoOp(lid), Date.now() + 86400000)), metadata: { email, plan: 'maand' } }) });
+  if (!s.ok) { await meldIntern(`JAARLID OMZETTEN MISLUKT - ${email}`, `Het jaarabonnement ${lid.subscriptionId} van ${email} kon niet naar per maand: ${JSON.stringify(s.j).slice(0, 300)}. Zet het handmatig om in Mollie (€19, 1 month).`); return false; }
+  lid.plan = 'maand'; lid.jaarKeuze = null;
+  return true;
+}
+async function jaarMail(email, onderwerp, html) {
+  const key = process.env.RESEND_API_KEY; if (!key) return false;
+  try {
+    const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: email, subject: onderwerp, html }), signal: AbortSignal.timeout(8000) });
+    return r.ok;
+  } catch { return false; }
+}
+const mailHuls = (binnen) => `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.7;color:#1a1a1a;max-width:560px">${binnen}<p>Sportieve groet,<br>Michel</p></div>`;
+async function jaarKeuzeRonde() {
+  const l = await redis(['SMEMBERS', 'lid:alle']);
+  let gevraagd = 0, omgezet = 0;
+  for (const email of (l.ok && l.result) || []) {
+    const lid = await haalLid(email);
+    if (!lid || planVan(lid.plan) !== 'jaar' || !lid.subscriptionId || lid.status !== 'actief' || !lid.tot) continue;
+    const dagen = (incassoOp(lid) - Date.now()) / 86400000;
+    if (dagen <= 0 || dagen > KEUZE_VANAF) continue;
+    const voornaam = String(lid.naam || '').split(' ')[0], datum = new Date(incassoOp(lid)).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
+    if (dagen > KEUZE_STANDAARD && lid.jaarVraagVoor !== lid.tot && lid.jaarKeuze !== lid.tot) {
+      await jaarMail(email, 'Je jaar in de MKC-app zit er bijna op', mailHuls(`<p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
+        <p>Over een maand zit je eerste jaar in de MKC-app erop. Fijn dat je erbij bent. Nu mag je zelf kiezen hoe je verdergaat.</p>
+        <p><b>Nog een jaar</b> voor €149, dan blijf je het voordeligst uit. Of <b>per maand verder</b> voor €19, dan kun je elke maand opzeggen.</p>
+        <p style="margin:22px 0 26px"><a href="${APP_URL}#lid" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Kies in de app</a></p>
+        <p style="color:#555;font-size:14px">Kies je niets, dan ga je vanaf ${datum} gewoon per maand verder. Alles wat je deed blijft staan.</p>`));
+      await appMelding(email, { soort: 'lid', titel: 'Kies hoe je verdergaat', tekst: `Je jaar zit er op ${datum} op. Nog een jaar voor €149 of per maand verder voor €19? Kies onder Mijn lidmaatschap.`, link: '/app#lid' });
+      lid.jaarVraagVoor = lid.tot; await bewaarLid(email, lid); gevraagd++;
+    } else if (dagen <= KEUZE_STANDAARD && lid.jaarKeuze !== lid.tot) {
+      if (await naarMaand(lid, email)) {
+        await bewaarLid(email, lid); omgezet++;
+        await jaarMail(email, 'Je gaat per maand verder in de MKC-app', mailHuls(`<p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
+          <p>Je hebt geen keuze gemaakt voor na je eerste jaar, dus je gaat vanaf ${datum} per maand verder voor €19. Je kunt elke maand opzeggen in de app.</p>
+          <p style="color:#555;font-size:14px">Toch liever nog een jaar? Mail me even terug, dan zet ik het voor je om.</p>`));
+      }
+    }
+  }
+  return { gevraagd, omgezet };
+}
+async function routeJaarKeuze(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email) return res.status(401).json({ ok: false, fout: 'Log opnieuw in.' });
+  const lid = await haalLid(email);
+  if (!lid || !jaarKeuzeBeeld(lid).jaarKeuze) return res.status(400).json({ ok: false, fout: 'Er valt nu niets te kiezen.' });
+  if (body.keuze === 'jaar') lid.jaarKeuze = lid.tot;
+  else if (body.keuze === 'maand') { if (!(await naarMaand(lid, email))) return res.status(502).json({ ok: false, fout: 'Omzetten lukte niet. Ik kijk ernaar en laat het je weten.' }); }
+  else return res.status(400).json({ ok: false });
+  await bewaarLid(email, lid);
+  return res.status(200).json({ ok: true, lid: lidBeeld(lid) });
+}
+
 function lidBeeld(lid) {
   if (!lid) return { status: 'geen' };
   const open = lid.tot && Date.now() < Date.parse(lid.tot);
   const plan = planVan(lid.plan);
-  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: PLANNEN[plan].bedrag, handmatig: !!lid.handmatig && !lid.subscriptionId, bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
+  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: PLANNEN[plan].bedrag, handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
 }
 
 // Kan Mollie al maandelijks incasseren? Zolang SEPA-incasso niet is goedgekeurd
@@ -185,6 +258,7 @@ export default async function handler(req, res) {
     if (actie === 'start') return await routeStart(req, res);
     if (actie === 'status') return await routeStatus(req, res);
     if (actie === 'opzeggen') return await routeOpzeggen(req, res);
+    if (actie === 'jaarkeuze') return await routeJaarKeuze(req, res);
     if (actie === 'herinner') return await routeHerinner(req, res);
     if (actie === 'schema') return await routeSchema(req, res);
     if (actie === 'cadeaumail') return await routeCadeauMail(req, res);
@@ -317,6 +391,7 @@ async function routeWebhook(req, res) {
       const basis = lid.tot && Date.parse(lid.tot) > Date.now() ? plusDagen(lid.tot, -SPELING_DAGEN) : new Date(betaaldOp);
       lid.tot = plusDagen(plusMaanden(basis, PLANNEN[planVan(lid.plan)].maanden), SPELING_DAGEN).toISOString();
       if (lid.status !== 'opgezegd') lid.status = 'actief';
+      lid.jaarVraagVoor = null;
     }
     await bewaarLid(lidEmail, lid);
     await zetLidmaatschap({ email: lidEmail, naam: lid.naam, tot: lid.tot });
@@ -419,6 +494,7 @@ async function routeHerinner(req, res) {
   const lijst = await redis(['SMEMBERS', 'lid:handmatig']);
   let gemaild = await schemaEindeMails();
   const verlengd = await coachingVerlengen();
+  const jaar = await jaarKeuzeRonde();
   for (const email of (lijst.ok && lijst.result) || []) {
     const lid = await haalLid(email);
     if (!lid || !lid.handmatig || lid.subscriptionId || !lid.tot) { await redis(['SREM', 'lid:handmatig', email]); continue; }
@@ -444,7 +520,7 @@ async function routeHerinner(req, res) {
       if (r.ok) { lid.herinnerd = lid.tot; await bewaarLid(email, lid); gemaild++; }
     } catch (e) { console.error('Herinnering mislukt:', email, e); }
   }
-  return res.status(200).json({ ok: true, gemaild, verlengd });
+  return res.status(200).json({ ok: true, gemaild, verlengd, jaar });
 }
 
 // ---- Schema gekocht: de app hoort erbij (09-10-2026) -----------------------
