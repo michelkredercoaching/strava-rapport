@@ -154,11 +154,11 @@ async function leesBody(req) {
 const knopHtml = (url, tekst) => `<p style="margin:22px 0 26px"><a href="${url}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">${tekst}</a></p>`;
 // WhatsApp-link met een kant-en-klaar berichtje en de persoonlijke link erin.
 const waLink = (code) => 'https://wa.me/?text=' + encodeURIComponent(`Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding en voeding voor elke rit, core-oefeningen en een eigen coach. Via mijn link krijgen we allebei 50% korting op een maand: ${APP_URL}?vriend=${code}`);
-async function welkomMail(email, lid) {
+async function welkomMail(email, lid, naar) {
   const voornaam = String(lid.naam || '').split(' ')[0];
   const code = vriendCode(email);
   await redis(['SET', `lid:vriend:${code}`, email]);
-  return jaarMail(email, voornaam ? `Welkom in de MKC-app, ${voornaam}` : 'Welkom in de MKC-app', mailHuls(`<p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
+  return jaarMail(naar || email, (naar ? '[Voorbeeld] ' : '') + (voornaam ? `Welkom in de MKC-app, ${voornaam}` : 'Welkom in de MKC-app'), mailHuls(`<p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
     <p>Wat leuk dat je erbij bent. Vanaf nu heb je alles op één plek: je bandenspanning, kleding en ritvoeding voor elke rit, de Core-app en je eigen coach die je vragen beantwoordt.</p>
     <p>Drie dingen die ik je deze week zou aanraden:</p>
     <p><b>Zet de app op je beginscherm.</b> Open de app op je telefoon, tik op delen en kies Zet op beginscherm. Dan heb je hem altijd bij de hand, en krijg je je ochtendbericht met het weer van je rit.</p>
@@ -191,16 +191,31 @@ async function winbackRonde() {
     if (reden !== 'winterstop' && dagenWeg > 30) continue;
     const voornaam = String(lid.naam || '').split(' ')[0];
     lid.winbackTot = new Date(Date.now() + 30 * 86400000).toISOString();
-    const ok = await jaarMail(email, 'Ik mis je in de MKC-app', mailHuls(`<p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
-      <p>Je lidmaatschap van de MKC-app is een tijdje geleden gestopt. Je fietsen, je ritten en je Core-voortgang staan nog gewoon voor je klaar.</p>
-      ${WINBACK_REGEL[reden] ? `<p>${WINBACK_REGEL[reden]}</p>` : ''}
-      <p>Kom je terug, dan is je eerste maand €9,50 in plaats van €19. Dat aanbod staat 30 dagen voor je klaar.</p>
-      ${knopHtml(APP_URL + '#lid', 'Kom terug voor €9,50')}
-      <p style="color:#555;font-size:14px">Geen interesse? Dan hoor je hierover niets meer van me.</p>`));
+    const ok = await jaarMail(email, 'Ik mis je in de MKC-app', winbackHtml(voornaam, reden));
     if (ok) { lid.winbackGemaild = new Date().toISOString(); await bewaarLid(email, lid); n++; }
   }
   return n;
 }
+// Voorbeeldmails naar Michel zelf (Beheer), om de teksten te bekijken.
+function winbackHtml(voornaam, reden) {
+  return mailHuls(`<p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
+      <p>Je lidmaatschap van de MKC-app is een tijdje geleden gestopt. Je fietsen, je ritten en je Core-voortgang staan nog gewoon voor je klaar.</p>
+      ${WINBACK_REGEL[reden] ? `<p>${WINBACK_REGEL[reden]}</p>` : ''}
+      <p>Kom je terug, dan is je eerste maand €9,50 in plaats van €19. Dat aanbod staat 30 dagen voor je klaar.</p>
+      ${knopHtml(APP_URL + '#lid', 'Kom terug voor €9,50')}
+      <p style="color:#555;font-size:14px">Geen interesse? Dan hoor je hierover niets meer van me.</p>`);
+}
+async function routeVoorbeeld(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email || !BEHEER_LID.includes(email)) return res.status(403).json({ ok: false });
+  const naar = 'michel.kredercoaching@gmail.com';
+  const a = await welkomMail(email, { naam: 'Michel Kreder' }, naar);
+  const b = await jaarMail(naar, '[Voorbeeld] Ik mis je in de MKC-app (reden: te duur)', winbackHtml('Michel', 'te-duur'));
+  return res.status(200).json({ ok: a && b });
+}
+
 // Weekoverzicht voor Michel, maandagochtend.
 async function routeWeekoverzicht(req, res) {
   const cron = process.env.CRON_SECRET || '';
@@ -470,6 +485,7 @@ export default async function handler(req, res) {
     if (actie === 'jaarkeuze') return await routeJaarKeuze(req, res);
     if (actie === 'pauze') return await routePauze(req, res);
     if (actie === 'weekoverzicht') return await routeWeekoverzicht(req, res);
+    if (actie === 'voorbeeld') return await routeVoorbeeld(req, res);
     if (actie === 'backup') return await routeBackup(req, res);
     if (actie === 'verwijder') return await routeVerwijder(req, res);
     if (actie === 'facturen') return await routeFacturen(req, res);

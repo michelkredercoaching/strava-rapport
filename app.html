@@ -1866,6 +1866,11 @@ document.addEventListener('click', (e) => {
   if (a === 'bewerk') { NAK.bewerk = k.dataset.id; nakTeken(); setTimeout(() => document.getElementById('nakTekst')?.focus(), 30); }
   if (a === 'annuleer') { NAK.bewerk = null; nakTeken(); }
   if (a === 'bewaar') { const t = document.getElementById('nakTekst').value.trim(); if (!t) return; NAK.bewerk = null; k.disabled = true; nakLaad(k.dataset.id, t); }
+  if (a === 'voorbeeld') {
+    k.disabled = true;
+    try { const j = await (await fetch('/api/lid?actie=voorbeeld', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken() }) })).json(); LED.melding = j.ok ? 'Verstuurd: de welkomstmail en de terugkom-mail staan zo in je inbox.' : 'Versturen lukte niet.'; } catch (er) { LED.melding = 'Verbinding mislukt.'; }
+    return ledTeken();
+  }
   if (a === 'wis') { NAK.bewerk = null; nakLaad(k.dataset.id, ''); }
 });
 
@@ -2405,6 +2410,7 @@ function ledenHtml() {
     <button type="button" class="opv-k oranje" data-led="geef">Geef toegang</button>
     ${LED.melding ? `<p class="klein" style="margin-top:8px">${esc(LED.melding)}</p>` : ''}
     ${x.redenen && Object.keys(x.redenen).length ? `<h4>Waarom mensen opzeggen</h4><div class="led-tel">${Object.entries(x.redenen).map(([k, n]) => `<div><b>${n}</b><span>${esc(OPZEG_NAMEN[k] || k)}</span></div>`).join('')}</div>${(x.toelichting || []).slice(0, 5).map((t) => `<p class="klein" style="margin-top:6px">&ldquo;${esc(t.tekst)}&rdquo; &middot; ${esc(OPZEG_NAMEN[t.reden] || t.reden)}</p>`).join('')}` : ''}
+    <button type="button" class="opv-k" data-led="voorbeeld" style="margin-top:12px">Stuur voorbeeldmails naar mij</button>
     <h4>Laatst bijgekomen</h4>
     <div class="led-lijst">${(x.recent || []).map((r) => `<div><span>${esc(r.naam || r.email)}</span><small>${LED_NAMEN[r.soort] || r.soort} &middot; ${r.sinds}</small></div>`).join('') || '<p class="klein">Nog niemand.</p>'}</div>
     <h4>Feedback uit de app</h4>
