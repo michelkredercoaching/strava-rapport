@@ -36,6 +36,8 @@
 // Env: PP_TOKEN_SECRET, UPSTASH_REDIS_REST_URL/TOKEN, RESEND_API_KEY,
 //      MAILCHIMP_API_KEY, MAILCHIMP_LIST_ID (= de Keuzehulp-lijst), APP_URL (optioneel)
 import crypto from 'crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { coreVoorEmail, emailVoorCoreToken } from './core.js';
 import { lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar, haalSchema, ledenOverzicht, lidZoek, geefToegang } from './lid.js';
 import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN } from '../lib/schema-app.js';
@@ -321,6 +323,39 @@ async function routeGastAccount(req, res) {
   return res.status(200).json({ ok: true, t: maakAppToken(email) });
 }
 
+// ---- "Vond je dit nuttig?" (09-10-2026) ----------------------------------------
+async function routeNuttig(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email) return res.status(401).json({ ok: false });
+  const id = String(body.id || '').replace(/[^a-z0-9]/g, '').slice(0, 20), w = body.nuttig === 'ja' ? 'ja' : 'nee';
+  if (!id) return res.status(400).json({ ok: false });
+  await redis(['HSET', 'app:nuttig', id, w]);
+  await redis(['HINCRBY', 'app:nuttig:tel', w, 1]);
+  const c = await redis(['GET', `app:coach:${email}`]);
+  try { const l = c.ok && c.result ? JSON.parse(c.result) : null; const b = l && l.find((x) => x.aid === id); if (b) { b.nuttig = w; await redis(['SET', `app:coach:${email}`, JSON.stringify(l)]); } } catch {}
+  return res.status(200).json({ ok: true });
+}
+
+// ---- "Hou me op de hoogte" voor Afvalprogramma en pacingplan (09-10-2026) ----
+const INTERESSE = { afval: 'interesse-afvalprogramma', pacing: 'interesse-pacingplan' };
+async function routeInteresse(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email) return res.status(401).json({ ok: false });
+  const tag = INTERESSE[body.product]; if (!tag) return res.status(400).json({ ok: false });
+  await redis(['SADD', `app:interesse:${body.product}`, email]);
+  if (MC_KEY && MC_LIST) {
+    try {
+      const dc = MC_KEY.split('-')[1], hash = crypto.createHash('md5').update(email).digest('hex');
+      await fetch(`https://${dc}.api.mailchimp.com/3.0/lists/${MC_LIST}/members/${hash}/tags`, { method: 'POST', headers: { Authorization: 'apikey ' + MC_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ tags: [{ name: tag, status: 'active' }] }), signal: AbortSignal.timeout(8000) });
+    } catch {}
+  }
+  return res.status(200).json({ ok: true });
+}
+
 // ---- Review-moment (09-10-2026), zie lib/review.js ----
 async function routeReview(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
@@ -374,6 +409,49 @@ async function grWeer(rit) {
   grCache.set(rit.id, { op: Date.now(), uren });
   return uren;
 }
+// "Ik rijd mee": anonieme teller per toestel, geen namen (09-10-2026).
+async function routeGroepsritMee(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  if (!(await vrijGrens(req))) return res.status(429).json({ ok: false });
+  const body = await leesBody(req);
+  const id = String(body.id || ''), k = String(body.k || '').replace(/[^a-z0-9]/gi, '').slice(0, 24);
+  if (!GR_ID.test(id) || !k) return res.status(400).json({ ok: false });
+  const r = await redis(['GET', `groepsrit:${id}`]); if (!r.ok || !r.result) return res.status(404).json({ ok: false });
+  const rit = JSON.parse(r.result);
+  await redis([body.mee === false ? 'SREM' : 'SADD', `groepsrit:${id}:mee`, k]);
+  await redis(['EXPIRE', `groepsrit:${id}:mee`, Math.max(3600, Math.ceil((rit.start - Date.now()) / 1000) + 3 * 86400)]);
+  const n = await redis(['SCARD', `groepsrit:${id}:mee`]);
+  return res.status(200).json({ ok: true, mee: n.ok ? Number(n.result) || 0 : 0 });
+}
+// De pagina van een groepsrit, met een eigen voorbeeld in WhatsApp (naam, dag,
+// weer). Zelfde app, alleen de kop krijgt Open Graph-tags.
+let APP_HTML = null;
+async function routeRitPagina(req, res) {
+  const id = String(req.query?.id || '');
+  if (APP_HTML === null) { try { APP_HTML = fs.readFileSync(path.join(process.cwd(), 'app.html'), 'utf8'); } catch { APP_HTML = ''; } }
+  if (!APP_HTML) { res.setHeader('Location', '/app'); return res.status(302).end(); }
+  let titel = 'Groepsrit in de MKC-app', tekst = 'Bekijk het weer, de wind en je eigen bandenspanning voor deze rit.';
+  if (GR_ID.test(id)) {
+    try {
+      const r = await redis(['GET', `groepsrit:${id}`]);
+      if (r.ok && r.result) {
+        const rit = JSON.parse(r.result);
+        const dag = new Date(rit.start).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Amsterdam' });
+        const tijd = new Date(rit.start).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' });
+        titel = `${rit.naam} · ${dag} ${tijd}`;
+        let weer = '';
+        try { const u = await grWeer(rit); if (u && u.length) { const tl = u.map((x) => x.temp); weer = `${Math.min(...tl)} tot ${Math.max(...tl)} graden, wind tot ${Math.max(...u.map((x) => x.wind))} km/u. `; } } catch {}
+        tekst = `Vanuit ${rit.plaats.naam || 'de start'}, ${rit.duur} uur. ${weer}Tik voor je windadvies en je eigen bandenspanning.`;
+      }
+    } catch {}
+  }
+  const e = (x) => String(x).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const og = `<meta property="og:title" content="${e(titel)}"><meta property="og:description" content="${e(tekst)}"><meta property="og:image" content="https://rapport.michelkredercoaching.nl/mkc-app-product.png"><meta property="og:type" content="website"><meta property="og:url" content="https://rapport.michelkredercoaching.nl/rit/${e(id)}"><meta name="twitter:card" content="summary_large_image">`;
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, s-maxage=300');
+  return res.status(200).send(APP_HTML.replace('</head>', og + '</head>'));
+}
+
 async function routeGroepsrit(req, res) {
   if (req.method === 'POST') {
     const body = await leesBody(req);
@@ -407,11 +485,13 @@ async function routeGroepsrit(req, res) {
   const kijker = String(req.query?.k || '').replace(/[^a-z0-9]/gi, '').slice(0, 24);
   if (kijker) { await redis(['SADD', `groepsrit:${id}:kijk`, kijker]); await redis(['EXPIRE', `groepsrit:${id}:kijk`, Math.max(3600, Math.ceil((rit.start - Date.now()) / 1000) + 3 * 86400)]); }
   const n = await redis(['SCARD', `groepsrit:${id}:kijk`]);
+  const mee = await redis(['SCARD', `groepsrit:${id}:mee`]);
+  const ikMee = kijker ? await redis(['SISMEMBER', `groepsrit:${id}:mee`, kijker]) : { ok: false };
   let uren = null;
   try { uren = await grWeer(rit); } catch (e) {}
   const ik = leesAppToken(String(req.query?.t || ''));
   return res.status(200).json({ ok: true, rit: { id: rit.id, naam: rit.naam, door: rit.door, start: rit.start, duur: rit.duur, tempo: rit.tempo, plaats: rit.plaats, eigen: !!ik && ik === rit.maker },
-    uren, kijkers: n.ok ? Number(n.result) || 0 : 0 });
+    uren, kijkers: n.ok ? Number(n.result) || 0 : 0, mee: mee.ok ? Number(mee.result) || 0 : 0, ikMee: !!(ikMee.ok && ikMee.result === 1) });
 }
 
 export default async function handler(req, res) {
@@ -446,6 +526,11 @@ export default async function handler(req, res) {
     if (actie === 'opruimen') return await routeOpruimen(req, res);
     if (actie === 'review') return await routeReview(req, res);
     if (actie === 'gastaccount') return await routeGastAccount(req, res);
+    if (actie === 'aitegoed') return await routeAiTegoed(req, res);
+    if (actie === 'nuttig') return await routeNuttig(req, res);
+    if (actie === 'interesse') return await routeInteresse(req, res);
+    if (actie === 'groepsritmee') return await routeGroepsritMee(req, res);
+    if (actie === 'ritpagina') return await routeRitPagina(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -485,6 +570,7 @@ async function routeOverzicht(req, res) {
   meldActief(email);
   const [core, lid, lidmaatschap, kanLid, bandenProfiel, ritten, schemaDossier, meldingen, coachBerichten] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen(), haalBandenProfiel(email), haalRitten(email), haalSchema(email), haalMeldingen(email), haalCoachBerichten(email)]);
   const reviewNu = await reviewOpen(email);
+  const [ia, ip] = await Promise.all([redis(['SISMEMBER', 'app:interesse:afval', email]), redis(['SISMEMBER', 'app:interesse:pacing', email])]);
   // Ingelogd via de knop in de mail (zonder code) en nog geen contact? Dan
   // ook hier het gratis account aanmaken.
   if (!lid || lid.status === 'archived') await nieuwAccount(email);
@@ -499,7 +585,7 @@ async function routeOverzicht(req, res) {
     ...adviesBedragen(mf), deadline: mf.DEADLINE || '',
     tegoedLink: mf.PPTOKEN ? `https://michelkredercoaching.nl/trainingsschemas/?pp=${encodeURIComponent(mf.PPTOKEN)}` : ''
   } : null;
-  return res.status(200).json({ review: reviewNu ? REVIEW_LINK : null, 
+  return res.status(200).json({ review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1) }, 
     ok: true,
     email,
     beheer: BEHEER.includes(email),
@@ -665,9 +751,46 @@ async function logVerbruik(j) {
     await Promise.all([
       redis(['INCR', `app:ai:${m}:vragen`]),
       redis(['INCRBY', `app:ai:${m}:in`, String(inn)]),
-      redis(['INCRBY', `app:ai:${m}:out`, String(u.output_tokens || 0)])
+      redis(['INCRBY', `app:ai:${m}:out`, String(u.output_tokens || 0)]),
+      redis(['INCRBY', 'app:ai:totaal:in', String(inn)]),
+      redis(['INCRBY', 'app:ai:totaal:out', String(u.output_tokens || 0)])
     ]);
+    await tegoedCheck();
   } catch {}
+}
+// Anthropic-tegoed (09-10-2026): Michel vult in Beheer in wat er op zijn
+// Anthropic-account staat (in dollars, zoals de console het toont). Daarna
+// telt de app het geschatte verbruik eraf, en onder $10 krijgt hij een mail.
+const AI_PRIJS_IN = 5, AI_PRIJS_UIT = 25; // dollar per miljoen tokens (Opus)
+async function tegoedStand() {
+  const [t, i, o] = await Promise.all([redis(['GET', 'app:ai:tegoed']), redis(['GET', 'app:ai:totaal:in']), redis(['GET', 'app:ai:totaal:out'])]);
+  let tg = null; try { tg = t.ok && t.result ? JSON.parse(t.result) : null; } catch {}
+  const tin = Number((i.ok && i.result) || 0), tout = Number((o.ok && o.result) || 0);
+  if (!tg) return { tg: null, tin, tout };
+  const verbruikt = ((tin - tg.basisIn) * AI_PRIJS_IN + (tout - tg.basisUit) * AI_PRIJS_UIT) / 1e6;
+  return { tg, tin, tout, resterend: Math.round((tg.dollar - verbruikt) * 100) / 100, verbruikt: Math.round(verbruikt * 100) / 100 };
+}
+async function tegoedCheck() {
+  const s = await tegoedStand();
+  if (!s.tg || s.tg.gewaarschuwd || s.resterend > 10 || !RESEND_KEY) return;
+  s.tg.gewaarschuwd = new Date().toISOString();
+  await redis(['SET', 'app:ai:tegoed', JSON.stringify(s.tg)]);
+  try {
+    await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: 'MKC-app <michel@michelkredercoaching.nl>', to: 'michel.kredercoaching@gmail.com', subject: `Anthropic-tegoed bijna op (nog ± ${s.resterend} dollar)`,
+        html: `<p style="font-family:Arial,sans-serif">Het geschatte tegoed op je Anthropic-account is nog ongeveer ${s.resterend} dollar. Waardeer het op via console.anthropic.com (Billing), en vul daarna het nieuwe bedrag in bij Beheer in de app. Is het tegoed op, dan geeft de coach in de app geen antwoorden meer.</p>` }) });
+  } catch {}
+}
+async function routeAiTegoed(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const ik = leesAppToken(String(body.t || ''));
+  if (!ik || !BEHEER.includes(ik)) return res.status(403).json({ ok: false });
+  const dollar = Number(String(body.dollar || '').replace(',', '.'));
+  if (!(dollar >= 0 && dollar < 100000)) return res.status(400).json({ ok: false, fout: 'Vul een bedrag in.' });
+  const s = await tegoedStand();
+  await redis(['SET', 'app:ai:tegoed', JSON.stringify({ dollar, basisIn: s.tin, basisUit: s.tout, op: new Date().toISOString(), gewaarschuwd: null })]);
+  return res.status(200).json({ ok: true, ai: await aiGebruik() });
 }
 async function aiGebruik() {
   const m = new Date().toISOString().slice(0, 7);
@@ -676,7 +799,8 @@ async function aiGebruik() {
   const tin = n(i), tout = n(o);
   // Schatting met Opus-prijzen (~$5 in, ~$25 uit per miljoen tokens), omgerekend naar euro.
   const euro = Math.round(((tin * 5 + tout * 25) / 1e6) * 0.92 * 100) / 100;
-  return { maand: m, vragen: n(v), tokensIn: tin, tokensUit: tout, euro };
+  const tg = await tegoedStand();
+  return { maand: m, vragen: n(v), tokensIn: tin, tokensUit: tout, euro, tegoed: tg.tg ? { resterend: tg.resterend, op: tg.tg.op.slice(0, 10), was: tg.tg.dollar } : null };
 }
 
 function schoonProfiel(p) {
@@ -837,8 +961,8 @@ async function routeBandVraag(req, res) {
     await logVerbruik(j);
     const tekst = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
     if (!tekst) throw new Error('leeg');
-    await bewaarAntwoord({ email, bron: 'bandvraag', vraag, antwoord: tekst });
-    return res.status(200).json({ ok: true, antwoord: tekst, gratisOver: recht.lid ? null : await telGratis(email) });
+    const aid = await bewaarAntwoord({ email, bron: 'bandvraag', vraag, antwoord: tekst });
+    return res.status(200).json({ ok: true, antwoord: tekst, aid, gratisOver: recht.lid ? null : await telGratis(email) });
   } catch {
     return res.status(502).json({ ok: false, fout: 'Even geen antwoord. Probeer het zo nog eens.' });
   }
@@ -937,12 +1061,12 @@ async function routeCoach(req, res) {
       }
     } catch (e) { console.error('coach fout:', e); }
   }
+  const aid = antwoord && !medisch ? await bewaarAntwoord({ email, bron: 'mkc-coach', vraag: tekst, antwoord }) : null;
   const nieuw = berichten.concat(
     { van: 'ik', tekst, op: nu },
-    { van: 'coach', tekst: antwoord || COACH_STORING, op: new Date().toISOString(), medisch, storing: !antwoord }
+    { van: 'coach', tekst: antwoord || COACH_STORING, op: new Date().toISOString(), medisch, storing: !antwoord, ...(aid ? { aid } : {}) }
   ).slice(-60);
   await redis(['SET', `app:coach:${email}`, JSON.stringify(nieuw)]);
-  if (antwoord && !medisch) await bewaarAntwoord({ email, bron: 'mkc-coach', vraag: tekst, antwoord });
   if (medisch) {
     const [core, mc] = await Promise.all([coreVoorEmail(email), mcLid(email)]);
     await meldMedisch({ email, naam: (core && core.naam) || (mc && mc.merge_fields && mc.merge_fields.FNAME) || '', bron: 'mkc-coach', vraag: tekst,
@@ -1052,9 +1176,11 @@ const MAX_VOORBEELDEN = 8;
 async function bewaarAntwoord({ email, bron, vraag, antwoord }) {
   try {
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    bewaarAntwoord.laatste = id;
     await redis(['LPUSH', 'app:antwoorden', JSON.stringify({ id, email, bron, vraag: String(vraag).slice(0, 600), antwoord: String(antwoord).slice(0, 1500), op: new Date().toISOString() })]);
     await redis(['LTRIM', 'app:antwoorden', '0', '199']);
-  } catch {}
+    return id;
+  } catch { return null; }
 }
 async function haalCorrecties() {
   const r = await redis(['GET', 'app:correcties']);
@@ -1084,7 +1210,9 @@ async function routeAntwoorden(req, res) {
     await redis(['SET', 'app:correcties', JSON.stringify(correcties)]);
   }
   const perId = Object.fromEntries(correcties.map((c) => [c.id, c.correctie]));
-  return res.status(200).json({ ok: true, antwoorden: antwoorden.map((a) => ({ ...a, correctie: perId[a.id] || '' })), aantalCorrecties: correcties.length });
+  const nh = await redis(['HGETALL', 'app:nuttig']); const nut = {}; const na = (nh.ok && nh.result) || [];
+  if (Array.isArray(na)) for (let x = 0; x < na.length; x += 2) nut[na[x]] = na[x + 1]; else Object.assign(nut, na);
+  return res.status(200).json({ ok: true, antwoorden: antwoorden.map((a) => ({ ...a, correctie: perId[a.id] || '', nuttig: nut[a.id] || '' })), aantalCorrecties: correcties.length });
 }
 
 // ===========================================================================

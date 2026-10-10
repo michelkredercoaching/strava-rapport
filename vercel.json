@@ -3,7 +3,7 @@
   "functions": {
     "api/*.js": {
       "maxDuration": 60,
-      "includeFiles": "data/schemas/**"
+      "includeFiles": "{data/schemas/**,app.html}"
     }
   },
   "redirects": [
@@ -44,7 +44,7 @@
     },
     {
       "source": "/rit/:id",
-      "destination": "/app.html"
+      "destination": "/api/app?actie=ritpagina&id=:id"
     }
   ],
   "crons": [

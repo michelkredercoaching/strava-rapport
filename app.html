@@ -99,6 +99,23 @@
   .plan .knop[disabled] { opacity:.45; cursor:default; }
   /* Leden extra (09-10-2026) */
   .bk-ig { margin-top:12px; }
+  .nuttig { display:flex; align-items:center; gap:8px; margin-top:6px; font-size:12.5px; color:var(--muted); flex-wrap:wrap; }
+  .nuttig button { background:none; border:1px solid var(--border); color:var(--white); border-radius:99px; padding:4px 12px; font-family:inherit; font-size:12.5px; cursor:pointer; }
+  .acc-badge { display:inline-flex; align-items:center; gap:8px; margin-top:10px; font-size:12.5px; color:var(--muted); background:var(--surface); border:1px solid var(--border); border-radius:99px; padding:6px 12px; }
+  .acc-badge b { color:#7fe0a0; font-weight:600; }
+  .acc-badge a { color:var(--accent); }
+  .logboek { margin-top:12px; border-top:1px solid var(--border); padding-top:10px; }
+  .logboek summary { cursor:pointer; font-size:13px; color:var(--accent); list-style:none; }
+  .logboek .lr { display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; }
+  .logboek .lr span { color:var(--muted); }
+  .stap { display:grid; gap:10px; }
+  .stap a { display:block; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px; color:var(--white); text-decoration:none; }
+  .stap a b { display:block; font-size:15px; }
+  .stap a span { display:block; font-size:13px; color:var(--muted); margin-top:3px; }
+  .stap a em { font-style:normal; color:var(--accent); font-size:13px; font-weight:600; display:block; margin-top:6px; }
+  .tegoed { display:flex; gap:6px; align-items:center; margin-top:4px; font-size:11px; color:var(--muted); }
+  .tegoed input { width:70px; background:var(--black); border:1px solid var(--border); color:var(--white); border-radius:4px; padding:2px 6px; font-size:11px; }
+  .tegoed button { background:none; border:1px solid var(--border); color:var(--white); border-radius:4px; padding:2px 6px; font-size:11px; cursor:pointer; }
   .bk-ig b { display:block; font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.03em; color:var(--white); }
   .bk-ig span { display:block; font-size:13.5px; color:var(--muted); margin:2px 0 10px; }
   .review { background:linear-gradient(160deg, rgba(255,107,26,.14), rgba(255,107,26,.02) 60%), var(--surface); border:1px solid rgba(255,107,26,.45); border-radius:8px; padding:14px; margin:12px 0; }
@@ -377,7 +394,9 @@
   .gr-maak h3 { font-family:'Bebas Neue',sans-serif; font-size:24px; text-transform:uppercase; margin-bottom:4px; }
   .gr-maak p { font-size:13.5px; color:var(--muted); }
   .gr-maak label { display:block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:12px 0 5px; }
-  .gr-maak input, .gr-maak select { width:100%; background:var(--black); border:1px solid rgba(255,255,255,.18); color:var(--white); border-radius:6px; padding:10px 12px; font-family:inherit; font-size:16px; }
+  .gr-maak input, .gr-maak select { width:100%; box-sizing:border-box; height:46px; min-width:0; background:var(--black); border:1px solid rgba(255,255,255,.18); color:var(--white); border-radius:6px; padding:0 12px; font-family:inherit; font-size:16px; }
+  .gr-maak input[type=time] { -webkit-appearance:none; appearance:none; display:block; line-height:46px; }
+  .gr-maak .rij2 > div { min-width:0; }
   .gr-maak .rij2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .gr-maak .rij2 label { margin-top:12px; }
   .gr-maak .knop { margin-top:14px; }
@@ -731,13 +750,25 @@ function nepGrafiek() {
 }
 
 const BINNENKORT_IG = '<div class="bk-ig"><b>Binnenkort beschikbaar</b><span>Ik kondig de datum aan op Instagram. Hou hem daar in de gaten.</span><a class="knop leeg" href="https://www.instagram.com/michelkredercoaching/" target="_blank" rel="noopener">Volg op Instagram</a></div>';
+function opDeHoogteHtml(product) {
+  const al = D && D.interesse && D.interesse[product];
+  if (al) return '<p class="klein" style="margin-top:10px;color:#7fe0a0">&#10003; Je staat op de lijst. Je hoort het als eerste als het er is.</p>';
+  return '<button type="button" class="knop" data-interesse="' + product + '" style="margin-top:10px">Hou me op de hoogte</button>';
+}
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-interesse]'); if (!k) return;
+  const product = k.dataset.interesse; k.disabled = true;
+  try { const j = await (await fetch(API + '?actie=interesse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), product }) })).json();
+    if (j.ok) { D.interesse = { ...(D.interesse || {}), [product]: true }; k.outerHTML = opDeHoogteHtml(product); return; } } catch (er) {}
+  k.disabled = false;
+});
 function afvalKaart() {
   return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Binnenkort</span>
     <div class="label">Afvalprogramma</div><h2>Lichter, zonder in te leveren</h2>
     <p>Je eigen richtlijn per dag, wekelijkse bijsturing en je gewicht in een grafiek. Afvallen zonder dat je watts zakken.</p>
     <div class="wazig"><div class="achter"><div class="cijfers"><div class="cijfer"><span>Rustdag</span><b>1950</b></div><div class="cijfer"><span>Trainingsdag</span><b>2850</b></div><div class="cijfer"><span>Deze week</span><b>-0,4</b></div></div>${nepGrafiek()}</div>
       <div class="slotje">${SLOT}<b>Binnenkort</b></div></div>
-    ${BINNENKORT_IG}</div></div>`;
+    ${BINNENKORT_IG}${opDeHoogteHtml('afval')}</div></div>`;
 }
 
 // ---- Jouw Strava-analyse: inklapbaar blok bovenaan (08-10-2026) ----
@@ -815,7 +846,7 @@ function analyseKaart(a) {
 function pacingKaart() {
   return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Binnenkort</span>
     <div class="label">Pacingplan</div><h2>Je grote tocht, slim ingedeeld</h2>
-    <p>Hoe hard je per klim, per strook en per uur kunt rijden zonder stuk te gaan, berekend uit je eigen ritten. Voor granfondo's, gravelfondo's en toertochten zoals de Amstel Gold Race of Luik-Bastenaken-Luik.</p>${BINNENKORT_IG}</div></div>`;
+    <p>Hoe hard je per klim, per strook en per uur kunt rijden zonder stuk te gaan, berekend uit je eigen ritten. Voor granfondo's, gravelfondo's en toertochten zoals de Amstel Gold Race of Luik-Bastenaken-Luik.</p>${BINNENKORT_IG}${opDeHoogteHtml('pacing')}</div></div>`;
 }
 
 // Bandenspanning staat altijd bovenaan (besluit Michel 07-10-2026): de gratis
@@ -875,7 +906,7 @@ function bandenKaart(d) {
     ${d.gast ? gastPoortHtml() : ''}
     ${d.gast ? `<div class="sb-vraag"><label>Vraag het je bandencoach</label><p class="klein" style="margin:0">Rijd je morgen over kasseien of in de regen? Met een gratis account stel je je vraag aan de bandencoach. <a href="#" data-actie="gastlogin" style="color:var(--accent)">Maak je account</a></p></div>` : `<div class="sb-vraag"><label for="btVraag">Vraag het je bandencoach</label>
       ${gratisOver() === 0 ? '' : `<div class="sb-rij"><input id="btVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen over kasseien" value="${esc(BTV.vraag)}"><button type="button" class="knop" data-btv="vraag" ${BTV.bezig ? 'disabled' : ''}>${BTV.bezig ? '...' : 'Vraag'}</button></div>`}
-      ${BTV.antwoord ? `<div class="sb-antwoord">${opmaak(BTV.antwoord)}</div>` : ''}
+      ${BTV.antwoord ? `<div class="sb-antwoord">${opmaak(BTV.antwoord)}</div>${nuttigHtml(BTV.aid, BTV.nuttig)}` : ''}
       ${gratisTellerHtml('btVraagTeller')}</div>`}
     ${slim}</div></div>`;
 }
@@ -893,7 +924,7 @@ document.addEventListener('click', async (e) => {
   BTV.bezig = true; BTV.antwoord = ''; teken();
   try {
     const j = await (await fetch(`${API}?actie=bandvraag`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), vraag: BTV.vraag, context: ctx }) })).json();
-    BTV.antwoord = j.ok ? j.antwoord : (j.fout || 'Even geen antwoord.');
+    BTV.antwoord = j.ok ? j.antwoord : (j.fout || 'Even geen antwoord.'); BTV.aid = j.aid || null; BTV.nuttig = null;
     if (j.ok) { zetGratis(j.gratisOver); BTV.vraag = ''; } else if (j.limiet) zetGratis(0);
   } catch (er) { BTV.antwoord = 'Verbinding mislukt. Probeer het zo nog eens.'; }
   BTV.bezig = false; teken();
@@ -983,6 +1014,15 @@ function sbGeheugenHtml(u) {
   if (g.oordeel === 'goed') return `<div class="sb-geheugen">Bij ${sbWeerTekst(g)} reed je op ${sbDatum(g.op)} ${oud}, en dat was precies goed. Dit is dus jouw spanning.<small>Volgens de berekening zou het ${nl(g.berekend.voor)} en ${nl(g.berekend.achter)} zijn.</small></div>`;
   return `<div class="sb-geheugen bij">Op ${sbDatum(g.op)} (${sbWeerTekst(g)}) vond je ${oud} te ${g.oordeel === 'hard' ? 'hard' : 'zacht'}. Daarom nu 0,2 bar ${g.oordeel === 'hard' ? 'minder' : 'meer'}.<small>Rijd het en zeg daarna weer hoe het voelde, dan wordt het steeds preciezer.</small></div>`;
 }
+// Bandenlogboek (09-10-2026): terugkijken wat je eerder reed, bij welk weer, en hoe het voelde.
+function logboekHtml() {
+  const l = (SB.ritten || []).slice().sort((a, b) => String(b.op).localeCompare(String(a.op))).slice(0, 10);
+  if (!l.length) return '';
+  const fiets = (id) => { const f = ((SB.profiel && SB.profiel.fietsen) || []).find((x) => x.id === id); return f ? f.naam : 'Fiets'; };
+  const oord = { goed: 'precies goed', hard: 'te hard', zacht: 'te zacht' };
+  const nl = (v) => String(Number(v).toFixed(1)).replace('.', ',');
+  return `<details class="logboek"><summary>Mijn bandenlogboek (${l.length} ${l.length === 1 ? 'rit' : 'ritten'})</summary>${l.map((r) => `<div class="lr"><div>${esc(sbDatum(r.op))} &middot; ${esc(fiets(r.fiets))}<br><span>${r.temp != null ? Math.round(r.temp) + '&deg;' : ''}${r.nat ? ' &middot; nat' : ' &middot; droog'}${r.grond && r.grond !== 'normaal' ? ' &middot; ' + esc(r.grond) : ''}</span></div><div style="text-align:right">${nl(r.voor)} / ${nl(r.achter)}<br><span>${r.oordeel ? oord[r.oordeel] || '' : 'nog geen oordeel'}</span></div></div>`).join('')}<p class="klein" style="margin-top:8px">Bij hetzelfde weer en dezelfde fiets gebruikt de app je oordeel van toen voor je advies van vandaag.</p></details>`;
+}
 function sbRijdHtml(f, u) {
   const vandaag = new Date().toISOString().slice(0, 10);
   const al = (SB.ritten || []).find((r) => r.fiets === f.id && String(r.op).slice(0, 10) === vandaag && r.voor === u.voor && r.achter === u.achter);
@@ -1044,6 +1084,7 @@ function slimBandenKaart() {
   const res = !uit ? '<p class="klein">Vul je gewicht in bij je fietsen.</p>' : `<div class="bt-uit"><div><span>Voor</span><b>${BT_LIB.nl(uit.voor)}</b><small>bar &middot; ${BT_LIB.psi(uit.voor)} psi</small></div><div><span>Achter</span><b>${BT_LIB.nl(uit.achter)}</b><small>bar &middot; ${BT_LIB.psi(uit.achter)} psi</small></div></div>
     ${uit.binnenA != null ? `<div class="sb-kou">Het wordt ${uit.temp}&deg;. Pomp je binnen, pomp dan <b>${BT_LIB.nl(uit.binnenV)} voor en ${BT_LIB.nl(uit.binnenA)} achter</b>. Buiten krimpt de lucht en zit je precies goed.</div>` : ''}
     ${sbGeheugenHtml(uit)}
+    ${logboekHtml()}
     ${uit.redenen.length ? `<p class="klein">Meegerekend: ${uit.redenen.join(', ')}.</p>` : ''}
     ${sbRijdHtml(f, uit)}`;
   const tabs = `<div class="vr-tabs"><button type="button" data-kl="tab" data-w="banden" class="${tab === 'banden' ? 'aan' : ''}">Banden</button><button type="button" data-kl="tab" data-w="kleding" class="${tab === 'kleding' ? 'aan' : ''}">Kleding</button><button type="button" data-kl="tab" data-w="voeding" class="${tab === 'voeding' ? 'aan' : ''}">Voeding</button><button type="button" data-kl="tab" data-w="groep" class="${tab === 'groep' ? 'aan' : ''}">Groepsrit</button></div>`;
@@ -1079,7 +1120,7 @@ function slimBandenKaart() {
     ${res}
     <div class="sb-vraag"><label for="sbVraag">Vraag het je bandencoach</label>
       <div class="sb-rij"><input id="sbVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen de Ronde met kasseien" value="${esc(SB.vraag)}"><button type="button" class="knop" data-sb="vraag" ${SB.vraagBezig ? 'disabled' : ''}>${SB.vraagBezig ? '...' : 'Vraag'}</button></div>
-      ${SB.antwoord ? `<div class="sb-antwoord">${opmaak(SB.antwoord)}</div>` : ''}</div>
+      ${SB.antwoord ? `<div class="sb-antwoord">${opmaak(SB.antwoord)}</div>${nuttigHtml(SB.aid, SB.nuttig)}` : ''}</div>
     ${pushHtml()}
     <button type="button" class="sb-link" data-sb="bewerk">Mijn fietsen en gewicht</button></div></div>`;
 }
@@ -1176,7 +1217,7 @@ document.addEventListener('click', async (e) => {
     SB.vraagBezig = true; SB.antwoord = ''; sbTeken();
     try {
       const j = await (await fetch(`${API}?actie=bandvraag`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), vraag: SB.vraag, context: sbContext() }) })).json();
-      SB.antwoord = j.ok ? j.antwoord : (j.fout || 'Even geen antwoord.');
+      SB.antwoord = j.ok ? j.antwoord : (j.fout || 'Even geen antwoord.'); SB.aid = j.aid || null; SB.nuttig = null;
     } catch (e) { SB.antwoord = 'Verbinding mislukt. Probeer het zo nog eens.'; }
     SB.vraagBezig = false; sbTeken();
   }
@@ -1243,7 +1284,8 @@ function kaartenHtml(d) {
   const coaching = !!(d.lid && d.lid.bron === 'coaching');
   if (!d.analyse && !coaching) ontgrendel.push(analyseKaart(null));
   const groep = (titel, kaarten) => kaarten.length ? `<div class="groepkop">${titel}</div><div class="kaarten">${kaarten.join('')}</div>` : '';
-  return groep('Actief', actief) + groep('Ontgrendelen', ontgrendel) + groep('Binnenkort', coaching ? [afvalKaart()] : [afvalKaart(), pacingKaart()]);
+  const stap = !coaching && !d.schema ? `<div class="stap"><a href="${SITE}/trainingsschemas/" target="_blank" rel="noopener"><b>Train met een plan</b><span>Een schema van 8, 12 of 16 weken, klaar in TrainingPeaks. De MKC-app zit erbij voor de hele looptijd.</span><em>Kies je schema &rarr;</em></a><a href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener"><b>Liever iemand die meekijkt?</b><span>Persoonlijke coaching: elke 2 of 4 weken een nieuw schema op maat, en Michel stuurt bij op wat je echt gereden hebt.</span><em>Bekijk coaching &rarr;</em></a></div>` : '';
+  return groep('Actief', actief) + groep('Ontgrendelen', ontgrendel) + (stap ? `<div class="groepkop">Volgende stap</div>${stap}` : '') + groep('Binnenkort', coaching ? [afvalKaart()] : [afvalKaart(), pacingKaart()]);
 }
 
 // Beheerweergave (alleen voor Michels eigen adressen, zie BEHEER in api/app.js):
@@ -1258,7 +1300,7 @@ function voorbeeldData(d) {
 function beheerHtml(d) {
   if (!d.beheer) return '';
   const ai = d.aiGebruik;
-  return `<div class="beheer"><span>Beheerweergave${ai ? ` <small class="ai-verbruik">AI deze maand: ${ai.vragen} vragen &middot; &plusmn; &euro;${String(ai.euro.toFixed(2)).replace('.', ',')}</small>` : ''}</span><div><button data-actie="bekijk" data-w="nieuw" class="${BEKIJK === 'nieuw' ? 'aan' : ''}">Niet-lid</button><button data-actie="bekijk" data-w="klant" class="${BEKIJK === 'klant' ? 'aan' : ''}">Als klant</button><button data-actie="bekijk" data-w="alles" class="${BEKIJK === 'alles' ? 'aan' : ''}">Alles open</button><button data-actie="bekijk" data-w="zelf" class="${BEKIJK === 'zelf' ? 'aan' : ''}">Zelf kiezen</button></div></div>${simHtml()}`;
+  return `<div class="beheer"><span>Beheerweergave${ai ? ` <small class="ai-verbruik">AI deze maand: ${ai.vragen} vragen &middot; &plusmn; &euro;${String(ai.euro.toFixed(2)).replace('.', ',')}${ai.tegoed ? ` &middot; tegoed Anthropic nog &plusmn; <b style="color:${ai.tegoed.resterend < 10 ? '#ff8a5c' : 'inherit'}">&#36;${String(ai.tegoed.resterend.toFixed(2)).replace('.', ',')}</b>` : ''}</small><span class="tegoed">${ai.tegoed ? 'Opgewaardeerd?' : 'Tegoed Anthropic invullen:'} $<input id="aiTegoed" inputmode="decimal" placeholder="${ai.tegoed ? ai.tegoed.resterend : '50'}"><button type="button" data-actie="aitegoed">Zet</button></span>` : ''}</span><div><button data-actie="bekijk" data-w="nieuw" class="${BEKIJK === 'nieuw' ? 'aan' : ''}">Niet-lid</button><button data-actie="bekijk" data-w="klant" class="${BEKIJK === 'klant' ? 'aan' : ''}">Als klant</button><button data-actie="bekijk" data-w="alles" class="${BEKIJK === 'alles' ? 'aan' : ''}">Alles open</button><button data-actie="bekijk" data-w="zelf" class="${BEKIJK === 'zelf' ? 'aan' : ''}">Zelf kiezen</button></div></div>${simHtml()}`;
 }
 
 // ---- Schema in de app (09-10-2026) ----
@@ -1376,7 +1418,7 @@ document.addEventListener('click', (e) => {
 
 // ---- Lidmaatschap MKC-app: €9,99 per maand of €89 per jaar via Mollie (sinds 09-10-2026, was €19/€149) ----
 const APP_PRIJS = { maand: '9,99', jaar: '89', jaarPerMaand: '7,42', half: '5' };
-const LID_LIJST = ['De Core-app die met je meebeweegt: gaat het makkelijk, dan ga je sneller', 'Slimme bandenspanning: je fietsen, het weer van vandaag en een geheugen', 'Kledingadvies voor je rit, plus een ochtendbericht met weer, spanning en kleding', 'Onbeperkt vragen aan je eigen coach, met Michels kennis uit 9 jaar prof en zijn coachervaring', 'Per maand, altijd opzegbaar, of voordelig per jaar'];
+const LID_LIJST = ['De Core-app (core stability voor wielrenners) die met je meebeweegt: gaat het makkelijk, dan ga je sneller', 'Slimme bandenspanning: je fietsen, het weer van vandaag en een geheugen', 'Kledingadvies voor je rit, plus een ochtendbericht met weer, spanning en kleding', 'Onbeperkt vragen aan je eigen coach, met Michels kennis uit 9 jaar prof en zijn coachervaring', 'Per maand, altijd opzegbaar, of voordelig per jaar'];
 function binnenkortPitchHtml() {
   // Vóór de lancering: prijzen al zichtbaar, knoppen nog dicht (09-10-2026).
   return `<div class="lidblok"><div class="label">MKC-app &middot; opent vrijdag 16 oktober</div><h2>Word lid</h2>
@@ -1537,6 +1579,7 @@ function teken() {
   $('#app').innerHTML = `<div class="kop"><div class="logo">MKC<span>.</span></div><button class="uit" data-actie="uitloggen">Uitloggen</button></div>
     ${beheerHtml(d)}${ledenHtml()}${gebruikHtml()}${opvolgHtml()}${nakijkHtml()}
     <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
+    ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
     <div id="groepsrit">${grHtml()}</div>
     ${reviewHtml(d)}
     ${meldingenHtml(d)}<div id="meldvraag">${meldVraagHtml()}</div><div id="startlijst">${startlijstHtml(d)}</div>
@@ -1570,6 +1613,11 @@ document.addEventListener('change', (e) => {
 document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-actie]'); if (!k) return;
   const actie = k.dataset.actie;
+  if (actie === 'aitegoed') {
+    const v = (document.getElementById('aiTegoed') || {}).value; if (!v) return;
+    fetch(API + '?actie=aitegoed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), dollar: v }) }).then((r) => r.json()).then((j) => { if (j.ok) { D.aiGebruik = j.ai; teken(); } }).catch(() => {});
+    return;
+  }
   if (actie === 'bekijk') { BEKIJK = k.dataset.w; try { localStorage.setItem('mkcBekijk', BEKIJK); } catch {} CC.berichten = null; teken(); }
   if (actie === 'simreset') { SIM = { core: 'echt', analyse: 'echt', lid: 'echt', lancering: 'echt', schema: 'echt' }; simBewaar(); SK.dag = null; teken(); }
   if (actie === 'wordlid') wordLid(k);
@@ -1792,7 +1840,7 @@ function coachLijst(typen) {
   const lijst = CC.berichten || [];
   l.innerHTML = `<div class="cc-b coach">${welkom}</div>` + lijst.map((b) => b.van === 'ik'
       ? `<div style="align-self:flex-end;max-width:86%;text-align:right"><div class="cc-b ik" style="max-width:100%">${esc(b.tekst)}</div><div class="cc-tijd">${tijd(b.op)}</div></div>`
-      : `<div style="align-self:flex-start;max-width:86%"><div class="cc-b coach ${b.medisch ? 'let' : ''}" style="max-width:100%">${opmaak(b.tekst)}</div><div class="cc-tijd">${CC_NAAM} &middot; ${tijd(b.op)}</div></div>`).join('')
+      : `<div style="align-self:flex-start;max-width:86%"><div class="cc-b coach ${b.medisch ? 'let' : ''}" style="max-width:100%">${opmaak(b.tekst)}</div><div class="cc-tijd">${CC_NAAM} &middot; ${tijd(b.op)}</div>${nuttigHtml(b.aid, b.nuttig)}</div>`).join('')
     + (typen ? `<div class="cc-b ik" style="align-self:flex-end">${esc(typen)}</div><div class="cc-typen"><i></i><i></i><i></i></div>` : '')
     + (over === 0 && !typen ? gratisOpHtml() : over != null && !typen ? gratisTellerHtml('ccTeller') : '');
   $('#ccChips').style.display = lijst.length || typen || over === 0 ? 'none' : '';
@@ -1866,6 +1914,20 @@ document.addEventListener('click', (e) => {
 // zeggen" schrijft Michel hoe hij het zelf zegt; dat gaat als voorbeeld mee in
 // volgende vragen (api/app.js actie=antwoorden).
 let NAK = { lijst: null, open: false, bewerk: null, aantal: 0 };
+// "Vond je dit nuttig?" onder elk coachantwoord (09-10-2026).
+function nuttigHtml(id, al) {
+  if (!id) return '';
+  if (al) return '<div class="nuttig">Dank je voor je reactie!</div>';
+  return '<div class="nuttig">Vond je dit nuttig? <button type="button" data-nuttig="ja" data-id="' + esc(id) + '">Ja</button><button type="button" data-nuttig="nee" data-id="' + esc(id) + '">Nee</button></div>';
+}
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-nuttig]'); if (!k) return;
+  const id = k.dataset.id, w = k.dataset.nuttig;
+  fetch(API + '?actie=nuttig', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), id, nuttig: w }) }).catch(() => {});
+  if (BTV.aid === id) BTV.nuttig = w; if (SB.aid === id) SB.nuttig = w;
+  if (CC.berichten) CC.berichten.forEach((b) => { if (b.aid === id) b.nuttig = w; });
+  k.closest('.nuttig').outerHTML = '<div class="nuttig">Dank je voor je reactie!</div>';
+});
 function nakijkHtml() {
   if (!D || !D.beheer) return '';
   const l = NAK.lijst;
@@ -1873,7 +1935,7 @@ function nakijkHtml() {
   if (!NAK.open) return `<div class="opv nak" id="nakijk">${kop}</div>`;
   const datum = (op) => new Date(op).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const rij = (a) => `<div class="opv-rij ${a.correctie ? 'afgehandeld-niet' : ''}">
-      <div class="opv-top"><b>${a.bron === 'bandvraag' ? 'Bandenvraag' : 'MKC-coach'}</b><span>${datum(a.op)} &middot; ${esc(a.email)}</span></div>
+      <div class="opv-top"><b>${a.bron === 'bandvraag' ? 'Bandenvraag' : 'MKC-coach'}${a.nuttig ? (a.nuttig === 'ja' ? ' &middot; <span style="color:#7fe0a0">nuttig</span>' : ' &middot; <span style="color:#ff8a5c">niet nuttig</span>') : ''}</b><span>${datum(a.op)} &middot; ${esc(a.email)}</span></div>
       <div class="opv-vraag">${esc(a.vraag)}</div>
       <div class="nak-antwoord">${opmaak(a.antwoord)}</div>
       ${NAK.bewerk === a.id ? `<textarea class="nak-tekst" id="nakTekst" rows="5" placeholder="Zo zou ik het zeggen...">${esc(a.correctie || '')}</textarea>
@@ -1914,7 +1976,7 @@ function ritUren() { const w = SB.weer; if (!w) return []; const k = klKeuze(); 
 function windRegelHtml() {
   if (!WIND_LIB || !SB.weer) return '';
   const a = WIND_LIB.windAdvies(ritUren());
-  return a ? `<div class="sb-wind">${KOMPAS}<span>${esc(a.tekst)}</span></div>` : '';
+  return a ? `<div class="sb-wind">${KOMPAS}<span>${esc(a.tekst)}${a.kust ? `<small style="display:block;margin-top:6px;color:var(--muted)">${esc(a.kust)}</small>` : ''}</span></div>` : '';
 }
 function voedingTabHtml() {
   if (!SB.weer) return '<p class="klein" style="margin-top:12px">Kies hierboven je plek, dan reken ik met de temperatuur tijdens je rit.</p>';
@@ -1945,7 +2007,7 @@ function windKaartHtml() {
     ${WK.fout ? `<p class="klein" style="color:#ff8a5c">${esc(WK.fout)}</p>` : ''}</div>`;
   const a = WK.uren && WIND_LIB ? WIND_LIB.windAdvies(WK.uren.slice(0, 3)) : null;
   return `<div class="wk" id="windkaart">${kop}<p style="margin-bottom:8px">${esc(WK.plaats.naam)}, de komende twee uur &middot; <a href="#" data-wk="anders" style="color:var(--accent)">andere plek</a></p>
-    ${a ? `<div class="sb-wind">${KOMPAS}<span>${esc(a.tekst)}</span></div>` : '<p class="klein">Even het weer ophalen...</p>'}
+    ${a ? `<div class="sb-wind">${KOMPAS}<span>${esc(a.tekst)}${a.kust ? `<small style="display:block;margin-top:6px;color:var(--muted)">${esc(a.kust)}</small>` : ''}</span></div>` : '<p class="klein">Even het weer ophalen...</p>'}
     <p class="klein">Met de MKC-app reken ik dit voor je hele rit uit, samen met je bandenspanning, kleding en voeding.</p></div>`;
 }
 function wkTeken() { const el = document.getElementById('windkaart'); if (el) el.outerHTML = windKaartHtml(); }
@@ -2174,7 +2236,8 @@ function grHtml() {
     <div class="gr-door">Vanuit ${esc(rit.plaats.naam || 'de start')}${rit.door ? ' &middot; uitnodiging van ' + esc(rit.door) : ''} &middot; ${rit.tempo === 'hard' ? 'stevig tempo' : 'rustig tempo'}</div>
     ${voorbij ? '<p class="klein" style="margin-top:10px">Deze rit is al gereden.</p>' : !uren ? '<p class="klein" style="margin-top:10px">Het weer voor deze rit verschijnt zodra hij binnen twee weken valt.</p>' : weer
       + (wind ? `<div class="sb-wind">${KOMPAS}<span>${esc(wind.tekst)}</span></div>` : '') + bandenBlok + lidBlok}
-    ${kijkers >= 2 ? `<div class="gr-kijk">${kijkers} renners keken al naar deze rit</div>` : ''}
+    ${voorbij ? '' : `<button type="button" class="knop ${GR.data.ikMee ? '' : 'leeg'}" data-gr="mee" style="margin-top:14px">${GR.data.ikMee ? '&#10003; Je rijdt mee' : 'Ik rijd mee'}</button>`}
+    <div class="gr-kijk">${[GR.data.mee ? `${GR.data.mee} ${GR.data.mee === 1 ? 'rijdt' : 'rijden'} mee` : '', kijkers >= 2 ? `${kijkers} keken al` : ''].filter(Boolean).join(' &middot; ')}</div>
     ${voorbij ? '' : '<button type="button" class="knop" data-gr="deel" style="margin-top:14px">Deel deze rit</button>'}</div>`;
 }
 // Plannen: iedereen met een (gratis) account.
@@ -2207,7 +2270,7 @@ function grMaakHtml() {
 function grMaakTeken() { const el = document.getElementById('grmaak'); if (el) el.innerHTML = grMaakHtml(); }
 function grLeesVelden() { const m = GR.maak; if (!m) return; const v = (id) => { const el = document.getElementById(id); return el ? el.value : undefined; }; ['naam:grNaam', 'door:grDoor', 'datum:grDatum', 'tijd:grTijd', 'duur:grDuur', 'tempo:grTempo'].forEach((x) => { const [k, id] = x.split(':'); const w = v(id); if (w !== undefined) m[k] = w; }); }
 async function grDeel(url, naam) {
-  const tekst = `${naam}: het weer, de wind en je bandenspanning voor onze rit`;
+  const tekst = `${naam}: rij je mee? Hier zie je het weer, welke kant we starten en je eigen bandenspanning. Tik op \"Ik rijd mee\" als je erbij bent.`;
   if (navigator.share) { try { await navigator.share({ title: naam, text: tekst, url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
   try { await navigator.clipboard.writeText(url); alert('Link gekopieerd. Plak hem in je groepsapp.'); } catch (e) { prompt('Kopieer de link:', url); }
 }
@@ -2215,6 +2278,11 @@ document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-gr]'); if (!k) return;
   e.preventDefault();
   const a = k.dataset.gr;
+  if (a === 'mee' && GR.data) {
+    const mee = !GR.data.ikMee; k.disabled = true;
+    try { const j = await (await fetch(API + '?actie=groepsritmee', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: GR.data.rit.id, k: gastAnon(), mee }) })).json(); if (j.ok) { GR.data.ikMee = mee; GR.data.mee = j.mee; } } catch (er) {}
+    return grTeken();
+  }
   if (a === 'deel' && GR.data) return grDeel(location.origin + '/rit/' + GR.data.rit.id, GR.data.rit.naam);
   if (a === 'open') {
     if (!D || D.gast) { const b = document.querySelector('[data-actie="gastlogin"]'); if (b) b.click(); return; }
