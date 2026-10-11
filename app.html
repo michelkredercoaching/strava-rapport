@@ -144,8 +144,14 @@
   .doel-opties { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .doel-opties button { background:var(--bg); border:1px solid var(--border); color:var(--white); border-radius:8px; padding:12px 10px; font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer; text-align:left; }
   .doel-opties button.aan { border-color:var(--accent); background:rgba(255,107,26,.12); }
-  .doel-ev { display:grid; gap:8px; margin-top:10px; }
-  .doel-ev input { width:100%; }
+  .doel-ev { display:grid; gap:12px; margin-top:12px; }
+  .doel-ev label { display:block; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .doel-ev input, .doel-ev select { display:block; width:100%; box-sizing:border-box; height:46px; margin:0; padding:0 14px; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--white); font-family:inherit; font-size:15px; line-height:46px; -webkit-appearance:none; appearance:none; color-scheme:dark; }
+  .doel-ev select { background-image:linear-gradient(45deg, transparent 50%, var(--accent) 50%), linear-gradient(135deg, var(--accent) 50%, transparent 50%); background-position:calc(100% - 20px) 20px, calc(100% - 15px) 20px; background-size:5px 5px; background-repeat:no-repeat; padding-right:36px; }
+  .doel-ev input::-webkit-date-and-time-value { text-align:left; }
+  .doel-ev input:focus, .doel-ev select:focus { outline:none; border-color:var(--accent); }
+  .doel-ev #doelNaam { margin-top:8px; }
+  .doel-ev .knop { margin-top:2px; }
   .doel-later { display:inline-block; margin-top:10px; font-size:12.5px; color:var(--muted); background:none; border:0; padding:0; cursor:pointer; font-family:inherit; text-decoration:underline; }
   .doelregel { font-size:13px; color:var(--muted); margin:10px 0 2px; }
   .doelregel b { color:var(--white); font-weight:600; }
@@ -1675,10 +1681,28 @@ function doelHtml(d) {
   const k = DOELV.kies;
   return `<div class="doelkaart" id="doelvraag"><b>${dl && dl.klaar ? 'Wat is je volgende doel?' : 'Waar train je voor?'}</b><p>Dan stemt de app je tips en meldingen daarop af.</p>
     <div class="doel-opties">${Object.entries(DOEL_NAMEN).map(([w, n]) => `<button type="button" data-doel="kies" data-w="${w}" class="${k === w ? 'aan' : ''}" ${DOELV.bezig ? 'disabled' : ''}>${n}</button>`).join('')}</div>
-    ${k === 'evenement' ? `<div class="doel-ev"><input id="doelNaam" maxlength="60" placeholder="Welke tocht? Bijv. Amstel Gold Race" value="${esc((dl && dl.naam) || '')}"><input id="doelDatum" type="date" value="${esc((dl && dl.datum) || '')}"><button type="button" class="knop" data-doel="bewaar" ${DOELV.bezig ? 'disabled' : ''}>${DOELV.bezig ? 'Even bewaren...' : 'Bewaar mijn doel'}</button></div>` : ''}
+    ${k === 'evenement' ? `<div class="doel-ev">${doelTochtHtml(dl)}<div><label for="doelDatum">Wanneer?</label><input id="doelDatum" type="date" value="${esc((dl && dl.datum) || '')}"></div><button type="button" class="knop" data-doel="bewaar" ${DOELV.bezig ? 'disabled' : ''}>${DOELV.bezig ? 'Even bewaren...' : 'Bewaar mijn doel'}</button></div>` : ''}
     ${DOELV.fout ? `<p class="klein" style="color:#ff8a5c">${esc(DOELV.fout)}</p>` : ''}
     <button type="button" class="doel-later" data-doel="later">${DOELV.open ? 'Annuleer' : 'Later'}</button></div>`;
 }
+// Bekende tochten (11-10-2026), als laatste "Anders, namelijk".
+const TOCHTEN = ['Amstel Gold Race', 'Luik-Bastenaken-Luik', 'Ronde van Vlaanderen', 'Parijs-Roubaix Challenge', 'Gent-Wevelgem', 'Omloop Het Nieuwsblad', 'Limburgs Mooiste', 'Veenendaal-Veenendaal', 'Fietselfstedentocht', 'La Marmotte', "L'Étape du Tour", 'Mont Ventoux', 'Maratona dles Dolomites', 'Alpe d\'HuZes', 'Mallorca 312', 'Dreiländergiro'];
+function doelTochtHtml(dl) {
+  const huidig = (dl && dl.doel === 'evenement' && dl.naam) || '';
+  const keuze = DOELV.tocht != null ? DOELV.tocht : huidig ? (TOCHTEN.includes(huidig) ? huidig : '__anders') : '';
+  return `<div><label for="doelTocht">Welke tocht of wedstrijd?</label><select id="doelTocht">
+    <option value="" ${keuze ? '' : 'selected'} disabled>Kies je tocht</option>
+    ${TOCHTEN.map((t) => `<option ${keuze === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}
+    <option value="__anders" ${keuze === '__anders' ? 'selected' : ''}>Anders, namelijk:</option></select>
+    ${keuze === '__anders' ? `<input id="doelNaam" maxlength="60" placeholder="Naam van je tocht of wedstrijd" value="${esc(TOCHTEN.includes(huidig) ? '' : huidig)}">` : ''}</div>`;
+}
+document.addEventListener('change', (e) => {
+  if (e.target.id !== 'doelTocht') return;
+  const dat = document.getElementById('doelDatum')?.value || '';
+  DOELV.tocht = e.target.value; teken();
+  const d2 = document.getElementById('doelDatum'); if (d2 && dat) d2.value = dat;
+  if (DOELV.tocht === '__anders') setTimeout(() => document.getElementById('doelNaam')?.focus(), 30);
+});
 async function doelBewaar(body) {
   DOELV.bezig = true; DOELV.fout = ''; teken();
   try {
@@ -1694,8 +1718,8 @@ document.addEventListener('click', (e) => {
   const a = k.dataset.doel;
   if (a === 'wijzig') { DOELV = { open: true, kies: D.doel && D.doel.doel, fout: '', bezig: false }; return teken(); }
   if (a === 'later') { if (!DOELV.open) { try { localStorage.setItem('mkcDoelLater', String(Date.now())); } catch (er) {} } DOELV = { open: false, kies: null, fout: '', bezig: false }; return teken(); }
-  if (a === 'kies') { const w = k.dataset.w; if (w === 'evenement') { DOELV.kies = w; DOELV.fout = ''; teken(); setTimeout(() => document.getElementById('doelNaam')?.focus(), 30); return; } return doelBewaar({ doel: w }); }
-  if (a === 'bewaar') return doelBewaar({ doel: 'evenement', naam: (document.getElementById('doelNaam')?.value || '').trim(), datum: document.getElementById('doelDatum')?.value || '' });
+  if (a === 'kies') { const w = k.dataset.w; if (w === 'evenement') { DOELV.kies = w; DOELV.fout = ''; teken(); DOELV.tocht = null; return; } return doelBewaar({ doel: w }); }
+  if (a === 'bewaar') { const t = document.getElementById('doelTocht')?.value || ''; const naam = t === '__anders' ? (document.getElementById('doelNaam')?.value || '').trim() : t; if (!naam) { DOELV.fout = t === '__anders' ? 'Vul de naam van je tocht in.' : 'Kies je tocht.'; return teken(); } return doelBewaar({ doel: 'evenement', naam, datum: document.getElementById('doelDatum')?.value || '' }); }
 });
 // Links uit meldingen (/app#analyse, #rijden, #coach, #doel, ...) openen de juiste pagina.
 function naarAnker() {
