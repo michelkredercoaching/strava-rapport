@@ -1372,6 +1372,31 @@ function voorbeeldData(d) {
     schema: d.schema || SIM_SCHEMA['opbouw-12-w|18'] || null,
     banden: true };
 }
+// Aankondiging "3 gratis vragen" (11-10-2026): eerst proef (wie krijgt hem), dan versturen.
+let AK = { data: null, bezig: false, klaar: null, open: false };
+function aankondigHtml() {
+  if (!D || !D.beheer) return '';
+  if (AK.klaar) return `<div class="opv"><div class="opv-kop" style="cursor:default"><span><b>Aankondiging 3 gratis vragen</b> <i>verstuurd naar ${AK.klaar.verstuurd}, ${AK.klaar.gemaild} gemaild</i></span></div></div>`;
+  const kop = `<button type="button" class="opv-kop" data-ak="klap"><span><b>Aankondiging 3 gratis vragen</b> <i>${AK.data ? AK.data.aantal + ' gratis accounts' : 'nog niet verstuurd'}</i></span><span>${AK.open ? '&#9650;' : '&#9660;'}</span></button>`;
+  if (!AK.open) return `<div class="opv" id="aankondig">${kop}</div>`;
+  const x = AK.data;
+  return `<div class="opv open" id="aankondig">${kop}<div style="padding:0 14px 14px">
+    ${!x ? '<p class="klein">Laden...</p>' : `<p class="klein">Melding in de app (en push als die aan staat) voor <b>${x.aantal}</b> gratis accounts die de app de laatste 120 dagen openden. Daarvan krijgen <b>${x.mail}</b> ook de mail (de rest is uitgeschreven of staat niet in Mailchimp). Leden en coachingklanten niet. Iedereen krijgt hem maar één keer.</p>
+      <details style="margin:8px 0"><summary class="klein" style="cursor:pointer">Bekijk wie</summary><p class="klein">${x.lijst.map(esc).join('<br>') || 'Niemand'}</p></details>
+      <button type="button" class="knop" data-ak="stuur" ${AK.bezig || !x.aantal ? 'disabled' : ''}>${AK.bezig ? 'Bezig met versturen...' : 'Verstuur naar ' + x.aantal + ' mensen'}</button>`}
+  </div></div>`;
+}
+function akTeken() { const el = document.getElementById('aankondig'); if (el) el.outerHTML = aankondigHtml(); }
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-ak]'); if (!k) return;
+  if (k.dataset.ak === 'klap') { AK.open = !AK.open; akTeken(); if (AK.open && !AK.data) { try { AK.data = await (await fetch(`${API}?actie=aankondig&t=${encodeURIComponent(leesToken())}`)).json(); } catch (er) {} akTeken(); } }
+  if (k.dataset.ak === 'stuur') {
+    if (!confirm('Melding en mail nu versturen naar ' + AK.data.aantal + ' mensen?')) return;
+    AK.bezig = true; akTeken();
+    try { const j = await (await fetch(API + '?actie=aankondig', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), verstuur: true }) })).json(); if (j.ok) AK.klaar = j; } catch (er) {}
+    AK.bezig = false; akTeken();
+  }
+});
 function beheerHtml(d) {
   if (!d.beheer) return '';
   const ai = d.aiGebruik;
@@ -1787,7 +1812,7 @@ function tegelsHtml(d) {
   if (d.core) t.push(tegel({ href: d.core.link, ic: 'core', nm: 'Core-app', sub: d.core.week ? 'Niveau ' + d.core.week + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : '') : 'Je core-sessies', tag: 'Actief', tagKlas: 'gr' }));
   else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Core stability voor wielrenners, op de timer', tag: binnenkortNu() ? 'Binnenkort' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? 'Jouw uitslag' : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse ? 'gr' : 'or' }));
-  t.push(tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? 'Lid' : binnenkortNu() ? 'Binnenkort' : '3 gratis', tagKlas: 'or' }));
+  t.push(tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? 'Lid' : '3 gratis', tagKlas: 'or' }));
   t.push(tegel({ v: 'afval', ic: 'afval', nm: 'Afvalprogramma', sub: 'Lichter worden zonder watts te verliezen', tag: 'Binnenkort', dim: true }));
   if (!coaching) t.push(tegel({ v: 'pacing', ic: 'pacing', nm: 'Pacingplan', sub: 'Je grote tocht slim ingedeeld', tag: 'Binnenkort', dim: true }));
   if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: 'Status, facturen en een vriend uitnodigen', tag: '' }));
@@ -1842,7 +1867,7 @@ function teken() {
   }
   const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `${appBalkHtml()}
-    ${beheerHtml(d)}${ledenHtml()}${gebruikHtml()}${opvolgHtml()}${nakijkHtml()}
+    ${beheerHtml(d)}${aankondigHtml()}${ledenHtml()}${gebruikHtml()}${opvolgHtml()}${nakijkHtml()}
     <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
     ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
     <div id="groepsrit">${grHtml()}</div>
@@ -1850,7 +1875,7 @@ function teken() {
     ${meldingenHtml(d)}<div id="meldvraag">${meldVraagHtml()}</div><div id="startlijst">${startlijstHtml(d)}</div>
     ${isNieuw(d) ? `<div class="welkom"><b>Zo werkt je app</b>
       <ol><li><span>1</span>Tik op Vandaag rijden en vul je gewicht en band in: je ziet meteen wat je pompt. Gratis, voor elke rit.</li>
-      <li><span>2</span>${binnenkortNu() ? 'Binnenkort komt er veel bij: de Core-app, kledingadvies voor je rit en je eigen coach.' : 'Start je gratis week in de Core-app: korte sessies thuis, op de timer.'}</li>
+      <li><span>2</span>${binnenkortNu() ? 'Rechtsonder zit <em>Vraag je coach</em>: stel elke week 3 vragen gratis, over training, voeding, banden of herstel.' : 'Start je gratis week in de Core-app: korte sessies thuis, op de timer.'}</li>
       <li><span>3</span>${binnenkortNu() ? 'Zet de app op je beginscherm, dan heb je je bandenspanning altijd bij de hand.' : d.lidOpen ? 'Meer nodig? Als lid krijg je je eigen coach, de slimme bandenspanning en de Core-app doorlopend, voor &euro;' + APP_PRIJS.maand + ' per maand.' : 'Rechtsonder zit <em>Vraag je coach</em>: je eigen coach die je analyse en je plan kent, straks voor leden.'}</li></ol></div>`
       : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}
     <div id="doelvak">${doelHtml(d)}</div>
@@ -2089,7 +2114,7 @@ async function coachZet(aan) {
 window.addEventListener('popstate', () => { const p = document.getElementById('ccPaneel'); if (p && p.classList.contains('open')) coachZet(false); });
 function coachLijst(typen) {
   const l = $('#ccLijst'); if (!l) return;
-  if (binnenkortNu() && !ccOnbeperkt()) {
+  if (false) {
     $('#ccInvoer').style.display = 'none'; $('#ccChips').style.display = 'none';
     l.innerHTML = `<div class="cc-slotkaart"><div class="label">Je eigen coach</div><h3>Binnenkort beschikbaar</h3>
       <p>Straks stel je hier al je vragen over training, herstel, voeding op de fiets en materiaal. De coach is getraind op Michels kennis uit 9 jaar prof en zijn ervaring als coach, en kent jouw analyse en je fietsen.</p>

@@ -378,6 +378,50 @@ async function zetInteresse(email, product) {
   }
 }
 
+// ---- Aankondiging "3 gratis vragen" (11-10-2026) ----
+// Alleen Michel. GET = proef: wie zou hem krijgen. POST { t, verstuur: true } =
+// melding in de app (+ push) en een mail via Resend naar iedereen met een gratis
+// account die de app de laatste 120 dagen opende. Leden en coaching niet.
+// Eén keer per persoon (app:aankondig:gratisvragen).
+async function routeAankondig(req, res) {
+  const body = req.method === 'POST' ? await leesBody(req) : {};
+  const ik = leesAppToken(String(req.method === 'POST' ? body.t : req.query?.t || ''));
+  if (!ik || !BEHEER.includes(ik)) return res.status(403).json({ ok: false });
+  const nlDag = (t) => new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+  const r = await redis(['SUNION', ...Array.from({ length: 120 }, (_, i) => `stat:${nlDag(Date.now() - i * 86400000)}:actief`)]);
+  const al = await redis(['SMEMBERS', 'app:aankondig:gratisvragen']); const gehad = new Set((al.ok && al.result) || []);
+  const lijst = [];
+  for (const email of ((r.ok && r.result) || []).filter((e) => !BEHEER.includes(e) && !gehad.has(e))) {
+    const [lidm, mc] = await Promise.all([haalLid(email), mcLid(email)]);
+    const b = lidBeeld(lidm);
+    if (b.open || b.coaching || b.bron === 'coaching') continue;
+    lijst.push({ email, naam: ((mc && mc.merge_fields && mc.merge_fields.FNAME) || '').split(' ')[0], mail: !!mc && mc.status === 'subscribed' });
+  }
+  if (!(req.method === 'POST' && body.verstuur)) return res.status(200).json({ ok: true, proef: true, aantal: lijst.length, mail: lijst.filter((x) => x.mail).length, lijst: lijst.map((x) => x.email) });
+  let gemaild = 0;
+  for (const p of lijst) {
+    await appMelding(p.email, { soort: 'coach', titel: 'Vanaf nu: 3 gratis vragen per week', tekst: 'Je eigen coach staat open. Vraag over training, voeding, banden of herstel, met Michels kennis uit 9 jaar prof.', link: '/app#coach' });
+    if (p.mail && RESEND_KEY) {
+      const link = `${APP_URL}?t=${maakAppToken(p.email)}#coach`;
+      const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.7;color:#1a1a1a;max-width:560px">
+        <p>Hoi${p.naam ? ' ' + p.naam.replace(/[<>&"]/g, '') : ''},</p>
+        <p>Goed nieuws: je eigen coach in de MKC-app staat open. Vanaf nu stel je elke week 3 vragen gratis.</p>
+        <p>Waarover maakt niet uit. Twijfel je over je bandenspanning voor de kasseien van zondag, wil je weten wat je eet op een rit van vier uur, of waarom je benen leeg voelen na een rustige week? Vraag het gewoon. De coach is getraind op mijn kennis uit 9 jaar profwielrennen en mijn ervaring als coach, en kent je fietsen en je analyse als je die hebt.</p>
+        <p>Je 3 vragen gelden voor de coach en de bandencoach samen. Elke maandag krijg je er weer 3 bij.</p>
+        <p style="margin:22px 0 26px"><a href="${link}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Stel je eerste vraag</a></p>
+        <p>Sportieve groet,<br>Michel</p>
+        <p style="color:#555;font-size:14px">P.S. Vrijdag 16 oktober gaat de MKC-app helemaal open. Als lid vraag je dan zoveel je wilt.</p>
+        <p style="color:#888;font-size:12px">Je krijgt deze mail omdat je een account hebt in de MKC-app.</p></div>`;
+      try {
+        const m = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: p.email, reply_to: 'info@michelkredercoaching.nl', subject: 'Vanaf nu: 3 gratis vragen per week aan je coach', html }), signal: AbortSignal.timeout(10000) });
+        if (m.ok) gemaild++;
+      } catch {}
+    }
+    await redis(['SADD', 'app:aankondig:gratisvragen', p.email]);
+  }
+  return res.status(200).json({ ok: true, verstuurd: lijst.length, gemaild });
+}
+
 // ---- Doelen (11-10-2026), zie lib/doelen.js ----
 //   POST doel { t, doel, naam?, datum? }  -> bewaren
 //   GET  doelronde (Vercel Cron)           -> per persoon de melding die aan de beurt is
@@ -593,6 +637,7 @@ export default async function handler(req, res) {
     if (actie === 'groepsritmee') return await routeGroepsritMee(req, res);
     if (actie === 'ritpagina') return await routeRitPagina(req, res);
     if (actie === 'doel') return await routeDoel(req, res);
+    if (actie === 'aankondig') return await routeAankondig(req, res);
     if (actie === 'doelronde') return await routeDoelRonde(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
@@ -1091,7 +1136,6 @@ async function routeCoach(req, res) {
   const body = await leesBody(req);
   const recht = await vraagRecht(res, body.t); if (!recht) return;
   const email = recht.email;
-  if (Date.now() < LANCERING && !BEHEER.includes(email)) return res.status(403).json({ ok: false, binnenkort: true, fout: 'Je eigen coach is binnenkort beschikbaar.' });
   const tekst = String(body.tekst || '').trim().slice(0, 1000);
   if (tekst.length < 3) return res.status(400).json({ ok: false, fout: 'Typ je vraag.' });
   const datum = new Date().toISOString().slice(0, 10);
