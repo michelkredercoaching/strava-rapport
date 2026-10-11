@@ -2343,6 +2343,8 @@ function gebruikHtml() {
   return `<div class="geb" id="gebruik">${kop}<div class="geb-in">
     <p class="klein" style="margin:0 0 4px">Mensen per dag in de app, laatste ${d.length} dagen (jouw eigen adressen tellen niet mee).</p>
     <div class="geb-dagen">${balken}</div>
+    ${x.soorten ? `<table style="margin-bottom:12px"><tr><th>Actief</th><th>Vandaag</th><th>7 dagen</th><th>30 dagen</th></tr>
+      ${[['totaal', 'Totaal'], ['gratis', 'Gratis account'], ['betaald', 'Betaald lid'], ['schema', 'Lid via schema'], ['coaching', 'Coaching']].map(([k, n]) => `<tr class="${k === 'totaal' ? 'top' : ''}"><td>${n}</td><td>${x.soorten.vandaag[k]}</td><td>${x.soorten.week[k]}</td><td>${x.soorten.maand[k]}</td></tr>`).join('')}</table>` : ''}
     <table><tr><th></th><th>Vandaag</th><th>Gisteren</th><th>7 dagen</th></tr>
       <tr class="top"><td>Mensen in de app</td><td>${d[0].actief}</td><td>${d[1] ? d[1].actief : 0}</td><td>&ndash;</td></tr>
       ${rijen}</table>

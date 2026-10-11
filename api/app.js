@@ -269,7 +269,23 @@ async function routeStat(req, res) {
 async function routeGebruik(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email || !BEHEER.includes(email)) return res.status(403).json({ ok: false });
-  return res.status(200).json({ ok: true, ...(await gebruikOverzicht(Math.min(30, Number(req.query?.dagen) || 14))) });
+  const [ov, soorten] = await Promise.all([gebruikOverzicht(Math.min(30, Number(req.query?.dagen) || 14)), actiefPerSoort()]);
+  return res.status(200).json({ ok: true, ...ov, soorten });
+}
+// Actieve mensen per soort (11-10-2026): vandaag, 7 en 30 dagen, gesplitst in
+// gratis, betaald lid, lid via schema en coaching.
+async function actiefPerSoort() {
+  const nlDag = (t) => new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+  const sleutels = (n) => Array.from({ length: n }, (_, i) => `stat:${nlDag(Date.now() - i * 86400000)}:actief`);
+  const [r1, r7, r30] = await Promise.all([redis(['SUNION', ...sleutels(1)]), redis(['SUNION', ...sleutels(7)]), redis(['SUNION', ...sleutels(30)])]);
+  const lijst = (r) => ((r.ok && r.result) || []).filter((e) => !BEHEER.includes(e));
+  const soort = {};
+  for (const e of lijst(r30)) {
+    const b = lidBeeld(await haalLid(e));
+    soort[e] = b.coaching || b.bron === 'coaching' ? 'coaching' : !b.open ? 'gratis' : b.bron === 'betaald' ? 'betaald' : 'schema';
+  }
+  const tel = (r) => { const t = { totaal: 0, gratis: 0, betaald: 0, schema: 0, coaching: 0 }; for (const e of lijst(r)) { t.totaal++; t[soort[e] || 'gratis']++; } return t; };
+  return { vandaag: tel(r1), week: tel(r7), maand: tel(r30) };
 }
 
 // ---- Gratis windadvies (09-10-2026) -------------------------------------------
