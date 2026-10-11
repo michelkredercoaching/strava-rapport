@@ -100,7 +100,12 @@
   /* Leden extra (09-10-2026) */
   .bk-ig { margin-top:12px; }
   /* Navigatie (11-10-2026): balk bovenaan, tegels op de start, eigen pagina per onderdeel */
-  .appbalk { position:sticky; top:env(safe-area-inset-top, 0px); z-index:30; display:flex; align-items:center; gap:12px; margin:-6px -16px 14px; padding:12px 16px; background:rgba(10,10,10,.92); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-bottom:1px solid var(--border); }
+  .appbalk { position:sticky; top:env(safe-area-inset-top, 0px); z-index:30; display:flex; align-items:center; gap:12px; margin:-6px -16px 14px; padding:14px 16px 12px; background:linear-gradient(180deg, rgba(40,20,8,.97), rgba(14,12,10,.96)); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-bottom:1px solid var(--border); }
+  .appbalk .cc-av { width:44px; height:44px; }
+  .appbalk .ab-tekst { min-width:0; }
+  .appbalk .nm { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.04em; line-height:1; text-transform:uppercase; }
+  .appbalk .st { font-size:12px; color:var(--muted); margin-top:3px; display:flex; align-items:center; gap:6px; line-height:1.3; }
+  .appbalk .st::before { content:''; width:7px; height:7px; border-radius:50%; background:var(--groen); flex:none; }
   .appbalk .ab-av { width:38px; height:38px; border-radius:50%; overflow:hidden; flex:none; }
   .appbalk .ab-av img { width:100%; height:100%; display:block; }
   .appbalk .ab-nm { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.04em; line-height:1; }
@@ -1702,9 +1707,22 @@ function naarAnker() {
   naarLidAnker();
 }
 window.addEventListener('hashchange', naarAnker);
-function appBalkHtml(titel) {
-  if (VIEW !== 'home') return `<div class="appbalk"><button type="button" class="ab-terug" data-view="home"><span>&#8249;</span>MKC-app</button><div class="ab-titel">${esc(titel || '')}</div></div>`;
-  return `<div class="appbalk"><span class="ab-av"><img src="/icoon-192.png" alt=""></span><div><div class="ab-nm">MKC-app</div><div class="ab-sub">Michel Kreder Coaching</div></div><div class="ab-rechts"><button class="ab-uit" data-actie="uitloggen">Uitloggen</button></div></div>`;
+// Kop zoals bij de MKC-coach (11-10-2026): Terug, rond logo, MKC-naam en een statusregel.
+const KOPPEN = {
+  home: ['MKC-App', 'Michel Kreder Coaching'],
+  rijden: ['MKC-Rijden', 'Banden, kleding, voeding en wind voor je rit'],
+  schema: ['MKC-Schema', 'Je training van vandaag'],
+  core: ['MKC-Core', 'Core stability voor wielrenners'],
+  analyse: ['MKC-Analyse', 'Je FTP, zones en plan uit je eigen ritten'],
+  afval: ['MKC-Afval', 'Lichter worden zonder watts te verliezen'],
+  pacing: ['MKC-Pacing', 'Je grote tocht slim ingedeeld'],
+  lid: ['MKC-Lidmaatschap', 'Status, facturen en een vriend uitnodigen']
+};
+function appBalkHtml() {
+  const [nm, st] = KOPPEN[VIEW] || KOPPEN.home;
+  const terug = VIEW !== 'home' ? '<button type="button" class="cc-terug" data-view="home" aria-label="Terug"><span>&#8249;</span>Terug</button>' : '';
+  const uit = VIEW === 'home' ? '<div class="ab-rechts"><button class="ab-uit" data-actie="uitloggen">Uitloggen</button></div>' : '';
+  return `<div class="appbalk">${terug}<span class="cc-av"><img src="/icoon-192.png" alt=""></span><div class="ab-tekst"><div class="nm">${nm}</div><div class="st">${st}</div></div>${uit}</div>`;
 }
 function tegel({ v, href, ic, nm, sub, tag, tagKlas, breed, dim }) {
   const bin = `<span class="tg-ic">${IC[ic] || ''}</span><span class="tg-nm">${nm}</span><span class="tg-sub">${sub}</span>${tag ? `<span class="tg-tag ${tagKlas || ''}">${tag}</span>` : ''}<span class="tg-pijl">&#8250;</span>`;
@@ -2691,7 +2709,7 @@ function gastLeadHtml() {
 }
 function tekenGast() {
   const d = D;
-  $('#app').innerHTML = `<div class="gast-kop"><div class="logo">MKC<span>.</span></div><button type="button" data-actie="gastlogin">Inloggen</button></div>
+  $('#app').innerHTML = `<div class="appbalk"><span class="cc-av"><img src="/icoon-192.png" alt=""></span><div class="ab-tekst"><div class="nm">${GR_PAD ? 'MKC-Groepsrit' : 'MKC-Banden'}</div><div class="st">Gratis van Michel Kreder</div></div><div class="ab-rechts"><button class="ab-uit" data-actie="gastlogin">Inloggen</button></div></div>
     <p class="gast-intro">Gratis van <b>Michel Kreder</b>, 9 jaar profwielrenner en coach. ${GR_PAD ? 'Je bent uitgenodigd voor een rit. Hieronder zie je het weer, de wind en je eigen bandenspanning.' : 'Vul je gewicht en band in en zie direct wat je pompt.'}</p>
     <div id="groepsrit">${grHtml()}</div>
     <div class="kaarten">${bandenKaart(d)}</div>
