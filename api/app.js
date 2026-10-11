@@ -1319,7 +1319,7 @@ async function haalPush(email) {
   const r = await redis(['GET', `app:push:${email}`]);
   try { return r.ok && r.result ? JSON.parse(r.result) : null; } catch { return null; }
 }
-function pushBeeld(p) { return p && p.sub ? { aan: true, tijd: p.tijd, dagen: p.dagen, ochtend: p.ochtend !== false, core: p.core !== false } : { aan: false, tijd: '07:00', dagen: [1, 2, 3, 4, 5, 6, 0], ochtend: true, core: true }; }
+function pushBeeld(p) { return p && p.sub ? { aan: true, tijd: p.tijd, dagen: p.dagen, ochtend: p.ochtend !== false, core: p.core !== false, doel: p.doel !== false } : { aan: false, tijd: '07:00', dagen: [1, 2, 3, 4, 5, 6, 0], ochtend: true, core: true, doel: true }; }
 // Pushberichten mag iedereen die is ingelogd (Core-herinnering); het ochtendbericht
 // zelf gaat alleen naar leden (zie routePushCron).
 function pushEmail(res, t) { const e = leesAppToken(String(t || '')); if (!e) res.status(401).json({ ok: false, fout: 'Log opnieuw in.' }); return e; }
@@ -1343,7 +1343,8 @@ async function routePush(req, res) {
   const dagen = Array.isArray(body.dagen) ? [...new Set(body.dagen.map(Number).filter((d) => d >= 0 && d <= 6))] : (oud.dagen || [0, 1, 2, 3, 4, 5, 6]);
   const ochtend = typeof body.ochtend === 'boolean' ? body.ochtend : oud.ochtend !== false;
   const core = typeof body.core === 'boolean' ? body.core : oud.core !== false;
-  const p = { sub, tijd, dagen, ochtend, core, laatste: oud.laatste || null, sinds: oud.sinds || new Date().toISOString() };
+  const doel = typeof body.doel === 'boolean' ? body.doel : oud.doel !== false;
+  const p = { sub, tijd, dagen, ochtend, core, doel, laatste: oud.laatste || null, sinds: oud.sinds || new Date().toISOString() };
   await redis(['SET', `app:push:${email}`, JSON.stringify(p)]);
   await redis(['SADD', 'app:push:alle', email]);
   if (body.sub && !oud.sub) await tel(email, 'push-aan');

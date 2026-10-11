@@ -138,6 +138,11 @@
   details.klap.wind > summary svg { width:18px; height:18px; stroke:#8ab4ff; fill:none; stroke-width:2; flex:none; }
   details.klap .push { background:none; border:0; padding:0; margin:0; }
   details.klap > summary { color:var(--white); }
+  .lidbalk { display:flex; align-items:center; gap:12px; width:100%; margin-top:16px; text-align:left; background:linear-gradient(160deg, rgba(255,107,26,.16), var(--surface) 60%); border:1px solid rgba(255,107,26,.55); border-radius:10px; padding:14px 16px; color:var(--white); font-family:inherit; cursor:pointer; }
+  .lidbalk span { flex:1; min-width:0; }
+  .lidbalk b { display:block; font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.03em; font-weight:400; line-height:1; }
+  .lidbalk em { display:block; font-style:normal; font-size:13px; color:var(--muted); margin-top:4px; }
+  .lidbalk i { font-style:normal; color:var(--accent); font-size:26px; }
   .doelkaart { background:linear-gradient(160deg, rgba(255,107,26,.12), rgba(255,107,26,0) 70%), var(--surface); border:1px solid rgba(255,107,26,.45); border-radius:10px; padding:16px; margin:14px 0 4px; }
   .doelkaart b { font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:.03em; font-weight:400; display:block; line-height:1; }
   .doelkaart p { font-size:13.5px; color:var(--muted); margin:6px 0 12px; }
@@ -154,6 +159,10 @@
   .doel-ev .knop { margin-top:2px; }
   .doel-later { display:inline-block; margin-top:10px; font-size:12.5px; color:var(--muted); background:none; border:0; padding:0; cursor:pointer; font-family:inherit; text-decoration:underline; }
   .doelregel { font-size:13px; color:var(--muted); margin:10px 0 2px; }
+  .doelbevestig { position:relative; background:rgba(76,195,138,.08); border:1px solid rgba(76,195,138,.4); border-radius:10px; padding:14px 40px 14px 14px; margin:10px 0 4px; }
+  .doelbevestig b { font-size:14px; font-weight:600; line-height:1.45; display:block; }
+  .doelbevestig p { font-size:13px; color:var(--muted); margin:6px 0 10px; }
+  .doelbevestig .db-weg { position:absolute; top:6px; right:8px; background:none; border:0; color:var(--muted); font-size:22px; cursor:pointer; }
   .doelregel b { color:var(--white); font-weight:600; }
   .doelregel a { color:var(--accent); margin-left:6px; }
   details.klap.logboek { padding-top:0; }
@@ -830,7 +839,7 @@ function afvalKaart() {
     <div class="label">Afvalprogramma</div><h2>Lichter, zonder in te leveren</h2>
     <p>Je eigen richtlijn per dag, wekelijkse bijsturing en je gewicht in een grafiek. Afvallen zonder dat je watts zakken.</p><p class="klein" style="margin-top:-4px">Leden van de MKC-app krijgen &euro;${LEDEN.afvalKorting} korting.</p>
     <div class="wazig"><div class="achter"><div class="cijfers"><div class="cijfer"><span>Rustdag</span><b>1950</b></div><div class="cijfer"><span>Trainingsdag</span><b>2850</b></div><div class="cijfer"><span>Deze week</span><b>-0,4</b></div></div>${nepGrafiek()}</div>
-      <div class="slotje">${SLOT}<b>Binnenkort</b></div></div>
+      <div class="slotje">${SLOT}</div></div>
     ${BINNENKORT_IG}${opDeHoogteHtml('afval')}</div></div>`;
 }
 
@@ -875,7 +884,7 @@ function analyseBlok(a, altijdOpen) {
       ${a.advies ? `<div class="an-advies"><div class="an-sub">Mijn advies voor jou</div><b>${esc(a.advies)}</b>
         ${a.tegoedLink && a.adviesPrijs ? `<p class="klein">Met je tegoed uit de analyse: <b style="color:var(--white)">&euro;${esc(a.adviesPrijs)}</b>${a.adviesOud ? ` in plaats van <s>&euro;${esc(a.adviesOud)}</s>` : ''}${a.deadline ? `, geldig tot ${esc(a.deadline)}` : ''}.</p>
         <a class="knop" href="${esc(a.tegoedLink)}">Bekijk mijn schema</a>` : ''}</div>` : ''}
-      <p class="klein">Het volledige rapport staat als pdf in je mail. Na een paar weken trainen zie je met een nieuwe analyse of je vooruit bent gegaan. <a href="${analyseKoop()}" style="color:var(--accent)">Doe een nieuwe analyse</a></p>
+      <p class="klein">Het volledige rapport staat als pdf in je mail.${altijdOpen ? '' : ` Na een paar weken trainen zie je met een nieuwe analyse of je vooruit bent gegaan. <a href="${analyseKoop()}" style="color:var(--accent)">Doe een nieuwe analyse</a>`}</p>
     </div></div>`;
 }
 document.addEventListener('click', (e) => {
@@ -1646,6 +1655,7 @@ let VIEW = 'home';
 try { if (history.state && history.state.v) VIEW = history.state.v; } catch (e) {}
 function naar(v) {
   VIEW = v;
+  if (v === 'rijden') { try { sbBewaarKeuze({ tab: 'banden' }); const b = btLees(); if (b.tab) { b.tab = 'banden'; btBewaar(b); } } catch (e) {} }
   try { history.pushState({ v }, '', location.pathname + location.search); } catch (e) {}
   teken(); window.scrollTo(0, 0);
 }
@@ -1680,7 +1690,13 @@ function doelHtml(d) {
   if (dl && !dl.klaar && !DOELV.open) {
     const nog = dl.doel === 'evenement' ? Math.ceil((Date.parse(dl.datum + 'T08:00:00') - Date.now()) / 864e5) : null;
     const wat = dl.doel === 'evenement' ? esc(dl.naam) + (nog > 0 ? ' &middot; nog ' + nog + (nog === 1 ? ' dag' : ' dagen') : '') : DOEL_NAMEN[dl.doel];
-    return `<div class="doelregel">Jouw doel: <b>${wat}</b><a href="#" data-doel="wijzig">aanpassen</a></div>`;
+    const regel = `<div class="doelregel">Jouw doel: <b>${wat}</b><a href="#" data-doel="wijzig">aanpassen</a></div>`;
+    if (!DOELV.bevestig) return regel;
+    const zin = { sneller: 'Top! Over een paar weken laat ik je zien hoe je meet of je echt sneller wordt.', evenement: `Top, op naar ${esc(dl.naam)}! Ik herinner je 4 weken, 1 week en de dag ervoor, met tips voor die dag.`, afvallen: 'Top! Je krijgt tips om lichter te worden zonder watts te verliezen, en je hoort als eerste over het Afvalprogramma.', fit: 'Top! Ik stuur je af en toe een tip om het leuk te houden en door te blijven rijden.' }[dl.doel];
+    const pushVraag = pushKan() && PUSH.key && PUSH.inst && !PUSH.inst.aan && !(typeof Notification !== 'undefined' && Notification.permission === 'denied');
+    return `${regel}<div class="doelbevestig"><button type="button" class="db-weg" data-doel="weg" aria-label="Sluiten">&times;</button><b>${zin}</b>
+      ${pushVraag ? `<p>Zet meldingen aan, dan herinner ik je op tijd. Anders zie je het alleen als je de app opent.</p><button type="button" class="knop" data-push="aan" ${PUSH.bezig ? 'disabled' : ''}>${PUSH.bezig ? 'Even toestemming vragen...' : 'Zet meldingen aan'}</button>` : iosZonderApp() ? '<p>Zet de app op je beginscherm, dan kan ik je ook een melding sturen.</p>' : ''}
+      ${PUSH.melding ? `<p class="klein">${esc(PUSH.melding)}</p>` : ''}</div>`;
   }
   if (!DOELV.open && doelLater()) return '';
   const k = DOELV.kies;
@@ -1715,7 +1731,7 @@ async function doelBewaar(body) {
   try {
     const j = await (await fetch(API + '?actie=doel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), ...body }) })).json();
     if (!j.ok) throw new Error(j.fout || 'Bewaren lukte niet.');
-    D.doel = j.doel; DOELV = { open: false, kies: null, fout: '', bezig: false };
+    D.doel = j.doel; DOELV = { open: false, kies: null, fout: '', bezig: false, bevestig: true };
   } catch (e) { DOELV.bezig = false; DOELV.fout = e.message || 'Bewaren lukte niet.'; }
   teken();
 }
@@ -1723,6 +1739,7 @@ document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-doel]'); if (!k) return;
   e.preventDefault();
   const a = k.dataset.doel;
+  if (a === 'weg') { DOELV.bevestig = false; return teken(); }
   if (a === 'wijzig') { DOELV = { open: true, kies: D.doel && D.doel.doel, fout: '', bezig: false }; return teken(); }
   if (a === 'later') { if (!DOELV.open) { try { localStorage.setItem('mkcDoelLater', String(Date.now())); } catch (er) {} } DOELV = { open: false, kies: null, fout: '', bezig: false }; return teken(); }
   if (a === 'kies') { const w = k.dataset.w; if (w === 'evenement') { DOELV.kies = w; DOELV.fout = ''; teken(); DOELV.tocht = null; return; } return doelBewaar({ doel: w }); }
@@ -1732,7 +1749,7 @@ document.addEventListener('click', (e) => {
 function naarAnker() {
   const h = location.hash.slice(1); if (!h || !D || D.gast) return;
   const schoon = () => { try { history.replaceState({ v: 'home' }, '', location.pathname + location.search); } catch (e) {} };
-  if (['rijden', 'schema', 'core', 'analyse', 'afval', 'pacing'].includes(h) || (h === 'lid' && isLid(zicht()))) { schoon(); return naar(h); }
+  if (['rijden', 'schema', 'core', 'analyse', 'afval', 'pacing', 'lid'].includes(h)) { schoon(); return naar(h); }
   if (h === 'coach') { schoon(); setTimeout(() => { const f = document.getElementById('ccFab'); if (f) f.click(); }, 300); return; }
   if (h === 'doel') { schoon(); DOELV = { open: true, kies: null, fout: '', bezig: false }; VIEW = 'home'; teken(); setTimeout(() => document.getElementById('doelvraag')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200); return; }
   naarLidAnker();
@@ -1750,7 +1767,7 @@ const KOPPEN = {
   lid: ['MKC-Lidmaatschap', 'Status, facturen en een vriend uitnodigen']
 };
 function appBalkHtml() {
-  const [nm, st] = KOPPEN[VIEW] || KOPPEN.home;
+  const [nm, st] = VIEW === 'lid' && D && !D.gast && !isLid(zicht()) ? ['MKC-Lid', 'Word lid van de MKC-app'] : (KOPPEN[VIEW] || KOPPEN.home);
   const terug = VIEW !== 'home' ? '<button type="button" class="cc-terug" data-view="home" aria-label="Terug"><span>&#8249;</span>Terug</button>' : '';
   const uit = VIEW === 'home' ? '<div class="ab-rechts"><button class="ab-uit" data-actie="uitloggen">Uitloggen</button></div>' : '';
   return `<div class="appbalk">${terug}<span class="cc-av"><img src="/icoon-192.png" alt=""></span><div class="ab-tekst"><div class="nm">${nm}</div><div class="st">${st}</div></div>${uit}</div>`;
@@ -1777,6 +1794,12 @@ function tegelsHtml(d) {
   return `<div class="tegels">${t.join('')}</div>`;
 }
 // Volgende stap: alleen voor wie nog geen schema en geen coaching heeft.
+// Korte "Word lid"-balk op de startpagina; de voordelen, prijzen en factuurgegevens staan op de pagina MKC-Lid.
+function lidBalkHtml(d) {
+  if (isLid(d) || (d.lid && d.lid.bron === 'coaching')) return '';
+  if (!binnenkortNu() && !kanLidNu(d)) return '';
+  return `<button type="button" class="lidbalk" data-view="lid"><span><b>Word lid van de MKC-app</b><em>${binnenkortNu() ? 'Open vanaf vrijdag 16 oktober &middot; bekijk wat je krijgt' : '&euro;' + APP_PRIJS.maand + ' per maand &middot; alles ontgrendeld'}</em></span><i>&#8250;</i></button>`;
+}
 function volgendeStapHtml(d) {
   const coaching = !!(d.lid && d.lid.bron === 'coaching');
   if (coaching || d.schema || (d.lid && d.lid.bron === 'schema')) return '';
@@ -1794,10 +1817,15 @@ function paginaHtml(d) {
   if (VIEW === 'rijden') return appBalkHtml('Vandaag rijden') + `<div class="kaarten">${bandenKaart(d)}${toonSlim(d) ? '' : windKaartHtml()}</div>` + voet;
   if (VIEW === 'schema') return appBalkHtml('Mijn schema') + `<div class="kaarten">${schemaKaart(d)}</div>` + voet;
   if (VIEW === 'core') return appBalkHtml('Core-app') + `<div class="kaarten">${coreKaart(dz.core)}</div>` + voet;
-  if (VIEW === 'analyse') return appBalkHtml('Strava-analyse') + (dz.analyse ? analyseBlok(dz.analyse, true) + `<a class="knop leeg" href="${analyseKoop()}" style="margin-top:14px">Doe een nieuwe analyse</a><p class="klein">Na een paar weken gericht trainen zie je met een nieuwe analyse of je vooruit bent gegaan.</p>` : `<div class="kaarten">${analyseKaart(null)}</div>`) + voet;
+  if (VIEW === 'analyse') return appBalkHtml('Strava-analyse') + (dz.analyse ? analyseBlok(dz.analyse, true) + `<a class="knop leeg" href="${analyseKoop()}" style="margin-top:14px">Doe een nieuwe analyse${analysePrijs() < 29 ? ' &middot; &euro;' + analysePrijs() : ''}</a><p class="klein">Na een paar weken gericht trainen zie je met een nieuwe analyse of je vooruit bent gegaan.</p>` : `<div class="kaarten">${analyseKaart(null)}</div>`) + voet;
   if (VIEW === 'afval') return appBalkHtml('Afvalprogramma') + `<div class="kaarten">${afvalKaart()}</div>` + voet;
   if (VIEW === 'pacing') return appBalkHtml('Pacingplan') + `<div class="kaarten">${pacingKaart()}</div>` + voet;
-  if (VIEW === 'lid') return appBalkHtml('Mijn lidmaatschap') + lidStatusHtml(d.lid) + lidExtraHtml(d.lid) + voet;
+  if (VIEW === 'lid') {
+    const lid = isLid(d), tijdelijk = lid && d.lid && ['schema', 'cadeau'].includes(d.lid.bron);
+    const pitch = binnenkortNu() ? binnenkortPitchHtml() : kanLidNu(d) ? lidPitchHtml() : '';
+    if (!lid) return appBalkHtml() + (pitch || '<p class="klein">Lid worden kan op dit moment niet.</p>') + voet;
+    return appBalkHtml() + lidStatusHtml(d.lid) + lidExtraHtml(d.lid) + (tijdelijk && pitch ? `<div class="groepkop">Daarna lid blijven</div>${pitch}` : '') + voet;
+  }
   return null;
 }
 function teken() {
@@ -1825,10 +1853,10 @@ function teken() {
       <li><span>2</span>${binnenkortNu() ? 'Binnenkort komt er veel bij: de Core-app, kledingadvies voor je rit en je eigen coach.' : 'Start je gratis week in de Core-app: korte sessies thuis, op de timer.'}</li>
       <li><span>3</span>${binnenkortNu() ? 'Zet de app op je beginscherm, dan heb je je bandenspanning altijd bij de hand.' : d.lidOpen ? 'Meer nodig? Als lid krijg je je eigen coach, de slimme bandenspanning en de Core-app doorlopend, voor &euro;' + APP_PRIJS.maand + ' per maand.' : 'Rechtsonder zit <em>Vraag je coach</em>: je eigen coach die je analyse en je plan kent, straks voor leden.'}</li></ol></div>`
       : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}
-    ${doelHtml(d)}
+    <div id="doelvak">${doelHtml(d)}</div>
     ${tegelsHtml(d)}
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
-    ${isLid(d) ? '' : binnenkortNu() ? `<div class="groepkop">Meer uit de app</div>${binnenkortPitchHtml()}` : !kanLidNu(d) ? '' : `<div class="groepkop">Meer uit de app</div>${lidPitchHtml()}`}
+    ${lidBalkHtml(d)}
     ${volgendeStapHtml(d)}
     <div id="meldinst">${meldInstHtml()}</div>
     ${feedbackHtml()}
@@ -1862,7 +1890,8 @@ document.addEventListener('click', (e) => {
   if (actie === 'naarlid') {
     e.preventDefault();
     const pan = document.getElementById('ccPaneel'); if (pan && pan.classList.contains('open')) coachOpen(false);
-    setTimeout(() => { const b = document.querySelector('.lidblok'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 150);
+    if (VIEW !== 'lid') naar('lid');
+    setTimeout(() => { const b = document.querySelector('.plannen') || document.querySelector('.lidblok'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 250);
   }
   if (actie === 'opzeggen') zegOp(k);
   if (actie === 'uitloggen') { wisToken(); D = null; CC.berichten = null; document.getElementById('ccFab')?.remove(); document.getElementById('ccPaneel')?.remove(); toonLogin('Je bent uitgelogd.'); }
@@ -2236,15 +2265,18 @@ function voedingTabHtml() {
 let WK = { plaats: null, uren: null, zoek: null, fout: '' };
 try { WK.plaats = JSON.parse(localStorage.getItem('mkcWindPlaats') || 'null'); } catch (e) {}
 function windKaartHtml() {
-  const kop = '<div class="label">Gratis windadvies</div><h3>Welke kant start je op?</h3>';
-  if (!WK.plaats) return `<div class="wk" id="windkaart">${kop}<p>Start tegen de wind in, dan heb je hem op de terugweg mee, als je moe bent. Waar fiets je?</p>
+  const kop = '';
+  const a0 = WK.plaats && WK.uren && WIND_LIB ? WIND_LIB.windAdvies(WK.uren.slice(0, 3)) : null;
+  const open = klapOpen('windgratis', !WK.plaats) || !!WK.zoek || !!WK.fout;
+  const omhul = (inh) => `<details class="klap wind" id="windkaart" data-klap="windgratis" ${open ? 'open' : ''}><summary>${KOMPAS}<b>Windadvies</b><span>${a0 ? esc(a0.kort) : WK.plaats ? esc(WK.plaats.naam) : 'gratis'}</span></summary><div class="klap-in">${inh}</div></details>`;
+  if (!WK.plaats) return omhul(`<p class="klein" style="margin-top:0">Start tegen de wind in, dan heb je hem op de terugweg mee, als je moe bent. Waar fiets je?</p>
     <div class="sb-rij"><input id="wkZoek" type="text" placeholder="Je woonplaats" autocomplete="address-level2"><button type="button" class="knop" data-wk="zoek">Zoek</button></div>
     ${WK.zoek ? `<div class="wk-plaatsen">${WK.zoek.map((x, i) => `<button type="button" data-wk="kies" data-i="${i}">${esc(x.naam)} <small>${esc(x.regio || '')} ${esc(x.land || '')}</small></button>`).join('') || '<p class="klein">Niets gevonden.</p>'}</div>` : ''}
-    ${WK.fout ? `<p class="klein" style="color:#ff8a5c">${esc(WK.fout)}</p>` : ''}</div>`;
-  const a = WK.uren && WIND_LIB ? WIND_LIB.windAdvies(WK.uren.slice(0, 3)) : null;
-  return `<div class="wk" id="windkaart">${kop}<p style="margin-bottom:8px">${esc(WK.plaats.naam)}, de komende twee uur &middot; <a href="#" data-wk="anders" style="color:var(--accent)">andere plek</a></p>
+    ${WK.fout ? `<p class="klein" style="color:#ff8a5c">${esc(WK.fout)}</p>` : ''}`);
+  const a = a0;
+  return omhul(`<p class="klein" style="margin:0 0 8px">${esc(WK.plaats.naam)}, de komende twee uur &middot; <a href="#" data-wk="anders" style="color:var(--accent)">andere plek</a></p>
     ${a ? `<div class="sb-wind">${KOMPAS}<span>${esc(a.tekst)}${a.kust ? `<small style="display:block;margin-top:6px;color:var(--muted)">${esc(a.kust)}</small>` : ''}</span></div>` : '<p class="klein">Even het weer ophalen...</p>'}
-    <p class="klein">Met de MKC-app reken ik dit voor je hele rit uit, samen met je bandenspanning, kleding en voeding.</p></div>`;
+    <p class="klein">Met de MKC-app reken ik dit voor je hele rit uit, samen met je bandenspanning, kleding en voeding.</p>`);
 }
 function wkTeken() { const el = document.getElementById('windkaart'); if (el) el.outerHTML = windKaartHtml(); }
 async function wkLaad() {
@@ -2965,6 +2997,7 @@ document.addEventListener('click', (e) => {
 function pushWeg() { try { return localStorage.getItem('mkcPushVraagWeg') === '1'; } catch (e) { return false; } }
 function meldVraagHtml() {
   if (!pushKan() || !PUSH.key || !PUSH.inst || PUSH.inst.aan || pushWeg()) return '';
+  if (typeof DOELV !== 'undefined' && DOELV.bevestig) return '';
   if (typeof Notification !== 'undefined' && Notification.permission === 'denied') return '';
   return `<div class="meldvraag"><b>Mis niets: zet meldingen aan</b><p>Je Core-herinnering, ${zicht() && isLid(zicht()) ? 'je ochtendbericht met bandenspanning en kleding, ' : ''}en wat er verder voor je klaarstaat. Uitzetten kan altijd.</p>
     <div class="rij"><button type="button" class="knop" data-push="aan" ${PUSH.bezig ? 'disabled' : ''}>${PUSH.bezig ? 'Even toestemming vragen...' : 'Zet meldingen aan'}</button><button type="button" class="sb-link" data-push="vraagweg">Nu niet</button></div>
@@ -2975,6 +3008,7 @@ function meldInstHtml() {
   const i = PUSH.inst;
   return `<div class="meldinst"><b>Meldingen staan aan</b> op dit toestel.
     <label><input type="checkbox" data-pushsoort="core" ${i.core ? 'checked' : ''}> Core-herinnering op maandag</label>
+    <label><input type="checkbox" data-pushsoort="doel" ${i.doel !== false ? 'checked' : ''}> Tips en herinneringen voor je doel</label>
     ${zicht() && isLid(zicht()) ? `<label><input type="checkbox" data-pushsoort="ochtend" ${i.ochtend ? 'checked' : ''}> Ochtendbericht (weer, banden en kleding)</label>` : ''}
     <p class="klein" style="margin-top:8px">Staat iets uit, dan zie je het gewoon hier in de app zodra je hem opent.</p></div>`;
 }
@@ -2982,6 +3016,7 @@ function meldTeken() {
   const a = document.getElementById('meldvraag'); if (a) a.innerHTML = meldVraagHtml();
   const sl = document.getElementById('startlijst'); if (sl && D) sl.innerHTML = startlijstHtml(zicht());
   const b = document.getElementById('meldinst'); if (b) b.innerHTML = meldInstHtml();
+  const dv = document.getElementById('doelvak'); if (dv && D && !D.gast) dv.innerHTML = doelHtml(zicht());
 }
 document.addEventListener('change', async (e) => {
   const c = e.target.closest('[data-pushsoort]'); if (!c) return;
