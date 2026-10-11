@@ -43,6 +43,7 @@ import { lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar, haalSchema, ledenO
 import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN } from '../lib/schema-app.js';
 import { haalMeldingen, leesMelding, appMelding } from '../lib/app-melding.js';
 import { leesDoel, nieuwDoel, volgendeStap, doelContext } from '../lib/doelen.js';
+import { maakKortingToken } from '../lib/korting.js';
 import { tel, overzicht as gebruikOverzicht, CLIENT_GEBEURTENISSEN, GAST_GEBEURTENISSEN } from '../lib/stat.js';
 import { COACH_KENNIS, COACH_REGELS, COACH_TOON } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
@@ -626,6 +627,8 @@ async function routeLogin(req, res) {
   return res.status(200).json(antwoord);
 }
 
+// Ledenprijzen (besluit Michel 11-10-2026): analyse en pacingplan €19 i.p.v. €29, Afvalprogramma €20 korting.
+const LEDEN_ANALYSE = 19;
 async function routeOverzicht(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email) return res.status(401).json({ ok: false, fout: 'Je inloglink is verlopen. Vraag hieronder een nieuwe aan.' });
@@ -647,7 +650,11 @@ async function routeOverzicht(req, res) {
     ...adviesBedragen(mf), deadline: mf.DEADLINE || '',
     tegoedLink: mf.PPTOKEN ? `https://michelkredercoaching.nl/trainingsschemas/?pp=${encodeURIComponent(mf.PPTOKEN)}` : ''
   } : null;
-  return res.status(200).json({ doel, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1) }, 
+  // Ledenprijs Strava-analyse (11-10-2026): leden (maand, jaar of via schema)
+  // betalen €19 i.p.v. €29, via een persoonlijk kortingstoken voor de funnel.
+  const lb = lidBeeld(lidmaatschap);
+  const ledenAnalyse = lb.open && lb.bron !== 'coaching' && !lb.coaching ? (() => { const t = maakKortingToken(LEDEN_ANALYSE, 30); return t ? `https://rapport.michelkredercoaching.nl/?korting=${t}` : null; })() : null;
+  return res.status(200).json({ doel, ledenAnalyse, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1) }, 
     ok: true,
     email,
     beheer: BEHEER.includes(email),
