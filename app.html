@@ -99,6 +99,54 @@
   .plan .knop[disabled] { opacity:.45; cursor:default; }
   /* Leden extra (09-10-2026) */
   .bk-ig { margin-top:12px; }
+  /* Navigatie (11-10-2026): balk bovenaan, tegels op de start, eigen pagina per onderdeel */
+  .appbalk { position:sticky; top:env(safe-area-inset-top, 0px); z-index:30; display:flex; align-items:center; gap:12px; margin:-6px -16px 14px; padding:12px 16px; background:rgba(10,10,10,.92); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-bottom:1px solid var(--border); }
+  .appbalk .ab-av { width:38px; height:38px; border-radius:50%; overflow:hidden; flex:none; }
+  .appbalk .ab-av img { width:100%; height:100%; display:block; }
+  .appbalk .ab-nm { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.04em; line-height:1; }
+  .appbalk .ab-sub { font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .appbalk .ab-rechts { margin-left:auto; }
+  .appbalk .ab-uit { background:none; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:6px 10px; font-family:inherit; font-size:12.5px; cursor:pointer; }
+  .appbalk .ab-terug { background:none; border:none; color:var(--white); font-size:15px; font-weight:600; display:flex; align-items:center; gap:4px; padding:4px 6px 4px 0; cursor:pointer; font-family:inherit; }
+  .appbalk .ab-terug span { color:var(--accent); font-size:26px; line-height:1; margin-top:-2px; }
+  .appbalk .ab-titel { margin-left:auto; font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:.04em; }
+  .tegels { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
+  .tegel { position:relative; display:flex; flex-direction:column; gap:6px; text-align:left; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px; color:var(--white); text-decoration:none; font-family:inherit; cursor:pointer; min-width:0; }
+  .tegel.breed { grid-column:1 / -1; background:linear-gradient(160deg, rgba(255,107,26,.14), rgba(255,107,26,.02) 60%), var(--surface); border-color:rgba(255,107,26,.45); }
+  .tegel .tg-ic { width:30px; height:30px; color:var(--accent); }
+  .tegel .tg-ic svg { width:100%; height:100%; }
+  .tegel .tg-nm { font-family:'Bebas Neue',sans-serif; font-size:21px; letter-spacing:.03em; line-height:1; }
+  .tegel .tg-sub { font-size:12.5px; color:var(--muted); line-height:1.4; }
+  .tegel .tg-tag { position:absolute; top:12px; right:12px; font-size:9.5px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; border-radius:4px; padding:3px 6px; border:1px solid var(--border); color:var(--muted); }
+  .tegel .tg-tag.gr { color:#7fe0a0; border-color:rgba(127,224,160,.4); }
+  .tegel .tg-tag.or { color:var(--accent); border-color:rgba(255,107,26,.5); }
+  .tegel .tg-pijl { position:absolute; right:12px; bottom:10px; color:var(--accent); font-size:20px; }
+  .tegel.dimmed { opacity:.75; }
+  details.klap { background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-top:10px; }
+  details.klap > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:12px 14px; font-size:14px; }
+  details.klap > summary::-webkit-details-marker { display:none; }
+  details.klap > summary b { font-weight:600; }
+  details.klap > summary span { color:var(--muted); font-size:12.5px; margin-left:auto; text-align:right; }
+  details.klap > summary::after { content:'\25BE'; color:var(--accent); margin-left:6px; transition:transform .15s; }
+  details.klap[open] > summary::after { transform:rotate(180deg); }
+  details.klap > .klap-in { padding:0 14px 14px; }
+  details.klap.wind > summary svg { width:18px; height:18px; stroke:#8ab4ff; fill:none; stroke-width:2; flex:none; }
+  details.klap .push { background:none; border:0; padding:0; margin:0; }
+  details.klap > summary { color:var(--white); }
+  .doelkaart { background:linear-gradient(160deg, rgba(255,107,26,.12), rgba(255,107,26,0) 70%), var(--surface); border:1px solid rgba(255,107,26,.45); border-radius:10px; padding:16px; margin:14px 0 4px; }
+  .doelkaart b { font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:.03em; font-weight:400; display:block; line-height:1; }
+  .doelkaart p { font-size:13.5px; color:var(--muted); margin:6px 0 12px; }
+  .doel-opties { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .doel-opties button { background:var(--bg); border:1px solid var(--border); color:var(--white); border-radius:8px; padding:12px 10px; font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer; text-align:left; }
+  .doel-opties button.aan { border-color:var(--accent); background:rgba(255,107,26,.12); }
+  .doel-ev { display:grid; gap:8px; margin-top:10px; }
+  .doel-ev input { width:100%; }
+  .doel-later { display:inline-block; margin-top:10px; font-size:12.5px; color:var(--muted); background:none; border:0; padding:0; cursor:pointer; font-family:inherit; text-decoration:underline; }
+  .doelregel { font-size:13px; color:var(--muted); margin:10px 0 2px; }
+  .doelregel b { color:var(--white); font-weight:600; }
+  .doelregel a { color:var(--accent); margin-left:6px; }
+  details.klap.logboek { padding-top:0; }
+  .kaart details.klap { background:rgba(255,255,255,.025); }
   .nuttig { display:flex; align-items:center; gap:8px; margin-top:6px; font-size:12.5px; color:var(--muted); flex-wrap:wrap; }
   .nuttig button { background:none; border:1px solid var(--border); color:var(--white); border-radius:99px; padding:4px 12px; font-family:inherit; font-size:12.5px; cursor:pointer; }
   .acc-badge { display:inline-flex; align-items:center; gap:8px; margin-top:10px; font-size:12.5px; color:var(--muted); background:var(--surface); border:1px solid var(--border); border-radius:99px; padding:6px 12px; }
@@ -784,15 +832,15 @@ const RENNERTYPES = {
 const ZONES_W = [['Herstel', 0, 55], ['Duur', 56, 75], ['Tempo', 76, 85], ['Sweetspot', 86, 95], ['FTP', 96, 105], ['VO2max', 106, null]];
 const ZONES_HR = [['Herstel', 0, 75], ['D1', 76, 85], ['D2', 86, 90], ['D3', 91, 100], ['Weerstand', 101, null]];
 function analyseOpen() { try { return localStorage.getItem('mkcAnalyseOpen') === '1'; } catch (e) { return false; } }
-function analyseBlok(a) {
+function analyseBlok(a, altijdOpen) {
   if (!a) return '';
   const hr = a.meet === 'hartslag';
   const basis = Number(String(hr ? a.omslag : a.ftp).replace(/[^0-9.]/g, '')) || 0;
   const eenheid = hr ? 'bpm' : 'W';
   const hoofd = basis ? `${hr ? 'Omslagpunt' : 'FTP'} ${basis} ${eenheid}` : 'Je analyse';
   const kort = [hoofd, a.type, a.score ? `score ${a.score}` : ''].filter(Boolean).join(' &middot; ');
-  const open = analyseOpen();
-  const kop = `<button type="button" class="an-kop" data-an="klap" aria-expanded="${open}"><span><small>Jouw Strava-analyse${a.datum ? ' &middot; ' + esc(a.datum) : ''}</small><b>${kort}</b></span><span class="an-pijl">${open ? '&#9650;' : '&#9660;'}</span></button>`;
+  const open = altijdOpen || analyseOpen();
+  const kop = altijdOpen ? '' : `<button type="button" class="an-kop" data-an="klap" aria-expanded="${open}"><span><small>Jouw Strava-analyse${a.datum ? ' &middot; ' + esc(a.datum) : ''}</small><b>${kort}</b></span><span class="an-pijl">${open ? '&#9650;' : '&#9660;'}</span></button>`;
   if (!open) return `<div class="an" id="analyse">${kop}</div>`;
   const dec = a.decoupling !== '' && a.decoupling != null ? Number(String(a.decoupling).replace(',', '.')) : null;
   const zones = (hr ? ZONES_HR : ZONES_W).map(([naam, van, tot]) => {
@@ -1021,13 +1069,14 @@ function logboekHtml() {
   const fiets = (id) => { const f = ((SB.profiel && SB.profiel.fietsen) || []).find((x) => x.id === id); return f ? f.naam : 'Fiets'; };
   const oord = { goed: 'precies goed', hard: 'te hard', zacht: 'te zacht' };
   const nl = (v) => String(Number(v).toFixed(1)).replace('.', ',');
-  return `<details class="logboek"><summary>Mijn bandenlogboek (${l.length} ${l.length === 1 ? 'rit' : 'ritten'})</summary>${l.map((r) => `<div class="lr"><div>${esc(sbDatum(r.op))} &middot; ${esc(fiets(r.fiets))}<br><span>${r.temp != null ? Math.round(r.temp) + '&deg;' : ''}${r.nat ? ' &middot; nat' : ' &middot; droog'}${r.grond && r.grond !== 'normaal' ? ' &middot; ' + esc(r.grond) : ''}</span></div><div style="text-align:right">${nl(r.voor)} / ${nl(r.achter)}<br><span>${r.oordeel ? oord[r.oordeel] || '' : 'nog geen oordeel'}</span></div></div>`).join('')}<p class="klein" style="margin-top:8px">Bij hetzelfde weer en dezelfde fiets gebruikt de app je oordeel van toen voor je advies van vandaag.</p></details>`;
+  return `<details class="logboek klap" data-klap="logboek" ${klapOpen('logboek', false) ? 'open' : ''}><summary><b>Mijn bandenlogboek</b><span>${l.length} ${l.length === 1 ? 'rit' : 'ritten'}</span></summary><div class="klap-in">${l.map((r) => `<div class="lr"><div>${esc(sbDatum(r.op))} &middot; ${esc(fiets(r.fiets))}<br><span>${r.temp != null ? Math.round(r.temp) + '&deg;' : ''}${r.nat ? ' &middot; nat' : ' &middot; droog'}${r.grond && r.grond !== 'normaal' ? ' &middot; ' + esc(r.grond) : ''}</span></div><div style="text-align:right">${nl(r.voor)} / ${nl(r.achter)}<br><span>${r.oordeel ? oord[r.oordeel] || '' : 'nog geen oordeel'}</span></div></div>`).join('')}<p class="klein" style="margin-top:8px">Bij hetzelfde weer en dezelfde fiets gebruikt de app je oordeel van toen voor je advies van vandaag.</p></div></details>`;
 }
+const RK_BLOK = () => `<details class="klap" data-klap="ritkaart" ${klapOpen('ritkaart', false) ? 'open' : ''}><summary><b>Deel je ritkaart</b><span>Insta of Strava</span></summary><div class="klap-in"><p class="klein" style="margin-top:0">Je bandenspanning, het weer en je windrichting als plaatje. Deel het in je story of zet het bij je rit op Strava.</p>${RK_KNOP}</div></details>`;
 function sbRijdHtml(f, u) {
   const vandaag = new Date().toISOString().slice(0, 10);
   const al = (SB.ritten || []).find((r) => r.fiets === f.id && String(r.op).slice(0, 10) === vandaag && r.voor === u.voor && r.achter === u.achter);
-  if (al) return '<div class="sb-bewaard">&#10003; Bewaard. Na je rit vraag ik hoe het was.</div>' + RK_KNOP;
-  return RK_KNOP + '<div class="sb-rijd"><button type="button" class="knop leeg" data-sb="rijd">Ik rijd hiermee</button><p class="klein">Dan vraag ik na je rit hoe je banden en je kleding waren, en onthoud ik het voor de volgende keer.</p></div>';
+  if (al) return '<div class="sb-bewaard">&#10003; Bewaard. Na je rit vraag ik hoe het was.</div>' + RK_BLOK();
+  return '<div class="sb-rijd"><button type="button" class="knop leeg" data-sb="rijd">Ik rijd hiermee</button><p class="klein">Dan vraag ik na je rit hoe je banden en je kleding waren, en onthoud ik het voor de volgende keer.</p></div>' + RK_BLOK();
 }
 
 function sbWeerHtml() {
@@ -1091,7 +1140,7 @@ function slimBandenKaart() {
   if (tab === 'groep') { grZorg(); return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${tabs}
     <div id="grmaak">${grMaakHtml()}</div>
-    <button type="button" class="sb-link" data-sb="bewerk">Mijn fietsen en gewicht</button></div></div>`; }
+    <button type="button" class="sb-link" data-sb="bewerk" style="margin-top:14px">Mijn fietsen en gewicht</button></div></div>`; }
   if (tab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${sbOordeelHtml()}
     ${sbWeerHtml()}
@@ -1099,7 +1148,7 @@ function slimBandenKaart() {
     ${voedingTabHtml()}
     ${uit && SB.weer ? sbRijdHtml(f, uit) : ''}
     ${pushHtml()}
-    <button type="button" class="sb-link" data-sb="bewerk">Mijn fietsen en gewicht</button></div></div>`;
+    <button type="button" class="sb-link" data-sb="bewerk" style="margin-top:14px">Mijn fietsen en gewicht</button></div></div>`;
   if (tab === 'kleding') return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${sbOordeelHtml()}
     ${sbWeerHtml()}
@@ -1108,7 +1157,7 @@ function slimBandenKaart() {
     ${windRegelHtml()}
     ${uit && SB.weer ? sbRijdHtml(f, uit) : ''}
     ${pushHtml()}
-    <button type="button" class="sb-link" data-sb="bewerk">Mijn fietsen en gewicht</button></div></div>`;
+    <button type="button" class="sb-link" data-sb="bewerk" style="margin-top:14px">Mijn fietsen en gewicht</button></div></div>`;
   return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${sbOordeelHtml()}
     ${sbWeerHtml()}
@@ -1118,11 +1167,11 @@ function slimBandenKaart() {
     <div class="bt-keuze sb-grond">${grond}</div>
     <div class="bt-keuze"><button type="button" data-sb="nat" data-w="false" class="${!nat ? 'aan' : ''}">Droog</button><button type="button" data-sb="nat" data-w="true" class="${nat ? 'aan' : ''}">Nat wegdek</button></div>
     ${res}
-    <div class="sb-vraag"><label for="sbVraag">Vraag het je bandencoach</label>
+    <details class="klap" data-klap="bandvraag" ${SB.antwoord || SB.vraagBezig || klapOpen('bandvraag', false) ? 'open' : ''}><summary><b>Vraag het je bandencoach</b><span>kasseien, regen, tocht</span></summary><div class="klap-in sb-vraag" style="margin:0;border:0;padding-top:0">
       <div class="sb-rij"><input id="sbVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen de Ronde met kasseien" value="${esc(SB.vraag)}"><button type="button" class="knop" data-sb="vraag" ${SB.vraagBezig ? 'disabled' : ''}>${SB.vraagBezig ? '...' : 'Vraag'}</button></div>
-      ${SB.antwoord ? `<div class="sb-antwoord">${opmaak(SB.antwoord)}</div>${nuttigHtml(SB.aid, SB.nuttig)}` : ''}</div>
+      ${SB.antwoord ? `<div class="sb-antwoord">${opmaak(SB.antwoord)}</div>${nuttigHtml(SB.aid, SB.nuttig)}` : ''}</div></details>
     ${pushHtml()}
-    <button type="button" class="sb-link" data-sb="bewerk">Mijn fietsen en gewicht</button></div></div>`;
+    <button type="button" class="sb-link" data-sb="bewerk" style="margin-top:14px">Mijn fietsen en gewicht</button></div></div>`;
 }
 
 function sbTeken() {
@@ -1284,7 +1333,8 @@ function kaartenHtml(d) {
   const coaching = !!(d.lid && d.lid.bron === 'coaching');
   if (!d.analyse && !coaching) ontgrendel.push(analyseKaart(null));
   const groep = (titel, kaarten) => kaarten.length ? `<div class="groepkop">${titel}</div><div class="kaarten">${kaarten.join('')}</div>` : '';
-  const stap = !coaching && !d.schema ? `<div class="stap"><a href="${SITE}/trainingsschemas/" target="_blank" rel="noopener"><b>Train met een plan</b><span>Een schema van 8, 12 of 16 weken, klaar in TrainingPeaks. De MKC-app zit erbij voor de hele looptijd.</span><em>Kies je schema &rarr;</em></a><a href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener"><b>Liever iemand die meekijkt?</b><span>Persoonlijke coaching: elke 2 of 4 weken een nieuw schema op maat, en Michel stuurt bij op wat je echt gereden hebt.</span><em>Bekijk coaching &rarr;</em></a></div>` : '';
+  const stap = '';
+  const _oudStap = false ? `<div class="stap"><a href="${SITE}/trainingsschemas/" target="_blank" rel="noopener"><b>Train met een plan</b><span>Een schema van 8, 12 of 16 weken, klaar in TrainingPeaks. De MKC-app zit erbij voor de hele looptijd.</span><em>Kies je schema &rarr;</em></a><a href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener"><b>Liever iemand die meekijkt?</b><span>Persoonlijke coaching: elke 2 of 4 weken een nieuw schema op maat, en Michel stuurt bij op wat je echt gereden hebt.</span><em>Bekijk coaching &rarr;</em></a></div>` : '';
   return groep('Actief', actief) + groep('Ontgrendelen', ontgrendel) + (stap ? `<div class="groepkop">Volgende stap</div>${stap}` : '') + groep('Binnenkort', coaching ? [afvalKaart()] : [afvalKaart(), pacingKaart()]);
 }
 
@@ -1573,10 +1623,148 @@ function binnenkortNu() { const d = zicht(); return !!(d && d.voorLancering && !
 function kanLidNu(d) { d = d || zicht(); return !!(d && (d.lidOpen || d.beheer) && !binnenkortNu()); }
 const BINNENKORT = '<span class="binnenkort-label">Binnenkort beschikbaar</span>';
 function isNieuw(d) { return !d.core && !d.analyse && !isLid(d); }
+// ---- Navigatie (11-10-2026) ----
+// Start = balk + tegels; elk onderdeel heeft een eigen pagina met "‹ MKC-app".
+// De terugknop van de telefoon werkt (history).
+let VIEW = 'home';
+try { if (history.state && history.state.v) VIEW = history.state.v; } catch (e) {}
+function naar(v) {
+  VIEW = v;
+  try { history.pushState({ v }, '', location.pathname + location.search); } catch (e) {}
+  teken(); window.scrollTo(0, 0);
+}
+window.addEventListener('popstate', (e) => { VIEW = (e.state && e.state.v) || 'home'; if (D && !D.gast) { teken(); window.scrollTo(0, 0); } });
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-view]'); if (!k) return;
+  e.preventDefault();
+  const v = k.dataset.view;
+  if (v === 'coach') { const f = document.getElementById('ccFab'); if (f) f.click(); return; }
+  if (v === 'home') { if (history.state && history.state.v && history.state.v !== 'home') { history.back(); return; } VIEW = 'home'; teken(); window.scrollTo(0, 0); return; }
+  naar(v);
+});
+function klapOpen(naam, standaard) { try { const w = localStorage.getItem('mkcKlap:' + naam); return w == null ? standaard : w === '1'; } catch (e) { return standaard; } }
+document.addEventListener('toggle', (e) => { const d = e.target; if (d && d.dataset && d.dataset.klap) { try { localStorage.setItem('mkcKlap:' + d.dataset.klap, d.open ? '1' : '0'); } catch (er) {} } }, true);
+const IC = {
+  rijden: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17" r="3.5"/><circle cx="18.5" cy="17" r="3.5"/><path d="M15 6h2l3 11M5.5 17l4-8h7l-5 8M9 9l-1.5-3H5"/></svg>',
+  schema: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h3M8 17h6"/></svg>',
+  core: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M12 7v7M8 10h8M9 21l3-7 3 7"/></svg>',
+  analyse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M6 16l4-5 3 3 5-7"/></svg>',
+  coach: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
+  afval: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20h14l-1.5-11h-11zM9 9a3 3 0 0 1 6 0"/></svg>',
+  pacing: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18l5-7 4 4 3-5 6 8z"/></svg>',
+  lid: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg>'
+};
+// ---- Doel (11-10-2026): waar train je voor? Zie lib/doelen.js ----
+const DOEL_NAMEN = { sneller: 'Sneller worden', evenement: 'Een tocht of wedstrijd', afvallen: 'Afvallen', fit: 'Fit blijven en plezier' };
+let DOELV = { open: false, kies: null, fout: '', bezig: false };
+function doelLater() { try { return Date.now() - Number(localStorage.getItem('mkcDoelLater') || 0) < 5 * 864e5; } catch (e) { return false; } }
+function doelHtml(d) {
+  if (!d || d.gast) return '';
+  const dl = d.doel;
+  if (dl && !dl.klaar && !DOELV.open) {
+    const nog = dl.doel === 'evenement' ? Math.ceil((Date.parse(dl.datum + 'T08:00:00') - Date.now()) / 864e5) : null;
+    const wat = dl.doel === 'evenement' ? esc(dl.naam) + (nog > 0 ? ' &middot; nog ' + nog + (nog === 1 ? ' dag' : ' dagen') : '') : DOEL_NAMEN[dl.doel];
+    return `<div class="doelregel">Jouw doel: <b>${wat}</b><a href="#" data-doel="wijzig">aanpassen</a></div>`;
+  }
+  if (!DOELV.open && doelLater()) return '';
+  const k = DOELV.kies;
+  return `<div class="doelkaart" id="doelvraag"><b>${dl && dl.klaar ? 'Wat is je volgende doel?' : 'Waar train je voor?'}</b><p>Dan stemt de app je tips en meldingen daarop af.</p>
+    <div class="doel-opties">${Object.entries(DOEL_NAMEN).map(([w, n]) => `<button type="button" data-doel="kies" data-w="${w}" class="${k === w ? 'aan' : ''}" ${DOELV.bezig ? 'disabled' : ''}>${n}</button>`).join('')}</div>
+    ${k === 'evenement' ? `<div class="doel-ev"><input id="doelNaam" maxlength="60" placeholder="Welke tocht? Bijv. Amstel Gold Race" value="${esc((dl && dl.naam) || '')}"><input id="doelDatum" type="date" value="${esc((dl && dl.datum) || '')}"><button type="button" class="knop" data-doel="bewaar" ${DOELV.bezig ? 'disabled' : ''}>${DOELV.bezig ? 'Even bewaren...' : 'Bewaar mijn doel'}</button></div>` : ''}
+    ${DOELV.fout ? `<p class="klein" style="color:#ff8a5c">${esc(DOELV.fout)}</p>` : ''}
+    <button type="button" class="doel-later" data-doel="later">${DOELV.open ? 'Annuleer' : 'Later'}</button></div>`;
+}
+async function doelBewaar(body) {
+  DOELV.bezig = true; DOELV.fout = ''; teken();
+  try {
+    const j = await (await fetch(API + '?actie=doel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), ...body }) })).json();
+    if (!j.ok) throw new Error(j.fout || 'Bewaren lukte niet.');
+    D.doel = j.doel; DOELV = { open: false, kies: null, fout: '', bezig: false };
+  } catch (e) { DOELV.bezig = false; DOELV.fout = e.message || 'Bewaren lukte niet.'; }
+  teken();
+}
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-doel]'); if (!k) return;
+  e.preventDefault();
+  const a = k.dataset.doel;
+  if (a === 'wijzig') { DOELV = { open: true, kies: D.doel && D.doel.doel, fout: '', bezig: false }; return teken(); }
+  if (a === 'later') { if (!DOELV.open) { try { localStorage.setItem('mkcDoelLater', String(Date.now())); } catch (er) {} } DOELV = { open: false, kies: null, fout: '', bezig: false }; return teken(); }
+  if (a === 'kies') { const w = k.dataset.w; if (w === 'evenement') { DOELV.kies = w; DOELV.fout = ''; teken(); setTimeout(() => document.getElementById('doelNaam')?.focus(), 30); return; } return doelBewaar({ doel: w }); }
+  if (a === 'bewaar') return doelBewaar({ doel: 'evenement', naam: (document.getElementById('doelNaam')?.value || '').trim(), datum: document.getElementById('doelDatum')?.value || '' });
+});
+// Links uit meldingen (/app#analyse, #rijden, #coach, #doel, ...) openen de juiste pagina.
+function naarAnker() {
+  const h = location.hash.slice(1); if (!h || !D || D.gast) return;
+  const schoon = () => { try { history.replaceState({ v: 'home' }, '', location.pathname + location.search); } catch (e) {} };
+  if (['rijden', 'schema', 'core', 'analyse', 'afval', 'pacing'].includes(h) || (h === 'lid' && isLid(zicht()))) { schoon(); return naar(h); }
+  if (h === 'coach') { schoon(); setTimeout(() => { const f = document.getElementById('ccFab'); if (f) f.click(); }, 300); return; }
+  if (h === 'doel') { schoon(); DOELV = { open: true, kies: null, fout: '', bezig: false }; VIEW = 'home'; teken(); setTimeout(() => document.getElementById('doelvraag')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200); return; }
+  naarLidAnker();
+}
+window.addEventListener('hashchange', naarAnker);
+function appBalkHtml(titel) {
+  if (VIEW !== 'home') return `<div class="appbalk"><button type="button" class="ab-terug" data-view="home"><span>&#8249;</span>MKC-app</button><div class="ab-titel">${esc(titel || '')}</div></div>`;
+  return `<div class="appbalk"><span class="ab-av"><img src="/icoon-192.png" alt=""></span><div><div class="ab-nm">MKC-app</div><div class="ab-sub">Michel Kreder Coaching</div></div><div class="ab-rechts"><button class="ab-uit" data-actie="uitloggen">Uitloggen</button></div></div>`;
+}
+function tegel({ v, href, ic, nm, sub, tag, tagKlas, breed, dim }) {
+  const bin = `<span class="tg-ic">${IC[ic] || ''}</span><span class="tg-nm">${nm}</span><span class="tg-sub">${sub}</span>${tag ? `<span class="tg-tag ${tagKlas || ''}">${tag}</span>` : ''}<span class="tg-pijl">&#8250;</span>`;
+  const kl = 'tegel' + (breed ? ' breed' : '') + (dim ? ' dimmed' : '');
+  return href ? `<a class="${kl}" href="${esc(href)}">${bin}</a>` : `<button type="button" class="${kl}" data-view="${v}">${bin}</button>`;
+}
+function tegelsHtml(d) {
+  if (d.beheer && BEKIJK === 'alles') d = voorbeeldData(d);
+  const coaching = !!(d.lid && d.lid.bron === 'coaching');
+  const lid = isLid(d), slim = toonSlim(d);
+  const t = [];
+  t.push(tegel({ v: 'rijden', ic: 'rijden', nm: 'Vandaag rijden', sub: slim ? 'Je bandenspanning, kleding, voeding en wind voor je rit' : 'Je bandenspanning en windadvies, en plan een groepsrit', tag: slim ? 'Lid' : 'Gratis', tagKlas: slim ? 'or' : 'gr', breed: true }));
+  if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: esc(d.schema.titel || 'Je training van vandaag'), tag: 'Actief', tagKlas: 'gr' }));
+  if (d.core) t.push(tegel({ href: d.core.link, ic: 'core', nm: 'Core-app', sub: d.core.week ? 'Niveau ' + d.core.week + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : '') : 'Je core-sessies', tag: 'Actief', tagKlas: 'gr' }));
+  else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Core stability voor wielrenners, op de timer', tag: binnenkortNu() ? 'Binnenkort' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
+  if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? 'Jouw uitslag' : '€29', tagKlas: d.analyse ? 'gr' : 'or' }));
+  t.push(tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? 'Lid' : binnenkortNu() ? 'Binnenkort' : '3 gratis', tagKlas: 'or' }));
+  t.push(tegel({ v: 'afval', ic: 'afval', nm: 'Afvalprogramma', sub: 'Lichter worden zonder watts te verliezen', tag: 'Binnenkort', dim: true }));
+  if (!coaching) t.push(tegel({ v: 'pacing', ic: 'pacing', nm: 'Pacingplan', sub: 'Je grote tocht slim ingedeeld', tag: 'Binnenkort', dim: true }));
+  if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: 'Status, facturen en een vriend uitnodigen', tag: '' }));
+  return `<div class="tegels">${t.join('')}</div>`;
+}
+// Volgende stap: alleen voor wie nog geen schema en geen coaching heeft.
+function volgendeStapHtml(d) {
+  const coaching = !!(d.lid && d.lid.bron === 'coaching');
+  if (coaching || d.schema || (d.lid && d.lid.bron === 'schema')) return '';
+  const k = (href, nm, sub, cta) => `<a href="${SITE}${href}" target="_blank" rel="noopener"><b>${nm}</b><span>${sub}</span><em>${cta} &rarr;</em></a>`;
+  return `<div class="groepkop">Volgende stap</div><div class="stap">
+    ${k('/trainingsschemas/', 'Train met een plan', 'Een schema van 8, 12 of 16 weken, klaar in TrainingPeaks. De MKC-app zit erbij voor de hele looptijd.', 'Kies je schema')}
+    ${k('/winterprogramma/', 'Deze winter binnen trainen?', '12 weken Indoor Winterprogramma op je slimme trainer, met een eindrapport van je vooruitgang.', 'Bekijk het winterprogramma')}
+    ${k('/het-startpakket/', 'Net begonnen of opnieuw starten?', 'Het Startpakket: 4 weken rustig opbouwen, met een startgids erbij.', 'Bekijk het Startpakket')}
+    ${k('/trainingsbegeleiding/', 'Liever iemand die meekijkt?', 'Persoonlijke coaching: elke 2 of 4 weken een nieuw schema op maat, en Michel stuurt bij op wat je echt gereden hebt.', 'Bekijk coaching')}
+  </div>`;
+}
+function paginaHtml(d) {
+  const voet = `<div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
+  const dz = d.beheer && BEKIJK === 'alles' ? voorbeeldData(d) : d;
+  if (VIEW === 'rijden') return appBalkHtml('Vandaag rijden') + `<div class="kaarten">${bandenKaart(d)}${toonSlim(d) ? '' : windKaartHtml()}</div>` + voet;
+  if (VIEW === 'schema') return appBalkHtml('Mijn schema') + `<div class="kaarten">${schemaKaart(d)}</div>` + voet;
+  if (VIEW === 'core') return appBalkHtml('Core-app') + `<div class="kaarten">${coreKaart(dz.core)}</div>` + voet;
+  if (VIEW === 'analyse') return appBalkHtml('Strava-analyse') + (dz.analyse ? analyseBlok(dz.analyse, true) + `<a class="knop leeg" href="${ANALYSE_KOOP}" style="margin-top:14px">Doe een nieuwe analyse</a><p class="klein">Na een paar weken gericht trainen zie je met een nieuwe analyse of je vooruit bent gegaan.</p>` : `<div class="kaarten">${analyseKaart(null)}</div>`) + voet;
+  if (VIEW === 'afval') return appBalkHtml('Afvalprogramma') + `<div class="kaarten">${afvalKaart()}</div>` + voet;
+  if (VIEW === 'pacing') return appBalkHtml('Pacingplan') + `<div class="kaarten">${pacingKaart()}</div>` + voet;
+  if (VIEW === 'lid') return appBalkHtml('Mijn lidmaatschap') + lidStatusHtml(d.lid) + lidExtraHtml(d.lid) + voet;
+  return null;
+}
 function teken() {
   if (D && D.gast) return tekenGast();
+  if (VIEW !== 'home') {
+    const dd = zicht(), html = paginaHtml(dd);
+    if (html == null) VIEW = 'home';
+    else {
+      $('#app').innerHTML = html;
+      if (VIEW === 'rijden') { if (toonSlim(dd)) sbStart(); else { btReken(); if (WK.plaats && !WK.uren) wkLaad(); else if (WK.plaats) rvLaadLib().then(wkTeken); } }
+      coachBouw();
+      return;
+    }
+  }
   const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
-  $('#app').innerHTML = `<div class="kop"><div class="logo">MKC<span>.</span></div><button class="uit" data-actie="uitloggen">Uitloggen</button></div>
+  $('#app').innerHTML = `${appBalkHtml()}
     ${beheerHtml(d)}${ledenHtml()}${gebruikHtml()}${opvolgHtml()}${nakijkHtml()}
     <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
     ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
@@ -1584,23 +1772,21 @@ function teken() {
     ${reviewHtml(d)}
     ${meldingenHtml(d)}<div id="meldvraag">${meldVraagHtml()}</div><div id="startlijst">${startlijstHtml(d)}</div>
     ${isNieuw(d) ? `<div class="welkom"><b>Zo werkt je app</b>
-      <ol><li><span>1</span>Vul hieronder je gewicht en band in: je ziet meteen wat je pompt. Gratis, voor elke rit.</li>
+      <ol><li><span>1</span>Tik op Vandaag rijden en vul je gewicht en band in: je ziet meteen wat je pompt. Gratis, voor elke rit.</li>
       <li><span>2</span>${binnenkortNu() ? 'Binnenkort komt er veel bij: de Core-app, kledingadvies voor je rit en je eigen coach.' : 'Start je gratis week in de Core-app: korte sessies thuis, op de timer.'}</li>
       <li><span>3</span>${binnenkortNu() ? 'Zet de app op je beginscherm, dan heb je je bandenspanning altijd bij de hand.' : d.lidOpen ? 'Meer nodig? Als lid krijg je je eigen coach, de slimme bandenspanning en de Core-app doorlopend, voor &euro;' + APP_PRIJS.maand + ' per maand.' : 'Rechtsonder zit <em>Vraag je coach</em>: je eigen coach die je analyse en je plan kent, straks voor leden.'}</li></ol></div>`
       : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}
-    ${analyseBlok(d.analyse)}
-    <div class="groepkop">Vandaag</div><div class="kaarten">${schemaKaart(d)}${bandenKaart(d)}${toonSlim(d) ? '' : windKaartHtml()}</div>
+    ${doelHtml(d)}
+    ${tegelsHtml(d)}
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     ${isLid(d) ? '' : binnenkortNu() ? `<div class="groepkop">Meer uit de app</div>${binnenkortPitchHtml()}` : !kanLidNu(d) ? '' : `<div class="groepkop">Meer uit de app</div>${lidPitchHtml()}`}
-    ${kaartenHtml(d)}
-    ${isLid(d) ? `<div class="groepkop">Mijn lidmaatschap</div>${lidStatusHtml(d.lid)}${lidExtraHtml(d.lid)}` : ''}
+    ${volgendeStapHtml(d)}
     <div id="meldinst">${meldInstHtml()}</div>
     ${feedbackHtml()}
     <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a> &middot; <a href="#" data-lx="verwijder">Account verwijderen</a></div>`;
-  if (toonSlim(d)) sbStart(); else { btReken(); if (WK.plaats && !WK.uren) wkLaad(); else if (WK.plaats) rvLaadLib().then(wkTeken); }
   if (d.schema && !(d.beheer && BEKIJK !== 'klant')) statEens('schema');
   if (GR.id && !GR.data) grLaad();
-  if (NA_POORT) { NA_POORT = false; setTimeout(() => { const el = document.getElementById('banden'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); const m = document.getElementById('btUit'); if (m) m.insertAdjacentHTML('afterbegin', '<p class="gp-welkom">Welkom in de MKC-app! Dit is jouw spanning. Hij staat ook in je mail als pdf.</p>'); }, 700); }
+  if (NA_POORT) { NA_POORT = false; VIEW = 'rijden'; teken(); setTimeout(() => { const el = document.getElementById('banden'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); const m = document.getElementById('btUit'); if (m) m.insertAdjacentHTML('afterbegin', '<p class="gp-welkom">Welkom in de MKC-app! Dit is jouw spanning. Hij staat ook in je mail als pdf.</p>'); }, 700); }
   coachBouw();
   if (document.getElementById('ccPaneel').classList.contains('open')) coachLijst();
 }
@@ -1931,7 +2117,7 @@ document.addEventListener('click', (e) => {
 function nakijkHtml() {
   if (!D || !D.beheer) return '';
   const l = NAK.lijst;
-  const kop = `<button type="button" class="opv-kop" data-nak="klap"><span><b>Coach-antwoorden nakijken</b> ${l === null ? '' : `<i>${l.length} recent &middot; ${NAK.aantal} correcties</i>`}</span><span>${NAK.open ? '&#9650;' : '&#9660;'}</span></button>`;
+  const kop = `<button type="button" class="opv-kop" data-nak="klap"><span><b>Coach-antwoorden nakijken</b> ${l === null ? '' : `<i>${l.length} nog na te kijken &middot; ${NAK.aantal} correcties</i>`}</span><span>${NAK.open ? '&#9650;' : '&#9660;'}</span></button>`;
   if (!NAK.open) return `<div class="opv nak" id="nakijk">${kop}</div>`;
   const datum = (op) => new Date(op).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const rij = (a) => `<div class="opv-rij ${a.correctie ? 'afgehandeld-niet' : ''}">
@@ -1941,15 +2127,15 @@ function nakijkHtml() {
       ${NAK.bewerk === a.id ? `<textarea class="nak-tekst" id="nakTekst" rows="5" placeholder="Zo zou ik het zeggen...">${esc(a.correctie || '')}</textarea>
         <div class="opv-knoppen"><button type="button" class="opv-k oranje" data-nak="bewaar" data-id="${a.id}">Bewaar</button><button type="button" class="opv-k" data-nak="annuleer">Annuleer</button>${a.correctie ? `<button type="button" class="opv-k" data-nak="wis" data-id="${a.id}">Correctie wissen</button>` : ''}</div>`
       : a.correctie ? `<div class="nak-correctie"><small>Jouw versie (gaat mee als voorbeeld)</small>${opmaak(a.correctie)}</div><div class="opv-knoppen"><button type="button" class="opv-k" data-nak="bewerk" data-id="${a.id}">Aanpassen</button></div>`
-      : `<div class="opv-knoppen"><button type="button" class="opv-k" data-nak="bewerk" data-id="${a.id}">Zou ik anders zeggen</button></div>`}</div>`;
+      : `<p class="klein" style="margin:8px 0 4px">Zou jij het anders zeggen?</p><div class="opv-knoppen"><button type="button" class="opv-k oranje" data-nak="bewerk" data-id="${a.id}">Ja, ik schrijf het zelf</button><button type="button" class="opv-k" data-nak="goed" data-id="${a.id}">Nee, prima zo</button></div>`}</div>`;
   return `<div class="opv nak open" id="nakijk">${kop}
-    ${l === null ? '<p class="klein">Laden...</p>' : l.length ? l.map(rij).join('') : '<p class="klein">Nog geen antwoorden. Zodra iemand de coach iets vraagt, staat het hier.</p>'}</div>`;
+    ${l === null ? '<p class="klein">Laden...</p>' : l.length ? l.map(rij).join('') : '<p class="klein">Alles is nagekeken. Nieuwe vragen verschijnen hier vanzelf.</p>'}</div>`;
 }
 function nakTeken() { const el = document.getElementById('nakijk'); if (el) el.outerHTML = nakijkHtml(); }
-async function nakLaad(id, correctie) {
+async function nakLaad(id, correctie, goed) {
   try {
     const j = id != null
-      ? await (await fetch(`${API}?actie=antwoorden`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), id, correctie }) })).json()
+      ? await (await fetch(`${API}?actie=antwoorden`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), id, correctie, goed: !!goed }) })).json()
       : await (await fetch(`${API}?actie=antwoorden&t=${encodeURIComponent(leesToken())}`)).json();
     if (j.ok) { NAK.lijst = j.antwoorden; NAK.aantal = j.aantalCorrecties; }
   } catch (e) {}
@@ -1963,6 +2149,7 @@ document.addEventListener('click', (e) => {
   if (a === 'annuleer') { NAK.bewerk = null; nakTeken(); }
   if (a === 'bewaar') { const t = document.getElementById('nakTekst').value.trim(); if (!t) return; NAK.bewerk = null; k.disabled = true; nakLaad(k.dataset.id, t); }
   if (a === 'wis') { NAK.bewerk = null; nakLaad(k.dataset.id, ''); }
+  if (a === 'goed') { const r = k.closest('.opv-rij'); if (r) r.style.opacity = '.3'; if (NAK.lijst) NAK.lijst = NAK.lijst.filter((x) => x.id !== k.dataset.id); nakLaad(k.dataset.id, '', true); }
 });
 
 // ---- Kledingadvies en ochtendbericht (07-10-2026, alleen leden) ----
@@ -1976,7 +2163,7 @@ function ritUren() { const w = SB.weer; if (!w) return []; const k = klKeuze(); 
 function windRegelHtml() {
   if (!WIND_LIB || !SB.weer) return '';
   const a = WIND_LIB.windAdvies(ritUren());
-  return a ? `<div class="sb-wind">${KOMPAS}<span>${esc(a.tekst)}${a.kust ? `<small style="display:block;margin-top:6px;color:var(--muted)">${esc(a.kust)}</small>` : ''}</span></div>` : '';
+  return a ? `<details class="klap wind" data-klap="wind" ${klapOpen('wind', false) ? 'open' : ''}><summary>${KOMPAS}<b>Wind</b><span>${esc(a.kort)}</span></summary><div class="klap-in"><p class="klein" style="margin:0;color:rgba(245,243,239,.88)">${esc(a.tekst)}</p>${a.kust ? `<p class="klein" style="margin:8px 0 0">${esc(a.kust)}</p>` : ''}</div></details>` : '';
 }
 function voedingTabHtml() {
   if (!SB.weer) return '<p class="klein" style="margin-top:12px">Kies hierboven je plek, dan reken ik met de temperatuur tijdens je rit.</p>';
@@ -2238,8 +2425,68 @@ function grHtml() {
       + (wind ? `<div class="sb-wind">${KOMPAS}<span>${esc(wind.tekst)}</span></div>` : '') + bandenBlok + lidBlok}
     ${voorbij ? '' : `<button type="button" class="knop ${GR.data.ikMee ? '' : 'leeg'}" data-gr="mee" style="margin-top:14px">${GR.data.ikMee ? '&#10003; Je rijdt mee' : 'Ik rijd mee'}</button>`}
     <div class="gr-kijk">${[GR.data.mee ? `${GR.data.mee} ${GR.data.mee === 1 ? 'rijdt' : 'rijden'} mee` : '', kijkers >= 2 ? `${kijkers} keken al` : ''].filter(Boolean).join(' &middot; ')}</div>
-    ${voorbij ? '' : '<button type="button" class="knop" data-gr="deel" style="margin-top:14px">Deel deze rit</button>'}</div>`;
+    ${voorbij ? '' : '<button type="button" class="knop" data-gr="deel" style="margin-top:14px">Deel deze rit</button>'}
+    <details class="klap" data-klap="grfoto" ${klapOpen('grfoto', voorbij) ? 'open' : ''}><summary><b>Maak een foto-story</b><span>jouw foto, met de rit erover</span></summary><div class="klap-in">
+      <p class="klein" style="margin-top:0">Kies een foto van de groep, de koffiestop of het uitzicht. De app zet de naam van de rit, de datum en het weer eroverheen, klaar voor je Instagram-story of Strava.</p>
+      <input id="grFotoTekst" type="text" maxlength="60" placeholder="Jouw tekst, bijv. Zondagsrondje met de mannen" style="width:100%;margin-bottom:10px">
+      <label class="knop leeg" style="display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer">${GR.fotoBezig ? 'Even maken...' : 'Kies je foto'}<input type="file" accept="image/*" id="grFoto" style="display:none"></label>
+    </div></details></div>`;
 }
+// ---- Foto-story van een groepsrit (11-10-2026) ----
+// Eigen foto als achtergrond (cover, 1080x1920), donkere verloop boven en onder,
+// daarover de rit: naam, datum, start, weer, wie er meerijdt en de link.
+async function grFotoTeken(bestand, eigenTekst) {
+  const img = await new Promise((ok, nee) => { const i = new Image(); i.onload = () => ok(i); i.onerror = nee; i.src = URL.createObjectURL(bestand); });
+  try { await Promise.all([document.fonts.load('120px "Bebas Neue"'), document.fonts.load('600 40px "DM Sans"')]); } catch (e) {}
+  const W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  const sc = Math.max(W / img.width, H / img.height), iw = img.width * sc, ih = img.height * sc;
+  x.drawImage(img, (W - iw) / 2, (H - ih) / 2, iw, ih); URL.revokeObjectURL(img.src);
+  let g = x.createLinearGradient(0, 0, 0, 520); g.addColorStop(0, 'rgba(0,0,0,0.65)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, W, 520);
+  g = x.createLinearGradient(0, H - 1050, 0, H); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.45, 'rgba(0,0,0,0.7)'); g.addColorStop(1, 'rgba(0,0,0,0.9)'); x.fillStyle = g; x.fillRect(0, H - 1050, W, 1050);
+  const OR = '#FF6B1A', WIT = '#F5F3EF', GRIJS = 'rgba(245,243,239,0.75)', L = 80;
+  const bebas = (px) => `${px}px "Bebas Neue", Impact, sans-serif`, dm = (px, w = 400) => `${w} ${px}px "DM Sans", Arial, sans-serif`;
+  x.shadowColor = 'rgba(0,0,0,0.45)'; x.shadowBlur = 18;
+  x.fillStyle = WIT; x.font = bebas(110); x.fillText('MKC', L, 190); const w1 = x.measureText('MKC').width; x.fillStyle = OR; x.fillText('.', L + w1, 190);
+  x.font = dm(30, 700); x.fillStyle = OR; x.textAlign = 'right'; x.fillText('GROEPSRIT', W - L, 150); x.textAlign = 'left';
+  const { rit, uren } = GR.data, eind = rit.start + rit.duur * 3600e3, voorbij = eind < Date.now();
+  let y = H - 140;
+  x.fillStyle = OR; x.font = dm(34, 600); x.fillText('rapport.michelkredercoaching.nl/rit/' + rit.id, L, y); y -= 70;
+  const mee = GR.data.mee || 0;
+  const regels = [];
+  if (uren && uren.length) { const tl = uren.map((u) => u.temp), tMin = Math.min(...tl), tMax = Math.max(...tl), regen = uren.reduce((t, u) => t + u.regen, 0); regels.push(`${tMin === tMax ? tMin : tMin + '-' + tMax}° · wind ${Math.max(...uren.map((u) => u.wind))} km/u · ${regen >= 0.5 ? 'regen' : 'droog'}`); }
+  regels.push('Vanuit ' + (rit.plaats.naam || 'de start') + ' · ' + (rit.tempo === 'hard' ? 'stevig tempo' : 'rustig tempo'));
+  if (mee >= 2) regels.push(voorbij ? `Gereden met ${mee} renners` : `${mee} renners rijden mee`);
+  x.font = dm(40, 600); x.fillStyle = GRIJS;
+  for (const r of regels.reverse()) { x.fillText(r, L, y); y -= 60; }
+  y -= 10;
+  const dag = grDag(rit.start).replace(/^./, (ch) => ch.toUpperCase()) + ' · ' + grTijd(rit.start);
+  x.fillStyle = WIT; x.font = dm(44, 700); x.fillText(dag, L, y); y -= 80;
+  // Ritnaam: zo groot mogelijk, maximaal twee regels.
+  const naam = String(rit.naam || 'Groepsrit').toUpperCase();
+  let px = 150, naamR; do { x.font = bebas(px); naamR = rkRegels(x, naam, W - 2 * L); if (naamR.length <= 2) break; px -= 15; } while (px > 70);
+  naamR = naamR.slice(0, 2); const lh = Math.round(px * 0.9);
+  for (const r of [...naamR].reverse()) { x.fillStyle = WIT; x.fillText(r, L, y); y -= lh; }
+  y = y + lh - Math.round(px * 0.72) - 34;
+  if (eigenTekst) { x.font = dm(48, 600); const er = rkRegels(x, eigenTekst, W - 2 * L).slice(0, 2); for (const r of er.reverse()) { x.fillStyle = OR; x.fillText(r, L, y); y -= 62; } }
+  return new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.9));
+}
+document.addEventListener('change', async (e) => {
+  if (e.target.id !== 'grFoto' || !e.target.files || !e.target.files[0] || !GR.data) return;
+  const bestand = e.target.files[0], tekst = (document.getElementById('grFotoTekst')?.value || '').trim();
+  const lab = e.target.closest('label'); if (lab) lab.firstChild.textContent = 'Even maken...';
+  try {
+    const blob = await grFotoTeken(bestand, tekst);
+    const file = new File([blob], 'mkc-groepsrit.jpg', { type: 'image/jpeg' });
+    const url = location.origin + '/rit/' + GR.data.rit.id;
+    if (D && D.gast) gastStat('deel'); else statEens('deel');
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], text: GR.data.rit.naam + ' ' + url }); return; } catch (er) { if (er && er.name === 'AbortError') return; }
+    }
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'mkc-groepsrit.jpg'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  } catch (er) { alert('Je foto-story maken lukte niet met deze foto. Probeer een andere.'); }
+  finally { if (lab) lab.firstChild.textContent = 'Kies je foto'; e.target.value = ''; }
+});
 // Plannen: iedereen met een (gratis) account.
 function grDagOpties() { const l = []; for (let i = 0; i < 14; i++) { const t = new Date(Date.now() + i * 864e5); const w = t.toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }); l.push([w, i === 0 ? 'Vandaag' : i === 1 ? 'Morgen' : t.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Europe/Amsterdam' })]); } return l; }
 function grZorg() { if (GR.maak) return; const vn = String((D && D.naam) || '').trim().split(' ')[0]; GR.maak = { door: vn, datum: new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }), tijd: '09:00', duur: 3, tempo: 'rustig', plaats: (SB.profiel && SB.profiel.plaats) || WK.plaats || null }; }
@@ -2723,7 +2970,8 @@ function pushHtml() {
     ${i.aan ? `<div class="push-rij"><span class="push-aan">&#10003; Staat aan</span><button type="button" class="opv-k" data-push="test" ${PUSH.bezig ? 'disabled' : ''}>Stuur nu een test</button><button type="button" class="sb-link" data-push="uit">Uitzetten</button></div>`
       : `<button type="button" class="knop" data-push="aan" ${PUSH.bezig ? 'disabled' : ''}>${PUSH.bezig ? 'Even toestemming vragen...' : 'Zet mijn ochtendbericht aan'}</button>`}
     ${PUSH.melding ? `<p class="klein">${esc(PUSH.melding)}</p>` : ''}`;
-  return `<div class="push"><b>Ochtendbericht</b><p class="klein" style="margin-top:2px">Elke rijdag een melding met het weer, je bandenspanning en wat je aantrekt.</p>${inhoud}</div>`;
+  const st = i.aan ? `staat aan &middot; ${esc(i.tijd)}` : 'uit';
+  return `<details class="klap" data-klap="ochtend" ${klapOpen('ochtend', false) ? 'open' : ''}><summary><b>Ochtendbericht</b><span>${st}</span></summary><div class="klap-in"><div class="push"><p class="klein" style="margin-top:0">Elke rijdag een melding met het weer, je bandenspanning en wat je aantrekt.</p>${inhoud}</div></div></details>`;
 }
 function b64naarBytes(s) { const p = '='.repeat((4 - s.length % 4) % 4); const r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...r].map((c) => c.charCodeAt(0))); }
 async function pushOpslaan(extra) {
@@ -2779,7 +3027,7 @@ async function laadOverzicht() {
     const r = await fetch(API + '?actie=overzicht&t=' + encodeURIComponent(t));
     const j = await r.json();
     if (!j.ok) { wisToken(); return toonLogin(j.fout, 'fout'); }
-    D = j; teken(); naarLidAnker(); pushLaad();
+    D = j; teken(); naarAnker(); pushLaad();
     if (D.beheer && BEKIJK === 'zelf' && SIM.schema && SIM.schema.includes('|')) simSchemaLaad(SIM.schema).then(teken);
     if (D.beheer && !D.schema) simSchemaLaad('opbouw-12-w|18').then(() => { if (BEKIJK === 'alles') teken(); });
     if (D.beheer && OPV.meldingen === null) opvLaad();

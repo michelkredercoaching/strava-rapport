@@ -41,7 +41,8 @@ import path from 'node:path';
 import { coreVoorEmail, emailVoorCoreToken } from './core.js';
 import { lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar, haalSchema, ledenOverzicht, lidZoek, geefToegang } from './lid.js';
 import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN } from '../lib/schema-app.js';
-import { haalMeldingen, leesMelding } from '../lib/app-melding.js';
+import { haalMeldingen, leesMelding, appMelding } from '../lib/app-melding.js';
+import { leesDoel, nieuwDoel, volgendeStap, doelContext } from '../lib/doelen.js';
 import { tel, overzicht as gebruikOverzicht, CLIENT_GEBEURTENISSEN, GAST_GEBEURTENISSEN } from '../lib/stat.js';
 import { COACH_KENNIS, COACH_REGELS, COACH_TOON } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
@@ -345,15 +346,58 @@ async function routeInteresse(req, res) {
   const body = await leesBody(req);
   const email = leesAppToken(String(body.t || ''));
   if (!email) return res.status(401).json({ ok: false });
-  const tag = INTERESSE[body.product]; if (!tag) return res.status(400).json({ ok: false });
-  await redis(['SADD', `app:interesse:${body.product}`, email]);
+  if (!INTERESSE[body.product]) return res.status(400).json({ ok: false });
+  await zetInteresse(email, body.product);
+  return res.status(200).json({ ok: true });
+}
+async function zetInteresse(email, product) {
+  const tag = INTERESSE[product];
+  await redis(['SADD', `app:interesse:${product}`, email]);
   if (MC_KEY && MC_LIST) {
     try {
       const dc = MC_KEY.split('-')[1], hash = crypto.createHash('md5').update(email).digest('hex');
       await fetch(`https://${dc}.api.mailchimp.com/3.0/lists/${MC_LIST}/members/${hash}/tags`, { method: 'POST', headers: { Authorization: 'apikey ' + MC_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ tags: [{ name: tag, status: 'active' }] }), signal: AbortSignal.timeout(8000) });
     } catch {}
   }
-  return res.status(200).json({ ok: true });
+}
+
+// ---- Doelen (11-10-2026), zie lib/doelen.js ----
+//   POST doel { t, doel, naam?, datum? }  -> bewaren
+//   GET  doelronde (Vercel Cron)           -> per persoon de melding die aan de beurt is
+async function haalDoel(email) { const r = await redis(['GET', `app:doel:${email}`]); return leesDoel(r.ok && r.result); }
+async function routeDoel(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email) return res.status(401).json({ ok: false });
+  const oud = await haalDoel(email);
+  const n = nieuwDoel(body, oud);
+  if (n.fout) return res.status(400).json({ ok: false, fout: n.fout });
+  await redis(['SET', `app:doel:${email}`, JSON.stringify(n.doel)]);
+  await redis(['SADD', 'app:doel:alle', email]);
+  await redis(['HINCRBY', 'app:doel:tel', n.doel.doel, 1]);
+  if (n.doel.doel === 'afvallen') await zetInteresse(email, 'afval');
+  return res.status(200).json({ ok: true, doel: n.doel });
+}
+async function routeDoelRonde(req, res) {
+  const cron = process.env.CRON_SECRET || '';
+  const auth = String(req.headers?.authorization || '');
+  const proef = !(cron && auth === `Bearer ${cron}`);
+  if (proef) { const ik = leesAppToken(String(req.query?.t || '')); if (!ik || !BEHEER.includes(ik)) return res.status(401).json({ ok: false }); }
+  const r = await redis(['SMEMBERS', 'app:doel:alle']);
+  const uit = [];
+  for (const email of (r.ok && r.result) || []) {
+    const d = await haalDoel(email); if (!d || d.klaar) continue;
+    const [lid, lidm, schemaDossier] = await Promise.all([mcLid(email), haalLid(email), haalSchema(email)]);
+    const info = { analyse: heeftTag(lid, 'power-profile-koper'), schema: !!(schemaDossier && schemaDossier.huidig), coaching: !!(lidm && lidm.coaching) };
+    const st = volgendeStap(d, info); if (!st) continue;
+    uit.push({ email, stap: st.id });
+    if (proef) continue;
+    await appMelding(email, { soort: 'doel', titel: st.titel, tekst: st.tekst, link: st.link });
+    d.gestuurd = [...(d.gestuurd || []), st.id]; if (st.klaar) d.klaar = true;
+    await redis(['SET', `app:doel:${email}`, JSON.stringify(d)]);
+  }
+  return res.status(200).json({ ok: true, proef, verstuurd: uit });
 }
 
 // ---- Review-moment (09-10-2026), zie lib/review.js ----
@@ -531,6 +575,8 @@ export default async function handler(req, res) {
     if (actie === 'interesse') return await routeInteresse(req, res);
     if (actie === 'groepsritmee') return await routeGroepsritMee(req, res);
     if (actie === 'ritpagina') return await routeRitPagina(req, res);
+    if (actie === 'doel') return await routeDoel(req, res);
+    if (actie === 'doelronde') return await routeDoelRonde(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
@@ -570,7 +616,7 @@ async function routeOverzicht(req, res) {
   meldActief(email);
   const [core, lid, lidmaatschap, kanLid, bandenProfiel, ritten, schemaDossier, meldingen, coachBerichten] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpen(), haalBandenProfiel(email), haalRitten(email), haalSchema(email), haalMeldingen(email), haalCoachBerichten(email)]);
   const reviewNu = await reviewOpen(email);
-  const [ia, ip] = await Promise.all([redis(['SISMEMBER', 'app:interesse:afval', email]), redis(['SISMEMBER', 'app:interesse:pacing', email])]);
+  const [ia, ip, doel] = await Promise.all([redis(['SISMEMBER', 'app:interesse:afval', email]), redis(['SISMEMBER', 'app:interesse:pacing', email]), haalDoel(email)]);
   // Ingelogd via de knop in de mail (zonder code) en nog geen contact? Dan
   // ook hier het gratis account aanmaken.
   if (!lid || lid.status === 'archived') await nieuwAccount(email);
@@ -585,7 +631,7 @@ async function routeOverzicht(req, res) {
     ...adviesBedragen(mf), deadline: mf.DEADLINE || '',
     tegoedLink: mf.PPTOKEN ? `https://michelkredercoaching.nl/trainingsschemas/?pp=${encodeURIComponent(mf.PPTOKEN)}` : ''
   } : null;
-  return res.status(200).json({ review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1) }, 
+  return res.status(200).json({ doel, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1) }, 
     ok: true,
     email,
     beheer: BEHEER.includes(email),
@@ -944,7 +990,7 @@ async function routeBandVraag(req, res) {
     'Schrijf platte tekst zonder opmaak: geen sterretjes, geen hekjes, geen vetgedrukt, geen opsomming met streepjes. Houd elke alinea kort, een of twee zinnen. Het weer, nat of droog en de ondergrond staan al in de context: ga daarvan uit en vraag er niet naar. Noem een aanpassing alleen als de vraag iets anders beschrijft dan de context (bijvoorbeeld kasseien of regen morgen).',
     'Gaat de vraag niet over banden, bandenspanning, materiaal of rijden in bepaald weer, zeg dan vriendelijk dat deze knop alleen over banden gaat.',
     'Beloof nooit dat Michel persoonlijk iets doet.'
-  ].join(' ') + await voorbeeldenTekst('bandvraag');
+  ].join(' ') + await voorbeeldenTekst('bandvraag', vraag);
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -988,9 +1034,10 @@ async function haalCoachBerichten(email) {
 }
 
 async function coachContext(email) {
-  const [core, lid, banden, schemaDossier, lidm] = await Promise.all([coreVoorEmail(email), mcLid(email), haalBandenProfiel(email), haalSchema(email), haalLid(email)]);
+  const [core, lid, banden, schemaDossier, lidm, doel] = await Promise.all([coreVoorEmail(email), mcLid(email), haalBandenProfiel(email), haalSchema(email), haalLid(email), haalDoel(email)]);
   const mf = (lid && lid.merge_fields) || {};
   const regels = [];
+  if (doelContext(doel)) regels.push(doelContext(doel));
   if (lidm && lidm.coaching) regels.push(`BELANGRIJK: deze renner zit in persoonlijke coaching bij Michel (${lidm.coaching === 'premium' ? 'Premium' : 'Flexibel'}). Michel maakt zijn trainingsplan zelf, persoonlijk in TrainingPeaks. Pas dat plan nooit aan en schuif geen trainingen: bij vragen over zijn plan, zijn trainingen of zijn opbouw zeg je vriendelijk dat hij dat even met Michel kortsluit, via TrainingPeaks of de mail, omdat Michel zijn plan zo heeft opgebouwd. Algemene vragen over voeding, herstel, materiaal, kleding, banden en techniek beantwoord je gewoon. Raad hem nooit een Strava-analyse, een trainingsschema of een pacingplan aan: dat regelt Michel binnen zijn coaching.`);
   const sb = schemaDossier && schemaDossier.huidig && schemaDossier.huidig.plan ? schemaBeeld(schemaDossier.huidig) : null;
   if (sb) regels.push(schemaContext(sb));
@@ -1044,7 +1091,7 @@ async function routeCoach(req, res) {
         headers: { 'x-api-key': CLAUDE_KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01', 'content-type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-opus-5-5', max_tokens: 3000, output_config: { effort: 'low' }, fallbacks: 'default',
-          system: `${COACH_KENNIS}\n\nOVER DEZE RENNER\n${context}\n\nREGELS\n${COACH_REGELS}${await voorbeeldenTekst('mkc-coach')}`,
+          system: `${COACH_KENNIS}\n\nOVER DEZE RENNER\n${context}\n\nREGELS\n${COACH_REGELS}${await voorbeeldenTekst('mkc-coach', tekst)}`,
           messages: [...eerder, { role: 'user', content: tekst }]
         }),
         signal: AbortSignal.timeout(40000)
@@ -1170,7 +1217,8 @@ async function routeBandenRitten(req, res) {
 // zodat de coach steeds meer als Michel klinkt.
 //   GET  antwoorden ?t=                   -> { antwoorden, correcties }   (alleen Michel)
 //   POST antwoorden { t, id, correctie }  -> correctie opslaan (leeg = wissen)
-// Redis: app:antwoorden (lijst, nieuwste eerst, max 200), app:correcties (JSON, max 40)
+// Redis: app:antwoorden (lijst, nieuwste eerst, max 200), app:correcties (JSON, max 150),
+//        app:nagekeken (set met id's die klaar zijn: goedgekeurd of gecorrigeerd)
 // ===========================================================================
 const MAX_VOORBEELDEN = 8;
 async function bewaarAntwoord({ email, bron, vraag, antwoord }) {
@@ -1186,9 +1234,17 @@ async function haalCorrecties() {
   const r = await redis(['GET', 'app:correcties']);
   try { const l = JSON.parse((r.ok && r.result) || '[]'); return Array.isArray(l) ? l : []; } catch { return []; }
 }
-// Tekstblok voor de systeemprompt: de laatste correcties als voorbeeld.
-async function voorbeeldenTekst(bron) {
-  const l = (await haalCorrecties()).filter((c) => !bron || c.bron === bron || bron === 'mkc-coach').slice(0, MAX_VOORBEELDEN);
+// Tekstblok voor de systeemprompt (11-10-2026): de correcties die het meest op
+// de nieuwe vraag lijken (gedeelde woorden), aangevuld met de nieuwste. Zo blijft
+// een oude correctie over kasseien bruikbaar, ook als er 40 nieuwere zijn.
+const STOPWOORDEN = new Set('de het een en van ik je jij mijn wat hoe is in op met voor te dat die als bij of maar ook om niet nog wel naar zijn kan moet wil heb ben er dan dit al was wordt zou zo'.split(' '));
+const woorden = (t) => new Set(String(t || '').toLowerCase().replace(/[^a-z0-9à-ÿ ]+/g, ' ').split(/\s+/).filter((w) => w.length > 2 && !STOPWOORDEN.has(w)));
+async function voorbeeldenTekst(bron, vraag) {
+  const alle = (await haalCorrecties()).filter((c) => !bron || c.bron === bron || bron === 'mkc-coach');
+  const vw = woorden(vraag);
+  const score = (c) => { let n = 0; for (const w of woorden(c.vraag)) if (vw.has(w)) n++; return n; };
+  const passend = vw.size ? alle.map((c, i) => ({ c, s: score(c), i })).filter((x) => x.s > 0).sort((a, b) => b.s - a.s || a.i - b.i).map((x) => x.c) : [];
+  const l = [...new Set([...passend.slice(0, 5), ...alle])].slice(0, MAX_VOORBEELDEN);
   if (!l.length) return '';
   return '\n\nVOORBEELDEN: ZO ZOU MICHEL HET ZELF ZEGGEN (volg deze inhoud en toon als een vraag erop lijkt)\n' +
     l.map((c) => `Vraag: ${c.vraag}\nMichel: ${c.correctie}`).join('\n\n');
@@ -1202,17 +1258,25 @@ async function routeAntwoorden(req, res) {
   const antwoorden = ((l.ok && l.result) || []).map((x) => { try { return JSON.parse(x); } catch { return null; } }).filter(Boolean);
   if (req.method === 'POST') {
     const id = String(body.id || '').slice(0, 20);
+    if (body.goed) { await redis(['SADD', 'app:nagekeken', id]); }
+    else {
     const tekst = String(body.correctie || '').trim().slice(0, 1200);
     const a = antwoorden.find((x) => x.id === id);
     correcties = correcties.filter((c) => c.id !== id);
     if (tekst && a) correcties.unshift({ id, bron: a.bron, vraag: a.vraag, origineel: a.antwoord, correctie: tekst, op: new Date().toISOString() });
-    correcties = correcties.slice(0, 40);
+    correcties = correcties.slice(0, 150);
     await redis(['SET', 'app:correcties', JSON.stringify(correcties)]);
+    if (a) await redis(['SADD', 'app:nagekeken', id]);
+    }
   }
   const perId = Object.fromEntries(correcties.map((c) => [c.id, c.correctie]));
   const nh = await redis(['HGETALL', 'app:nuttig']); const nut = {}; const na = (nh.ok && nh.result) || [];
   if (Array.isArray(na)) for (let x = 0; x < na.length; x += 2) nut[na[x]] = na[x + 1]; else Object.assign(nut, na);
-  return res.status(200).json({ ok: true, antwoorden: antwoorden.map((a) => ({ ...a, correctie: perId[a.id] || '', nuttig: nut[a.id] || '' })), aantalCorrecties: correcties.length });
+  // Alleen wat nog niet is nagekeken; "niet nuttig" bovenaan.
+  const nk = await redis(['SMEMBERS', 'app:nagekeken']); const klaar = new Set((nk.ok && nk.result) || []);
+  const open = antwoorden.filter((a) => !klaar.has(a.id)).map((a) => ({ ...a, correctie: perId[a.id] || '', nuttig: nut[a.id] || '' }));
+  open.sort((a, b) => (b.nuttig === 'nee') - (a.nuttig === 'nee'));
+  return res.status(200).json({ ok: true, antwoorden: open, aantalCorrecties: correcties.length, nagekeken: klaar.size });
 }
 
 // ===========================================================================

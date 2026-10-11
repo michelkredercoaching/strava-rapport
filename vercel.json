@@ -65,6 +65,10 @@
       "schedule": "0 7 * * *"
     },
     {
+      "path": "/api/app?actie=doelronde",
+      "schedule": "0 8 * * *"
+    },
+    {
       "path": "/api/app?actie=opruimen",
       "schedule": "30 3 * * 1"
     },
