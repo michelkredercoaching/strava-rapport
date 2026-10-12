@@ -1172,7 +1172,7 @@ function klap(naam, titel, samenvatting, html, standaard = false) {
 function stemKeuze() { try { const v = localStorage.getItem('coreStem'); return v === '0' ? 'uit' : v === 'man' ? 'man' : 'vrouw'; } catch (e) { return 'vrouw'; } }
 function stemAan() { return stemKeuze() !== 'uit'; }
 const STEM_MAN = /xander|frank|daan|koen|guus|ruben|willem|bram|maarten|\bmale\b|\bman\b|nl-nl-x-bmh|nl-nl-x-dma|nl-be-x-bec/i;
-const STEM_VROUW = /claire|fenna|lotte|saskia|colette|anna|female|vrouw|nl-nl-x-tfb|nl-nl-x-lfc|nl-nl-x-yfr/i;
+const STEM_VROUW = /claire|ellen|fenna|lotte|saskia|colette|anna|dena|female|vrouw|nl-nl-x-tfb|nl-nl-x-lfc|nl-nl-x-yfr|nl-be-x-bed/i;
 try { if ('speechSynthesis' in window) { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); } } catch (e) {}
 function kiesStem(type) {
   // Nederlands-Nederlands eerst, Vlaams (nl-BE) alleen als er niets anders is; verbeterde/premium versies voorop.
@@ -1180,7 +1180,7 @@ function kiesStem(type) {
   const nl = speechSynthesis.getVoices().filter((x) => /^nl/i.test(x.lang)).sort((a, b) => score(a) - score(b));
   const re = type === 'man' ? STEM_MAN : STEM_VROUW;
   const echt = nl.find((v) => re.test(v.name + ' ' + v.voiceURI));
-  return { stem: echt || nl.find((v) => /nl-NL/i.test(v.lang)) || nl[0] || null, echt: !!echt };
+  return { stem: echt || nl.find((v) => /nl-NL/i.test(v.lang)) || nl[0] || null, echt: !!echt, vlaams: !!echt && /nl[-_]BE/i.test(echt.lang) };
 }
 function zeg(t) {
   if (!stemAan() || !('speechSynthesis' in window) || !t) return;
@@ -1204,7 +1204,9 @@ function stemHint(el) {
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
   const pad = ios ? 'Instellingen › Toegankelijkheid › Gesproken materiaal › Stemmen › Nederlands' : 'Instellingen › Tekst-naar-spraak › Spraakengine van Google › Nederlands';
   const zoek = type === 'man' ? (ios ? 'Xander (verbeterd)' : 'een mannenstem') : (ios ? 'Claire (verbeterd)' : 'een vrouwenstem');
-  h.innerHTML = k.echt
+  h.innerHTML = k.echt && k.vlaams
+    ? `Je hoort nu: <b>${esc(naam)}</b> (Vlaams). Liever een Nederlandse stem? Zet hem erop via <b>${pad}</b> en kies <b>${zoek}</b>.`
+    : k.echt
     ? `Je hoort nu: <b>${esc(naam)}</b>`
     : `Op je telefoon staat nog geen Nederlandse ${type === 'man' ? 'mannen' : 'vrouwen'}stem${naam ? ' (nu: ' + esc(naam) + ')' : ''}. Zet hem erop via <b>${pad}</b> en kies <b>${zoek}</b>. Daarna klinkt hij hier vanzelf.`;
 }
