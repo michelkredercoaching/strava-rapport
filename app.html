@@ -227,6 +227,18 @@
   .mee ol.mee-lijn li, .mee ul.mee-extra li { display:block; padding:0; margin:0; }
   .mee ul.mee-extra li::before { display:none; content:none; }
   .mee ol.mee-lijn li::before { content:''; display:block; position:absolute; left:-20px; top:5px; width:10px; height:10px; border-radius:50%; background:var(--accent); }
+  .bewijs { margin:0 0 14px; }
+  .bw-kop { text-align:center; padding:6px 0 10px; }
+  .bw-ster { color:#F5B301; letter-spacing:2px; font-size:16px; }
+  .bw-kop b { display:block; font-size:16px; margin-top:2px; }
+  .bw-kop small { display:block; font-size:12.5px; color:var(--muted); margin-top:2px; }
+  .bw-uitleg { font-size:13px; color:var(--muted); margin:0 0 10px; text-align:center; }
+  .bw-kaart { position:relative; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:8px; }
+  .bw-kaart b { display:block; font-size:14px; }
+  .bw-kaart p { font-size:13px; color:rgba(245,243,239,.85); margin:4px 0 0; line-height:1.45; }
+  .bw-kaart .bw-citaat { font-size:14px; font-style:italic; color:var(--white); margin:0 0 6px; padding-right:64px; }
+  .bw-soort { position:absolute; top:10px; right:12px; font-size:10px; letter-spacing:.1em; text-transform:uppercase; font-weight:700; color:var(--accent); }
+  .vk-bewijs { display:block; text-align:center; font-size:11.5px; color:var(--muted); margin-top:4px; }
   .lidbalk { display:flex; align-items:center; gap:12px; width:100%; margin-top:16px; text-align:left; background:linear-gradient(160deg, rgba(255,107,26,.16), var(--surface) 60%); border:1px solid rgba(255,107,26,.55); border-radius:10px; padding:14px 16px; color:var(--white); font-family:inherit; cursor:pointer; }
   .lidbalk span { flex:1; min-width:0; }
   .lidbalk b { display:block; font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.03em; font-weight:400; line-height:1; }
@@ -1739,7 +1751,16 @@ const LID_VOORDELEN = [
 function lidVoordelenHtml() {
   return `<div class="lid-voordelen">${LID_VOORDELEN.map(([t, u]) => `<div><b>${t}</b><span>${u}</span></div>`).join('')}</div>`;
 }
-const LID_BEWIJS = '<div class="lid-bewijs">Van Michel Kreder: 9 jaar profwielrenner en coach. Meer dan 1000 wielrenners trainen met zijn schema&rsquo;s, gemiddeld beoordeeld met een 4,9.</div>';
+// Bewijs (12-10-2026): uit Michels schema's, coaching en Google-reviews. De app is
+// nieuw, de methode erachter niet. Alleen bevestigde cijfers en citaten met toestemming
+// (zie social-proof-bibliotheek.md), alleen voornamen. Google-stand 6-10-2026: 4,9 uit 48.
+const LID_BEWIJS = `<div class="bewijs"><div class="bw-kop"><span class="bw-ster">&#9733;&#9733;&#9733;&#9733;&#9733;</span><b>4,9 uit 48 Google-reviews</b><small>en meer dan 1000 wielrenners trainen met mijn schema&rsquo;s</small></div>
+  <p class="bw-uitleg">De app is nieuw, de methode erachter niet. Dit is wat renners ermee bereikten:</p>
+  <div class="bw-kaart"><span class="bw-soort">Schema</span><b>Bart, 50 jaar</b><p>Beste twintig minuten van 191 naar 221 watt in vier weken. Op twee derde van de uren die hij in het voorjaar maakte.</p></div>
+  <div class="bw-kaart"><span class="bw-soort">Coaching</span><b>Wilco, 30 jaar</b><p>Begon met een blessure. Zeven maanden later reed hij het hoogste uurvermogen van zijn leven: van 216 naar 279 watt.</p></div>
+  <div class="bw-kaart"><span class="bw-soort">Coaching</span><p class="bw-citaat">&ldquo;Mijn FTP is gestegen van 220 naar 290/300.&rdquo;</p><b>Marnix</b></div>
+  <div class="bw-kaart"><span class="bw-soort">Schema</span><p class="bw-citaat">&ldquo;Dankzij Michel&rsquo;s aanpak &lsquo;train slimmer, niet harder&rsquo; heb ik met hetzelfde aantal trainingsuren duidelijk meer vermogen ontwikkeld.&rdquo;</p><b>Bjorn</b></div>
+</div>`;
 const LID_REKENSOM = '<p class="klein lid-reken">Rekensom: doe je als lid een Strava-analyse, dan betaal je &euro;19 in plaats van &euro;29. Die &euro;10 is je eerste maand al voor de helft.</p>';
 let LV = { plan: null };
 function lidStap2Html() {
@@ -2210,7 +2231,7 @@ function verkoopMomentHtml(d) {
   const m = verkoopMoment(d); if (!m) return '';
   return `<div class="vk" data-vk="${m.k}"><button type="button" class="vk-x" data-vkweg="${m.k}" aria-label="Sluiten">&times;</button>
     <b>${m.t}</b>${m.ochtend ? lidOchtendHtml() : m.mee ? coreMeeHtml(d, true) : '<p>' + m.p + '</p>'}
-    <button type="button" class="knop" data-actie="naarlid">${m.knop}</button><span class="vk-prijs">&euro;${APP_PRIJS.maand} per maand, of &euro;${APP_PRIJS.jaar} per jaar</span></div>`;
+    <button type="button" class="knop" data-actie="naarlid">${m.knop}</button><span class="vk-prijs">&euro;${APP_PRIJS.maand} per maand, of &euro;${APP_PRIJS.jaar} per jaar</span><span class="vk-bewijs">&#9733; 4,9 uit 48 Google-reviews &middot; 1000+ renners trainen met mijn schema&rsquo;s</span></div>`;
 }
 document.addEventListener('click', (e) => { const k = e.target.closest('[data-vkweg]'); if (!k) return; try { localStorage.setItem('mkcVkWeg:' + k.dataset.vkweg, String(Date.now())); } catch (er) {} if (VIEW === 'home') teken(); });
 // Korte "Word lid"-balk op de startpagina; de voordelen, prijzen en factuurgegevens staan op de pagina MKC-Lid.
