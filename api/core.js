@@ -41,7 +41,8 @@ import {
   maakPlan, sessie, heeftRodeVlag, KLACHTEN, OEFENINGEN, TESTS, rompscore, balans,
   volgendeWeek, testNodig, meterNodig, verdiendeBadges, BADGES,
   WEEKTIPS, besteStart, FASES, WEKEN as WEEKTABEL, letters, nodigVoorWeek, frequentie, startniveau,
-  weekRij, blokVan, BLOK_WEKEN, BLOKTIPS, disbalansUit
+  weekRij, blokVan, BLOK_WEKEN, BLOKTIPS, disbalansUit, weekInBlok,
+  DISCIPLINES, disciplineVan, doelModus, MODUS_UITLEG, FASE_UITLEG, FIETSTIPS, extraSessie
 } from '../lib/core.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
 import { COACH_TOON } from '../lib/coach-kennis.js';
@@ -49,7 +50,7 @@ import { appMelding } from '../lib/app-melding.js';
 import { tel } from '../lib/stat.js';
 // Kringverwijzing met lid.js (die gebruikt zetLidmaatschap van hier). Mag, want
 // beide gebruiken elkaars functies pas binnen een aanvraag, niet bij het laden.
-import { lidOpen } from './lid.js';
+import { lidOpen, haalLid as haalLidmaatschap, haalSchema } from './lid.js';
 import { meld as meldActief } from '../lib/app-opruimen.js';
 import { reviewMoment } from '../lib/review.js';
 
@@ -313,7 +314,31 @@ async function metToken(req, res) {
 function planIntake(d) {
   const start = (d.tests || []).find((t) => t.moment === 0);
   const laatste = (d.tests || []).filter((t) => t.uitslag).slice(-1)[0];
-  return { ...(d.intake || {}), verlicht: !!d.verlicht, bijstel: d.bijstel || 0, startScore: start ? start.score : null, disbalans: laatste ? disbalansUit(laatste.uitslag) : null };
+  return { ...(d.intake || {}), verlicht: !!d.verlicht, bijstel: d.bijstel || 0, startScore: start ? start.score : null, disbalans: laatste ? disbalansUit(laatste.uitslag) : null,
+    discipline: soortVan(d), doelModus: modusVan(d), bevrorenWeek: d.bevroren || null };
+}
+// Periodisering (12-10-2026)
+function soortVan(d) { const x = d.intake && d.intake.discipline; return DISCIPLINES[x] ? x : (d.doel ? disciplineVan(d.doel.naam) : null); }
+function dagenTot(d) { const b = d.doel ? besteStart(d.doel.datum) : null; return b ? b.dagenTotDoel : null; }
+function modusVan(d) { return doelModus(dagenTot(d)); }
+// Varianten vastzetten vanaf 3 weken voor je doel; daarna weer los.
+function periodiseer(d) {
+  const m = modusVan(d), voor = d.bevroren || null;
+  if (m && m !== 'herstel' && !d.bevroren) d.bevroren = d.week;
+  if ((!m || m === 'herstel') && d.bevroren) d.bevroren = null;
+  return voor !== (d.bevroren || null);
+}
+// Na een afgerond niveau: zo opschuiven dat je zwaarste fase net voor je doel valt.
+function stemAfOpDoel(d) {
+  const W = (() => { const x = dagenTot(d); return x == null ? null : Math.floor(x / 7); })();
+  if (W == null || W > 12 || W < 1) return null;
+  const doelWib = Math.min(12, Math.max(1, 13 - W)), wib = weekInBlok(d.week), start = d.week - wib;
+  if (wib < doelWib) { const nieuw = start + Math.min(doelWib, wib + 2); if (nieuw > d.week) { d.week = nieuw; return 'inhalen'; } }
+  else if (wib - doelWib >= 4 && (magDoorlopen(d) || start + 12 + doelWib <= BLOK_WEKEN)) { d.week = start + 12 + doelWib; return 'nieuwblok'; }
+  return null;
+}
+function fmtSessie(s) {
+  return { ...s, warmingUp: s.warmingUp.map((id) => ({ id, ...OEFENINGEN[id] })), coolDown: { ...s.coolDown, ...OEFENINGEN[s.coolDown.id] } };
 }
 const nu = () => new Date().toISOString();
 
@@ -326,13 +351,14 @@ function klantBeeld(d) {
   const intake = planIntake(d);
   const geblokkeerd = d.status === 'wacht-op-fysio';
   const week = d.week;
-  const sessies = d.intake && !geblokkeerd
-    ? letters(d.intake).map((l) => {
-        const s = sessie(week, l, intake);
-        return { ...s, warmingUp: s.warmingUp.map((id) => ({ id, ...OEFENINGEN[id] })),
-                 coolDown: { ...s.coolDown, ...OEFENINGEN[s.coolDown.id] } };
-      })
-    : [];
+  const modus = intake.doelModus;
+  let sessies = d.intake && !geblokkeerd ? letters(d.intake).map((l) => fmtSessie(sessie(week, l, intake))) : [];
+  if (d.intake && !geblokkeerd) {
+    if (modus === 'rust') sessies = [];
+    else if (modus === 'opener') sessies = [fmtSessie(extraSessie('opener', intake))];
+    else if (modus === 'herstel') sessies = [fmtSessie(extraSessie('mobiliteit', intake))];
+    else if (modus === 'fris1') sessies = sessies.slice(0, 2);
+  }
   const gedaan = gedaanDezeWeek(d);
   const tests = (d.tests || []).map((t) => ({ moment: t.moment, score: t.score, uitslag: t.uitslag, balans: balans(t.uitslag) }));
   const vakjes = [];
@@ -379,6 +405,11 @@ function klantBeeld(d) {
     badges: BADGES.map((b) => ({ ...b, verdiend: verdiendeBadges(d.afgerond).some((v) => v.fase === b.fase) })),
     vakjes,
     weektip: (blokVan(week) > 1 && BLOKTIPS[weekRij(week).weekInBlok]) || WEEKTIPS[weekRij(week).weekInBlok], intakeTips: d.intake ? maakPlan(intake).tips || [] : [],
+    discipline: intake.discipline, disciplineNaam: intake.discipline ? DISCIPLINES[intake.discipline].naam : null, disciplines: Object.fromEntries(Object.entries(DISCIPLINES).map(([k, v]) => [k, v.naam])),
+    doelModus: modus || null, modusUitleg: modus ? MODUS_UITLEG[modus] : null,
+    faseUitleg: FASE_UITLEG[weekRij(week).fase], focus: sessies[0] ? sessies[0].focus || null : null,
+    fietstip: d.geenFietstips ? null : (FIETSTIPS[modus] || FIETSTIPS[weekRij(week).fase] || null),
+    klachten: (d.intake && d.intake.klachten) || [], mobiliteit: fmtSessie(extraSessie('mobiliteit', intake)),
     doel, reeks, herinner: d.herinner ? { dagen: d.herinner.dagen, tijd: d.herinner.tijd } : null,
     vervolgVraag: d.afgerond >= 9, doorgaan: !!d.doorgaan,
     berichten: (d.berichten || []).map((b) => ({ van: b.van, tekst: b.tekst, op: b.op, medisch: !!b.medisch })),
@@ -468,6 +499,8 @@ export default async function handler(req, res) {
       case 'intake':    return await routeIntake(req, res);
       case 'doel':      return await routeDoel(req, res);
       case 'herinnering': return await routeHerinnering(req, res);
+      case 'pijn':      return await routePijn(req, res);
+      case 'discipline': return await routeDiscipline(req, res);
       case 'herinnerdag': return await routeHerinnerDag(req, res);
       case 'afvink':    return await routeAfvink(req, res);
       case 'gevoel':    return await routeGevoel(req, res);
@@ -562,6 +595,45 @@ async function schrijfAppDoel(d) {
   await redis(['SET', `app:doel:${d.email}`, JSON.stringify({ doel: 'evenement', naam: d.doel.naam, datum: d.doel.datum, op: zelfde ? a.op : nu(), gestuurd: zelfde ? (a.gestuurd || []) : [] })]);
   await redis(['SADD', 'app:doel:alle', d.email]);
 }
+// Pijncheck (12-10-2026): vóór de sessie (bij klachten) of tijdens, met de knop
+// "Pijn?". 0-3 gewoon, 4-5 lichter, 6+ alleen mobiliteit en Michel krijgt een
+// seintje met de oefening. Drie keer op rij hoger = lichter en ook een seintje.
+async function routePijn(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const r = await metToken(req, res); if (!r) return;
+  const { d, body } = r;
+  const score = Math.round(Number(body.score));
+  if (!(score >= 0 && score <= 10)) return res.status(400).json({ ok: false, fout: 'kies een cijfer van 0 tot 10' });
+  const plek = KLACHTEN.includes(body.plek) ? body.plek : null;
+  const oefening = String(body.oefening || '').slice(0, 80) || null;
+  const waar = body.waar === 'tijdens' ? 'tijdens' : 'voor';
+  d.pijn = (d.pijn || []).concat({ score, plek, oefening, waar, niveau: d.week, op: nu() }).slice(-60);
+  const advies = score >= 6 ? 'mobiliteit' : score >= 4 ? 'licht' : 'normaal';
+  let seintje = false;
+  if (score >= 6 && (oefening || waar === 'tijdens' || body.melden)) {
+    seintje = true;
+    await meldMedisch({ email: d.email, naam: d.naam, bron: 'core-pijn', vraag: `Pijn ${score}/10${plek ? ' (' + plek + ')' : ''}${oefening ? ', bij ' + oefening : ''}${waar === 'tijdens' ? ', tijdens de sessie' : ', vóór de sessie'}.`, coreId: d.id,
+      extra: `Core-app niveau ${d.week}. Klachten bij de intake: ${((d.intake && d.intake.klachten) || []).join(', ') || 'geen'}.` });
+  }
+  const voor = d.pijn.filter((x) => x.waar === 'voor' && (!plek || x.plek === plek)).slice(-3);
+  if (voor.length === 3 && voor[0].score < voor[1].score && voor[1].score < voor[2].score && voor[2].score >= 4) {
+    d.verlicht = true;
+    if (!seintje) await meldMedisch({ email: d.email, naam: d.naam, bron: 'core-pijn', vraag: `Pijn loopt op: ${voor.map((x) => x.score).join(' > ')}${plek ? ' (' + plek + ')' : ''}.`, coreId: d.id, extra: `Core-app niveau ${d.week}. De app zet de sessies lichter.` });
+  }
+  await bewaarDossier(d);
+  const letter = letters(d.intake || {}).includes(body.letter) ? body.letter : null;
+  const licht = advies === 'licht' && letter ? fmtSessie(sessie(d.week, letter, { ...planIntake(d), verlicht: true })) : null;
+  return res.status(200).json({ ok: true, advies, licht, ...klantBeeld(d) });
+}
+async function routeDiscipline(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const r = await metToken(req, res); if (!r) return;
+  const { d, body } = r;
+  if (!d.intake) return res.status(400).json({ ok: false, fout: 'doe eerst je intake' });
+  d.intake.discipline = DISCIPLINES[body.discipline] ? body.discipline : null;
+  await bewaarDossier(d);
+  return res.status(200).json({ ok: true, ...klantBeeld(d) });
+}
 // D14 (12-10-2026): herinnering via de app op je vaste dagen.
 const HDAGEN = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
 async function routeHerinnering(req, res) {
@@ -606,7 +678,15 @@ async function routeHerinnerDag(req, res) {
 }
 async function routePlan(req, res) {
   const r = await metToken(req, res); if (!r) return;
-  if (await syncDoel(r.d)) await bewaarDossier(r.d);
+  let gewijzigd = await syncDoel(r.d);
+  if (periodiseer(r.d)) gewijzigd = true;
+  // Fietstips alleen voor wie geen schema of coaching heeft (besluit Michel).
+  try {
+    const [lidm, sch] = await Promise.all([haalLidmaatschap(r.d.email), haalSchema(r.d.email)]);
+    const geen = !!(r.d.bron === 'begeleiding' || (lidm && lidm.coaching) || (sch && sch.huidig));
+    if (geen !== !!r.d.geenFietstips) { r.d.geenFietstips = geen; gewijzigd = true; }
+  } catch {}
+  if (gewijzigd) await bewaarDossier(r.d);
   await tel(r.d.email, 'core-open');
   meldActief(r.d.email);
   redis(['EXPIRE', `core:email:${r.d.email}`, String(BEWAAR_S)]);
@@ -628,6 +708,7 @@ async function routeIntake(req, res) {
     leeftijd: ['onder40', '40-55', '55plus'].includes(body.leeftijd) ? body.leeftijd : null,
     zwaarsteDag: ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'].includes(body.zwaarsteDag) ? body.zwaarsteDag : null,
     kracht: ['nee', '1x', '2x'].includes(body.kracht) ? body.kracht : null,
+    discipline: DISCIPLINES[body.discipline] ? body.discipline : null,
     // Uitdrukkelijke toestemming voor gezondheidsgegevens (AVG art. 9), 09-10-2026.
     toestemming: body.toestemming === true ? { op: nu(), versie: 'privacy-2026-10-09' } : null,
     op: nu()
@@ -782,8 +863,12 @@ async function routeWeekklaar(req, res) {
     }
     else {
       d.week = stap.week;
+      const afst = isBetaald(d) ? stemAfOpDoel(d) : null;
       melding = !isBetaald(d) ? 'Je proefweek zit erop. Het volgende niveau staat voor je klaar.'
         : reactie === 'makkelijk' ? `Te makkelijk? Dan gaan we sneller: je springt naar niveau ${d.week}.` : `Niveau ${d.week} staat klaar.`;
+      if (afst === 'inhalen') melding += ` ${d.doel.naam} komt dichterbij: de app schuift je iets sneller door, zodat je op je sterkst bent op de dag zelf.`;
+      if (afst === 'nieuwblok') melding += ` Je ligt ruim voor op schema. Je begint aan een nieuw, zwaarder blok dat precies uitkomt op ${d.doel.naam}.`;
+      periodiseer(d);
       if (!isBetaald(d) && oudeWeek === 1) { d.proefKlaarOp = nu(); await mcTag(d.email, 'core-proef-klaar'); }
     }
   }

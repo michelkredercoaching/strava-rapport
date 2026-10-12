@@ -243,6 +243,20 @@
   .speler .cue { color:rgba(245,243,239,.78); max-width:460px; margin-top:6px; font-size:15px; }
   .speler .straks { color:var(--muted); font-size:13px; margin-top:8px; min-height:1.3em; }
   .testspeler.tikstop .midden { cursor:pointer; }
+  .modusbalk { margin-top:14px; padding:12px 14px; border-radius:8px; border:1px solid rgba(76,195,138,.45); background:rgba(76,195,138,.08); }
+  .modusbalk b { display:block; font-size:14.5px; color:#4CC38A; }
+  .modusbalk span { display:block; font-size:13.5px; color:rgba(245,243,239,.85); margin-top:4px; line-height:1.5; }
+  .focusregel { background:rgba(255,107,26,.07); border:1px solid rgba(255,107,26,.3); border-radius:8px; padding:10px 12px; margin:0 0 12px; }
+  .focusregel p { font-size:13.5px; margin:0; line-height:1.5; } .focusregel p + p { margin-top:6px; }
+  .focusregel b { color:var(--accent); }
+  .waarom2 { font-size:13px; color:rgba(245,243,239,.82); margin-top:4px; } .waarom2 b { color:var(--accent); font-weight:600; }
+  .pijnschaal { display:grid; grid-template-columns:repeat(11, 1fr); gap:4px; width:100%; max-width:440px; margin-top:16px; }
+  .pijnschaal button { padding:12px 0; border-radius:6px; border:1px solid var(--border); background:#111; color:var(--white); font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; }
+  .pijnschaal button.pm { border-color:rgba(255,190,80,.5); } .pijnschaal button.ph { border-color:rgba(255,120,90,.6); }
+  .pijnlabels { display:flex; justify-content:space-between; width:100%; max-width:440px; font-size:12px; color:var(--muted); margin-top:6px; }
+  .pijnkeuze { display:grid; gap:8px; width:100%; max-width:440px; margin-top:14px; }
+  .pijnkeuze button { padding:13px; border-radius:8px; border:1px solid var(--border); background:#111; color:var(--white); font-family:inherit; font-size:14.5px; cursor:pointer; text-align:left; }
+  .pijnlaag { z-index:60; }
   details.klap { background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-top:12px; }
   details.klap > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:14px 16px; font-size:15px; }
   details.klap > summary::-webkit-details-marker { display:none; }
@@ -386,8 +400,10 @@ function teken() {
     else {
       if (d.weekRond) h += weekklaarHtml(d);
       if (d.kracht == null && d.week > 1) h += krachtVraagHtml();
-      h += sessiesHtml(d);
+      h += rustDagHtml(d);
+      if (d.sessies.length) h += sessiesHtml(d);
       if (d.testNodig === 0 && !testEerst) h += testHtml(d, true);
+      h += fietstipHtml(d);
       h += klap('tips', 'Tip bij dit niveau', '', tipsHtml(d), d.week === 1);
     }
     const laatsteTest = d.tests[d.tests.length - 1];
@@ -400,6 +416,7 @@ function teken() {
   h += `<p class="klein muted" style="margin-top:30px">Voel je pijn tijdens een oefening (niet hetzelfde als vermoeidheid)? Stop die oefening en sla hem over. Laat het Michel weten via de vraagknop.</p>`;
   $('#app').innerHTML = h;
   if (d.intakeNodig) intakeStappen();
+  else setTimeout(() => { if (!document.querySelector('.speler')) faseIntro(d); }, 400);
   if (!d.intakeNodig && !d.geblokkeerd) coachBouw();
   if (location.hash === '#vandaag' && !d.intakeNodig) { setTimeout(() => { const s = document.querySelector('.sessie:not(.gedaan):not(.opslot)') || document.getElementById('test'); if (s) { s.scrollIntoView({ behavior: 'smooth', block: 'center' }); s.classList.add('nieuwopen'); } try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }, 300); }
   // Mini-animaties in de sessiekaarten laten lopen.
@@ -416,7 +433,7 @@ function kopHtml(d) {
   const naarApp = `<a class="naarapp" href="/app?ct=${encodeURIComponent(token)}"><span class="tg"><span>&#8249;</span>Terug</span><span class="av"><img src="/icoon-192.png" alt=""></span><span class="tx"><span class="nm" style="display:block">MKC-Core</span><span class="st">Core stability voor wielrenners</span></span></a>`;
   return `${naarApp}<div class="kop"><div class="eyebrow">Mijn Core${d.naam ? ' &middot; ' + esc(d.naam.split(' ')[0]) : ''}</div>
     <h1>${d.intakeNodig ? 'Welkom' + (d.naam ? ' ' + esc(d.naam.split(' ')[0]) : '') : d.klaar ? 'Niveau 12 bereikt' : 'Niveau ' + d.week}</h1>
-    <div class="sub">${sub}</div>${doel}${d.reeks >= 2 ? `<div class="pil reekspil"><b>${d.reeks} weken</b> op rij</div>` : ''}</div>`;
+    <div class="sub">${sub}</div>${doel}${d.reeks >= 2 ? `<div class="pil reekspil"><b>${d.reeks} weken</b> op rij</div>` : ''}${d.intakeNodig ? '' : modusHtml(d)}</div>`;
 }
 
 // ---- Datumveld (zie CSS .datum) ----
@@ -461,6 +478,8 @@ function intakeHtml() {
       <select name="dag"><option value="">Wisselt, geen vaste dag</option><option value="ma">Maandag</option><option value="di">Dinsdag</option><option value="wo">Woensdag</option><option value="do">Donderdag</option><option value="vr">Vrijdag</option><option value="za">Zaterdag</option><option value="zo">Zondag</option></select></div>
     <div class="vraag" data-stap="6"><div class="v">Doe je ook krachttraining in de sportschool?</div>
       ${optie('kracht', 'nee', 'Nee')}${optie('kracht', '1x', 'Ja, 1 keer per week')}${optie('kracht', '2x', 'Ja, 2 keer of vaker per week')}</div>
+    <div class="vraag" data-stap="7"><div class="v">Wat rijd je vooral?</div>
+      <select name="discipline"><option value="">Weet ik niet</option><option value="toer">Lange toertochten of granfondo's</option><option value="bergen">Bergen en lange klimmen</option><option value="kasseien">Kasseien en klassiekers</option><option value="gravel">Gravel</option><option value="crit">Criteriums en wedstrijden</option></select></div>
     <div class="vraag" data-stap="7"><div class="v">Train je naar iets toe? <span class="muted" style="font-weight:400">(mag je overslaan)</span></div>
       <div class="rij2"><input type="text" name="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60" value="${S.doel ? esc(S.doel.naam) : ''}">${datumVeld('name="doelDatum"', S.doel ? S.doel.datum : '')}</div>
       <p class="klein muted" style="margin-top:6px">Dit doel staat ook in je MKC-app, zodat je overal hetzelfde aftelt.</p></div>
@@ -567,7 +586,7 @@ function sessiesHtml(d) {
   const slot = d.testNodig === 0 && (d.gedaanDezeWeek.length > 0 || d.afgerond > 0);
   const eersteOpen = d.sessies.findIndex((s) => !d.gedaanDezeWeek.includes(s.letter));
   return `<div class="blok"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px"><h2 style="margin:0">Je sessies${d.herhaling ? ' <span class="muted klein" style="font-family:DM Sans">(herhaling, lichtere varianten)</span>' : ''}</h2>
-    <div class="freqkeuze" title="Hoe vaak per week">${[2, 3, 4].map((f) => `<button data-actie="freq" data-f="${f}" class="${d.frequentie === f ? 'aan' : ''}">${f}x</button>`).join('')}</div></div><div class="sessies">
+    <div class="freqkeuze" title="Hoe vaak per week">${[2, 3, 4].map((f) => `<button data-actie="freq" data-f="${f}" class="${d.frequentie === f ? 'aan' : ''}">${f}x</button>`).join('')}</div></div>${focusHtml(d)}<div class="sessies">
     ${d.sessies.map((s, i) => {
       const klaar = d.gedaanDezeWeek.includes(s.letter);
       const opslot = !klaar && eersteOpen >= 0 && i > eersteOpen;
@@ -582,7 +601,7 @@ function sessiesHtml(d) {
         ${spierHtml(s.oefeningen)}
         <div class="oefrij">${s.oefeningen.map((o) => `<div class="oefmini"><div data-anim="${o.id}"></div><span>${esc(o.naam)}${o.perKant ? (o.zwak ? ` (${o.zwak.toLowerCase()} eerst, +${o.extra} s)` : ' (L+R)') : ''}</span></div>`).join('')}</div>
         <button class="uitlegknop" data-actie="uitleg">Bekijk de oefeningen</button>
-        <div class="uitleglijst">${s.oefeningen.map((o) => `<div class="oef"><b>${esc(o.naam)}${o.perKant ? (o.zwak ? ` (begin ${o.zwak.toLowerCase()}, je zwakke kant: ${o.extra} s langer)` : ' (links en rechts)') : ''}</b><ol>${(o.stappen || []).map((z) => `<li>${esc(z)}</li>`).join('')}</ol>${o.waarom ? `<div class="waarom">Waarom: ${esc(o.waarom)}</div>` : ''}</div>`).join('')}</div>
+        <div class="uitleglijst">${s.oefeningen.map((o) => `<div class="oef"><b>${esc(o.naam)}${o.perKant ? (o.zwak ? ` (begin ${o.zwak.toLowerCase()}, je zwakke kant: ${o.extra} s langer)` : ' (links en rechts)') : ''}</b><ol>${(o.stappen || []).map((z) => `<li>${esc(z)}</li>`).join('')}</ol>${o.waarom ? `<div class="waarom">Op de fiets: ${esc(o.waarom)}</div>` : ''}${o.waaromDoel ? `<div class="waarom2"><b>Voor je ${esc(soortKort(d))}:</b> ${esc(o.waaromDoel)}</div>` : ''}${o.waaromKlacht ? `<div class="waarom2"><b>Voor je klacht:</b> ${esc(o.waaromKlacht)}</div>` : ''}</div>`).join('')}</div>
         <div class="onder">${knop}</div>
       </div>`;
     }).join('')}</div></div>`;
@@ -781,7 +800,8 @@ function doelHtml(d) {
     ${g ? `<p><b>${esc(g.naam)}</b> &middot; ${new Date(g.datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}</p>${aftel}` : '<p class="muted klein" style="margin-bottom:12px">Train je naar een rit of wedstrijd toe? Dan tel ik voor je af.</p>'}
     <div class="rij2"><input type="text" id="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60" value="${g ? esc(g.naam) : ''}">${datumVeld('id="doelDatum"', g ? g.datum : '')}</div>
     <div style="display:flex;gap:8px;margin-top:10px"><button class="knop" data-actie="doel">${g ? 'Wijzig doel' : 'Zet doel'}</button>${g ? '<button class="knop leeg" data-actie="doelwis">Wis</button>' : ''}</div>
-    <p class="klein muted" style="margin-top:10px">Dit is hetzelfde doel als in je MKC-app. Pas je het hier aan, dan verandert het daar ook.</p>
+    <p class="klein muted" style="margin-top:10px">Dit is hetzelfde doel als in je MKC-app. Pas je het hier aan, dan verandert het daar ook. Met een doel bouwt de app je programma op naar die dag, met frisheid in de laatste twee weken.</p>
+    ${soortKiesHtml(d)}
     <div class="fout" id="doelfout"></div></div></div>`;
 }
 
@@ -831,7 +851,7 @@ document.addEventListener('click', async (e) => {
     k.disabled = true; k.textContent = 'Plan maken...';
     const freq = $('input[name=freq]:checked')?.value;
     if (!freq) { k.disabled = false; k.textContent = 'Maak mijn plan'; return (fout.textContent = 'Kies bij vraag 5 hoe vaak per week.'); }
-    const j = await post('intake', { klachten, rugErnst: rug, rodeVlag: vlag === 'ja', ervaring: erv, leeftijd, frequentie: Number(freq), zwaarsteDag: $('select[name=dag]').value, kracht: $('input[name=kracht]:checked')?.value || 'nee', toestemming: true,
+    const j = await post('intake', { klachten, rugErnst: rug, rodeVlag: vlag === 'ja', ervaring: erv, leeftijd, frequentie: Number(freq), zwaarsteDag: $('select[name=dag]').value, discipline: $('select[name=discipline]') ? $('select[name=discipline]').value : '', kracht: $('input[name=kracht]:checked')?.value || 'nee', toestemming: true,
       doelNaam: $('input[name=doelNaam]').value.trim(), doelDatum: $('input[name=doelDatum]').value });
     if (!j.ok) { k.disabled = false; k.textContent = 'Maak mijn plan'; fout.textContent = j.fout || 'Mislukt.'; }
     else window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -877,7 +897,7 @@ document.addEventListener('click', async (e) => {
     k.textContent = open ? 'Verberg de uitleg' : 'Bekijk de oefeningen';
   }
   if (actie === 'start') zegWakker();
-  if (actie === 'start') startSpeler(S.sessies.find((s) => s.letter === k.dataset.letter));
+  if (actie === 'start') startMetCheck(S.sessies.find((s) => s.letter === k.dataset.letter));
   if (actie === 'doel' || actie === 'doelwis') {
     const j = actie === 'doelwis' ? await post('doel', { wis: true }) : await post('doel', { naam: $('#doelNaam').value.trim(), datum: $('#doelDatum').value });
     if (!j.ok) $('#doelfout').textContent = j.fout || 'Mislukt.'; else melding(actie === 'doelwis' ? 'Doel gewist.' : 'Doel staat erin.');
@@ -1153,6 +1173,132 @@ document.addEventListener('click', async (e) => {
   if (j.ok) melding('Top, je krijgt op die dagen een herinnering met je sessie.', 3800); else $('#agendafout').textContent = j.fout || 'Mislukt.';
 });
 
+
+// ===========================================================================
+// PERIODISERING IN BEELD (12-10-2026): fase-uitleg, frisheid, fietstip,
+// soort rijden, en de pijncheck (vóór en tijdens de sessie).
+// ===========================================================================
+const PLEKNAAM = { onderrug: 'rug', nek: 'nek', knie: 'knie', heup: 'heup' };
+function soortKort(d) { return { toer: 'lange tocht', bergen: 'bergtocht', kasseien: 'kasseien', gravel: 'gravelrit', crit: 'wedstrijd' }[d.discipline] || 'tocht'; }
+function modusHtml(d) {
+  if (!d.doelModus || !d.modusUitleg) return '';
+  return `<div class="modusbalk modus-${d.doelModus}"><b>${{ geennieuw: 'Nog 3 weken', fris2: 'Frisheid', fris1: 'De laatste week', rust: 'Rustdagen', opener: 'Vandaag is het zover', herstel: 'Herstel' }[d.doelModus]}${d.doel ? ' &middot; ' + esc(d.doel.naam) : ''}</b><span>${esc(d.modusUitleg)}</span></div>`;
+}
+function focusHtml(d) {
+  const s = d.sessies && d.sessies[0];
+  const regels = [];
+  if (d.focus) regels.push(`<b>Focus:</b> ${esc(d.focus)}${d.doel && d.doel.dagenTotDoel > 0 ? ', voor ' + esc(d.doel.naam) : ''}.`);
+  if (s && s.rustweek) regels.push('<b>Rustweek:</b> je sessies zijn 25% korter. Zo legt je lijf de winst van de afgelopen weken vast. Het perfecte moment voor je romptest.');
+  if (d.doelModus === 'fris1') regels.push('Doe er deze week hooguit 2. Minder is nu meer.');
+  return regels.length ? `<div class="focusregel">${regels.map((r) => `<p>${r}</p>`).join('')}</div>` : '';
+}
+function rustDagHtml(d) {
+  if (d.doelModus !== 'rust') return '';
+  return `<div class="blok kaart accent"><h2>Vandaag geen core</h2><p class="muted klein">${esc(d.modusUitleg)}</p></div>`;
+}
+function fietstipHtml(d) {
+  if (!d.fietstip) return '';
+  return klap('fiets', 'Tip voor op de fiets', '', `<div class="tip">${esc(d.fietstip)}</div>`, true);
+}
+function soortKiesHtml(d) {
+  const opties = Object.entries(d.disciplines || {}).map(([k, n]) => `<option value="${k}" ${d.discipline === k ? 'selected' : ''}>${esc(n)}</option>`).join('');
+  return `<div style="margin-top:14px"><div class="klein muted" style="margin-bottom:6px">Wat rijd je? Daar stem ik de nadruk van je oefeningen op af.</div>
+    <select id="soortKies"><option value="">Weet ik niet</option>${opties}</select></div>`;
+}
+document.addEventListener('change', async (e) => {
+  if (e.target.id !== 'soortKies') return;
+  const j = await post('discipline', { discipline: e.target.value });
+  if (j.ok) melding(j.discipline ? 'Je oefeningen zijn afgestemd op ' + j.disciplineNaam.toLowerCase() + '.' : 'Opgeslagen.');
+});
+
+// Nieuwe fase: één keer laten zien wat je gaat doen en waarom.
+function faseIntro(d) {
+  if (d.intakeNodig || d.geblokkeerd || d.opSlot || !d.faseUitleg || d.doelModus) return;
+  const sleutel = d.blok + '-' + d.fase;
+  try { if (localStorage.getItem('coreFaseGezien') === sleutel) return; localStorage.setItem('coreFaseGezien', sleutel); } catch (e) { return; }
+  const o = document.createElement('div'); o.className = 'speler'; o.style.background = 'rgba(5,5,5,.96)';
+  o.innerHTML = `<div class="midden"><div class="soort">${d.week === 1 ? 'Zo begint je programma' : 'Nieuwe fase'}</div><div class="naam" style="font-size:52px;color:#FF6B1A">${esc(d.faseUitleg.titel)}</div>
+    <p class="cue" style="margin:10px 0 8px">${esc(d.faseUitleg.tekst)}</p>
+    ${d.focus ? `<p class="cue" style="margin:0 0 22px"><b>Voor jou:</b> ${esc(d.focus)}${d.doel && d.doel.dagenTotDoel > 0 ? ', richting ' + esc(d.doel.naam) : ''}.</p>` : '<div style="height:14px"></div>'}
+    <button class="knop">Aan de slag</button></div>`;
+  o.querySelector('button').onclick = () => o.remove();
+  document.body.appendChild(o);
+}
+
+// ---- Pijncheck vóór de sessie (alleen bij klachten uit de intake) ----
+function pijnPlek(d) { return (d.klachten || []).find((k) => PLEKNAAM[k]) || null; }
+function schaalKnoppen(attr) { return `<div class="pijnschaal">${[...Array(11).keys()].map((i) => `<button data-${attr}="${i}" class="p${i >= 6 ? 'h' : i >= 4 ? 'm' : 'l'}">${i}</button>`).join('')}</div><div class="pijnlabels"><span>geen pijn</span><span>heel veel</span></div>`; }
+function pijnOverlay(html) {
+  const o = document.createElement('div'); o.className = 'speler pijnlaag';
+  o.innerHTML = `<div class="balk"><div class="t">Even checken</div><button class="sluit" data-pl="weg">Sluiten</button></div><div class="midden">${html}</div>`;
+  document.body.appendChild(o); return o;
+}
+function startMetCheck(sessie) {
+  const plek = pijnPlek(S);
+  if (!plek || sessie.extra) return startSpeler(sessie);
+  const o = pijnOverlay(`<div class="soort">Voor je begint</div><div class="naam">Hoe voelt je ${PLEKNAAM[plek]} vandaag?</div><p class="cue">0 is nergens last van, 10 is heel veel pijn. Spierpijn telt niet mee.</p>${schaalKnoppen('pv')}`);
+  o.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-pl="weg"]')) return o.remove();
+    const k = e.target.closest('[data-pv]'); if (!k) return;
+    const score = Number(k.dataset.pv);
+    o.querySelectorAll('[data-pv]').forEach((b) => (b.disabled = true));
+    const j = await post('pijn', { score, plek, letter: sessie.letter, waar: 'voor' });
+    if (!j.ok) { o.remove(); return startSpeler(sessie); }
+    if (j.advies === 'normaal') { o.remove(); return startSpeler(S.sessies.find((x) => x.letter === sessie.letter) || sessie); }
+    if (j.advies === 'licht') {
+      $('.midden', o).innerHTML = `<div class="soort">Score ${score}</div><div class="naam">We doen het vandaag lichter</div><p class="cue">Makkelijkere varianten en langer rust. Zo train je wel, maar bouw je niet door op pijn. Voel je het tijdens een oefening, tik dan op <b>Pijn?</b> bovenin.</p><button class="knop" data-pl="licht" style="margin-top:18px">Start de lichtere sessie</button>`;
+      o.addEventListener('click', (ev) => { if (ev.target.closest('[data-pl="licht"]')) { o.remove(); startSpeler(j.licht || sessie); } });
+      return;
+    }
+    // 6 of hoger: bij welke oefening? Daarna alleen mobiliteit, en Michel krijgt een seintje.
+    const namen = [...new Set((S.sessies || []).flatMap((x) => x.oefeningen.map((y) => y.naam)))];
+    $('.midden', o).innerHTML = `<div class="soort">Score ${score}</div><div class="naam">Bij welke oefening voel je het het meest?</div><p class="cue">Dan weet Michel precies waar het zit.</p>
+      <div class="pijnkeuze">${namen.map((n) => `<button data-po="${esc(n)}">${esc(n)}</button>`).join('')}<button data-po="">Niet bij een oefening, gewoon in het dagelijks leven</button></div>`;
+    o.addEventListener('click', async (ev) => {
+      const b = ev.target.closest('[data-po]'); if (!b) return;
+      o.querySelectorAll('[data-po]').forEach((x) => (x.disabled = true));
+      await post('pijn', { score, plek, oefening: b.dataset.po || 'niet bij een oefening', waar: 'voor', melden: true });
+      $('.midden', o).innerHTML = `<div class="soort">Vandaag rustig aan</div><div class="naam">Alleen mobiliteit</div><p class="cue">Met een score van ${score} train je vandaag niet door. Een korte mobiliteitssessie helpt wel. Michel krijgt een seintje en kijkt met je mee. Zakt het niet binnen een paar dagen, laat het dan checken bij je huisarts of fysiotherapeut.</p><button class="knop" data-pl="mob" style="margin-top:18px">Start mobiliteit (${S.mobiliteit ? S.mobiliteit.minuten : 5} min)</button>`;
+      o.addEventListener('click', (x) => { if (x.target.closest('[data-pl="mob"]')) { o.remove(); startSpeler(S.mobiliteit); } });
+    });
+  });
+}
+
+// ---- Pijn tijdens de sessie: de knop "Pijn?" in de speler ----
+function pijnTijdens() {
+  const sp = speler; if (!sp) return;
+  const st = sp.stappen[sp.i];
+  const oef = ['werk', 'wissel', 'rust'].includes(st.soort) ? (st.soort === 'rust' ? sp.stappen[sp.i - 1]?.naam : st.naam) : st.naam;
+  sp.pauze = true;
+  const o = pijnOverlay(`<div class="soort">Pijn bij ${esc(oef || 'deze oefening')}</div><div class="naam">Hoeveel pijn voel je?</div><p class="cue">Pijn is iets anders dan vermoeidheid of branden in je spieren.</p>${schaalKnoppen('pt')}`);
+  o.style.zIndex = 60;
+  const verder = () => { o.remove(); sp.pauze = false; sp.laatsteTik = Date.now(); const p = $('[data-sp=pauze]', sp.el); if (p) p.textContent = 'Pauze'; };
+  const overslaan = () => {
+    // Door naar de eerste stap met een andere oefening.
+    let i = sp.i + 1; while (i < sp.stappen.length && (sp.stappen[i].naam === oef || sp.stappen[i].id === st.id)) i++;
+    verder(); naarStap(i);
+  };
+  o.addEventListener('click', async (e) => {
+    if (e.target.closest('[data-pl="weg"]')) return verder();
+    const k = e.target.closest('[data-pt]'); if (!k) return;
+    const score = Number(k.dataset.pt);
+    o.querySelectorAll('[data-pt]').forEach((b) => (b.disabled = true));
+    post('pijn', { score, plek: pijnPlek(S), oefening: oef, waar: 'tijdens' });
+    if (score < 4) {
+      $('.midden', o).innerHTML = `<div class="naam">Maak de beweging kleiner</div><p class="cue">Bij weinig pijn mag je door, maar maak de beweging kleiner of houd korter vast. Wordt het erger, stop dan.</p><button class="knop" data-pl="door" style="margin-top:16px">Ga verder</button>`;
+    } else if (score < 6) {
+      $('.midden', o).innerHTML = `<div class="naam">Deze slaan we over</div><p class="cue">Je gaat door met de volgende oefening. Komt het bij een andere oefening terug, tik dan weer op Pijn?.</p><button class="knop" data-pl="over" style="margin-top:16px">Volgende oefening</button>`;
+    } else {
+      $('.midden', o).innerHTML = `<div class="naam">Stop met deze oefening</div><p class="cue">Michel krijgt een seintje dat je pijn had bij ${esc(oef)}. Ga alleen verder als de rest goed voelt, of stop voor vandaag.</p><div class="pijnkeuze" style="margin-top:12px"><button data-pl="over">Verder met de rest</button><button data-pl="stop">Stop voor vandaag</button></div>`;
+    }
+    o.addEventListener('click', (ev) => {
+      if (ev.target.closest('[data-pl="door"]')) verder();
+      if (ev.target.closest('[data-pl="over"]')) overslaan();
+      if (ev.target.closest('[data-pl="stop"]')) { o.remove(); sluitSpeler(); }
+    });
+  });
+}
+
 function toonBadge(b) {
   const o = document.createElement('div'); o.className = 'speler'; o.style.background = 'rgba(5,5,5,.96)';
   o.innerHTML = `<div class="midden"><div class="soort">Fase ${b.fase} rond</div><div class="naam" style="font-size:56px;color:#FF6B1A">${esc(b.naam)}</div>
@@ -1187,7 +1333,7 @@ function bouwStappen(s) {
   }
   for (let r = 1; r <= s.rondes; r++) {
     s.oefeningen.forEach((o, i) => {
-      const extra = { id: o.id, naam: o.naam, cue: o.cue, ronde: r, stappen: o.stappen, waarom: o.waarom };
+      const extra = { id: o.id, naam: o.naam, cue: o.cue, ronde: r, stappen: o.stappen, waarom: o.waarom, waaromDoel: o.waaromDoel, waaromKlacht: o.waaromKlacht };
       if (o.perKant) {
         // Disbalans: de zwakke kant gaat eerst en werkt een paar seconden langer.
         const eerst = o.zwak || 'Links', dan = eerst === 'Links' ? 'Rechts' : 'Links';
@@ -1198,7 +1344,7 @@ function bouwStappen(s) {
       const laatste = r === s.rondes && i === s.oefeningen.length - 1;
       if (!laatste) {
         const volgende = s.oefeningen[(i + 1) % s.oefeningen.length];
-        st.push({ soort: 'rust', id: volgende.id, naam: 'Rust', cue: '', sec: s.rust, stappen: volgende.stappen, waarom: volgende.waarom, straks: volgende.naam + (i === s.oefeningen.length - 1 ? ` (ronde ${r + 1})` : '') });
+        st.push({ soort: 'rust', id: volgende.id, naam: 'Rust', cue: '', sec: s.rust, stappen: volgende.stappen, waarom: volgende.waarom, waaromDoel: volgende.waaromDoel, waaromKlacht: volgende.waaromKlacht, straks: volgende.naam + (i === s.oefeningen.length - 1 ? ` (ronde ${r + 1})` : '') });
       }
     });
   }
@@ -1219,7 +1365,7 @@ async function startSpeler(sessie) {
   const stappen = bouwStappen(sessie);
   const totaal = stappen.reduce((n, s) => n + s.sec, 0);
   const el = document.createElement('div'); el.className = 'speler';
-  el.innerHTML = `<div class="balk"><div class="t">Sessie ${NR[sessie.letter]} &middot; ${esc(sessie.naam)}</div><button class="stemknop" data-sp="stem">${stemAan() ? 'Stem aan' : 'Stem uit'}</button><button class="sluit" data-sp="stop">Stoppen</button></div>
+  el.innerHTML = `<div class="balk"><div class="t">Sessie ${NR[sessie.letter]} &middot; ${esc(sessie.naam)}</div><button class="stemknop" data-sp="pijn" style="margin-left:auto;margin-right:6px">Pijn?</button><button class="stemknop" data-sp="stem" style="margin-left:0">${stemAan() ? 'Stem aan' : 'Stem uit'}</button><button class="sluit" data-sp="stop">Stoppen</button></div>
     <div class="voortgang"><i></i></div>
     <div class="midden"><div class="soort"></div><div class="naam"></div><div class="kant"></div><div class="beeld"></div><div class="spieren"></div><div class="klok"></div><div class="cue"></div><div class="straks"></div><div class="uitleg"></div></div>
     <div class="bediening"><button data-sp="terug" aria-label="Vorige">&#9664;&#9664;</button><button class="hoofd" data-sp="pauze">Pauze</button><button data-sp="verder" aria-label="Volgende">&#9654;&#9654;</button></div>`;
@@ -1254,7 +1400,7 @@ function naarStap(i) {
   const eerste = st.ronde === 1 || ['warm', 'cool'].includes(st.soort);
   if (st.soort === 'rust' && lijst) {
     uitleg.className = 'uitleg';
-    uitleg.innerHTML = '<div class="kop">Zo doe je hem</div><ol>' + lijst + '</ol>' + (st.waarom ? '<div class="waarom">Waarom: ' + esc(st.waarom) + '</div>' : '');
+    uitleg.innerHTML = '<div class="kop">Zo doe je hem</div><ol>' + lijst + '</ol>' + (st.waarom ? '<div class="waarom">Op de fiets: ' + esc(st.waarom) + '</div>' : '') + (st.waaromDoel ? '<div class="waarom2"><b>Voor je ' + esc(soortKort(S)) + ':</b> ' + esc(st.waaromDoel) + '</div>' : '') + (st.waaromKlacht ? '<div class="waarom2"><b>Voor je klacht:</b> ' + esc(st.waaromKlacht) + '</div>' : '');
   } else if ((st.soort === 'werk' || st.soort === 'warm' || st.soort === 'cool') && eerste && lijst) {
     uitleg.className = 'uitleg klein';
     uitleg.innerHTML = '<ol>' + lijst + '</ol>';
@@ -1297,6 +1443,7 @@ function spelerKlik(e) {
   const k = e.target.closest('[data-sp]'); if (!k || !speler) return;
   const sp = speler, st = sp.stappen[sp.i];
   if (k.dataset.sp === 'stem') { try { localStorage.setItem('coreStem', stemAan() ? '0' : '1'); } catch (er) {} k.textContent = stemAan() ? 'Stem aan' : 'Stem uit'; if (!stemAan()) { try { speechSynthesis.cancel(); } catch (er) {} } return; }
+  if (k.dataset.sp === 'pijn') return pijnTijdens();
   if (k.dataset.sp === 'pauze') {
     if (st.soort === 'finisher') { sp.finisherSec = Math.floor((Date.now() - sp.finisherStart) / 1000); piep(660, .2); return naarStap(sp.i + 1); }
     sp.pauze = !sp.pauze; k.textContent = sp.pauze ? 'Verder' : 'Pauze';
@@ -1324,13 +1471,25 @@ async function klaarSpeler() {
     ${finisher ? `<p class="cue">Je finisher: <b>${finisher} seconden</b> plank.</p>` : ''}
     <p class="cue" style="margin-top:8px">Sessie afvinken...</p>`;
   $('.bediening', sp.el).innerHTML = '';
+  if (sp.sessie.extra) {
+    $('.midden .cue:last-child', sp.el).innerHTML = sp.sessie.extra === 'opener' ? 'Je romp staat aan. Heel veel plezier vandaag, en geniet ervan!' : 'Rustig bewegen helpt je herstel. Tot de volgende keer.';
+    $('.bediening', sp.el).innerHTML = '<button class="hoofd" data-sp="klaar">Terug naar mijn pagina</button>';
+    sp.el.addEventListener('click', (e) => { if (e.target.closest('[data-sp="klaar"]')) sluitSpeler(); });
+    return;
+  }
   const j = await post('afvink', { letter: sp.sessie.letter, finisher });
+  if (j.ok) {
+    const t = S.tests || [], winst = t.length > 1 ? t[t.length - 1].score - t[0].score : null;
+    const extraRegel = [S.doel && S.doel.dagenTotDoel > 0 ? `Nog ${S.doel.dagenTotDoel >= 14 ? Math.floor(S.doel.dagenTotDoel / 7) + ' weken' : S.doel.dagenTotDoel + ' dagen'} tot ${esc(S.doel.naam)}.` : '', winst > 0 ? `Je Rompscore is ${winst} punten hoger dan bij je start.` : ''].filter(Boolean).join(' ');
+    sp.extraRegel = extraRegel;
+  }
   // Welke sessie gaat er nu open? De eerste die deze week nog niet gedaan is.
   const volgende = j.ok && S.sessies ? S.sessies.find((s) => !S.gedaanDezeWeek.includes(s.letter)) : null;
   $('.midden .cue:last-child', sp.el).innerHTML = j.ok
     ? (volgende ? `<span style="color:#FF6B1A;font-weight:700">Sessie ${NR[volgende.letter]} is ontgrendeld.</span><br>` : '') + esc(S.weekRond ? 'Afgevinkt. Je kunt dit niveau nu afronden.' : `Afgevinkt. Nog ${S.nodigVoorWeek - S.gedaanDezeWeek.length} ${S.nodigVoorWeek - S.gedaanDezeWeek.length === 1 ? 'sessie' : 'sessies'} tot je dit niveau kunt afronden.`)
     : 'Afvinken lukte niet. Probeer het straks opnieuw vanaf je pagina.';
   if (volgende) { nieuwOpen = volgende.letter; setTimeout(() => piep(1320, .18), 500); }
+  if (j.ok && sp.extraRegel) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<p class="cue" style="margin-top:10px;color:#4CC38A">${sp.extraRegel}</p>`);
   if (j.ok) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<p class="cue" style="margin-top:18px">Hoe voelde deze sessie?</p><div class="gevoel3"><button data-gevoel="licht">Te licht</button><button data-gevoel="goed">Goed</button><button data-gevoel="zwaar">Te zwaar</button></div>`);
   $('.bediening', sp.el).innerHTML = '<button class="hoofd" data-sp="klaar">Terug naar mijn pagina</button>';
   sp.el.addEventListener('click', async (e) => {

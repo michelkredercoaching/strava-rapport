@@ -2195,7 +2195,7 @@ function opvolgHtml() {
   const zicht = (l || []).filter((m) => OPV.alles || m.status !== 'afgehandeld');
   const datum = (op) => new Date(op).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const rij = (m) => `<div class="opv-rij ${m.status}">
-      <div class="opv-top"><b>${esc(m.naam || m.email)}</b><span>${datum(m.op)} &middot; ${m.bron === 'core-coach' ? 'Core-coach' : 'MKC-coach'}</span></div>
+      <div class="opv-top"><b>${esc(m.naam || m.email)}</b><span>${datum(m.op)} &middot; ${m.bron === 'core-pijn' ? 'Pijn in Core' : m.bron === 'core-coach' ? 'Core-coach' : 'MKC-coach'}</span></div>
       <div class="opv-mail">${esc(m.email)}</div>
       <div class="opv-vraag">${esc(m.vraag)}</div>
       ${m.extra ? `<div class="opv-extra">${esc(m.extra)}</div>` : ''}
