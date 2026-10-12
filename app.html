@@ -243,6 +243,46 @@
   .bw-kaart .bw-citaat { font-size:14px; font-style:italic; color:var(--white); margin:0 0 6px; padding-right:64px; }
   .bw-soort { position:absolute; top:10px; right:12px; font-size:10px; letter-spacing:.1em; text-transform:uppercase; font-weight:700; color:var(--accent); }
   .vk-bewijs { display:block; text-align:center; font-size:11.5px; color:var(--muted); margin-top:4px; }
+  body.onb-open { overflow:hidden; }
+  body.onb-open .cc-fab, body.onb-open .meting { display:none !important; }
+  .onb { position:fixed; inset:0; z-index:200; background:var(--black); display:flex; flex-direction:column; max-width:520px; margin:0 auto; padding:max(14px, env(safe-area-inset-top)) 20px max(18px, env(safe-area-inset-bottom)); }
+  .onb-top { display:grid; grid-template-columns:72px 1fr 72px; align-items:center; gap:8px; }
+  .onb-terug, .onb-sla { background:none; border:0; color:var(--muted); font:inherit; font-size:13px; cursor:pointer; padding:6px 0; }
+  .onb-terug { text-align:left; } .onb-sla { text-align:right; }
+  .onb-balk { display:flex; gap:5px; }
+  .onb-balk i { flex:1; height:4px; border-radius:2px; background:rgba(255,255,255,.12); }
+  .onb-balk i.aan { background:var(--accent); }
+  .onb-in { flex:1; overflow-y:auto; padding:28px 0 10px; }
+  .onb-in h2 { font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:36px; line-height:1.02; letter-spacing:.02em; margin:0 0 10px; }
+  .onb-sub { font-size:15px; color:rgba(245,243,239,.78); line-height:1.5; margin:0 0 16px; }
+  .onb-welkom { display:flex; gap:14px; align-items:flex-start; }
+  .onb-welkom img { width:56px; height:56px; border-radius:50%; border:2px solid var(--accent); flex-shrink:0; }
+  .onb-opties { display:grid; gap:10px; margin-top:6px; }
+  .onb-opties.twee { grid-template-columns:1fr 1fr; }
+  .onb-opties button { background:var(--surface); border:1px solid var(--border); color:var(--white); border-radius:12px; padding:18px 16px; font:inherit; font-size:16px; font-weight:600; text-align:left; cursor:pointer; }
+  .onb-opties.twee button { text-align:center; }
+  .onb-opties button.aan { border-color:var(--accent); background:rgba(255,107,26,.12); }
+  .onb-l { display:block; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin:14px 0 6px; }
+  .onb input, .onb select { width:100%; background:var(--surface); border:1px solid var(--border); color:var(--white); border-radius:10px; padding:14px; font:inherit; font-size:16px; }
+  .onb input.fout { border-color:#ff8a5c; }
+  .onb-sp { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:6px 0 16px; }
+  .onb-sp div { background:rgba(255,107,26,.1); border:1px solid rgba(255,107,26,.5); border-radius:14px; padding:18px 14px; text-align:center; }
+  .onb-sp span { display:block; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .onb-sp b { display:block; font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:64px; line-height:1; margin-top:4px; }
+  .onb-sp small { color:var(--muted); font-size:13px; }
+  .onb-push { background:#1f1f22; border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:12px 14px; margin:4px 0 14px; }
+  .onb-push .lp-kop { display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--muted); margin-bottom:6px; }
+  .onb-push .lp-kop img { width:18px; height:18px; border-radius:5px; }
+  .onb-push .lp-kop span { margin-left:auto; }
+  .onb-push > b { display:block; font-size:14.5px; }
+  .onb-push p { font-size:14px; color:rgba(245,243,239,.88); margin:2px 0 0; }
+  .onb-voet { display:grid; gap:8px; padding-top:8px; }
+  .onb-voet .knop { margin:0; }
+  .onb-nee { background:none; border:0; color:var(--muted); font:inherit; font-size:14px; padding:8px; cursor:pointer; }
+  .ew-uitleg { font-size:13px; color:var(--muted); margin:2px 0 8px; }
+  .eersteweek .knop { margin-top:10px; }
+  .welkom-michel { font-size:14px; color:rgba(245,243,239,.8); margin:-4px 0 14px; line-height:1.5; }
+  .welkom-michel b { color:var(--accent); font-weight:600; }
   .lidbalk { display:flex; align-items:center; gap:12px; width:100%; margin-top:16px; text-align:left; background:linear-gradient(160deg, rgba(255,107,26,.16), var(--surface) 60%); border:1px solid rgba(255,107,26,.55); border-radius:10px; padding:14px 16px; color:var(--white); font-family:inherit; cursor:pointer; }
   .lidbalk span { flex:1; min-width:0; }
   .lidbalk b { display:block; font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.03em; font-weight:400; line-height:1; }
@@ -263,7 +303,13 @@
   .doel-ev #doelNaam { margin-top:8px; }
   .doel-ev .knop { margin-top:2px; }
   .doel-later { display:inline-block; margin-top:10px; font-size:12.5px; color:var(--muted); background:none; border:0; padding:0; cursor:pointer; font-family:inherit; text-decoration:underline; }
-  .doelregel { font-size:13px; color:var(--muted); margin:10px 0 2px; }
+  .doelregel { display:flex; align-items:center; gap:12px; background:rgba(255,107,26,.10); border:1px solid rgba(255,107,26,.45); border-radius:12px; padding:12px 14px; margin:14px 0 4px; }
+  .dr-tekst { flex:1; min-width:0; }
+  .dr-l { display:block; font-size:11px; letter-spacing:.12em; text-transform:uppercase; font-weight:700; color:var(--accent); }
+  .doelregel .dr-tekst b { display:block; font-size:17px; line-height:1.25; margin:2px 0 3px; }
+  .doelregel .dr-tekst a { margin-left:0; font-size:12.5px; }
+  .dr-nog { flex-shrink:0; text-align:center; background:var(--accent); color:#0A0A0A; border-radius:10px; padding:6px 10px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; line-height:1.1; }
+  .doelregel .dr-nog b { color:#0A0A0A; display:block; font-family:'Bebas Neue',sans-serif; font-size:28px; font-weight:400; letter-spacing:0; }
   .doelbevestig { position:relative; background:rgba(76,195,138,.08); border:1px solid rgba(76,195,138,.4); border-radius:10px; padding:14px 40px 14px 14px; margin:10px 0 4px; }
   .doelbevestig b { font-size:14px; font-weight:600; line-height:1.45; display:block; }
   .doelbevestig p { font-size:13px; color:var(--muted); margin:6px 0 10px; }
@@ -1995,7 +2041,10 @@ function doelHtml(d) {
     const nog = dl.doel === 'evenement' ? Math.ceil((Date.parse(dl.datum + 'T08:00:00') - Date.now()) / 864e5) : null;
     const wat = dl.doel === 'evenement' ? esc(dl.naam) + (nog > 0 ? ' &middot; nog ' + nog + (nog === 1 ? ' dag' : ' dagen') : '') : DOEL_NAMEN[dl.doel];
     const inVandaag = dl.doel === 'evenement' && dl.datum && (isLid(d) || (d.lid && d.lid.bron === 'coaching')) && Date.parse(dl.datum + 'T08:00:00') >= Date.now() - 864e5;
-    const regel = inVandaag ? '' : `<div class="doelregel">Jouw doel: <b>${wat}</b><a href="#" data-doel="wijzig">aanpassen</a></div>`;
+    // Jouw doel in een licht oranje vak, duidelijk in beeld (12-10-2026)
+    const hoofd = dl.doel === 'evenement' ? esc(dl.naam) : DOEL_NAMEN[dl.doel];
+    const aftel = dl.doel === 'evenement' && nog > 0 ? `<span class="dr-nog"><b>${nog}</b>${nog === 1 ? 'dag' : 'dagen'}</span>` : '';
+    const regel = inVandaag ? '' : `<div class="doelregel"><div class="dr-tekst"><span class="dr-l">Jouw doel</span><b>${hoofd}</b><a href="#" data-doel="wijzig">aanpassen</a></div>${aftel}</div>`;
     if (!DOELV.bevestig) return regel;
     const zin = { sneller: 'Top! Over een paar weken laat ik je zien hoe je meet of je echt sneller wordt.', evenement: `Top, op naar ${esc(dl.naam)}! Ik herinner je 4 weken, 1 week en de dag ervoor, met tips voor die dag.`, afvallen: 'Top! Je krijgt tips om lichter te worden zonder watts te verliezen, en je hoort als eerste over het Afvalprogramma.', fit: 'Top! Ik stuur je af en toe een tip om het leuk te houden en door te blijven rijden.' }[dl.doel];
     const pushVraag = pushKan() && PUSH.key && PUSH.inst && !PUSH.inst.aan && !(typeof Notification !== 'undefined' && Notification.permission === 'denied');
@@ -2131,6 +2180,175 @@ function schemaEindeHtml(d) {
       <button class="knop leeg" data-view="lid">Lid blijven<small>&euro;${APP_PRIJS.maand} per maand, altijd opzegbaar</small></button>
     </div></div>`;
 }
+// ---- Welkom (12-10-2026) ----
+// Nieuw gratis account: één vraag per scherm, zoals de keuzehulp. Doel, wat je
+// rijdt, gewicht en band, dan meteen je spanning (het aha-moment), en als laatste
+// de vraag of je je eerste week een dagelijkse tip wilt als pushbericht.
+let ONB = null;   // { stap, doel, tocht, datum, type, gewicht, breedte, tubeless, fout }
+function welkomNu() { try { return Date.now() - Number(localStorage.getItem('mkcWelkomOp') || 0) < 2 * 864e5; } catch (e) { return false; } }
+function onbNodig(d) {
+  if (!d || d.gast || isLid(d) || (d.lid && d.lid.bron === 'coaching') || (d.beheer && BEKIJK !== 'nieuw')) return false;
+  try { if (localStorage.getItem('mkcOnbKlaar')) return false; } catch (e) { return false; }
+  return !d.doel || !btLees().gewicht;
+}
+function onbStart() {
+  const b = btLees();
+  ONB = { stap: 0, doel: null, tocht: '', datum: '', type: b.type || 'weg', gewicht: b.gewicht || '', breedte: b.breedte || 28, tubeless: !!b.tubeless, fout: '' };
+  pushLaad(); sbLaadLib();
+  onbTeken();
+}
+function onbKlaar(sla) {
+  try { localStorage.setItem('mkcOnbKlaar', '1'); localStorage.setItem('mkcWelkomOp', String(Date.now())); } catch (e) {}
+  document.getElementById('onb')?.remove(); document.body.classList.remove('onb-open');
+  if (!sla) statEens('welkom');
+  ONB = null; VIEW = 'home'; teken(); window.scrollTo(0, 0);
+}
+const ONB_STAPPEN = 6;
+function onbHtml() {
+  const o = ONB, nm = lidVoornaam();
+  const balk = `<div class="onb-balk">${Array.from({ length: ONB_STAPPEN }, (_, i) => `<i class="${i <= o.stap ? 'aan' : ''}"></i>`).join('')}</div>`;
+  const kop = (h, sub) => `<h2>${h}</h2>${sub ? '<p class="onb-sub">' + sub + '</p>' : ''}`;
+  let inhoud = '', knop = '';
+  if (o.stap === 0) {
+    inhoud = `<div class="onb-welkom"><img src="/icoon-192.png" alt=""><div>${kop((nm ? 'Welkom ' + esc(nm) : 'Welkom') + '.', 'Ik ben Michel Kreder. 9 jaar profwielrenner en nu coach. Meer dan 1000 renners trainen met mijn schema&rsquo;s. In deze app zit wat ik hen meegeef: je bandenspanning, je eigen coach, Core die met je meebeweegt en elke dag een tip.')}</div></div>
+      <p class="onb-sub">Ik stel je een paar korte vragen. Dan staat de app helemaal op jou ingesteld. Duurt een halve minuut.</p>`;
+    knop = '<button type="button" class="knop" data-onb="verder">Laten we beginnen</button>';
+  } else if (o.stap === 1) {
+    inhoud = kop('Waar train je voor?', 'Dan stem ik je tips en meldingen daarop af.') + `<div class="onb-opties">${Object.entries(DOEL_NAMEN).map(([w, n]) => `<button type="button" data-onb="doel" data-w="${w}" class="${o.doel === w ? 'aan' : ''}">${n}</button>`).join('')}</div>`;
+  } else if (o.stap === 2) {
+    inhoud = kop('Welke tocht of wedstrijd?', 'Dan tel ik met je af en bouwt je Core af naar die dag.') + `<label class="onb-l" for="onbTocht">Je tocht</label><select id="onbTocht"><option value="">Kies je tocht</option>${TOCHT_GROEPEN.map(([g, l]) => `<optgroup label="${esc(g)}">${l.map((t) => `<option ${o.tocht === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</optgroup>`).join('')}<optgroup label="Staat je tocht er niet bij?"><option value="__anders" ${o.tocht === '__anders' ? 'selected' : ''}>Anders, namelijk:</option></optgroup></select>
+      ${o.tocht === '__anders' ? `<input id="onbNaam" maxlength="60" placeholder="Naam van je tocht" value="${esc(o.naam || '')}">` : ''}
+      <label class="onb-l" for="onbDatum">Wanneer?</label><input id="onbDatum" type="date" value="${esc(o.datum)}">`;
+    knop = '<button type="button" class="knop" data-onb="tochtok">Verder</button>';
+  } else if (o.stap === 3) {
+    inhoud = kop('Wat rij je vooral?', 'Dan reken ik je spanning uit voor de juiste fiets.') + `<div class="onb-opties twee"><button type="button" data-onb="type" data-w="weg" class="${o.type === 'weg' ? 'aan' : ''}">Racefiets</button><button type="button" data-onb="type" data-w="gravel" class="${o.type === 'gravel' ? 'aan' : ''}">Gravel</button></div>`;
+  } else if (o.stap === 4) {
+    inhoud = kop('Je gewicht en je band', 'Alleen voor je bandenspanning. Het blijft op je telefoon.') + `<label class="onb-l" for="onbGewicht">Je gewicht (kg)</label><input id="onbGewicht" type="number" inputmode="numeric" min="40" max="150" placeholder="bijv. 78" value="${esc(o.gewicht)}">
+      <label class="onb-l" for="onbBreedte">Bandbreedte</label><select id="onbBreedte">${BT_BREEDTES[o.type].map((b) => `<option value="${b}" ${Number(o.breedte) === b ? 'selected' : ''}>${b} mm</option>`).join('')}</select>
+      <div class="onb-opties twee" style="margin-top:12px"><button type="button" data-onb="tubeless" data-w="false" class="${!o.tubeless ? 'aan' : ''}">Binnenband</button><button type="button" data-onb="tubeless" data-w="true" class="${o.tubeless ? 'aan' : ''}">Tubeless</button></div>`;
+    knop = '<button type="button" class="knop" data-onb="reken">Bekijk mijn spanning</button>';
+  } else if (o.stap === 5) {
+    const a = BT_LIB && BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: o.type, gewicht: o.gewicht, breedte: o.breedte, tubeless: o.tubeless ? 'tubeless' : 'binnenband' }));
+    const min = o.type === 'gravel' ? 1.3 : 2.5;
+    inhoud = kop('Dit is jouw spanning', 'Voor droog weer. Op nat wegdek pomp je iets zachter.') + (a ? `<div class="onb-sp"><div><span>Voor</span><b>${BT_LIB.nl(Math.max(min, a.voor))}</b><small>bar</small></div><div><span>Achter</span><b>${BT_LIB.nl(Math.max(min, a.achter))}</b><small>bar</small></div></div>` : '<p class="onb-sub">Rekenen lukt nu even niet. Je vindt je spanning straks onder Vandaag rijden.</p>') + '<p class="onb-sub">Je vindt hem altijd terug onder Vandaag rijden, en je deelt hem met één tik met je maten.</p>';
+    knop = '<button type="button" class="knop" data-onb="verder">Verder</button>';
+  } else if (o.stap === 6) {
+    const kan = pushKan() && PUSH.key && !iosZonderApp();
+    inhoud = kop('Zet je pushberichten aan voor je eerste week?', 'Dan krijg je elke ochtend een waardevolle tip van mij, afgestemd op jouw doel. Kort, praktisch, en uitzetten kan altijd.') + `<div class="onb-push"><div class="lp-kop"><img src="/icoon-192.png" alt=""><b>MKC</b><span>07:30</span></div><b>Tip van Michel</b><p>${esc((tipVanDag({ doel: o.doel ? { doel: o.doel } : null }) || { k: 'Rustig is echt rustig.' }).k)}</p></div>`
+      + (iosZonderApp() ? '<p class="onb-sub">Op een iPhone zet je de app eerst op je beginscherm (deel-knop, Zet op beginscherm). Daarna kun je meldingen aanzetten.</p>' : '')
+      + (o.fout ? `<p class="onb-sub" style="color:#ff8a5c">${esc(o.fout)}</p>` : '');
+    knop = kan ? `<button type="button" class="knop" data-onb="pushja" ${o.bezig ? 'disabled' : ''}>${o.bezig ? 'Even toestemming vragen...' : 'Ja, stuur me elke dag een tip'}</button><button type="button" class="onb-nee" data-onb="pushnee">Liever niet</button>` : '<button type="button" class="knop" data-onb="pushnee">Naar mijn app</button>';
+  }
+  const terug = o.stap > 0 ? '<button type="button" class="onb-terug" data-onb="terug">&#8249; Terug</button>' : '<span></span>';
+  return `<div class="onb" id="onb" role="dialog" aria-label="Welkom"><div class="onb-top">${terug}${balk}<button type="button" class="onb-sla" data-onb="sla">Overslaan</button></div>
+    <div class="onb-in">${inhoud}</div><div class="onb-voet">${knop}</div></div>`;
+}
+function onbTeken() {
+  if (!ONB) return;
+  let el = document.getElementById('onb');
+  const html = onbHtml();
+  if (el) el.outerHTML = html; else document.body.insertAdjacentHTML('beforeend', html);
+  document.body.classList.add('onb-open');
+}
+async function onbBewaarDoel(body) {
+  try { const j = await (await fetch(API + '?actie=doel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), ...body }) })).json(); if (j.ok && D) D.doel = j.doel; return j.ok ? '' : (j.fout || 'Bewaren lukte niet.'); } catch (e) { return 'Verbinding mislukt.'; }
+}
+document.addEventListener('change', (e) => {
+  if (!ONB) return;
+  if (e.target.id === 'onbTocht') { ONB.tocht = e.target.value; ONB.datum = document.getElementById('onbDatum')?.value || ONB.datum; onbTeken(); if (ONB.tocht === '__anders') setTimeout(() => document.getElementById('onbNaam')?.focus(), 30); }
+  if (e.target.id === 'onbBreedte') ONB.breedte = Number(e.target.value);
+});
+document.addEventListener('input', (e) => { if (!ONB) return; if (e.target.id === 'onbGewicht') ONB.gewicht = e.target.value; if (e.target.id === 'onbNaam') ONB.naam = e.target.value; if (e.target.id === 'onbDatum') ONB.datum = e.target.value; });
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-onb]'); if (!k || !ONB) return;
+  const a = k.dataset.onb; ONB.fout = '';
+  if (a === 'sla') return onbKlaar(true);
+  if (a === 'terug') { ONB.stap = ONB.stap === 3 && ONB.doel !== 'evenement' ? 1 : ONB.stap - 1; return onbTeken(); }
+  if (a === 'verder') { ONB.stap++; return onbTeken(); }
+  if (a === 'doel') {
+    ONB.doel = k.dataset.w;
+    if (ONB.doel === 'evenement') { ONB.stap = 2; return onbTeken(); }
+    onbBewaarDoel({ doel: ONB.doel }); ONB.stap = 3; return onbTeken();
+  }
+  if (a === 'tochtok') {
+    const naam = ONB.tocht === '__anders' ? (ONB.naam || '').trim() : ONB.tocht;
+    if (!naam) { ONB.fout = 'Kies je tocht.'; onbTeken(); return; }
+    const fout = await onbBewaarDoel({ doel: 'evenement', naam, datum: ONB.datum || '' });
+    if (fout) { ONB.fout = fout; return onbTeken(); }
+    ONB.stap = 3; return onbTeken();
+  }
+  if (a === 'type') { if (ONB.type !== k.dataset.w) ONB.breedte = k.dataset.w === 'gravel' ? 40 : 28; ONB.type = k.dataset.w; if (ONB.type === 'gravel') ONB.tubeless = true; ONB.stap = 4; return onbTeken(); }
+  if (a === 'tubeless') { ONB.tubeless = k.dataset.w === 'true'; return onbTeken(); }
+  if (a === 'reken') {
+    const g = Number(ONB.gewicht);
+    if (!(g >= 40 && g <= 150)) { ONB.fout = 'Vul een gewicht tussen 40 en 150 kg in.'; const el = document.getElementById('onbGewicht'); if (el) { el.focus(); el.classList.add('fout'); } return; }
+    await sbLaadLib();
+    btBewaar({ ...btLees(), type: ONB.type, gewicht: g, breedte: ONB.breedte, tubeless: ONB.tubeless });
+    const r = BT_LIB && BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: ONB.type, gewicht: g, breedte: ONB.breedte, tubeless: ONB.tubeless ? 'tubeless' : 'binnenband' }));
+    if (r) { const min = ONB.type === 'gravel' ? 1.3 : 2.5; try { localStorage.setItem('mkcLaatsteSpanning', BT_LIB.nl(Math.max(min, r.voor)) + ' / ' + BT_LIB.nl(Math.max(min, r.achter)) + ' bar'); localStorage.setItem('mkcLaatsteSpVoor', String(Math.max(min, r.voor))); localStorage.setItem('mkcLaatsteSpAchter', String(Math.max(min, r.achter))); } catch (er) {} spTel(); statEens('banden'); }
+    ONB.stap = 5; return onbTeken();
+  }
+  if (a === 'pushnee') return onbKlaar();
+  if (a === 'pushja') {
+    ONB.bezig = true; onbTeken();
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      const toestemming = await Notification.requestPermission();
+      if (toestemming !== 'granted') { ONB.bezig = false; ONB.fout = 'Je gaf geen toestemming. Dat kun je later aanpassen in de instellingen van je telefoon.'; return onbTeken(); }
+      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64naarBytes(PUSH.key) });
+      await pushOpslaan({ sub: sub.toJSON(), tip: true });
+    } catch (er) { ONB.bezig = false; ONB.fout = 'Aanzetten lukte niet op dit toestel.'; return onbTeken(); }
+    return onbKlaar();
+  }
+});
+
+// ---- Je eerste week (gratis) ----
+// Vijf stappen met vinkjes. Alles af = deze week één extra coachvraag (server: startbonus).
+function eersteWeekStappen(d) {
+  const l = [
+    { k: 'spanning', t: 'Bekijk je bandenspanning', klaar: !!laatsteSpanning() },
+    { k: 'doel', t: 'Kies waar je voor traint', klaar: !!d.doel },
+    { k: 'scherm', t: 'Zet de app op je beginscherm', klaar: isApp() || (() => { try { return localStorage.getItem('mkcBeginscherm') === '1'; } catch (e) { return false; } })() },
+    { k: 'coach', t: 'Stel je eerste vraag aan je coach', klaar: !!d.coachGesteld }
+  ];
+  if (!binnenkortNu()) l.push({ k: 'core', t: 'Start je gratis Core-week', klaar: !!d.core });
+  return l;
+}
+function eersteWeekHtml(d) {
+  if (!d || d.gast || isLid(d) || (d.lid && d.lid.bron === 'coaching')) return '';
+  try { if (localStorage.getItem('mkcEersteWeekWeg') === '1' || localStorage.getItem('mkcBonusKlaar') === '1') return ''; } catch (e) {}
+  const st = eersteWeekStappen(d), klaar = st.filter((x) => x.klaar).length, alles = klaar === st.length;
+  return `<div class="start eersteweek" id="eersteweek"><div class="start-kop"><b>Je eerste week</b><span>${klaar} van ${st.length} &middot; <button type="button" class="sb-link" data-ew="weg">verberg</button></span></div>
+    <p class="ew-uitleg">${alles ? 'Alles gedaan. Je extra vraag staat klaar.' : 'Vink alles af, dan krijg je deze week een extra vraag aan je coach.'}</p>
+    <div class="start-balk"><i style="width:${Math.round(klaar / st.length * 100)}%"></i></div>
+    ${st.map((x) => `<button type="button" class="start-stap ${x.klaar ? 'klaar' : ''}" data-ew="${x.klaar ? '' : x.k}"><span class="v">${x.klaar ? '&#10003;' : ''}</span>${x.t}${x.klaar ? '' : '<em>&rsaquo;</em>'}</button>`).join('')}
+    ${alles ? '<button type="button" class="knop" data-ew="claim">Pak je extra vraag</button>' : ''}</div>`;
+}
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-ew]'); if (!k || !k.dataset.ew) return;
+  const a = k.dataset.ew;
+  if (a === 'weg') { try { localStorage.setItem('mkcEersteWeekWeg', '1'); } catch (er) {} document.getElementById('eersteweek')?.remove(); return; }
+  if (a === 'spanning' || a === 'core') return naar(a === 'spanning' ? 'rijden' : 'core');
+  if (a === 'doel') { DOELV = { open: true, kies: null, fout: '', bezig: false }; teken(); setTimeout(() => document.getElementById('doelvraag')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150); return; }
+  if (a === 'coach') return coachOpen(true);
+  if (a === 'scherm') {
+    if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.then((c) => { if (c && c.outcome === 'accepted') { try { localStorage.setItem('mkcBeginscherm', '1'); } catch (er) {} } installPrompt = null; teken(); }); return; }
+    const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    modal('<h3>Zet de app op je beginscherm</h3><p>' + (ios ? 'Tik onderaan in Safari op de deel-knop en kies Zet op beginscherm.' : 'Open het menu van je browser (&#8942;) en kies Toevoegen aan startscherm.') + '</p><button type="button" class="knop" data-ew="schermklaar">Gedaan</button><button type="button" class="sb-link" data-lx="dicht">Later</button>');
+    return;
+  }
+  if (a === 'schermklaar') { try { localStorage.setItem('mkcBeginscherm', '1'); } catch (er) {} lxDicht(); return teken(); }
+  if (a === 'claim') {
+    k.disabled = true;
+    try {
+      const j = await (await fetch(API + '?actie=startbonus', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken() }) })).json();
+      if (j.ok) { if (D && j.gratisOver != null) D.gratisOver = j.gratisOver; try { localStorage.setItem('mkcBonusKlaar', '1'); } catch (er) {} modal('<h3>Je extra vraag staat klaar</h3><p>Deze week heb je ' + (j.gratisOver != null ? j.gratisOver : 'een extra') + ' vragen aan je coach. Stel je vraag over training, voeding, herstel of je materiaal.</p><button type="button" class="knop" data-lx="dicht" onclick="setTimeout(() => coachOpen(true), 50)">Stel je vraag</button>'); return teken(); }
+      alert(j.fout || 'Dat lukte niet.');
+    } catch (er) { alert('Verbinding mislukt.'); }
+    k.disabled = false;
+  }
+});
+
 // ---- Tip van Michel (12-10-2026) ----
 // Elke dag een andere tip, passend bij je doel, het seizoen en of je Core doet.
 // Reden om morgen weer te kijken. Doorvragen kan meteen bij de coach.
@@ -2322,16 +2540,17 @@ function teken() {
   const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `${appBalkHtml()}
     ${beheerHtml(d)}${aankondigHtml()}${pushOpnieuwHtml()}${ledenHtml()}${gebruikHtml()}${opvolgHtml()}${nakijkHtml()}
-    <div class="groet">${voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.'}<br><em>Alles op één plek.</em></div>
+    <div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
+    ${welkomNu() ? '<p class="welkom-michel">Begin hieronder met je eerste week. Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
     ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
     <div id="groepsrit">${grHtml()}</div>
     ${reviewHtml(d)}
     ${meldingenHtml(d)}<div id="meldvraag">${meldVraagHtml()}</div><div id="startlijst">${startlijstHtml(d)}</div>
-    ${isNieuw(d) ? `<div class="welkom"><b>Zo werkt je app</b>
+    ${eersteWeekHtml(d) ? eersteWeekHtml(d) + '<div style="display:none">' : ''}${isNieuw(d) ? `<div class="welkom"><b>Zo werkt je app</b>
       <ol><li><span>1</span>Tik op Vandaag rijden en vul je gewicht en band in: je ziet meteen wat je pompt. Gratis, voor elke rit.</li>
       <li><span>2</span>${binnenkortNu() ? 'Rechtsonder zit <em>Vraag je coach</em>: stel elke week 3 vragen gratis, over training, voeding, banden of herstel.' : 'Start je gratis week in de Core-app: korte sessies thuis, op de timer.'}</li>
       <li><span>3</span>${binnenkortNu() ? 'Zet de app op je beginscherm, dan heb je je bandenspanning altijd bij de hand.' : d.lidOpen ? 'Meer nodig? Als lid krijg je je eigen coach, de slimme bandenspanning en de Core-app doorlopend, voor &euro;' + APP_PRIJS.maand + ' per maand.' : 'Rechtsonder zit <em>Vraag je coach</em>: je eigen coach die je analyse en je plan kent, straks voor leden.'}</li></ol></div>`
-      : isLid(d) || (d.lid && d.lid.bron === 'coaching') ? '' : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}
+      : isLid(d) || (d.lid && d.lid.bron === 'coaching') ? '' : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}${eersteWeekHtml(d) ? '</div>' : ''}
     ${vandaagHtml(d)}
     ${schemaEindeHtml(d)}
     <div id="doelvak">${doelHtml(d)}</div>
@@ -2344,6 +2563,7 @@ function teken() {
     ${feedbackHtml()}
     <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a> &middot; <a href="#" data-lx="verwijder">Account verwijderen</a></div>`;
   if (document.getElementById('vandaagvak')) vdLaad();
+  if (!ONB && onbNodig(d)) onbStart();
   if (WK.plaats && !WK.uren && !isLid(d) && kanLidNu(d)) wkLaad();
   if (d.schema && !(d.beheer && BEKIJK !== 'klant')) statEens('schema');
   if (GR.id && !GR.data) grLaad();
@@ -3515,7 +3735,7 @@ function meldVraagHtml() {
   if (!pushKan() || !PUSH.key || !PUSH.inst || PUSH.inst.aan || pushWeg()) return '';
   if (typeof DOELV !== 'undefined' && DOELV.bevestig) return '';
   if (typeof Notification !== 'undefined' && Notification.permission === 'denied') return '';
-  return `<div class="meldvraag"><b>Mis niets: zet meldingen aan</b><p>Je Core-herinnering, ${zicht() && isLid(zicht()) ? 'je ochtendbericht met bandenspanning en kleding, ' : ''}en wat er verder voor je klaarstaat. Uitzetten kan altijd.</p>
+  return `<div class="meldvraag"><b>Mis niets: zet meldingen aan</b><p>${zicht() && isLid(zicht()) ? 'Je ochtendbericht met bandenspanning en kleding, je Core-herinnering' : 'Elke ochtend een tip van mij, je Core-herinnering'} en wat er verder voor je klaarstaat. Uitzetten kan altijd.</p>
     <div class="rij"><button type="button" class="knop" data-push="aan" ${PUSH.bezig ? 'disabled' : ''}>${PUSH.bezig ? 'Even toestemming vragen...' : 'Zet meldingen aan'}</button><button type="button" class="sb-link" data-push="vraagweg">Nu niet</button></div>
     ${PUSH.melding && !PUSH.inst.aan ? `<p class="klein" style="margin:10px 0 0">${esc(PUSH.melding)}</p>` : ''}</div>`;
 }
@@ -3524,6 +3744,7 @@ function meldInstHtml() {
   const i = PUSH.inst;
   return `<div class="meldinst"><b>Meldingen staan aan</b> op dit toestel.
     <label><input type="checkbox" data-pushsoort="core" ${i.core ? 'checked' : ''}> Core-herinnering</label>
+    ${zicht() && !isLid(zicht()) ? `<label><input type="checkbox" data-pushsoort="tip" ${i.tip !== false ? 'checked' : ''}> Elke ochtend een tip van Michel</label>` : ''}
     <label><input type="checkbox" data-pushsoort="doel" ${i.doel !== false ? 'checked' : ''}> Tips en herinneringen voor je doel</label>
     ${zicht() && isLid(zicht()) ? `<label><input type="checkbox" data-pushsoort="ochtend" ${i.ochtend ? 'checked' : ''}> Ochtendbericht (weer, banden en kleding)</label>` : ''}
     <p class="klein" style="margin-top:8px">Staat iets uit, dan zie je het gewoon hier in de app zodra je hem opent.</p></div>`;

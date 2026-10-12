@@ -49,6 +49,7 @@ import { COACH_KENNIS, COACH_REGELS, COACH_TOON } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
 import { meld as meldActief, opruimen, wisPersoon } from '../lib/app-opruimen.js';
 import { ruimReeksenOp } from '../lib/reeks.js';
+import { tipVoor } from '../lib/tips.js';
 import { reviewMoment, reviewOpen, reviewKeuze, REVIEW_LINK } from '../lib/review.js';
 import { kledingAdvies, kledingBijstel, kledingKort } from '../lib/kleding.js';
 import { bandenAdvies, leesInvoer, nl, HOOKLESS_MAX } from '../lib/bandendruk.js';
@@ -709,6 +710,7 @@ export default async function handler(req, res) {
     if (actie === 'push') return await routePush(req, res);
     if (actie === 'pushtest') return await routePushTest(req, res);
     if (actie === 'pushcron') return await routePushCron(req, res);
+    if (actie === 'startbonus') return await routeStartBonus(req, res);
     if (actie === 'schema') return await routeSchema(req, res);
     if (actie === 'melding') return await routeMelding(req, res);
     if (actie === 'leden') return await routeLeden(req, res);
@@ -936,6 +938,23 @@ async function telGratis(email) {
   const n = await redis(['INCR', k]);
   if (n.ok && n.result === 1) await redis(['EXPIRE', k, String(8 * 86400)]);
   return Math.max(0, GRATIS_PER_WEEK - Number((n.ok && n.result) || GRATIS_PER_WEEK));
+}
+// "Je eerste week" afgerond (12-10-2026): één extra gratis coachvraag deze week,
+// één keer per account. De server checkt wat hij kan zien: doel en eerste vraag.
+async function routeStartBonus(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email) return res.status(401).json({ ok: false });
+  const [doel, berichten] = await Promise.all([haalDoel(email), haalCoachBerichten(email)]);
+  const gesteld = (berichten || []).some((b) => b.van === 'ik' || b.van === 'klant');
+  if (!doel || !gesteld) return res.status(400).json({ ok: false, fout: 'Rond eerst alle stappen af.' });
+  const eerste = await redis(['SET', `app:startbonus:${email}`, '1', 'NX']);
+  if (!eerste.ok || eerste.result !== 'OK') return res.status(200).json({ ok: true, al: true, gratisOver: await gratisOver(email) });
+  const k = `app:gratisvragen:${email}:${weekSleutel()}`;
+  await redis(['INCRBY', k, '-1']); await redis(['EXPIRE', k, String(8 * 86400)]);
+  await tel(email, 'startbonus');
+  return res.status(200).json({ ok: true, gratisOver: await gratisOver(email) });
 }
 // Ingelogd? Leden en Michel mogen altijd, anderen zolang er gratis vragen over zijn.
 async function vraagRecht(res, t) {
@@ -1455,7 +1474,7 @@ async function haalPush(email) {
   const r = await redis(['GET', `app:push:${email}`]);
   try { return r.ok && r.result ? JSON.parse(r.result) : null; } catch { return null; }
 }
-function pushBeeld(p) { return p && p.sub ? { aan: true, tijd: p.tijd, dagen: p.dagen, ochtend: p.ochtend !== false, core: p.core !== false, doel: p.doel !== false } : { aan: false, tijd: '07:00', dagen: [1, 2, 3, 4, 5, 6, 0], ochtend: true, core: true, doel: true }; }
+function pushBeeld(p) { return p && p.sub ? { aan: true, tijd: p.tijd, dagen: p.dagen, ochtend: p.ochtend !== false, core: p.core !== false, doel: p.doel !== false, tip: p.tip !== false } : { aan: false, tijd: '07:00', dagen: [1, 2, 3, 4, 5, 6, 0], ochtend: true, core: true, doel: true, tip: true }; }
 // Pushberichten mag iedereen die is ingelogd (Core-herinnering); het ochtendbericht
 // zelf gaat alleen naar leden (zie routePushCron).
 function pushEmail(res, t) { const e = leesAppToken(String(t || '')); if (!e) res.status(401).json({ ok: false, fout: 'Log opnieuw in.' }); return e; }
@@ -1480,7 +1499,8 @@ async function routePush(req, res) {
   const ochtend = typeof body.ochtend === 'boolean' ? body.ochtend : oud.ochtend !== false;
   const core = typeof body.core === 'boolean' ? body.core : oud.core !== false;
   const doel = typeof body.doel === 'boolean' ? body.doel : oud.doel !== false;
-  const p = { sub, tijd, dagen, ochtend, core, doel, laatste: oud.laatste || null, sinds: oud.sinds || new Date().toISOString() };
+  const tip = typeof body.tip === 'boolean' ? body.tip : oud.tip !== false;
+  const p = { sub, tijd, dagen, ochtend, core, doel, tip, laatste: oud.laatste || null, laatsteTip: oud.laatsteTip || null, sinds: oud.sinds || new Date().toISOString() };
   await redis(['SET', `app:push:${email}`, JSON.stringify(p)]);
   await redis(['SADD', 'app:push:alle', email]);
   if (body.sub && !oud.sub) await tel(email, 'push-aan');
@@ -1537,6 +1557,18 @@ async function routePushTest(req, res) {
   return res.status(r.ok ? 200 : 502).json({ ok: r.ok, status: r.status, fout: r.ok ? null : 'Versturen lukte niet' + (r.fout ? `: ${r.fout}` : ` (${r.status})`), bericht });
 }
 
+// Tip van Michel als pushbericht (12-10-2026): dezelfde tip als in de app,
+// afgestemd op doel, Core en schema. Nooit midden in een woord afkappen.
+async function tipBericht(email) {
+  const [doel, core, sch] = await Promise.all([haalDoel(email), coreVoorEmail(email).catch(() => null), haalSchema(email).catch(() => null)]);
+  const t = tipVoor({ doel: doel && !doel.klaar ? doel.doel : null, core: !!core, schema: !!(sch && sch.huidig), datum: new Date() });
+  if (!t) return null;
+  let body = t.k + ' ' + t.t;
+  if (body.length > 230) { body = body.slice(0, 229); body = body.slice(0, body.lastIndexOf(' ')) + '...'; }
+  return { title: 'Tip van Michel', body, url: '/app' };
+}
+const TIP_TIJD = 7 * 60 + 30;   // rond half acht, Nederlandse tijd
+
 // Nederlandse tijd en dag, los van de servertijd (UTC).
 function nlNu() {
   const d = new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short', hour12: false }).formatToParts(new Date());
@@ -1555,9 +1587,19 @@ async function routePushCron(req, res) {
     if (!p || !p.sub) { await redis(['SREM', 'app:push:alle', email]); continue; }
     const [h, m] = String(p.tijd || '07:00').split(':').map(Number);
     const doel = h * 60 + m;
+    const slim = await magSlim(email);
+    // Geen ochtendbericht (gratis, of zelf uitgezet)? Dan de Tip van Michel, één keer per dag rond half acht.
+    if (!(slim && p.ochtend !== false)) {
+      if (p.tip === false || p.laatsteTip === nu.datum || nu.minuten < TIP_TIJD || nu.minuten - TIP_TIJD > 90) { overgeslagen++; continue; }
+      const tb = await tipBericht(email).catch(() => null);
+      if (!tb) { overgeslagen++; continue; }
+      const rt = await stuurPush(p.sub, tb);
+      if (rt.weg) { await redis(['DEL', `app:push:${email}`]); await redis(['SREM', 'app:push:alle', email]); weg++; continue; }
+      if (rt.ok) { p.laatsteTip = nu.datum; await redis(['SET', `app:push:${email}`, JSON.stringify(p)]); await logPush(email, tb); verstuurd++; }
+      continue;
+    }
     // Aan de beurt: juiste dag, tijd net voorbij (binnen een uur), vandaag nog niet gehad.
-    if (p.ochtend === false || !p.dagen.includes(nu.dag) || nu.minuten < doel || nu.minuten - doel > 60 || p.laatste === nu.datum) { overgeslagen++; continue; }
-    if (!(await magSlim(email))) { overgeslagen++; continue; }   // lidmaatschap verlopen
+    if (!p.dagen.includes(nu.dag) || nu.minuten < doel || nu.minuten - doel > 60 || p.laatste === nu.datum) { overgeslagen++; continue; }
     const bericht = await ochtendBericht(email).catch(() => null);
     if (!bericht) { overgeslagen++; continue; }
     const r = await stuurPush(p.sub, bericht);
