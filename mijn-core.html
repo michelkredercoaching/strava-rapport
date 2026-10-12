@@ -1207,7 +1207,7 @@ function stemHint(el) {
   h.innerHTML = k.echt && k.vlaams
     ? `Je hoort nu: <b>${esc(naam)}</b> (Vlaams). Liever een Nederlandse stem? Zet hem erop via <b>${pad}</b> en kies <b>${zoek}</b>.`
     : k.echt
-    ? `Je hoort nu: <b>${esc(naam)}</b>`
+    ? `Je hoort nu: <b>${esc(naam)}</b>. Liever een andere stem? Kies er een via <b>${pad}</b>.`
     : `Op je telefoon staat nog geen Nederlandse ${type === 'man' ? 'mannen' : 'vrouwen'}stem${naam ? ' (nu: ' + esc(naam) + ')' : ''}. Zet hem erop via <b>${pad}</b> en kies <b>${zoek}</b>. Daarna klinkt hij hier vanzelf.`;
 }
 function stemLabel() { return { vrouw: 'Stem: vrouw', man: 'Stem: man', uit: 'Stem uit' }[stemKeuze()]; }
