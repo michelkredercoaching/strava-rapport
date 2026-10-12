@@ -273,6 +273,12 @@
   .herinner span { display:block; font-size:13px; color:var(--muted); margin-top:3px; }
   .herinner.aan b { color:#4CC38A; }
   .reekspil { display:inline-block; margin:8px 0 0 6px; }
+  .speler .balk .t { margin-right:auto; }
+  .speler .spk { background:rgba(255,107,26,.1); border:1px solid rgba(255,107,26,.6); color:#FF6B1A; border-radius:99px; padding:7px 14px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .speler .stemkeuze { display:flex; align-items:center; gap:6px; margin-top:10px; }
+  .speler .stemkeuze span { font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-right:4px; }
+  .speler .stemkeuze button { flex:1; max-width:110px; background:none; border:1px solid rgba(255,107,26,.45); color:rgba(245,243,239,.8); border-radius:99px; padding:7px 0; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  .speler .stemkeuze button.aan { background:#FF6B1A; border-color:#FF6B1A; color:#0A0A0A; }
   .speler .stemknop { background:none; border:1px solid rgba(255,255,255,.2); color:var(--white); border-radius:5px; padding:6px 10px; cursor:pointer; margin-left:auto; margin-right:8px; font-size:12.5px; }
   .ts-score { display:flex; flex-direction:column; align-items:center; margin:6px 0 4px; }
   .ts-score span { font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); }
@@ -1164,10 +1170,12 @@ function klap(naam, titel, samenvatting, html, standaard = false) {
 function stemKeuze() { try { const v = localStorage.getItem('coreStem'); return v === '0' ? 'uit' : v === 'man' ? 'man' : 'vrouw'; } catch (e) { return 'vrouw'; } }
 function stemAan() { return stemKeuze() !== 'uit'; }
 const STEM_MAN = /xander|frank|daan|koen|guus|ruben|willem|bram|maarten|\bmale\b|\bman\b|nl-nl-x-bmh|nl-nl-x-dma|nl-be-x-bec/i;
-const STEM_VROUW = /claire|ellen|fenna|lotte|saskia|colette|anna|female|vrouw|nl-nl-x-tfb|nl-nl-x-lfc|nl-nl-x-yfr|nl-be-x-bed/i;
+const STEM_VROUW = /claire|fenna|lotte|saskia|colette|anna|female|vrouw|nl-nl-x-tfb|nl-nl-x-lfc|nl-nl-x-yfr/i;
 try { if ('speechSynthesis' in window) { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); } } catch (e) {}
 function kiesStem(type) {
-  const nl = speechSynthesis.getVoices().filter((x) => /^nl/i.test(x.lang));
+  // Nederlands-Nederlands eerst, Vlaams (nl-BE) alleen als er niets anders is; verbeterde/premium versies voorop.
+  const score = (v) => (/nl[-_]NL/i.test(v.lang) ? 0 : 10) + (/premium|verbeterd|enhanced|neural|natural/i.test(v.name) ? 0 : 1);
+  const nl = speechSynthesis.getVoices().filter((x) => /^nl/i.test(x.lang)).sort((a, b) => score(a) - score(b));
   const re = type === 'man' ? STEM_MAN : STEM_VROUW;
   const echt = nl.find((v) => re.test(v.name + ' ' + v.voiceURI));
   return { stem: echt || nl.find((v) => /nl-NL/i.test(v.lang)) || nl[0] || null, echt: !!echt };
@@ -1177,9 +1185,11 @@ function zeg(t) {
   try {
     speechSynthesis.cancel();
     const type = stemKeuze(), k = kiesStem(type);
-    const u = new SpeechSynthesisUtterance(t); u.lang = 'nl-NL'; u.rate = 1.05;
+    const u = new SpeechSynthesisUtterance(t); u.lang = 'nl-NL';
     if (k.stem) u.voice = k.stem;
-    if (!k.echt) u.pitch = type === 'man' ? 0.7 : 1.1;
+    // Vrouw: opgewekt (iets sneller en hoger). Man: warm en zacht (rustiger, lager, iets zachter).
+    if (type === 'man') { u.rate = 0.95; u.pitch = k.echt ? 0.9 : 0.7; u.volume = 0.9; }
+    else { u.rate = 1.08; u.pitch = 1.15; }
     speechSynthesis.speak(u);
   } catch (e) {}
 }
@@ -1418,7 +1428,8 @@ async function startSpeler(sessie) {
   const stappen = bouwStappen(sessie);
   const totaal = stappen.reduce((n, s) => n + s.sec, 0);
   const el = document.createElement('div'); el.className = 'speler';
-  el.innerHTML = `<div class="balk"><div class="t">Sessie ${NR[sessie.letter]} &middot; ${esc(sessie.naam)}</div><button class="stemknop" data-sp="pijn" style="margin-left:auto;margin-right:6px">Pijn?</button><button class="stemknop" data-sp="stem" style="margin-left:0">${stemLabel()}</button><button class="sluit" data-sp="stop">Stoppen</button></div>
+  el.innerHTML = `<div class="balk"><div class="t">Sessie ${NR[sessie.letter]} &middot; ${esc(sessie.naam)}</div><button class="spk" data-sp="pijn">Pijn?</button><button class="spk" data-sp="stop">Stoppen</button></div>
+    <div class="stemkeuze" role="radiogroup" aria-label="Stem"><span>Stem</span>${['vrouw', 'man', 'uit'].map((x) => `<button type="button" data-sp="stem" data-stem="${x}" class="${stemKeuze() === x ? 'aan' : ''}" role="radio">${{ vrouw: 'Vrouw', man: 'Man', uit: 'Uit' }[x]}</button>`).join('')}</div>
     <div class="voortgang"><i></i></div>
     <div class="midden"><div class="soort"></div><div class="naam"></div><div class="kant"></div><div class="beeld"></div><div class="spieren"></div><div class="klok"></div><div class="cue"></div><div class="straks"></div><div class="uitleg"></div></div>
     <div class="bediening"><button data-sp="terug" aria-label="Vorige">&#9664;&#9664;</button><button class="hoofd" data-sp="pauze">Pauze</button><button data-sp="verder" aria-label="Volgende">&#9654;&#9654;</button></div>`;
@@ -1538,9 +1549,9 @@ function spelerKlik(e) {
   const k = e.target.closest('[data-sp]'); if (!k || !speler) return;
   const sp = speler, st = sp.stappen[sp.i];
   if (k.dataset.sp === 'stem') {
-    const volgende = { vrouw: 'man', man: '0', uit: 'vrouw' }[stemKeuze()];
-    try { localStorage.setItem('coreStem', volgende); } catch (er) {}
-    k.textContent = stemLabel();
+    const keuze = k.dataset.stem;
+    try { localStorage.setItem('coreStem', keuze === 'uit' ? '0' : keuze); } catch (er) {}
+    k.parentElement.querySelectorAll('button').forEach((b) => b.classList.toggle('aan', b === k));
     if (!stemAan()) { try { speechSynthesis.cancel(); } catch (er) {} } else zeg('Zo klink ik. Succes met je sessie.');
     return;
   }
