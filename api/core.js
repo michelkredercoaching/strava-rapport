@@ -341,6 +341,13 @@ function klantBeeld(d) {
   for (let w = blokStart + 1; w <= blokStart + BLOK_WEKEN; w++) for (const l of letters(d.intake)) {
     vakjes.push({ week: w, letter: l, gedaan: (d.sessies || []).some((s) => s.week === w && s.letter === l) });
   }
+  // Reeks (12-10-2026): kalenderweken op rij waarin je genoeg sessies deed
+  // (zoveel als nodig om een niveau af te ronden). Deze week telt mee als hij al rond is.
+  const weekIdx = (t) => Math.floor((Date.parse(t) + 3 * 864e5) / (7 * 864e5));
+  const perWeek = {}; for (const s of d.sessies || []) { const i = weekIdx(s.op); perWeek[i] = (perWeek[i] || 0) + 1; }
+  const nodigW = nodigVoorWeek(d.intake); let reeks = 0, wi = weekIdx(new Date().toISOString());
+  if ((perWeek[wi] || 0) >= nodigW) reeks++;
+  for (wi = wi - 1; (perWeek[wi] || 0) >= nodigW; wi--) reeks++;
   // Alleen aftellen, geen doeltip (besluit Michel).
   const doel = d.doel ? { ...d.doel, ...(besteStart(d.doel.datum) || {}) } : null;
 
@@ -372,7 +379,7 @@ function klantBeeld(d) {
     badges: BADGES.map((b) => ({ ...b, verdiend: verdiendeBadges(d.afgerond).some((v) => v.fase === b.fase) })),
     vakjes,
     weektip: (blokVan(week) > 1 && BLOKTIPS[weekRij(week).weekInBlok]) || WEEKTIPS[weekRij(week).weekInBlok], intakeTips: d.intake ? maakPlan(intake).tips || [] : [],
-    doel,
+    doel, reeks, herinner: d.herinner ? { dagen: d.herinner.dagen, tijd: d.herinner.tijd } : null,
     vervolgVraag: d.afgerond >= 9, doorgaan: !!d.doorgaan,
     berichten: (d.berichten || []).map((b) => ({ van: b.van, tekst: b.tekst, op: b.op, medisch: !!b.medisch })),
   };
@@ -460,6 +467,8 @@ export default async function handler(req, res) {
       case 'plan':      return await routePlan(req, res);
       case 'intake':    return await routeIntake(req, res);
       case 'doel':      return await routeDoel(req, res);
+      case 'herinnering': return await routeHerinnering(req, res);
+      case 'herinnerdag': return await routeHerinnerDag(req, res);
       case 'afvink':    return await routeAfvink(req, res);
       case 'gevoel':    return await routeGevoel(req, res);
       case 'kracht':    return await routeKracht(req, res);
@@ -553,13 +562,55 @@ async function schrijfAppDoel(d) {
   await redis(['SET', `app:doel:${d.email}`, JSON.stringify({ doel: 'evenement', naam: d.doel.naam, datum: d.doel.datum, op: zelfde ? a.op : nu(), gestuurd: zelfde ? (a.gestuurd || []) : [] })]);
   await redis(['SADD', 'app:doel:alle', d.email]);
 }
+// D14 (12-10-2026): herinnering via de app op je vaste dagen.
+const HDAGEN = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
+async function routeHerinnering(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const r = await metToken(req, res); if (!r) return;
+  const { d, body } = r;
+  if (body.uit) d.herinner = null;
+  else {
+    const dagen = (Array.isArray(body.dagen) ? body.dagen : []).filter((x) => HDAGEN.includes(x));
+    const tijd = /^\d{2}:\d{2}$/.test(String(body.tijd || '')) ? body.tijd : '19:00';
+    if (!dagen.length) return res.status(400).json({ ok: false, fout: 'kies je dagen' });
+    d.herinner = { dagen, tijd, laatste: null };
+  }
+  await bewaarDossier(d);
+  await redis([d.herinner ? 'SADD' : 'SREM', 'core:herinner', d.id]);
+  return res.status(200).json({ ok: true, ...klantBeeld(d), pushAan: await pushAanVoor(d.email) });
+}
+async function pushAanVoor(email) { const p = await redis(['GET', `app:push:${String(email || '').toLowerCase()}`]); try { return !!(p.ok && p.result && JSON.parse(p.result).sub); } catch { return false; } }
+// Cron elk half uur: wie vandaag een herinnering wil en het tijdstip is net geweest.
+async function routeHerinnerDag(req, res) {
+  if (!magIntern(req)) return res.status(403).json({ ok: false });
+  const v = Object.fromEntries(new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', weekday: 'short', hour12: false }).formatToParts(new Date()).map((x) => [x.type, x.value]));
+  const dag = String(v.weekday).slice(0, 2).toLowerCase(), minuten = Number(v.hour) * 60 + Number(v.minute), datum = `${v.year}-${v.month}-${v.day}`;
+  const morgen = HDAGEN[(HDAGEN.indexOf(dag) + 1) % 7];
+  const ids = await redis(['SMEMBERS', 'core:herinner']);
+  let verstuurd = 0;
+  for (const id of (ids.ok && ids.result) || []) {
+    const d = await haalDossier(id);
+    if (!d || !d.herinner || d.status !== 'actief' || opSlotNu(d)) continue;
+    const [h, m] = d.herinner.tijd.split(':').map(Number), doelMin = h * 60 + m;
+    if (!d.herinner.dagen.includes(dag) || minuten < doelMin || minuten - doelMin >= 30 || d.herinner.laatste === datum) continue;
+    const b = klantBeeld(d);
+    const vandaagGedaan = (d.sessies || []).some((s) => String(s.op).slice(0, 10) === datum);
+    const volgende = b.sessies.find((s) => !b.gedaanDezeWeek.includes(s.letter));
+    d.herinner.laatste = datum; await bewaarDossier(d);
+    if (vandaagGedaan || !volgende) continue;
+    const zwaar = d.intake && d.intake.zwaarsteDag;
+    await appMelding(d.email, { soort: 'core', titel: 'Tijd voor je core', tekst: `Vandaag: ${volgende.naam}, ${volgende.minuten} minuten.${zwaar === morgen ? ' Morgen je zwaarste rit, dus vandaag kort en rustig.' : zwaar === dag ? ' Na je zware rit van vandaag mag het rustig.' : ''} Tik om te starten.`, link: linkVoor(d.id) + '#vandaag' });
+    verstuurd++;
+  }
+  return res.status(200).json({ ok: true, verstuurd });
+}
 async function routePlan(req, res) {
   const r = await metToken(req, res); if (!r) return;
   if (await syncDoel(r.d)) await bewaarDossier(r.d);
   await tel(r.d.email, 'core-open');
   meldActief(r.d.email);
   redis(['EXPIRE', `core:email:${r.d.email}`, String(BEWAAR_S)]);
-  return res.status(200).json({ ok: true, ...klantBeeld(r.d) });
+  return res.status(200).json({ ok: true, ...klantBeeld(r.d), pushAan: await pushAanVoor(r.d.email) });
 }
 
 // --- Intake -------------------------------------------------------------------

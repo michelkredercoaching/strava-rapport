@@ -65,6 +65,10 @@
       "schedule": "0 7 * * *"
     },
     {
+      "path": "/api/core?actie=herinnerdag",
+      "schedule": "*/30 * * * *"
+    },
+    {
       "path": "/api/app?actie=doelronde",
       "schedule": "0 8 * * *"
     },
