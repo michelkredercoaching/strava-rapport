@@ -224,6 +224,10 @@
   .bank-themas span { font-size:11.5px; border:1px solid var(--border); border-radius:99px; padding:4px 9px; color:var(--muted); }
   .bank-onder { margin:10px 0 2px; }
   .vk .mee { margin-top:10px; background:rgba(0,0,0,.25); }
+  .mee-jij { margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+  .mee-jij b { display:block; font-size:14.5px; margin-bottom:6px; }
+  .mee-jij p { font-size:13.5px; line-height:1.55; color:rgba(245,243,239,.85); margin:0 0 8px; }
+  .mee-jij p:last-child { margin-bottom:2px; }
   .mee ol.mee-lijn li, .mee ul.mee-extra li { display:block; padding:0; margin:0; }
   .mee ul.mee-extra li::before { display:none; content:none; }
   .mee ol.mee-lijn li::before { content:''; display:block; position:absolute; left:-20px; top:5px; width:10px; height:10px; border-radius:50%; background:var(--accent); }
@@ -1706,6 +1710,14 @@ function lidOchtendHtml() {
 }
 // Core die meebeweegt (12-10-2026): precies wat lib/core.js doet (doelModus,
 // MODUS_UITLEG, rustweek), op het doel van de bezoeker afgestemd.
+function coreDiscVan(naam) {
+  const n = String(naam || '').toLowerCase();
+  if (/gravel|traka|unbound|rift|gralloch|santa vall|big sugar|migration|sbt|waffle|mid south|houffa|one fifty|marly|grav/.test(n)) return 'gravel';
+  if (/criterium|wedstrijd|koers|crit/.test(n)) return 'crit';
+  if (/vlaanderen|roubaix|omloop|flanders|wevelgem|kassei|ename|chouffe/.test(n)) return 'kasseien';
+  if (/marmotte|tzaler|ventoux|dolomit|tape|stelvio|alpe|haute route|ballons|tour du als|klimmen|quebranta|transalp|dreil|stations|mallorca|nove colli|fausto|vosges|bastogne/.test(n)) return 'bergen';
+  return 'toer';
+}
 function coreMeeHtml(d, compact) {
   const dl = d && d.doel && !d.doel.klaar ? d.doel : null;
   const nog = dl && dl.doel === 'evenement' && dl.datum ? Math.ceil((Date.parse(dl.datum + 'T08:00:00') - Date.now()) / 864e5) : null;
@@ -1722,11 +1734,23 @@ function coreMeeHtml(d, compact) {
     : [stap('Gaat het makkelijk?', 'Dan ga je sneller een niveau omhoog. Zwaar? Dan blijf je even.'),
        stap('Elke 4e week', 'Een lichtere week, zodat je sterker terugkomt.'),
        stap('Kies je tocht', 'Dan bouwt hij af naar de dag zelf: korter, frisser, en op de dag een opener van 5 minuten.')];
-  const extra = [stap('Last van je rug of nek?', 'Dan krijg je oefeningen die daarbij passen. Voel je pijn, dan stopt hij en vraagt hij wat er is.'),
-    stap('Kun je een oefening niet?', 'Eén tik en je krijgt een vervanger die hetzelfde traint.'),
-    stap('Bergen, kasseien, gravel of crit', 'Je sessies passen bij wat jij rijdt.')];
+  // Afgestemd op jou: gewone zinnen, en waar het kan op je tocht (zelfde herkenning
+  // als disciplineVan in lib/core.js, zelfde accenten als FOCUS daar).
+  const disc = dl && dl.doel === 'evenement' && dl.naam ? coreDiscVan(dl.naam) : null;
+  const nm = lidVoornaam();
+  const zinDisc = disc ? {
+    toer: 'Voor ' + naam + ' ligt de nadruk op lange dagen in het zadel: een stil bekken en een sterke onderrug, zodat je houding het volhoudt tot de finish.',
+    bergen: 'Voor ' + naam + ' ligt de nadruk op klimmen: stil blijven zitten als je lang aanzet, en in één lijn blijven als je uit het zadel gaat.',
+    kasseien: 'Voor ' + naam + ' ligt de nadruk op de kasseien: een romp die de trillingen opvangt, zodat je armen en onderrug dat niet hoeven te doen.',
+    gravel: 'Voor ' + naam + ' ligt de nadruk op gravel: balans op losse grond en controle in de bochten, terwijl je fiets onder je beweegt.',
+    crit: 'Voor ' + naam + ' ligt de nadruk op harde inspanningen: snel aanspannen bij elke versnelling en stabiel blijven als je sprint.'
+  }[disc] : 'Bij je intake vertel je wat je vooral rijdt: lange toertochten, bergen, kasseien, gravel of criteriums. Daar legt hij de nadruk op.';
+  const jij = `<div class="mee-jij"><b>${nm ? esc(nm) + ', zo' : 'Zo'} stemt hij zich af op jou</b>
+    <p>${zinDisc}</p>
+    <p>Last van je onderrug of nek? Dan houdt hij daar rekening mee en krijg je oefeningen die bij je klacht passen. Voel je tijdens een sessie pijn, dan tik je op &lsquo;Pijn?&rsquo; en past hij je sessie aan.</p>
+    <p>Lukt een oefening niet, bijvoorbeeld door je knie of je schouder? Dan tik je op &lsquo;Kan ik niet?&rsquo; en krijg je een andere die hetzelfde traint.</p></div>`;
   return `<div class="mee">${compact ? '' : `<div class="mee-kop">Zo beweegt je Core mee${nog != null && nog > 0 ? ' naar ' + naam : ''}</div>`}
-    <ol class="mee-lijn">${tijdlijn.join('')}</ol>${compact ? '' : '<ul class="mee-extra">' + extra.join('') + '</ul>'}</div>`;
+    <ol class="mee-lijn">${tijdlijn.join('')}</ol>${compact ? '' : jij}</div>`;
 }
 // De coach als vragenbank: wat je kunt vragen, en een voorbeeld van een antwoord.
 const COACH_VOORBEELD = {
