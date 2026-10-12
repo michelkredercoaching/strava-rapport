@@ -242,6 +242,20 @@
   .speler .klok { font-family:'Bebas Neue',sans-serif; font-size:clamp(70px,22vw,120px); line-height:.9; letter-spacing:.02em; }
   .speler .cue { color:rgba(245,243,239,.78); max-width:460px; margin-top:6px; font-size:15px; }
   .speler .straks { color:var(--muted); font-size:13px; margin-top:8px; min-height:1.3em; }
+  .testspeler.tikstop .midden { cursor:pointer; }
+  .ts-score { display:flex; flex-direction:column; align-items:center; margin:6px 0 4px; }
+  .ts-score span { font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); }
+  .ts-score b { font-family:'Bebas Neue',sans-serif; font-size:clamp(80px,26vw,130px); line-height:.9; color:var(--accent); }
+  .ts-score em, .ts-rij em { font-style:normal; font-size:13px; font-weight:700; }
+  .ts-score em.op, .ts-rij em.op { color:#4CC38A; } .ts-score em.neer, .ts-rij em.neer { color:#ff8a5c; }
+  .ts-lijst { width:100%; max-width:420px; margin-top:12px; text-align:left; }
+  .ts-rij { display:flex; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.08); font-size:14px; }
+  .ts-rij span { color:rgba(245,243,239,.8); }
+  .is-balk { height:4px; background:rgba(255,255,255,.08); border-radius:2px; overflow:hidden; margin:4px 0 14px; }
+  .is-balk i { display:block; height:100%; background:var(--accent); transition:width .3s; }
+  .is-rij { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:14px; }
+  .is-rij .knop { width:auto; margin:0; }
+  .testkort { display:flex; gap:10px; align-items:center; margin:12px 0 4px; flex-wrap:wrap; }
   .speler .uitleg { max-width:460px; width:100%; text-align:left; margin-top:10px; font-size:14px; color:rgba(245,243,239,.85); }
   .speler .uitleg:empty { display:none; }
   .speler .uitleg ol { margin:0; padding-left:20px; }
@@ -347,7 +361,8 @@ function teken() {
       <button class="knop" data-actie="groenlicht" style="margin-top:6px">Open mijn programma</button><div class="fout" id="groenfout"></div></div>`;
   else {
     h += appHtml();
-    if (d.testNodig === 0) h += testHtml(d, true);
+    const testEerst = d.testNodig === 0 && (d.gedaanDezeWeek.length > 0 || d.afgerond > 0);
+    if (testEerst) h += testHtml(d, true);
     if (d.meterNodig != null) h += meterHtml(d);
     if (d.testNodig != null && d.testNodig !== 0) h += testHtml(d, false);
     if (!d.betaald && !d.opSlot) h += `<div class="proefbalk"><span><b>Proefweek.</b> Week 1 is gratis. Doe je starttest en je sessies, dan zie je meteen wat het programma met je doet.</span></div>`;
@@ -357,6 +372,7 @@ function teken() {
       if (d.weekRond) h += weekklaarHtml(d);
       if (d.kracht == null && d.week > 1) h += krachtVraagHtml();
       h += sessiesHtml(d);
+      if (d.testNodig === 0 && !testEerst) h += testHtml(d, true);
       h += tipsHtml(d);
     }
     h += voortgangHtml(d);
@@ -367,7 +383,9 @@ function teken() {
   }
   h += `<p class="klein muted" style="margin-top:30px">Voel je pijn tijdens een oefening (niet hetzelfde als vermoeidheid)? Stop die oefening en sla hem over. Laat het Michel weten via de vraagknop.</p>`;
   $('#app').innerHTML = h;
+  if (d.intakeNodig) intakeStappen();
   if (!d.intakeNodig && !d.geblokkeerd) coachBouw();
+  if (location.hash === '#vandaag' && !d.intakeNodig) { setTimeout(() => { const s = document.querySelector('.sessie:not(.gedaan):not(.opslot)') || document.getElementById('test'); if (s) { s.scrollIntoView({ behavior: 'smooth', block: 'center' }); s.classList.add('nieuwopen'); } try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }, 300); }
   // Mini-animaties in de sessiekaarten laten lopen.
   document.querySelectorAll('[data-anim]').forEach((el) => { const a = A[el.dataset.anim]; if (a) F.speel(el, a); });
 }
@@ -381,7 +399,7 @@ function kopHtml(d) {
   // app-login, zodat je niet opnieuw hoeft in te loggen.
   const naarApp = `<a class="naarapp" href="/app?ct=${encodeURIComponent(token)}"><span class="tg"><span>&#8249;</span>Terug</span><span class="av"><img src="/icoon-192.png" alt=""></span><span class="tx"><span class="nm" style="display:block">MKC-Core</span><span class="st">Core stability voor wielrenners</span></span></a>`;
   return `${naarApp}<div class="kop"><div class="eyebrow">Mijn Core${d.naam ? ' &middot; ' + esc(d.naam.split(' ')[0]) : ''}</div>
-    <h1>${d.intakeNodig ? 'Welkom' : d.klaar ? 'Niveau 12 bereikt' : 'Niveau ' + d.week}</h1>
+    <h1>${d.intakeNodig ? 'Welkom' + (d.naam ? ' ' + esc(d.naam.split(' ')[0]) : '') : d.klaar ? 'Niveau 12 bereikt' : 'Niveau ' + d.week}</h1>
     <div class="sub">${sub}</div>${doel}</div>`;
 }
 
@@ -406,31 +424,32 @@ document.addEventListener('input', (e) => {
 function intakeHtml() {
   const optie = (naam, waarde, tekst, type = 'radio') => `<label class="optie"><input type="${type}" name="${naam}" value="${waarde}"><span>${tekst}</span></label>`;
   return `<div class="blok kaart accent" id="intake"><h2>Je intake</h2>
-    <p class="muted klein" style="margin-bottom:18px">Hierop stem ik je oefeningen af. Duurt een minuut.</p>
-    <div class="vraag"><div class="v">1. Waar heb je last van, op of na de fiets?</div>
+    <p class="muted klein" style="margin-bottom:8px">Hierop stem ik je oefeningen af. Duurt een minuut.</p>
+    <div class="vraag" data-stap="0"><div class="v">Waar heb je last van, op of na de fiets?</div>
       ${optie('klacht', 'onderrug', 'Onderrug', 'checkbox')}${optie('klacht', 'nek', 'Nek en schouders', 'checkbox')}
       ${optie('klacht', 'knie', 'Knie', 'checkbox')}${optie('klacht', 'heup', 'Heup', 'checkbox')}
       ${optie('klacht', 'bekkenbodem', 'Bekkenbodem of buikspieren <span class="muted">(bijvoorbeeld na een bevalling)</span>', 'checkbox')}
       ${optie('klacht', 'geen', 'Nergens last van', 'checkbox')}</div>
-    <div class="vraag" id="rugvraag" style="display:none"><div class="v">Hoe erg is je onderrug?</div>
+    <div class="vraag" id="rugvraag" data-stap="0" style="display:none"><div class="v">Hoe erg is je onderrug?</div>
       ${optie('rug', 'lange-ritten', 'Alleen na lange ritten')}${optie('rug', 'regelmatig', 'Regelmatig, ook bij kortere ritten')}${optie('rug', 'rust', 'Ook in rust, zonder te fietsen')}</div>
-    <div class="vraag"><div class="v">2. Heb je een van deze dingen?</div>
+    <div class="vraag" data-stap="1"><div class="v">Heb je een van deze dingen?</div>
       <p class="klein muted" style="margin-bottom:8px">Pijn die uitstraalt naar je been, tintelingen of een doof gevoel, pijn 's nachts, of een operatie of blessure in het afgelopen half jaar.</p>
       ${optie('vlag', 'nee', 'Nee')}${optie('vlag', 'ja', 'Ja')}</div>
-    <div class="vraag"><div class="v">3. Hoe oud ben je?</div>
+    <div class="vraag" data-stap="2"><div class="v">Hoe oud ben je?</div>
       ${optie('leeftijd', 'onder40', 'Jonger dan 40')}${optie('leeftijd', '40-55', '40 tot 55')}${optie('leeftijd', '55plus', '55 of ouder')}</div>
-    <div class="vraag"><div class="v">4. Hoeveel ervaring heb je met core-training?</div>
+    <div class="vraag" data-stap="3"><div class="v">Hoeveel ervaring heb je met core-training?</div>
       ${optie('ervaring', 'nooit', 'Nooit of bijna nooit')}${optie('ervaring', 'af en toe', 'Af en toe')}${optie('ervaring', 'regelmatig', 'Regelmatig, wekelijks')}</div>
-    <div class="vraag"><div class="v">5. Hoe vaak per week wil je trainen?</div>
+    <div class="vraag" data-stap="4"><div class="v">Hoe vaak per week wil je trainen?</div>
       ${optie('freq', '2', '2x per week, 20 tot 25 minuten')}${optie('freq', '3', '3x per week, 15 tot 20 minuten <span class="muted">(meest gekozen)</span>')}${optie('freq', '4', '4x per week, 10 tot 15 minuten <span class="muted">(bijvoorbeeld vlak voor je rit)</span>')}</div>
-    <div class="vraag"><div class="v">6. Op welke dag rijd je meestal je zwaarste training?</div>
+    <div class="vraag" data-stap="5"><div class="v">Op welke dag rijd je meestal je zwaarste training?</div>
       <select name="dag"><option value="">Wisselt, geen vaste dag</option><option value="ma">Maandag</option><option value="di">Dinsdag</option><option value="wo">Woensdag</option><option value="do">Donderdag</option><option value="vr">Vrijdag</option><option value="za">Zaterdag</option><option value="zo">Zondag</option></select></div>
-    <div class="vraag"><div class="v">7. Doe je ook krachttraining in de sportschool?</div>
+    <div class="vraag" data-stap="6"><div class="v">Doe je ook krachttraining in de sportschool?</div>
       ${optie('kracht', 'nee', 'Nee')}${optie('kracht', '1x', 'Ja, 1 keer per week')}${optie('kracht', '2x', 'Ja, 2 keer of vaker per week')}</div>
-    <div class="vraag"><div class="v">Train je naar iets toe? <span class="muted" style="font-weight:400">(mag je overslaan)</span></div>
-      <div class="rij2"><input type="text" name="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60">${datumVeld('name="doelDatum"', '')}</div></div>
-    <label class="toestemming"><input type="checkbox" name="toestemming"> <span>Ik geef toestemming dat mijn antwoorden over klachten en gezondheid worden gebruikt om mijn plan op mij af te stemmen, en dat Michel meekijkt als de app me naar een arts of fysiotherapeut verwijst. Lees de <a href="/privacy#app" target="_blank" rel="noopener">privacyverklaring</a>.</span></label>
-    <button class="knop breed" data-actie="intake">Maak mijn plan</button><div class="fout" id="intakefout"></div></div>`;
+    <div class="vraag" data-stap="7"><div class="v">Train je naar iets toe? <span class="muted" style="font-weight:400">(mag je overslaan)</span></div>
+      <div class="rij2"><input type="text" name="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60" value="${S.doel ? esc(S.doel.naam) : ''}">${datumVeld('name="doelDatum"', S.doel ? S.doel.datum : '')}</div>
+      <p class="klein muted" style="margin-top:6px">Dit doel staat ook in je MKC-app, zodat je overal hetzelfde aftelt.</p></div>
+    <div data-stap="7"><label class="toestemming"><input type="checkbox" name="toestemming"> <span>Ik geef toestemming dat mijn antwoorden over klachten en gezondheid worden gebruikt om mijn plan op mij af te stemmen, en dat Michel meekijkt als de app me naar een arts of fysiotherapeut verwijst. Lees de <a href="/privacy#app" target="_blank" rel="noopener">privacyverklaring</a>.</span></label>
+    <button class="knop breed" data-actie="intake">Maak mijn plan</button></div><div class="fout" id="intakefout"></div><div id="intakenav"></div></div>`;
 }
 
 // ---- Romptest ----
@@ -438,14 +457,16 @@ const TESTANIM = { plank: 'plank', zijplankL: 'zijplank', zijplankR: 'zijplank',
 function testHtml(d, start) {
   const titel = start ? 'Je starttest' : 'Je romptest';
   return `<div class="blok kaart accent" id="test"><h2>${titel}</h2>
-    <p class="muted klein" style="margin-bottom:10px">${start ? 'Dit is je nulmeting. Daar vergelijk je straks alles mee. Je sessies gaan open zodra hij is ingevuld.' : 'Zelfde test als bij de start. Zo zie je zwart op wit wat het oplevert.'}
-    Houd elke houding zo lang als je hem goed kunt houden en druk op stop zodra je houding breekt. Neem twee minuten rust tussen de tests.</p>
+    <p class="muted klein" style="margin-bottom:6px">${start ? (d.gedaanDezeWeek.length || d.afgerond ? 'Je nulmeting: daar vergelijk je straks alles mee. Je volgende sessie gaat open zodra hij is gedaan.' : 'Je eerste sessie kun je meteen doen. Doe deze nulmeting vóór je tweede sessie: daar vergelijk je straks alles mee.') : 'Zelfde test als bij de start. Zo zie je zwart op wit wat het oplevert.'}
+    6 houdingen, zo lang als je ze goed kunt houden, met 2 minuten rust ertussen. Ongeveer 15 minuten. De app telt af, houdt de tijd bij en geeft je rust.</p>
+    <div class="testkort"><button class="knop" data-actie="starttest">${start ? 'Start de starttest' : 'Start de romptest'}</button></div>
+    <details class="handmatig"><summary class="klein muted" style="cursor:pointer;margin-top:8px">Of vul je tijden zelf in</summary>
     ${d.testDefinities.map((t) => `<div class="test" data-test="${t.id}">
       <div class="anim">${still(TESTANIM[t.id], 'hold') || still(TESTANIM[t.id], 'hoog')}</div>
       <div><b>${esc(t.naam)}</b><div class="klein muted">Doel voor de volle score: ${t.doel} s</div></div>
       <div class="testknoppen"><button class="klokknop" data-actie="klok" data-id="${t.id}">Start</button>
         <input type="number" min="0" max="900" inputmode="numeric" placeholder="sec" data-uitslag="${t.id}"></div></div>`).join('')}
-    <button class="knop breed" data-actie="test" style="margin-top:16px">Sla mijn test op</button><div class="fout" id="testfout"></div></div>`;
+    <button class="knop breed" data-actie="test" style="margin-top:16px">Sla mijn test op</button></details><div class="fout" id="testfout"></div></div>`;
 }
 
 // ---- Rugklachtenmeter ----
@@ -527,7 +548,7 @@ function spierHtml(oefeningen) {
   return `<div class="spierblok"><div>${K.svg(kaart)}</div><div><div class="spierkop">Dit train je</div>${n.hoofd.map((x) => `<span class="spier">${esc(x)}</span>`).join('')}${n.mee.length ? `<div class="helpt">Helpt mee: ${n.mee.map(esc).join(', ').toLowerCase()}</div>` : ''}</div></div>`;
 }
 function sessiesHtml(d) {
-  const slot = d.testNodig === 0;
+  const slot = d.testNodig === 0 && (d.gedaanDezeWeek.length > 0 || d.afgerond > 0);
   const eersteOpen = d.sessies.findIndex((s) => !d.gedaanDezeWeek.includes(s.letter));
   return `<div class="blok"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px"><h2 style="margin:0">Deze week${d.herhaling ? ' <span class="muted klein" style="font-family:DM Sans">(herhaling, lichtere varianten)</span>' : ''}</h2>
     <div class="freqkeuze" title="Hoe vaak per week">${[2, 3, 4].map((f) => `<button data-actie="freq" data-f="${f}" class="${d.frequentie === f ? 'aan' : ''}">${f}x</button>`).join('')}</div></div><div class="sessies">
@@ -535,7 +556,7 @@ function sessiesHtml(d) {
       const klaar = d.gedaanDezeWeek.includes(s.letter);
       const opslot = !klaar && eersteOpen >= 0 && i > eersteOpen;
       const vorige = d.sessies[i - 1];
-      const knop = slot ? '<button class="knop breed" disabled>Eerst je starttest</button>'
+      const knop = slot && !klaar ? '<button class="knop breed" data-actie="starttest">Eerst je starttest (10 min)</button>'
         : opslot ? `<div class="slotlabel">${SLOT_SVG}Gaat open als je sessie ${NR[vorige.letter]} hebt gedaan</div>`
         : `<button class="knop ${klaar ? 'leeg' : ''} breed" data-actie="start" data-letter="${s.letter}">${klaar ? 'Nog een keer doen' : 'Start sessie ' + NR[s.letter]}</button>`;
       return `<div class="sessie ${klaar ? 'gedaan' : ''} ${opslot ? 'opslot' : ''} ${nieuwOpen === s.letter ? 'nieuwopen' : ''}">
@@ -543,7 +564,7 @@ function sessiesHtml(d) {
           <div><div class="titel">${esc(s.naam)}</div><div class="meta">${s.minuten} min &middot; ${s.werk}s werk, ${s.rust}s rust &middot; ${s.rondes} rondes${s.finisher ? ' + finisher' : ''}</div></div></div>
           ${klaar ? '<div class="vink">Gedaan</div>' : nieuwOpen === s.letter ? '<div class="ontgrendeld">Ontgrendeld</div>' : opslot ? `<div class="slotlabel" style="color:var(--muted)">${SLOT_SVG}</div>` : ''}</div>
         ${spierHtml(s.oefeningen)}
-        <div class="oefrij">${s.oefeningen.map((o) => `<div class="oefmini"><div data-anim="${o.id}"></div><span>${esc(o.naam)}${o.perKant ? (o.zwak ? ` (${o.zwak[0]} eerst +${o.extra}s)` : ' (L+R)') : ''}</span></div>`).join('')}</div>
+        <div class="oefrij">${s.oefeningen.map((o) => `<div class="oefmini"><div data-anim="${o.id}"></div><span>${esc(o.naam)}${o.perKant ? (o.zwak ? ` (${o.zwak.toLowerCase()} eerst, +${o.extra} s)` : ' (L+R)') : ''}</span></div>`).join('')}</div>
         <button class="uitlegknop" data-actie="uitleg">Bekijk de oefeningen</button>
         <div class="uitleglijst">${s.oefeningen.map((o) => `<div class="oef"><b>${esc(o.naam)}${o.perKant ? (o.zwak ? ` (begin ${o.zwak.toLowerCase()}, je zwakke kant: ${o.extra} s langer)` : ' (links en rechts)') : ''}</b><ol>${(o.stappen || []).map((z) => `<li>${esc(z)}</li>`).join('')}</ol>${o.waarom ? `<div class="waarom">Waarom: ${esc(o.waarom)}</div>` : ''}</div>`).join('')}</div>
         <div class="onder">${knop}</div>
@@ -688,6 +709,7 @@ let installPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; if (S) teken(); });
 function isApp() { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
 function appHtml() {
+  return ''; // 12-10-2026: Core hoort bij de MKC-app, die vraagt zelf om het beginscherm.
   let weg = false; try { weg = localStorage.getItem('coreAppWeg') === '1'; } catch (e) {}
   const telefoon = window.matchMedia('(pointer: coarse)').matches;
   if (isApp() || weg || !telefoon) return '';
@@ -739,6 +761,7 @@ function doelHtml(d) {
     ${g ? `<p><b>${esc(g.naam)}</b> &middot; ${new Date(g.datum).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}</p>${aftel}` : '<p class="muted klein" style="margin-bottom:12px">Train je naar een rit of wedstrijd toe? Dan tel ik voor je af.</p>'}
     <div class="rij2"><input type="text" id="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60" value="${g ? esc(g.naam) : ''}">${datumVeld('id="doelDatum"', g ? g.datum : '')}</div>
     <div style="display:flex;gap:8px;margin-top:10px"><button class="knop" data-actie="doel">${g ? 'Wijzig doel' : 'Zet doel'}</button>${g ? '<button class="knop leeg" data-actie="doelwis">Wis</button>' : ''}</div>
+    <p class="klein muted" style="margin-top:10px">Dit is hetzelfde doel als in je MKC-app. Pas je het hier aan, dan verandert het daar ook.</p>
     <div class="fout" id="doelfout"></div></div></div>`;
 }
 
@@ -752,7 +775,7 @@ function vervolgHtml(d) {
 function vraagHtml(d) {
   return `<div class="blok"><div class="kaart" style="display:flex;gap:14px;align-items:center">
     <div class="cc-av" style="width:52px;height:52px">${avatarSvg()}</div>
-    <div style="flex:1"><b>Twijfel je over een oefening?</b><div class="klein muted">Je Core-coach kent je plan en je klachten en antwoordt direct, dag en nacht.</div></div>
+    <div style="flex:1"><b>Twijfel je over een oefening?</b><div class="klein muted">Je MKC-coach kent je Core-plan en je klachten en antwoordt direct, dag en nacht.</div></div>
     <button class="knop" data-actie="coach" style="font-size:17px;padding:10px 14px 8px">Vraag</button></div></div>`;
 }
 
@@ -800,6 +823,7 @@ document.addEventListener('click', async (e) => {
     const start = Date.now(); invoer.value = 0; k.classList.add('loopt'); k.textContent = 'Stop'; piep(880, .2);
     klokken[id] = { iv: setInterval(() => { invoer.value = Math.floor((Date.now() - start) / 1000); }, 250) };
   }
+  if (actie === 'starttest') return startTest(S.testNodig === 0);
   if (actie === 'test') {
     const uitslag = {}; let leeg = false;
     for (const t of S.testDefinities) { const v = $(`input[data-uitslag="${t.id}"]`).value; if (v === '') leeg = true; uitslag[t.id] = Number(v); }
@@ -861,6 +885,200 @@ document.addEventListener('click', async (e) => {
     const volgorde = DAGEN.filter((x) => agendaDagen.includes(x));
     location.href = API + '?actie=agenda&t=' + encodeURIComponent(token) + '&dagen=' + volgorde.join(',') + '&tijd=' + encodeURIComponent(agendaTijd);
   }
+});
+
+
+// ===========================================================================
+// TESTMODUS (12-10-2026): de romptest op het volle scherm, net als een sessie.
+// Per test: uitleg, aftellen van 3, grote klok, tik ergens om te stoppen.
+// Daarna 2 minuten rust met "Straks: ...". Aan het eind opslaan en meteen
+// je uitslag: Rompscore, wat dat betekent, je zwakke kant, en delen.
+// ===========================================================================
+let tsp = null;
+const RUST_TEST = 120;
+function testUitlegTekst(id) {
+  return {
+    plank: 'Op je onderarmen, ellebogen onder je schouders. Lijn van hielen tot hoofd, billen aan.',
+    zijplankL: 'Op je linker elleboog, voeten op elkaar. Heup hoog, lichaam in één lijn.',
+    zijplankR: 'Op je rechter elleboog, voeten op elkaar. Heup hoog, lichaam in één lijn.',
+    bridgeL: 'Op je rug, linker voet op de grond, rechter knie naar je borst. Heup omhoog en recht.',
+    bridgeR: 'Op je rug, rechter voet op de grond, linker knie naar je borst. Heup omhoog en recht.',
+    fietshouding: 'Voorover tot je fietshouding, rug recht, armen naar voren alsof je je stuur vasthebt.'
+  }[id] || '';
+}
+async function startTest(start) {
+  const defs = S.testDefinities;
+  const el = document.createElement('div'); el.className = 'speler testspeler';
+  el.innerHTML = `<div class="balk"><div class="t">${start ? 'Je starttest' : 'Je romptest'}</div><button class="sluit" data-ts="stop">Stoppen</button></div>
+    <div class="voortgang"><i></i></div>
+    <div class="midden"></div><div class="bediening"></div>`;
+  document.body.appendChild(el); document.body.style.overflow = 'hidden';
+  let wakeLock = null; try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {}
+  tsp = { el, defs, i: 0, uitslag: {}, fase: 'uitleg', start, iv: null, t0: 0, wakeLock };
+  el.addEventListener('click', testKlik);
+  testScherm();
+}
+function testVoortgang() { const t = tsp; $('.voortgang i', t.el).style.width = Math.round((t.i / t.defs.length) * 100) + '%'; }
+function testScherm() {
+  const t = tsp, def = t.defs[t.i], m = $('.midden', t.el), b = $('.bediening', t.el);
+  clearInterval(t.iv); testVoortgang();
+  if (t.fase === 'uitleg') {
+    m.innerHTML = `<div class="soort">Test ${t.i + 1} van ${t.defs.length}</div><div class="naam">${esc(def.naam)}</div>
+      <div class="beeld">${still(TESTANIM[def.id], 'hold') || still(TESTANIM[def.id], 'hoog')}</div>
+      <p class="cue">${esc(testUitlegTekst(def.id))}</p>
+      <p class="straks">Houd vast zolang je houding goed blijft. Volle score bij ${def.doel} seconden.</p>`;
+    b.innerHTML = '<button class="hoofd" data-ts="aftel">Ik lig klaar</button>';
+  } else if (t.fase === 'aftel') {
+    let n = 3;
+    m.innerHTML = `<div class="soort">Klaar voor de start</div><div class="naam">${esc(def.naam)}</div><div class="klok">${n}</div><p class="cue">Leg je telefoon zo neer dat je hem kunt zien.</p>`;
+    b.innerHTML = '';
+    piep(660, .12);
+    t.iv = setInterval(() => {
+      n--;
+      if (n > 0) { $('.klok', m).textContent = n; piep(660, .12); return; }
+      clearInterval(t.iv); t.fase = 'loopt'; t.t0 = Date.now(); piep(990, .25); testScherm();
+    }, 1000);
+  } else if (t.fase === 'loopt') {
+    m.innerHTML = `<div class="soort">Houd vast</div><div class="naam">${esc(def.naam)}</div><div class="klok">0</div>
+      <p class="cue">Tik ergens op het scherm zodra je houding breekt.</p><p class="straks">Volle score bij ${def.doel} s</p>`;
+    b.innerHTML = '<button class="hoofd" data-ts="stopklok">Stop</button>';
+    t.el.classList.add('tikstop');
+    let laatste = -1;
+    t.iv = setInterval(() => {
+      const s = Math.floor((Date.now() - t.t0) / 1000);
+      if (s === laatste) return; laatste = s;
+      $('.klok', m).textContent = s;
+      if (s === def.doel) piep(1320, .3);
+      else if (s > 0 && s % 30 === 0) piep(880, .08);
+      if (s >= 900) testStop();
+    }, 200);
+  } else if (t.fase === 'uitslag') {
+    const s = t.uitslag[def.id];
+    m.innerHTML = `<div class="soort">${esc(def.naam)}</div><div class="klok">${s}<span style="font-size:.35em"> s</span></div>
+      <p class="cue">${s >= def.doel ? 'Volle score. Sterk!' : 'Genoteerd.'}</p>`;
+    b.innerHTML = `<button data-ts="opnieuw">Opnieuw</button><button class="hoofd" data-ts="verder">${t.i + 1 < t.defs.length ? 'Volgende test' : 'Bekijk mijn uitslag'}</button>`;
+  } else if (t.fase === 'rust') {
+    let over = RUST_TEST; const vlg = t.defs[t.i];
+    m.innerHTML = `<div class="soort rust">Rust</div><div class="klok">2:00</div><p class="cue">Even uitschudden en rustig ademen.</p>
+      <p class="straks">Straks: ${esc(vlg.naam)}</p><div class="beeld gedimd">${still(TESTANIM[vlg.id], 'hold') || still(TESTANIM[vlg.id], 'hoog')}</div>`;
+    b.innerHTML = '<button class="hoofd" data-ts="rustklaar">Ik ben er klaar voor</button>';
+    t.iv = setInterval(() => {
+      over--;
+      $('.klok', m).textContent = Math.floor(over / 60) + ':' + String(over % 60).padStart(2, '0');
+      if (over <= 3 && over > 0) piep(660, .1);
+      if (over <= 0) { clearInterval(t.iv); piep(990, .2); t.fase = 'uitleg'; testScherm(); }
+    }, 1000);
+  }
+}
+function testStop() {
+  const t = tsp; if (!t || t.fase !== 'loopt') return;
+  clearInterval(t.iv); t.el.classList.remove('tikstop');
+  t.uitslag[t.defs[t.i].id] = Math.floor((Date.now() - t.t0) / 1000);
+  piep(660, .15); t.fase = 'uitslag'; testScherm();
+}
+async function testKlik(e) {
+  const t = tsp; if (!t) return;
+  const k = e.target.closest('[data-ts]');
+  if (!k) { if (t.fase === 'loopt') testStop(); return; }
+  const a = k.dataset.ts;
+  if (a === 'stop') { if (Object.keys(t.uitslag).length && !confirm('Stoppen? Je tijden tot nu toe worden niet opgeslagen.')) return; return testSluit(); }
+  if (a === 'aftel') { t.fase = 'aftel'; return testScherm(); }
+  if (a === 'stopklok') return testStop();
+  if (a === 'opnieuw') { t.fase = 'uitleg'; return testScherm(); }
+  if (a === 'rustklaar') { t.fase = 'uitleg'; return testScherm(); }
+  if (a === 'verder') {
+    if (t.i + 1 < t.defs.length) { t.i++; t.fase = 'rust'; return testScherm(); }
+    return testOpslaan();
+  }
+  if (a === 'klaar') return testSluit();
+}
+function testSluit() {
+  const t = tsp; if (!t) return;
+  clearInterval(t.iv); try { t.wakeLock?.release(); } catch {}
+  t.el.remove(); document.body.style.overflow = ''; tsp = null;
+}
+async function testOpslaan() {
+  const t = tsp, m = $('.midden', t.el), b = $('.bediening', t.el);
+  $('.voortgang i', t.el).style.width = '100%';
+  m.innerHTML = '<div class="soort">Bijna klaar</div><div class="naam">Je uitslag berekenen...</div>'; b.innerHTML = '';
+  const vorigeScore = (S.tests || []).length ? S.tests[S.tests.length - 1].score : null;
+  const vorigeUitslag = (S.tests || []).length ? S.tests[S.tests.length - 1].uitslag : null;
+  const j = await post('test', { uitslag: t.uitslag });
+  if (!j.ok) {
+    m.innerHTML = `<div class="soort">Opslaan lukte niet</div><p class="cue">${esc(j.fout || 'Probeer het zo nog eens.')}</p>`;
+    b.innerHTML = '<button class="hoofd" data-ts="verder">Probeer opnieuw</button>'; t.i = t.defs.length - 1; return;
+  }
+  piep(660, .15); setTimeout(() => piep(880, .15), 160); setTimeout(() => piep(1100, .3), 320);
+  $('.sluit', t.el).style.visibility = 'hidden';
+  m.innerHTML = uitslagHtml(j, vorigeScore, vorigeUitslag);
+  b.innerHTML = '<button class="hoofd" data-ts="klaar">' + (j.sessies && j.sessies.length ? 'Naar mijn sessies' : 'Terug naar mijn pagina') + '</button>';
+  if (j.melding) melding(j.melding, 5500);
+}
+function rompBetekenis(s) {
+  if (s < 40) return 'Een mooie nulmeting: hier valt de meeste winst te halen. Juist bij jou gaat de app snel resultaat laten zien.';
+  if (s < 60) return 'Een degelijke basis. Over 4 weken doe je deze test opnieuw en zie je hoeveel erbij is gekomen.';
+  if (s < 80) return 'Een sterke romp. We maken hem nu fietsklaar, zodat je ook in het laatste uur van een lange rit stabiel blijft zitten.';
+  return 'Heel sterk. De app houdt je scherp en werkt vooral aan je zwakke plekken.';
+}
+function uitslagHtml(j, vorigeScore, vorigeUitslag) {
+  const laatste = j.tests[j.tests.length - 1];
+  const verschil = vorigeScore != null ? laatste.score - vorigeScore : null;
+  const zwak = (laatste.balans || []).filter((x) => x.opvallend);
+  const rijen = j.testDefinities.map((d) => {
+    const s = laatste.uitslag[d.id], oud = vorigeUitslag ? vorigeUitslag[d.id] : null;
+    return `<div class="ts-rij"><span>${esc(d.naam)}</span><b>${s} s${oud != null && s !== oud ? ` <em class="${s > oud ? 'op' : 'neer'}">${s > oud ? '+' : ''}${s - oud}</em>` : ''}</b></div>`;
+  }).join('');
+  return `<div class="soort">${vorigeScore == null ? 'Je nulmeting' : 'Je romptest'}</div>
+    <div class="ts-score"><span>Rompscore</span><b>${laatste.score}</b>${verschil != null ? `<em class="${verschil >= 0 ? 'op' : 'neer'}">${verschil >= 0 ? '+' : ''}${verschil} sinds je vorige test</em>` : ''}</div>
+    <p class="cue">${esc(rompBetekenis(laatste.score))}</p>
+    ${zwak.length ? `<p class="cue" style="margin-top:8px"><b>${zwak.map((x) => `${x.naam}: ${x.zwakker} is ${x.pct}% zwakker`).join('. ')}.</b> Daar begin je voortaan mee, en die kant werkt iets langer.</p>` : ''}
+    <div class="ts-lijst">${rijen}</div>
+    ${vorigeScore != null ? '<button class="knop leeg" data-vgdeel style="margin-top:14px;width:auto">Deel je vooruitgang</button>' : ''}`;
+}
+
+// ---- Intake in stappen (12-10-2026): één vraag per scherm, met voortgang ----
+// De vragen blijven één formulier (zelfde opslaan), we tonen er alleen één tegelijk.
+let IST = 0;
+function intakeStappen() {
+  const blok = $('#intake'); if (!blok) return;
+  const stappen = [...new Set([...blok.querySelectorAll('[data-stap]')].map((x) => Number(x.dataset.stap)))].sort((a, b) => a - b);
+  const max = stappen[stappen.length - 1];
+  IST = Math.min(IST, max);
+  blok.querySelectorAll('[data-stap]').forEach((x) => { x.hidden = Number(x.dataset.stap) !== IST; });
+  const rug = $('#rugvraag'); if (rug && IST === 0) rug.style.display = $('input[name=klacht][value=onderrug]').checked ? '' : 'none';
+  const nav = $('#intakenav');
+  nav.innerHTML = `<div class="is-balk"><i style="width:${Math.round(((IST + 1) / (max + 1)) * 100)}%"></i></div>
+    <div class="is-rij">${IST > 0 ? '<button type="button" class="knop leeg" data-actie="istterug">Terug</button>' : '<span></span>'}
+    <span class="klein muted">Vraag ${IST + 1} van ${max + 1}</span>
+    ${IST < max ? '<button type="button" class="knop" data-actie="istverder">Volgende</button>' : '<span></span>'}</div>`;
+  $('#intakefout').textContent = '';
+}
+function intakeStapFout(stap) {
+  const q = (s) => document.querySelector(s);
+  if (stap === 0) {
+    const klachten = [...document.querySelectorAll('input[name=klacht]:checked')];
+    if (!klachten.length) return 'Vink iets aan, of kies "nergens last van".';
+    if (q('input[name=klacht][value=onderrug]').checked && !q('input[name=rug]:checked')) return 'Geef aan hoe erg je onderrug is.';
+  }
+  if (stap === 1 && !q('input[name=vlag]:checked')) return 'Kies ja of nee.';
+  if (stap === 2 && !q('input[name=leeftijd]:checked')) return 'Kies je leeftijd.';
+  if (stap === 3 && !q('input[name=ervaring]:checked')) return 'Kies je ervaring.';
+  if (stap === 4 && !q('input[name=freq]:checked')) return 'Kies hoe vaak per week.';
+  if (stap === 6 && !q('input[name=kracht]:checked')) return 'Kies een antwoord.';
+  return '';
+}
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-actie="istverder"], [data-actie="istterug"]'); if (!k) return;
+  if (k.dataset.actie === 'istterug') { IST = Math.max(0, IST - 1); return intakeStappen(); }
+  const f = intakeStapFout(IST); if (f) { $('#intakefout').textContent = f; return; }
+  IST++; intakeStappen(); $('#intake').scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+// Eén keuze bij een vraag met rondjes = meteen door naar de volgende vraag.
+document.addEventListener('change', (e) => {
+  const i = e.target; if (!$('#intake') || i.type !== 'radio') return;
+  const stap = Number(i.closest('[data-stap]')?.dataset.stap);
+  if (stap === 0 || stap !== IST) return;
+  setTimeout(() => { if (!intakeStapFout(IST)) { IST++; intakeStappen(); } }, 250);
 });
 
 function toonBadge(b) {
@@ -1055,10 +1273,10 @@ async function klaarSpeler() {
 // CORE-COACH: de chat. Staat buiten #app, zodat hij niet verdwijnt als de
 // pagina opnieuw getekend wordt.
 // ===========================================================================
-const CC_NAAM = 'Core-coach';
+const CC_NAAM = 'MKC-coach';
 const CC_SNEL = ['Ik voel het in mijn onderrug', 'Dit is te zwaar, wat nu?', 'Mag dit op mijn rustdag?', 'Hoe doe ik de zijplank goed?', 'Ik heb spierpijn, doorgaan?'];
 let ccBezig = false;
-function avatarSvg() { return A['birddog'] ? F.still(A['birddog'], 'links', 1) : ''; }
+function avatarSvg() { return '<img src="/icoon-192.png" alt="" style="width:100%;height:100%;display:block">'; }
 function coachBouw() {
   if ($('#ccPaneel')) return;
   document.body.insertAdjacentHTML('beforeend', `

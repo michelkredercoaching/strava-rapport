@@ -36,6 +36,7 @@
 //   WOO_WEBHOOK_SECRET, CRON_SECRET.
 
 import crypto from 'node:crypto';
+import { leesDoel } from '../lib/doelen.js';
 import {
   maakPlan, sessie, heeftRodeVlag, KLACHTEN, OEFENINGEN, TESTS, rompscore, balans,
   volgendeWeek, testNodig, meterNodig, verdiendeBadges, BADGES,
@@ -531,8 +532,30 @@ async function routeNieuw(req, res) {
   return res.status(200).json({ ok: true, id, link });
 }
 
+// Eén doel (12-10-2026): het doel staat in de MKC-app (app:doel:<email>, lib/doelen.js).
+// Core telt af naar een tocht uit de app; een doel dat alleen in Core stond gaat
+// eenmalig naar de app.
+async function syncDoel(d) {
+  if (!d.email) return false;
+  const r = await redis(['GET', `app:doel:${d.email}`]);
+  const a = leesDoel(r.ok && r.result);
+  const oud = JSON.stringify(d.doel || null);
+  if (a && !a.klaar) d.doel = a.doel === 'evenement' ? { naam: a.naam, datum: a.datum } : null;
+  else if (!a && d.doel) await schrijfAppDoel(d);
+  return JSON.stringify(d.doel || null) !== oud;
+}
+async function schrijfAppDoel(d) {
+  if (!d.email) return;
+  if (!d.doel) { await redis(['DEL', `app:doel:${d.email}`]); return; }
+  const r = await redis(['GET', `app:doel:${d.email}`]);
+  const a = leesDoel(r.ok && r.result);
+  const zelfde = a && a.doel === 'evenement' && a.datum === d.doel.datum;
+  await redis(['SET', `app:doel:${d.email}`, JSON.stringify({ doel: 'evenement', naam: d.doel.naam, datum: d.doel.datum, op: zelfde ? a.op : nu(), gestuurd: zelfde ? (a.gestuurd || []) : [] })]);
+  await redis(['SADD', 'app:doel:alle', d.email]);
+}
 async function routePlan(req, res) {
   const r = await metToken(req, res); if (!r) return;
+  if (await syncDoel(r.d)) await bewaarDossier(r.d);
   await tel(r.d.email, 'core-open');
   meldActief(r.d.email);
   redis(['EXPIRE', `core:email:${r.d.email}`, String(BEWAAR_S)]);
@@ -561,6 +584,7 @@ async function routeIntake(req, res) {
   d.intake = intake;
   if (body.doelNaam && body.doelDatum && !isNaN(new Date(body.doelDatum))) {
     d.doel = { naam: String(body.doelNaam).slice(0, 60), datum: String(body.doelDatum).slice(0, 10) };
+    await schrijfAppDoel(d);
   }
   if (heeftRodeVlag(intake)) {
     d.status = 'wacht-op-fysio';
@@ -600,6 +624,7 @@ async function routeDoel(req, res) {
     if (!body.naam || isNaN(new Date(datum))) return res.status(400).json({ ok: false, fout: 'vul een naam en een datum in' });
     d.doel = { naam: String(body.naam).slice(0, 60), datum };
   }
+  await schrijfAppDoel(d);
   await bewaarDossier(d);
   return res.status(200).json({ ok: true, ...klantBeeld(d) });
 }
