@@ -179,6 +179,32 @@
   .vd-week > span { white-space:nowrap; }
   .vd-week > span + span::before { content:'·'; margin-right:14px; color:var(--muted); }
   .vd-week .ok { color:#4CC38A; }
+  .lid-sub { color:var(--muted); font-size:14.5px; margin:4px 0 12px; }
+  .lid-gebruik { background:rgba(76,195,138,.08); border:1px solid rgba(76,195,138,.35); color:rgba(245,243,239,.92); border-radius:10px; padding:10px 12px; font-size:13.5px; margin:0 0 14px; }
+  .lid-push { background:#1f1f22; border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:12px 14px; margin:4px 0 6px; box-shadow:0 10px 30px rgba(0,0,0,.35); }
+  .lid-push .lp-kop { display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--muted); margin-bottom:6px; }
+  .lid-push .lp-kop img { width:18px; height:18px; border-radius:5px; }
+  .lid-push .lp-kop b { color:var(--white); font-size:11.5px; letter-spacing:.04em; }
+  .lid-push .lp-kop span { margin-left:auto; }
+  .lid-push > b { display:block; font-size:14.5px; margin-bottom:2px; }
+  .lid-push p { font-size:13.5px; line-height:1.45; color:rgba(245,243,239,.88); margin:0; }
+  .lp-onder { margin:0 0 14px; }
+  .lid-voordelen { display:grid; gap:10px; margin:6px 0 14px; }
+  .lid-voordelen div { border-left:2px solid var(--accent); padding:2px 0 2px 12px; }
+  .lid-voordelen b { display:block; font-size:14.5px; }
+  .lid-voordelen span { display:block; font-size:13px; color:var(--muted); margin-top:2px; }
+  .lid-bewijs { font-size:12.5px; color:var(--muted); border-top:1px solid var(--border); border-bottom:1px solid var(--border); padding:10px 0; margin:0 0 14px; }
+  .lid-reken { margin-top:10px; }
+  .lid-stap2 { margin-top:14px; background:var(--surface2); border:1px solid rgba(255,107,26,.5); border-radius:12px; padding:14px; }
+  .lid-stap2 > b { display:block; font-size:15px; margin-bottom:10px; }
+  .vk { position:relative; background:linear-gradient(160deg, rgba(255,107,26,.14), var(--surface) 60%); border:1px solid rgba(255,107,26,.5); border-radius:12px; padding:16px; margin:16px 0 6px; }
+  .vk > b { display:block; font-family:'Bebas Neue',sans-serif; font-weight:400; font-size:24px; letter-spacing:.03em; line-height:1.05; padding-right:24px; }
+  .vk > p { font-size:14px; color:rgba(245,243,239,.85); margin:6px 0 12px; line-height:1.45; }
+  .vk .lid-push { margin-top:10px; }
+  .vk .knop { margin:4px 0 0; }
+  .vk-prijs { display:block; text-align:center; font-size:12px; color:var(--muted); margin-top:8px; }
+  .bt-echtweer { margin:16px 0 8px; }
+  .vk-x { position:absolute; top:8px; right:10px; background:none; border:0; color:var(--muted); font-size:22px; cursor:pointer; }
   .lidbalk { display:flex; align-items:center; gap:12px; width:100%; margin-top:16px; text-align:left; background:linear-gradient(160deg, rgba(255,107,26,.16), var(--surface) 60%); border:1px solid rgba(255,107,26,.55); border-radius:10px; padding:14px 16px; color:var(--white); font-family:inherit; cursor:pointer; }
   .lidbalk span { flex:1; min-width:0; }
   .lidbalk b { display:block; font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.03em; font-weight:400; line-height:1; }
@@ -984,12 +1010,15 @@ function bandenKaart(d) {
   const knop = (veld, waarde, tekst) => `<button type="button" data-bt="${veld}" data-w="${waarde}" class="${String(v[veld]) === String(waarde) ? 'aan' : ''}">${tekst}</button>`;
   // Het voorproefje van de slimme versie: echt beeld, wazig, met slot erover.
   const kanLid = kanLidNu(d);
-  const slim = `<div class="bt-slot"><div class="achter">
-      <div class="sb-weer"><span><b>6&deg;</b> in jouw plaats &middot; <b class="nat">nat wegdek</b></span></div>
+  const wn = weerNu(), anders = wn && (wn.nat || wn.temp < 10);
+  const slimKop = wn ? (anders ? 'Vandaag in ' + esc(wn.plaats || 'jouw plaats') + ': je slimme spanning is anders' : 'Je fietsen en het weer van vandaag, meegerekend') : 'Weer, kou en je fietsen meegerekend';
+  const slimUitleg = wn ? (wn.nat ? 'Het wegdek is nat. De slimme versie pompt een paar tienden zachter voor meer grip, en zegt je precies hoeveel.' : wn.temp < 10 ? 'Het wordt ' + wn.temp + '&deg;. Pomp je binnen, dan klopt het buiten niet meer. De slimme versie rekent het voor je uit.' : 'De slimme versie onthoudt je fietsen en past je spanning elke dag aan op het weer.') : 'Nat wegdek, kasseien of een koude ochtend: de slimme versie past je spanning zelf aan. Zoek hieronder bij Windadvies je woonplaats, dan zie je wat hij vandaag voor jou anders doet.';
+  const slim = `${wn ? `<div class="sb-weer bt-echtweer"><span>Vandaag in ${esc(wn.plaats || 'jouw plaats')}: <b>${wn.temp}&deg;</b> &middot; ${wn.nat ? '<b class="nat">nat wegdek</b>' : 'droog'}${wn.wind ? ', wind ' + wn.wind + ' km/u' : ''}</span></div>` : ''}<div class="bt-slot"><div class="achter">
+      <div class="sb-weer"><span>${wn ? '<b>' + wn.temp + '&deg;</b> in ' + esc(wn.plaats || 'jouw plaats') + ' &middot; ' + (wn.nat ? '<b class="nat">nat wegdek</b>' : 'droog') : '<b>6&deg;</b> in jouw plaats &middot; <b class="nat">nat wegdek</b>'}</span></div>
       <div class="sb-chips"><button class="aan">Racefiets <small>28</small></button><button>Gravel <small>40</small></button></div>
       <div class="bt-keuze"><button class="aan">Droog</button><button>Nat wegdek</button></div>
       <div class="sb-kou">Het wordt 6&deg;. Pomp je binnen, pomp dan iets harder. Buiten zit je dan precies goed.</div></div>
-    <div class="voor">${SLOT}<b>Weer, kou en je fietsen meegerekend</b><span>Nat wegdek, kasseien of een koude ochtend: de slimme versie past je spanning zelf aan.</span>
+    <div class="voor">${SLOT}<b>${slimKop}</b><span>${slimUitleg}</span>
       ${kanLid ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met de MKC-app</button>' : BINNENKORT}</div></div>`;
   const vtab = ['kleding', 'voeding', 'groep'].includes(btLees().tab) ? btLees().tab : 'banden';
   const vtabs = `<div class="vr-tabs"><button type="button" data-kl="vrijtab" data-w="banden" class="${vtab === 'banden' ? 'aan' : ''}">Banden</button><button type="button" data-kl="vrijtab" data-w="kleding" class="${vtab === 'kleding' ? 'aan' : ''}">Kleding ${SLOT.replace('<svg', '<svg class="tab-slot"')}</button><button type="button" data-kl="vrijtab" data-w="voeding" class="${vtab === 'voeding' ? 'aan' : ''}">Voeding ${SLOT.replace('<svg', '<svg class="tab-slot"')}</button><button type="button" data-kl="vrijtab" data-w="groep" class="${vtab === 'groep' ? 'aan' : ''}">Groepsrit</button></div>`;
@@ -1375,7 +1404,8 @@ async function btReken() {
   // Nat wegdek: 0,3 bar eraf, dezelfde regel als op de kaart en in de tips.
   const min = v.type === 'gravel' ? 1.3 : 2.5, eraf = 0, hook = v.type === 'weg' && v.hookless, max = hook ? BT_LIB.HOOKLESS_MAX : 99;
   const voor = Math.min(max, Math.max(min, a.voor - eraf)), achter = Math.min(max, Math.max(min, a.achter - eraf)), begrensd = hook && a.achter - eraf > max;
-  try { localStorage.setItem('mkcLaatsteSpanning', BT_LIB.nl(voor) + ' / ' + BT_LIB.nl(achter) + ' bar'); } catch (e) {}
+  try { localStorage.setItem('mkcLaatsteSpanning', BT_LIB.nl(voor) + ' / ' + BT_LIB.nl(achter) + ' bar'); localStorage.setItem('mkcLaatsteSpVoor', String(voor)); localStorage.setItem('mkcLaatsteSpAchter', String(achter)); } catch (e) {}
+  spTel();
   uit.innerHTML = `<div class="bt-uit"><div><span>Voor</span><b>${BT_LIB.nl(voor)}</b><small>bar &middot; ${BT_LIB.psi(voor)} psi</small></div><div><span>Achter</span><b>${BT_LIB.nl(achter)}</b><small>bar &middot; ${BT_LIB.psi(achter)} psi</small></div></div>
     <p class="klein">${begrensd ? 'Hookless velg: nooit boven de 5,0 bar, dus ik heb hem daarop gezet.' : ''}</p>${RK_KNOP}`;
   if (GR.data) grTeken();
@@ -1596,10 +1626,77 @@ document.addEventListener('click', (e) => {
 // ---- Lidmaatschap MKC-app: €9,99 per maand of €89 per jaar via Mollie (sinds 09-10-2026, was €19/€149) ----
 const APP_PRIJS = { maand: '9,99', jaar: '89', jaarPerMaand: '7,42', half: '5' };
 const LID_LIJST = ['De Core-app (core stability voor wielrenners) die met je meebeweegt: gaat het makkelijk, dan ga je sneller', 'Slimme bandenspanning: je fietsen, het weer van vandaag en een geheugen', 'Kledingadvies voor je rit, plus een ochtendbericht met weer, spanning en kleding', 'Onbeperkt vragen aan je eigen coach, met Michels kennis uit 9 jaar prof en zijn coachervaring', 'Ledenprijzen: je Strava-analyse en straks het pacingplan voor &euro;19 in plaats van &euro;29, en &euro;20 korting op het Afvalprogramma', 'Per maand, altijd opzegbaar, of voordelig per jaar'];
+// ---- Verkopen zonder proef (12-10-2026) ----
+// De lidpagina laat zien wat je krijgt, op jou afgestemd: je doel, wat je al
+// gebruikte, hoe je ochtend eruitziet als lid. Kiezen gaat eerst, je gegevens daarna.
+function spTel() { try { const v = new Date().toLocaleDateString('sv-SE'); const l = JSON.parse(localStorage.getItem('mkcSpDagen') || '[]'); if (!l.includes(v)) { l.push(v); localStorage.setItem('mkcSpDagen', JSON.stringify(l.slice(-30))); } } catch (e) {} }
+function spDagen() { try { return JSON.parse(localStorage.getItem('mkcSpDagen') || '[]').length; } catch (e) { return 0; } }
+function lidVoornaam() { const d = zicht(); return String((d && d.naam) || '').trim().split(' ')[0]; }
+function weerNu() {
+  const u = WK.uren && WK.uren[0]; if (!u) return null;
+  return { temp: Math.round(u.temp), nat: (WK.uren || []).slice(0, 3).some((x) => (x.regen || 0) >= 0.2), wind: u.wind, plaats: WK.plaats && WK.plaats.naam };
+}
+function lidKopHtml(d) {
+  const dl = d && d.doel && !d.doel.klaar ? d.doel : null;
+  const nog = dl && dl.doel === 'evenement' && dl.datum ? Math.ceil((Date.parse(dl.datum + 'T08:00:00') - Date.now()) / 864e5) : null;
+  const [h, sub] = dl && dl.doel === 'evenement' && dl.naam ? ['Op weg naar ' + esc(dl.naam), nog > 0 ? 'Nog ' + nog + ' dagen. Haal alles uit de weken die je nog hebt.' : 'Haal alles uit je voorbereiding.']
+    : dl && dl.doel === 'sneller' ? ['Sneller worden, elke dag een stap', 'Je coach, je Core en je ritadvies, afgestemd op jou.']
+    : dl && dl.doel === 'afvallen' ? ['Lichter, zonder watts te verliezen', 'Je coach denkt mee over eten en trainen, je Core houdt je sterk.']
+    : dl && dl.doel === 'fit' ? ['Fit en met plezier op de fiets', 'Elke rit goed voorbereid, zonder gedoe.']
+    : ['Alles voor je rit, in één app', 'Je eigen coach, Core die met je meebeweegt en elke ochtend je ritadvies.'];
+  return `<div class="label">MKC-app</div><h2>${h}</h2><p class="lid-sub">${sub}</p>`;
+}
+function lidGebruikHtml(d) {
+  const dagen = spDagen(), max = (d && d.gratisMax) || 3, over = d && d.gratisOver != null ? d.gratisOver : max, vragen = Math.max(0, max - over);
+  const stukken = [];
+  if (dagen) stukken.push('je checkte je spanning al op ' + dagen + (dagen === 1 ? ' dag' : ' dagen'));
+  if (vragen) stukken.push('je stelde ' + vragen + (vragen === 1 ? ' vraag' : ' vragen') + ' aan je coach deze week');
+  if (d && d.core && d.core.rompscore != null) stukken.push('je Rompscore staat op ' + d.core.rompscore);
+  if (!stukken.length) return '';
+  const zin = stukken.join(', ').replace(/, ([^,]*)$/, ' en $1');
+  return `<div class="lid-gebruik">${zin.charAt(0).toUpperCase() + zin.slice(1)}. Als lid gaat dat slimmer, en zonder grens.</div>`;
+}
+// Zo begint je ochtend als lid: een echt voorbeeld van het ochtendbericht.
+function lidOchtendHtml() {
+  const w = weerNu(), nm = lidVoornaam();
+  const voor = (() => { try { return Number(localStorage.getItem('mkcLaatsteSpVoor')) || 4.8; } catch (e) { return 4.8; } })();
+  const achter = (() => { try { return Number(localStorage.getItem('mkcLaatsteSpAchter')) || 5.3; } catch (e) { return 5.3; } })();
+  const nl = (x) => String(Math.round(x * 10) / 10).replace('.', ',');
+  const temp = w ? w.temp : 8, nat = w ? w.nat : false;
+  const kleding = temp < 5 ? 'Winterjack, lange handschoenen en overschoenen.' : temp < 10 ? 'Armstukken en beenstukken aan, windjack mee.' : temp < 16 ? 'Armstukken aan, die kun je onderweg uittrekken.' : 'Korte mouwen, zonnebril op.';
+  const sp = nat ? nl(voor - 0.3) + ' voor en ' + nl(achter - 0.3) + ' achter (nat wegdek)' : nl(voor) + ' voor en ' + nl(achter) + ' achter';
+  return `<div class="lid-push"><div class="lp-kop"><img src="/icoon-192.png" alt=""><b>MKC</b><span>07:00</span></div>
+    <b>Goedemorgen${nm ? ' ' + esc(nm) : ''}</b><p>${temp}&deg; en ${nat ? 'nat' : 'droog'}${w && w.plaats ? ' in ' + esc(w.plaats) : ''}. Pomp ${sp}. ${kleding}</p></div>
+    <p class="klein lp-onder">Zo begint je dag als lid. Elke ochtend, voor jouw rit.</p>`;
+}
+const LID_VOORDELEN = [
+  ['Je eigen coach, onbeperkt', 'Elke vraag over training, voeding of herstel. Hij kent je fietsen, je doel en je Core-voortgang.'],
+  ['Core die met je meebeweegt', '12 niveaus van 10 tot 15 minuten, afgestemd op je doel, je klachten en hoe het ging.'],
+  ['Elke ochtend je ritadvies', 'Spanning, kleding en wind voor jouw rit, met het weer van vandaag.'],
+  ['Slimme bandenspanning', 'Je fietsen onthouden, nat wegdek en kou meegerekend.'],
+  ['Ledenprijzen', 'Strava-analyse en straks het pacingplan voor &euro;19 in plaats van &euro;29, en &euro;20 korting op het Afvalprogramma.']
+];
+function lidVoordelenHtml() {
+  return `<div class="lid-voordelen">${LID_VOORDELEN.map(([t, u]) => `<div><b>${t}</b><span>${u}</span></div>`).join('')}</div>`;
+}
+const LID_BEWIJS = '<div class="lid-bewijs">Van Michel Kreder: 9 jaar profwielrenner en coach. Meer dan 1000 wielrenners trainen met zijn schema&rsquo;s, gemiddeld beoordeeld met een 4,9.</div>';
+const LID_REKENSOM = '<p class="klein lid-reken">Rekensom: doe je als lid een Strava-analyse, dan betaal je &euro;19 in plaats van &euro;29. Die &euro;10 is je eerste maand al voor de helft.</p>';
+let LV = { plan: null };
+function lidStap2Html() {
+  if (!LV.plan) return '';
+  const jaar = LV.plan === 'jaar';
+  return `<div class="lid-stap2"><b>Bijna klaar: ${jaar ? 'per jaar, &euro;' + APP_PRIJS.jaar : 'per maand, &euro;' + APP_PRIJS.maand}</b>
+    ${lidFactuurHtml()}
+    <label class="lid-akkoord"><input type="checkbox" id="lidAkkoord"> <span>Ik wil direct toegang en weet dat ik daarmee afzie van mijn bedenktijd van 14 dagen. Ik ga akkoord met de <a href="/voorwaarden" target="_blank" rel="noopener">voorwaarden</a> en de <a href="/privacy#app" target="_blank" rel="noopener">privacyverklaring</a>.</span></label>
+    <button class="knop" data-actie="wordlid" data-plan="${LV.plan}">Naar betalen</button>
+    <button type="button" class="sb-link" data-lidplan="terug" style="display:block;margin:8px auto 0">Ander plan kiezen</button></div>`;
+}
+document.addEventListener('click', (e) => { const k = e.target.closest('[data-lidplan="terug"]'); if (!k) return; LV.plan = null; const s2 = document.getElementById('lidStap2'); if (s2) s2.innerHTML = ''; document.querySelector('.plannen')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
 function binnenkortPitchHtml() {
   // Vóór de lancering: prijzen al zichtbaar, knoppen nog dicht (09-10-2026).
-  return `<div class="lidblok"><div class="label">MKC-app &middot; opent vrijdag 16 oktober</div><h2>Word lid</h2>
-    <ul>${LID_LIJST.map((x) => `<li>${x}</li>`).join('')}</ul>
+  const d = zicht();
+  return `<div class="lidblok">${lidKopHtml(d).replace('<div class="label">MKC-app</div>', '<div class="label">MKC-app &middot; opent vrijdag 16 oktober</div>')}
+    ${lidGebruikHtml(d)}${lidOchtendHtml()}${lidVoordelenHtml()}${LID_BEWIJS}
     ${plannenHtml(true)}
     <p class="klein">Lid worden kan vanaf vrijdag 16 oktober om 12:00. Volg Michel op Instagram, daar hoor je het als eerste. Je bandenspanning en je 3 gratis coachvragen kun je nu al gebruiken.</p></div>`;
 }
@@ -1644,11 +1741,11 @@ document.addEventListener('change', (e) => { if (e.target.id === 'lfLand') { lid
 // Twee keuzes, zoals bij JOIN: per maand (lage drempel) of per jaar (beste keuze).
 // €9,99 x 12 = €119,88, jaar €89: bijna €31 voordeel, ruim 3 maanden.
 function lidPitchHtml() {
-  return `<div class="lidblok"><div class="label">MKC-app</div><h2>Word lid</h2>
-    <ul>${LID_LIJST.map((x) => `<li>${x}</li>`).join('')}</ul>
-    ${lidFactuurHtml()}
-    <label class="lid-akkoord"><input type="checkbox" id="lidAkkoord"> <span>Ik wil direct toegang en weet dat ik daarmee afzie van mijn bedenktijd van 14 dagen. Ik ga akkoord met de <a href="/voorwaarden" target="_blank" rel="noopener">voorwaarden</a> en de <a href="/privacy#app" target="_blank" rel="noopener">privacyverklaring</a>.</span></label>
-    ${plannenHtml(false)}
+  const d = zicht();
+  return `<div class="lidblok">${lidKopHtml(d)}
+    ${lidGebruikHtml(d)}${lidOchtendHtml()}${lidVoordelenHtml()}${LID_BEWIJS}
+    ${plannenHtml(false)}${LID_REKENSOM}
+    <div id="lidStap2">${lidStap2Html()}</div>
     <p class="klein">${D && D.automatisch ? 'Je betaalt de eerste keer met iDEAL, Apple Pay, Google Pay, Bancontact of je creditcard. Daarna wordt het bedrag automatisch afgeschreven, elke maand of elk jaar. Opzeggen kan altijd in de app; je houdt toegang tot het einde van wat je al betaalde.' : 'Je betaalt met iDEAL voor een maand of een jaar. Er wordt niets automatisch afgeschreven: vlak voor de einddatum krijg je een mail om te verlengen.'}</p></div>`;
 }
 function lidStatusHtml(l) {
@@ -2064,6 +2161,31 @@ async function vdLaad() {
   if (SB.profiel.plaats && !SB.weer && !SB.weerFout) await sbHaalWeer();
   VD_BEZIG = false;
 }
+// ---- Het juiste moment (12-10-2026) ----
+// Gratis gebruikers zien op de startpagina één kaart, gekozen op wat er nu
+// speelt: proefweek klaar, vragen op, tocht dichtbij, vaak spanning gecheckt,
+// koud weer, of anders een kijkje in de ochtend van een lid. Wegtikken = 3 dagen rust voor dat moment.
+function vkWeg(k) { try { return Date.now() - Number(localStorage.getItem('mkcVkWeg:' + k) || 0) < 3 * 864e5; } catch (e) { return false; } }
+function verkoopMoment(d) {
+  if (!d || d.gast || isLid(d) || (d.lid && d.lid.bron === 'coaching') || !kanLidNu(d)) return null;
+  const c = d.core, dl = d.doel && !d.doel.klaar ? d.doel : null, w = weerNu(), maand = new Date().getMonth();
+  const nog = dl && dl.doel === 'evenement' && dl.datum ? Math.ceil((Date.parse(dl.datum + 'T08:00:00') - Date.now()) / 864e5) : null;
+  const l = [];
+  if (c && c.opSlot) l.push({ k: 'proef', t: 'Je proefweek zit erop', p: (c.rompscore != null ? 'Je Rompscore staat op ' + c.rompscore + '. ' : '') + 'Niveau 2 staat klaar, en alles wat je deed blijft staan.', knop: 'Ga door als lid' });
+  if (gratisOver() === 0) l.push({ k: 'vragen', t: 'Je vragen voor deze week zijn op', p: 'Als lid vraag je door wanneer je wilt. En je coach kent dan je fietsen, je doel en je Core.', knop: 'Vraag onbeperkt' });
+  if (nog != null && nog > 0 && nog <= 56) l.push({ k: 'tocht', t: 'Nog ' + nog + ' dagen tot ' + esc(dl.naam), p: 'Als lid stemt je Core af op je tocht, krijg je kledingadvies voor die ochtend en straks je pacingplan voor &euro;19.', knop: 'Bereid je slim voor' });
+  if (spDagen() >= 3) l.push({ k: 'spanning', t: 'Je checkt je spanning vaak', p: 'De slimme versie onthoudt je fietsen en rekent nat wegdek en kou mee. Elke ochtend klaar, zonder iets in te vullen.', knop: 'Bekijk de slimme versie' });
+  if ((w && w.temp < 10) || (!w && (maand >= 10 || maand <= 2))) l.push({ k: 'kou', t: w ? 'Wat trek je aan bij ' + w.temp + '&deg;?' : 'Wat trek je aan als het koud is?', p: 'Leden krijgen voor elke rit kledingadvies, op basis van het weer tijdens hun hele rit en hoe snel ze het koud hebben.', knop: 'Zo werkt het' });
+  l.push({ k: 'ochtend', t: 'Zo begint de ochtend van een lid', ochtend: true, knop: 'Bekijk wat je krijgt' });
+  return l.find((x) => !vkWeg(x.k)) || null;
+}
+function verkoopMomentHtml(d) {
+  const m = verkoopMoment(d); if (!m) return '';
+  return `<div class="vk" data-vk="${m.k}"><button type="button" class="vk-x" data-vkweg="${m.k}" aria-label="Sluiten">&times;</button>
+    <b>${m.t}</b>${m.ochtend ? lidOchtendHtml() : '<p>' + m.p + '</p>'}
+    <button type="button" class="knop" data-actie="naarlid">${m.knop}</button><span class="vk-prijs">&euro;${APP_PRIJS.maand} per maand, of &euro;${APP_PRIJS.jaar} per jaar</span></div>`;
+}
+document.addEventListener('click', (e) => { const k = e.target.closest('[data-vkweg]'); if (!k) return; try { localStorage.setItem('mkcVkWeg:' + k.dataset.vkweg, String(Date.now())); } catch (er) {} if (VIEW === 'home') teken(); });
 // Korte "Word lid"-balk op de startpagina; de voordelen, prijzen en factuurgegevens staan op de pagina MKC-Lid.
 function lidBalkHtml(d) {
   if (isLid(d) || (d.lid && d.lid.bron === 'coaching')) return '';
@@ -2144,12 +2266,13 @@ function teken() {
     ${tipHtml(d)}
     ${tegelsHtml(d)}
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
-    ${lidBalkHtml(d)}
+    ${verkoopMomentHtml(d) || lidBalkHtml(d)}
     ${volgendeStapHtml(d)}
     <div id="meldinst">${meldInstHtml()}</div>
     ${feedbackHtml()}
     <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a> &middot; <a href="#" data-lx="verwijder">Account verwijderen</a></div>`;
   if (document.getElementById('vandaagvak')) vdLaad();
+  if (WK.plaats && !WK.uren && !isLid(d) && kanLidNu(d)) wkLaad();
   if (d.schema && !(d.beheer && BEKIJK !== 'klant')) statEens('schema');
   if (GR.id && !GR.data) grLaad();
   if (NA_POORT) { NA_POORT = false; VIEW = 'rijden'; teken(); setTimeout(() => { const el = document.getElementById('banden'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); const m = document.getElementById('btUit'); if (m) m.insertAdjacentHTML('afterbegin', '<p class="gp-welkom">Welkom in de MKC-app! Dit is jouw spanning. Hij staat ook in je mail als pdf.</p>'); }, 700); }
@@ -2200,6 +2323,8 @@ async function startCore(knop) {
   knop.disabled = false; knop.textContent = 'Start je gratis week';
 }
 async function wordLid(knop) {
+  const stap2 = document.getElementById('lidStap2');
+  if (stap2 && !document.getElementById('lidAkkoord')) { LV.plan = knop.dataset.plan === 'jaar' ? 'jaar' : 'maand'; stap2.innerHTML = lidStap2Html(); setTimeout(() => stap2.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50); return; }
   const vink = document.getElementById('lidAkkoord');
   const fact = document.getElementById('lfNaam') ? lidFactuurLees() : null;
   if (document.getElementById('lfNaam') && !fact) { const l = document.querySelector('.lid-factuur'); l.classList.add('fout'); l.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => l.classList.remove('fout'), 2500); alert('Vul je voor- en achternaam en je adres in voor je factuur.'); return; }
@@ -2587,6 +2712,9 @@ async function wkLaad() {
   await rvLaadLib();
   try { const j = await (await fetch(API + '?actie=wind&lat=' + WK.plaats.lat + '&lon=' + WK.plaats.lon)).json(); if (j.ok) WK.uren = j.uren; else WK.fout = j.fout || ''; } catch (e) {}
   wkTeken();
+  const dz = zicht(), bk = document.getElementById('banden');
+  if (bk && dz && !toonSlim(dz) && !['kleding', 'voeding', 'groep'].includes(btLees().tab)) { bk.outerHTML = bandenKaart(dz); btReken(); }
+  if (VIEW === 'home' && dz && !isLid(dz)) { const v = document.querySelector('.vk'); if (v) v.outerHTML = verkoopMomentHtml(dz); }
 }
 document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-wk]'); if (!k) return;
