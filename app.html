@@ -174,6 +174,7 @@
   .td-kop small { display:block; font-size:11.5px; color:var(--muted); }
   .tipdag p { font-size:14.5px; line-height:1.5; }
   .tipdag .td-k { font-weight:700; font-size:16px; color:var(--white); margin-bottom:4px; }
+  .tipdag .td-brug { margin-top:10px; padding:9px 12px; background:rgba(255,107,26,.08); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; font-size:13.5px; color:rgba(245,243,239,.9); }
   .td-vraag { background:none; border:0; color:var(--accent); font:inherit; font-size:13.5px; font-weight:600; padding:8px 0 0; cursor:pointer; }
   .vd-week { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12px; color:var(--muted); border-top:1px solid var(--border); padding:10px 0 4px; }
   .vd-week b { color:var(--white); font-weight:600; }
@@ -2361,8 +2362,10 @@ function tipVanDag(d) {
 }
 function tipBinnen(d) {
   const t = tipVanDag(d); if (!t) return '';
+  // Bruggetje naar je doel: waarom deze tip nu, op weg naar jouw tocht (lib/tips.js brugVoor)
+  const brug = TIPS_LIB.brugVoor && d && d.doel && !d.doel.klaar ? TIPS_LIB.brugVoor(t, { doel: d.doel }) : null;
   return `<div class="tipdag"><div class="td-kop"><span class="cc-av"><img src="/icoon-192.png" alt=""></span><div><b>Tip van Michel</b><small>Morgen staat hier een nieuwe</small></div></div>
-    <p class="td-k">${esc(t.k)}</p><p>${esc(t.t)}</p><button type="button" class="td-vraag" data-tipvraag="${esc(t.v)}">Vraag hier meer over &rarr;</button></div>`;
+    <p class="td-k">${esc(t.k)}</p><p>${esc(t.t)}</p>${brug ? `<p class="td-brug">${esc(brug)}</p>` : ''}<button type="button" class="td-vraag" data-tipvraag="${esc(t.v)}">Vraag hier meer over &rarr;</button></div>`;
 }
 function tipHtml(d) {
   if (!d || d.gast) return '';
