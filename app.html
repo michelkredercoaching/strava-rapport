@@ -173,6 +173,7 @@
   .td-kop b { display:block; font-size:14px; }
   .td-kop small { display:block; font-size:11.5px; color:var(--muted); }
   .tipdag p { font-size:14.5px; line-height:1.5; }
+  .tipdag .td-k { font-weight:700; font-size:16px; color:var(--white); margin-bottom:4px; }
   .td-vraag { background:none; border:0; color:var(--accent); font:inherit; font-size:13.5px; font-weight:600; padding:8px 0 0; cursor:pointer; }
   .vd-week { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12px; color:var(--muted); border-top:1px solid var(--border); padding:10px 0 4px; }
   .vd-week b { color:var(--white); font-weight:600; }
@@ -2029,56 +2030,21 @@ function schemaEindeHtml(d) {
 // ---- Tip van Michel (12-10-2026) ----
 // Elke dag een andere tip, passend bij je doel, het seizoen en of je Core doet.
 // Reden om morgen weer te kijken. Doorvragen kan meteen bij de coach.
-const TIPS = [
-  { c: 'alg', t: 'Rijd je duurritten echt rustig. Kun je nog makkelijk praten, dan zit je goed. Te hard op een rustige dag kost je de kwaliteit op je zware dag.', v: 'Hoe weet ik of ik rustig genoeg rijd?' },
-  { c: 'alg', t: 'Eén zware training goed gedaan is meer waard dan drie halfslachtige. Plan je zware dag na een rustige dag.', v: 'Hoe verdeel ik zware en rustige dagen over mijn week?' },
-  { c: 'alg', t: 'Slaap is je goedkoopste prestatieverbeteraar. Een week lang een half uur eerder naar bed merk je op de fiets.', v: 'Hoeveel invloed heeft slaap op mijn herstel?' },
-  { c: 'alg', t: 'Moe en lusteloos voor je training? Maak er een rustig uur van in plaats van hem door te drukken. Morgen ben je er beter van.', v: 'Wanneer kan ik een training beter aanpassen?' },
-  { c: 'alg', t: 'Eet binnen een uur na een zware rit iets met koolhydraten en eiwit. Je herstel begint aan tafel, niet pas in bed.', v: 'Wat eet ik het beste na een zware training?' },
-  { c: 'alg', t: 'Cadans rond de 85 tot 95 spaart je benen op lange ritten. Trap je zwaar en traag, schakel dan eens een tandje lichter.', v: 'Welke cadans is goed voor mij?' },
-  { c: 'alg', t: 'Check voor elke rit je banden. De juiste spanning scheelt meer dan je denkt in comfort, grip en snelheid.', v: 'Waarom maakt bandenspanning zoveel uit?' },
-  { c: 'alg', t: 'Drink niet alleen als je dorst hebt. Op een rit van meer dan een uur is een bidon per uur een goed begin.', v: 'Hoeveel moet ik drinken op een lange rit?' },
-  { c: 'alg', t: 'Vooruitgang zie je niet per rit, maar per maand. Vergelijk jezelf met vier weken geleden, niet met gisteren.', v: 'Hoe meet ik of ik vooruit ga?' },
-  { c: 'alg', t: 'Een rustweek is geen verloren week. Daarin bouwt je lichaam de training van de weken ervoor om tot vorm.', v: 'Waarom zijn rustweken zo belangrijk?' },
-  { c: 'alg', t: 'Wind tegen op de heenweg is een cadeau voor de terugweg. Start tegen de wind in, dan heb je hem mee als je moe bent.', v: 'Hoe plan ik mijn rit met de wind?' },
-  { c: 'alg', t: 'Stress van werk telt ook als belasting. Drukke week op je werk? Haal dan wat intensiteit uit je schema.', v: 'Hoe pas ik mijn training aan in een drukke week?' },
-  { c: 'sneller', t: 'Sneller worden zit vooral in je drempelwerk. Blokken van 2 keer 20 minuten net onder je FTP doen meer dan elke rit vol gas.', v: 'Hoe train ik mijn FTP omhoog?' },
-  { c: 'sneller', t: 'Weet je je FTP niet zeker? Dan train je in de verkeerde zones. Een goede test of analyse is de basis van alles.', v: 'Hoe bepaal ik mijn FTP?' },
-  { c: 'sneller', t: 'Meer uren is niet altijd beter. Met 6 tot 8 uur per week en de juiste opbouw kun je flink sneller worden.', v: 'Hoe haal ik het meeste uit weinig uren?' },
-  { c: 'sneller', t: 'Sweetspot, net onder je drempel, geeft veel winst voor relatief weinig vermoeidheid. Ideaal als je weinig tijd hebt.', v: 'Wat is sweetspot en hoe train ik dat?' },
-  { c: 'evenement', t: 'Oefen je voeding voor je grote tocht op je lange trainingsritten. Op de dag zelf probeer je niets nieuws.', v: 'Hoe test ik mijn voeding voor mijn tocht?' },
-  { c: 'evenement', t: 'De laatste week voor je tocht word je niet fitter, wel frisser. Minder uren, korte prikkels, en vooral goed slapen.', v: 'Wat doe ik in de week voor mijn tocht?' },
-  { c: 'evenement', t: 'Begin je tocht rustiger dan je denkt. Wie in het eerste uur te hard gaat, betaalt dat in het laatste uur dubbel terug.', v: 'Hoe deel ik mijn krachten in op een lange tocht?' },
-  { c: 'evenement', t: 'Rijd een paar trainingsritten op het terrein van je tocht: lange klimmen, kasseien of gravel. Dan weet je wat je te wachten staat.', v: 'Hoe bereid ik me voor op het parcours van mijn tocht?' },
-  { c: 'afvallen', t: 'Afvallen en sneller worden gaat samen, zolang je op trainingsdagen genoeg eet. Bespaar liever op rustdagen.', v: 'Hoe val ik af zonder watts te verliezen?' },
-  { c: 'afvallen', t: 'Train niet nuchter als je zwaar gaat. Een rustige duurrit nuchter kan, een zware training niet.', v: 'Kan ik nuchter trainen om af te vallen?' },
-  { c: 'afvallen', t: 'Eiwit bij elke maaltijd houdt je langer vol en beschermt je spieren als je minder eet.', v: 'Hoeveel eiwit heb ik nodig als wielrenner?' },
-  { c: 'afvallen', t: 'Weeg jezelf liever een paar keer per week op hetzelfde moment en kijk naar het gemiddelde. Eén meting zegt weinig.', v: 'Hoe houd ik mijn gewicht goed bij?' },
-  { c: 'fit', t: 'Plezier houdt je op de fiets. Rij eens een nieuwe route of plan een rit met vrienden via de groepsrit in de app.', v: 'Hoe houd ik het leuk en blijf ik gemotiveerd?' },
-  { c: 'fit', t: 'Twee of drie keer per week rijden is genoeg om fit te blijven. Regelmaat wint het van af en toe heel lang.', v: 'Hoe vaak moet ik rijden om fit te blijven?' },
-  { c: 'fit', t: 'Wissel rustige ritten af met af en toe een stuk stevig doortrappen. Zo blijft je conditie groeien zonder dat het zwaar voelt.', v: 'Hoe blijf ik fit zonder strak schema?' },
-  { c: 'winter', t: 'In de winter leg je de basis voor het voorjaar. Rustige uren en wat drempelwerk op de trainer betalen zich in april terug.', v: 'Wat train ik in de winter?' },
-  { c: 'winter', t: 'Op de trainer is een uur gericht werk evenveel waard als anderhalf uur buiten. Je trapt continu door.', v: 'Hoe lang moet ik op de trainer trainen?' },
-  { c: 'winter', t: 'Koud weer? Kleed je zo dat je de eerste tien minuten iets fris hebt. Warm vertrekken betekent nat van het zweet terugkomen.', v: 'Wat trek ik aan als het koud is?' },
-  { c: 'winter', t: 'Zet een ventilator voor je trainer. Koel blijven scheelt flink in hoe zwaar een training voelt.', v: 'Hoe maak ik binnen trainen prettiger?' },
-  { c: 'winter', t: 'Bij kou mag je banden iets harder pompen als je binnen pompt. Buiten koelt de lucht af en zakt de spanning.', v: 'Hoe pomp ik mijn banden als het koud is?' },
-  { c: 'core', t: 'Een sterke romp zorgt dat je kracht op de pedalen komt in plaats van in een wiebelend bovenlijf. Vooral op het einde van een rit.', v: 'Waarom helpt core training op de fiets?' },
-  { c: 'core', t: 'Doe je core op een rustdag of na een rustige rit, niet vlak voor een zware training. Dan train je beide goed.', v: 'Wanneer doe ik het beste mijn core training?' },
-  { c: 'core', t: 'Liever drie keer per week tien minuten core dan één keer een half uur. Regelmaat maakt je sterk.', v: 'Hoe vaak moet ik core trainen?' },
-  { c: 'core', t: 'Last van je onderrug op de fiets? Vaak is het je romp die moe wordt, niet je rug zelf. Core helpt, en laat pijn altijd checken.', v: 'Kan core helpen tegen rugpijn op de fiets?' }
-];
+// De bibliotheek staat in lib/tips.js (108 tips, per doel, seizoen, Core, schema en hartslag).
+let TIPS_LIB = null;
+import('/lib/tips.js').then((m) => { TIPS_LIB = m; const el = document.getElementById('tipvak'); if (el && D) el.innerHTML = tipBinnen(zicht()); }).catch(() => {});
 function tipVanDag(d) {
-  const maand = new Date().getMonth(), winter = maand >= 10 || maand <= 1;
-  const doel = d && d.doel && !d.doel.klaar ? d.doel.doel : null;
-  const pool = TIPS.filter((x) => x.c === 'alg' || x.c === doel || (winter && x.c === 'winter') || (x.c === 'core' && d && d.core));
-  const dag = Math.floor((Date.now() + 2 * 3600e3) / 864e5);
-  return pool[dag % pool.length];
+  if (!TIPS_LIB || !d) return null;
+  return TIPS_LIB.tipVoor({ doel: d.doel && !d.doel.klaar ? d.doel.doel : null, core: !!d.core, schema: !!(d.schema && d.schema.status === 'loopt'), hartslag: !!(d.analyse && d.analyse.meet === 'hartslag') });
+}
+function tipBinnen(d) {
+  const t = tipVanDag(d); if (!t) return '';
+  return `<div class="tipdag"><div class="td-kop"><span class="cc-av"><img src="/icoon-192.png" alt=""></span><div><b>Tip van Michel</b><small>Morgen staat hier een nieuwe</small></div></div>
+    <p class="td-k">${esc(t.k)}</p><p>${esc(t.t)}</p><button type="button" class="td-vraag" data-tipvraag="${esc(t.v)}">Vraag hier meer over &rarr;</button></div>`;
 }
 function tipHtml(d) {
   if (!d || d.gast) return '';
-  const t = tipVanDag(d); if (!t) return '';
-  return `<div class="tipdag"><div class="td-kop"><span class="cc-av"><img src="/icoon-192.png" alt=""></span><div><b>Tip van Michel</b><small>Morgen staat hier een nieuwe</small></div></div>
-    <p>${esc(t.t)}</p><button type="button" class="td-vraag" data-tipvraag="${esc(t.v)}">Vraag hier meer over &rarr;</button></div>`;
+  return `<div id="tipvak">${tipBinnen(d)}</div>`;
 }
 document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-tipvraag]'); if (!k) return;
