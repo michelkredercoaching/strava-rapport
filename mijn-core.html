@@ -258,6 +258,11 @@
   .pijnkeuze button { padding:13px; border-radius:8px; border:1px solid var(--border); background:#111; color:var(--white); font-family:inherit; font-size:14.5px; cursor:pointer; text-align:left; }
   .pijnlaag { z-index:60; }
   .speler .bediening .hoofd.klaarzet { background:#4CC38A; color:#0a0a0a; }
+  .hervat { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; background:rgba(76,195,138,.08); border:1px solid rgba(76,195,138,.5); border-radius:10px; padding:14px 16px; margin:14px 0; }
+  .hervat b { display:block; font-size:15px; color:#4CC38A; }
+  .hervat span { display:block; font-size:13px; color:rgba(245,243,239,.85); margin-top:3px; }
+  .hervat-knoppen { display:flex; gap:8px; }
+  .hervat-knoppen .knop { width:auto; margin:0; padding:10px 14px 8px; font-size:16px; }
   .vervangknop { background:none; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:5px 10px; font-family:inherit; font-size:12.5px; margin-top:8px; cursor:pointer; }
   details.klap { background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-top:12px; }
   details.klap > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:14px 16px; font-size:15px; }
@@ -411,6 +416,7 @@ function teken() {
       if (d.weekRond) h += weekklaarHtml(d);
       if (d.kracht == null && d.week > 1) h += krachtVraagHtml();
       h += rustDagHtml(d);
+      h += hervatHtml(d);
       if (d.sessies.length) h += sessiesHtml(d);
       if (d.testNodig === 0 && !testEerst) h += testHtml(d, true);
       h += fietstipHtml(d);
@@ -1441,7 +1447,7 @@ function bouwStappen(s) {
 const SOORT = { warm: 'Warming-up', werk: 'Werk', wissel: 'Wissel', rust: 'Rust', finisher: 'Finisher', cool: 'Cooling-down' };
 let speler = null;
 
-async function startSpeler(sessie) {
+async function startSpeler(sessie, hervat) {
   const stappen = bouwStappen(sessie);
   const totaal = stappen.reduce((n, s) => n + s.sec, 0);
   const el = document.createElement('div'); el.className = 'speler';
@@ -1456,7 +1462,15 @@ async function startSpeler(sessie) {
   try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {}
   speler = { sessie, stappen, totaal, i: -1, over: 0, pauze: false, wacht: false, gezien: new Set(), el, stopAnim: null, laatsteTik: 0, iv: null, finisherStart: 0, finisherSec: 0, wakeLock };
   piep(880, .2);
-  naarStap(0);
+  if (hervat && hervat.aantal === stappen.length && hervat.i < stappen.length) {
+    // Verder waar je was: gepauzeerd, zodat je eerst weer klaar kunt gaan liggen.
+    (hervat.gezien || []).forEach((x) => speler.gezien.add(x));
+    speler.gezien.add(stappen[hervat.i].soort + ':' + stappen[hervat.i].id);
+    naarStap(hervat.i);
+    if (hervat.over > 0 && hervat.over <= stappen[hervat.i].sec) speler.over = hervat.over;
+    speler.pauze = true; $('[data-sp=pauze]', el).textContent = 'Verder'; toonKlok();
+    melding('Je gaat verder waar je was. Tik op Verder als je klaar ligt.', 3500);
+  } else naarStap(0);
   speler.iv = setInterval(tik, 200);
   setTimeout(() => stemHint(el), 300);
   el.addEventListener('click', spelerKlik);
@@ -1492,6 +1506,7 @@ function naarStap(i) {
   const beeld = $('.beeld', el); beeld.classList.toggle('gedimd', st.soort === 'rust');
   if (sp.stopAnim) sp.stopAnim();
   sp.stopAnim = A[st.id] ? F.speel(beeld, A[st.id]) : null;
+  bewaarVoortgang();
   // Eerste keer deze oefening (12-10-2026): eerst laten zien wat er komt, met
   // plaatje en uitleg. De tijd loopt pas na "Start oefening".
   const sleutel = st.soort + ':' + st.id;
@@ -1548,6 +1563,7 @@ function tik() {
   if (na !== voor && na <= 3 && na >= 1) piep(660, .1);
   if (na !== voor && na === 10 && st.soort === 'werk' && st.sec >= 20) zeg('Nog tien seconden.');
   if (sp.over <= 0) return naarStap(sp.i + 1);
+  if (nuMs - (sp.bewaardOp || 0) > 2000) bewaarVoortgang();
   toonKlok();
 }
 
@@ -1563,6 +1579,37 @@ function startNaWacht() {
   if (st.soort === 'finisher') { sp.finisherStart = Date.now(); k.textContent = 'Stop'; } else k.textContent = 'Pauze';
   piep(990, .25); zegStap(st, sp.sessie); toonKlok();
 }
+// ---- Verder waar je was (12-10-2026) ----
+// Sluit je de app per ongeluk tijdens een sessie, dan onthoudt hij waar je was
+// (tot 3 uur). Bij openen kun je verder of opnieuw beginnen.
+const HERVAT_SLEUTEL = 'coreBezig';
+function bewaarVoortgang() {
+  const sp = speler; if (!sp || sp.sessie.extra || sp.i < 0) return;
+  sp.bewaardOp = Date.now();
+  try { localStorage.setItem(HERVAT_SLEUTEL, JSON.stringify({ letter: sp.sessie.letter, naam: sp.sessie.naam, week: sp.sessie.week, i: sp.i, over: Math.max(0, Math.round(sp.over)), aantal: sp.stappen.length, gezien: [...sp.gezien], op: Date.now() })); } catch (e) {}
+}
+function wisVoortgang() { try { localStorage.removeItem(HERVAT_SLEUTEL); } catch (e) {} }
+function leesVoortgang(d) {
+  let v = null; try { v = JSON.parse(localStorage.getItem(HERVAT_SLEUTEL) || 'null'); } catch (e) {}
+  if (!v || Date.now() - v.op > 3 * 3600e3) return null;
+  const s = (d.sessies || []).find((x) => x.letter === v.letter && x.week === v.week);
+  if (!s || (d.gedaanDezeWeek || []).includes(v.letter)) return null;
+  return { v, s };
+}
+function hervatHtml(d) {
+  const h = leesVoortgang(d); if (!h) return '';
+  const st = bouwStappen(h.s)[h.v.i];
+  const pct = Math.round(h.v.i / h.v.aantal * 100);
+  return `<div class="hervat"><div><b>Verder met sessie ${NR[h.s.letter]}?</b><span>Je was bij ${esc(st ? (st.soort === 'rust' ? 'de rust voor ' + (st.straks || 'de volgende oefening') : st.naam) : 'je sessie')}, ${pct}% gedaan.</span></div>
+    <div class="hervat-knoppen"><button class="knop" data-actie="hervat">Ga verder</button><button class="knop leeg" data-actie="hervatweg">Opnieuw</button></div></div>`;
+}
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-actie="hervat"], [data-actie="hervatweg"]'); if (!k || !S) return;
+  const h = leesVoortgang(S);
+  if (k.dataset.actie === 'hervatweg' || !h) { wisVoortgang(); teken(); return; }
+  zegWakker();
+  startSpeler(h.s, h.v);
+});
 function spelerKlik(e) {
   const k = e.target.closest('[data-sp]'); if (!k || !speler) return;
   const sp = speler, st = sp.stappen[sp.i];
@@ -1589,7 +1636,7 @@ function spelerKlik(e) {
   }
   if (k.dataset.sp === 'verder') naarStap(sp.i + 1);
   if (k.dataset.sp === 'terug') naarStap(sp.over < st.sec - 2 ? sp.i : sp.i - 1);
-  if (k.dataset.sp === 'stop') { if (confirm('Sessie stoppen? Hij wordt dan niet afgevinkt.')) sluitSpeler(); }
+  if (k.dataset.sp === 'stop') { if (confirm('Sessie stoppen? Hij wordt dan niet afgevinkt.')) { wisVoortgang(); sluitSpeler(); } }
 }
 
 function sluitSpeler() {
@@ -1616,6 +1663,7 @@ async function klaarSpeler() {
     sp.el.addEventListener('click', (e) => { if (e.target.closest('[data-sp="klaar"]')) sluitSpeler(); });
     return;
   }
+  wisVoortgang();
   const j = await post('afvink', { letter: sp.sessie.letter, finisher });
   if (j.ok) {
     const t = S.tests || [], winst = t.length > 1 ? t[t.length - 1].score - t[0].score : null;
