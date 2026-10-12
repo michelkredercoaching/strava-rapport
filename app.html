@@ -720,7 +720,7 @@ const LOGIN_PUNTEN = [
   ['kleding', 'Kledingadvies en een ochtendbericht voor je rit'],
   ['coach', 'Je vragen beantwoord met de kennis van Michel']
 ];
-const LOGIN_IC = {"band":"<svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"3.5\"/></svg>","core":"<svg viewBox=\"0 0 24 24\"><path d=\"M4 18h16M7 18V9l5-4 5 4v9\"/></svg>","kleding":"<svg viewBox=\"0 0 24 24\"><path d=\"M12 3v2M5.6 5.6l1.4 1.4M3 12h2M18.4 5.6 17 7M21 12h-2\"/><path d=\"M7 16a5 5 0 0 1 10 0\"/><path d=\"M3 20h18\"/></svg>","coach":"<svg viewBox=\"0 0 24 24\"><path d=\"M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12z\"/></svg>"};
+const LOGIN_IC = {"band":"<svg viewBox=\"0 0 24 24\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"3.5\"/></svg>","core":"<svg viewBox=\"0 0 24 24\"><rect x=\"5\" y=\"6\" width=\"3.5\" height=\"12\" rx=\"1.2\"/><rect x=\"15.5\" y=\"6\" width=\"3.5\" height=\"12\" rx=\"1.2\"/><path d=\"M2.5 9.5v5M21.5 9.5v5M8.5 12h7\"/></svg>","kleding":"<svg viewBox=\"0 0 24 24\"><path d=\"M12 3v2M5.6 5.6l1.4 1.4M3 12h2M18.4 5.6 17 7M21 12h-2\"/><path d=\"M7 16a5 5 0 0 1 10 0\"/><path d=\"M3 20h18\"/></svg>","coach":"<svg viewBox=\"0 0 24 24\"><path d=\"M20 12a8 8 0 0 1-11.6 7.1L4 20l1-4.2A8 8 0 1 1 20 12z\"/></svg>"};
 function loginHtml(melding, soort) {
   return `<div class="login">
     <div class="login-kop"><div class="logo">MKC<span>.</span></div><div class="van">Michel Kreder Coaching</div></div>
@@ -1731,7 +1731,7 @@ document.addEventListener('toggle', (e) => { const d = e.target; if (d && d.data
 const IC = {
   rijden: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17" r="3.5"/><circle cx="18.5" cy="17" r="3.5"/><path d="M15 6h2l3 11M5.5 17l4-8h7l-5 8M9 9l-1.5-3H5"/></svg>',
   schema: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h3M8 17h6"/></svg>',
-  core: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="2"/><path d="M12 7v7M8 10h8M9 21l3-7 3 7"/></svg>',
+  core: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="6" width="3.5" height="12" rx="1.2"/><rect x="15.5" y="6" width="3.5" height="12" rx="1.2"/><path d="M2.5 9.5v5M21.5 9.5v5M8.5 12h7"/></svg>',
   analyse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M6 16l4-5 3 3 5-7"/></svg>',
   coach: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
   afval: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20h14l-1.5-11h-11zM9 9a3 3 0 0 1 6 0"/></svg>',
