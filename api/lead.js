@@ -19,6 +19,7 @@
 import crypto from 'node:crypto';
 import { bepaalPijn, bepaalDecouplingSignaal, bepaalRennerstype } from '../lib/pijn-signalen.js';
 import { unseal } from '../lib/gate.js';
+import { zetReeks } from '../lib/reeks.js';
 
 const MC_KEY  = process.env.MAILCHIMP_API_KEY;      // ...-usXX
 const MC_LIST = process.env.MAILCHIMP_LIST_ID;
@@ -360,6 +361,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({ tags: [{ name: 'pp-niet-afgemaakt', status: 'active' }] }),
         signal: AbortSignal.timeout(10000)
       });
+      await zetReeks(adres, 'pp-niet-afgemaakt'); // tijdelijke reeks-tag, zie lib/reeks.js
       console.log('Mailchimp lead OK:', adres, '| hervat:', hervatId ? 'ja' : 'nee');
     } catch (e) { console.error('Mailchimp lead faalde (blokkeert niet):', e); }
   } else {

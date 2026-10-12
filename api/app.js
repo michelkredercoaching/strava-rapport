@@ -48,6 +48,7 @@ import { tel, overzicht as gebruikOverzicht, CLIENT_GEBEURTENISSEN, GAST_GEBEURT
 import { COACH_KENNIS, COACH_REGELS, COACH_TOON } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
 import { meld as meldActief, opruimen, wisPersoon } from '../lib/app-opruimen.js';
+import { ruimReeksenOp } from '../lib/reeks.js';
 import { reviewMoment, reviewOpen, reviewKeuze, REVIEW_LINK } from '../lib/review.js';
 import { kledingAdvies, kledingBijstel, kledingKort } from '../lib/kleding.js';
 import { bandenAdvies, leesInvoer, nl, HOOKLESS_MAX } from '../lib/bandendruk.js';
@@ -554,6 +555,13 @@ async function routeReview(req, res) {
   return res.status(200).json({ ok: true });
 }
 
+// ---- Verlopen reeks-tags weghalen (12-10-2026), zie lib/reeks.js ----------------
+async function routeReeksen(req, res) {
+  const cron = process.env.CRON_SECRET;
+  if (!cron || String(req.headers?.authorization || '') !== `Bearer ${cron}`) return res.status(401).json({ ok: false });
+  return res.status(200).json(await ruimReeksenOp());
+}
+
 // ---- Appgegevens opruimen (09-10-2026), zie lib/app-opruimen.js ----------------
 // Cron (wekelijks): wist wie een jaar niets deed. Beheer: GET ?proef=1 telt alleen,
 // POST { email } wist iemand op verzoek (lidmaatschap en facturen blijven).
@@ -711,6 +719,7 @@ export default async function handler(req, res) {
     if (actie === 'plaatsvrij') return await routePlaatsVrij(req, res);
     if (actie === 'groepsrit') return await routeGroepsrit(req, res);
     if (actie === 'opruimen') return await routeOpruimen(req, res);
+    if (actie === 'reeksen') return await routeReeksen(req, res);
     if (actie === 'review') return await routeReview(req, res);
     if (actie === 'gastaccount') return await routeGastAccount(req, res);
     if (actie === 'aitegoed') return await routeAiTegoed(req, res);

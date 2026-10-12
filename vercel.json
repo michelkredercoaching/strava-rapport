@@ -73,6 +73,10 @@
       "schedule": "0 8 * * *"
     },
     {
+      "path": "/api/app?actie=reeksen",
+      "schedule": "15 5 * * *"
+    },
+    {
       "path": "/api/app?actie=opruimen",
       "schedule": "30 3 * * 1"
     },

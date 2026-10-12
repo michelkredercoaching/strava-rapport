@@ -49,6 +49,7 @@ import crypto from 'node:crypto';
 import { persoonlijkeRichtlijn, URENKLASSEN, belemmeringAdvies } from '../lib/voeding.js';
 import { leesInvoer, bandenAdvies } from '../lib/bandendruk.js';
 import { maakProef } from './core.js';
+import { zetReeks } from '../lib/reeks.js';
 
 const MC_KEY  = process.env.MAILCHIMP_API_KEY;      // ...-usXX
 const MC_LIST = process.env.MAILCHIMP_LIST_ID;
@@ -1026,6 +1027,8 @@ export default async function handler(req, res) {
     if (KEUZEHULP_JOURNEY_ROUTES.includes(route)) {
       await hertag(base, headers, hash, TAG_SCHEMA);
     }
+    // Tijdelijke reeks-tag (21 dagen) voor de voorrang tussen journeys, zie lib/reeks.js.
+    await zetReeks(email, KEUZEHULP_JOURNEY_ROUTES.includes(route) ? TAG_SCHEMA : tag);
 
     // 2b) Proeftraining: het juiste Startprotocol meteen mailen (bevestigt het adres)
     //     en teruggeven aan de pagina voor een directe download.
