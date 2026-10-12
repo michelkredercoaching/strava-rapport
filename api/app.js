@@ -399,16 +399,59 @@ async function routePushOpnieuw(req, res) {
   for (const x of (ml.ok && ml.result) || []) { try { const m = JSON.parse(x); if (!log.some((g) => g.title === m.titel && Math.abs(Date.parse(g.op) - Date.parse(m.op)) < 6e4)) log.push({ title: m.titel, body: m.tekst, url: m.link, op: m.op }); } catch {} }
   log.sort((a, b) => Date.parse(b.op) - Date.parse(a.op));
   const vb = [];
-  const och = await ochtendBericht(ik).catch(() => null); if (och) vb.push({ soort: 'Ochtendbericht (nu)', ...och, url: '/app#rijden' });
+  const och = await ochtendBericht(ik).catch(() => null); if (och) vb.push({ soort: 'Ochtendbericht (echt, nu)', ...och, url: '/app#rijden' });
+  // Varianten (12-10-2026): elke keer andere combinaties van weer, plaats, fiets,
+  // gewicht en kouType, door de echte banden- en kledingberekening.
+  const kies = (l) => l[Math.floor(Math.random() * l.length)];
+  const schud = (l) => l.map((x) => [Math.random(), x]).sort((a, b) => a[0] - b[0]).map((x) => x[1]);
+  const PLAATSEN = ['Utrecht', 'Valkenburg', 'Zwolle', 'Eindhoven', 'Amersfoort', 'Nijmegen', 'Gent', 'Leuven', 'Apeldoorn', 'Haarlem', 'Groningen', 'Breda', 'Maastricht', 'Arnhem', 'Den Bosch'];
+  const FIETSEN = [
+    { naam: 'Racefiets', type: 'weg', breedte: 25, tubeless: false },
+    { naam: 'Racefiets', type: 'weg', breedte: 28, tubeless: true },
+    { naam: 'Racefiets', type: 'weg', breedte: 30, tubeless: true, hookless: true },
+    { naam: 'Racefiets', type: 'weg', breedte: 26, tubeless: false },
+    { naam: 'Gravel', type: 'gravel', breedte: 40, tubeless: true },
+    { naam: 'Gravel', type: 'gravel', breedte: 45, tubeless: true }
+  ];
+  const WEER = [
+    { naam: 'vrieskou', t: [-3, 1], wind: [5, 15], nat: false, regen: 0 },
+    { naam: 'koude ochtend', t: [2, 6], wind: [10, 25], nat: false, regen: 0 },
+    { naam: 'herfstregen', t: [7, 11], wind: [15, 30], nat: true, regen: 2 },
+    { naam: 'nat wegdek', t: [8, 12], wind: [5, 15], nat: true, regen: 0 },
+    { naam: 'regen op komst', t: [10, 14], wind: [10, 20], nat: false, regen: 1.5 },
+    { naam: 'harde wind', t: [9, 15], wind: [32, 45], nat: false, regen: 0 },
+    { naam: 'fris voorjaar', t: [11, 15], wind: [10, 20], nat: false, regen: 0 },
+    { naam: 'lekker weer', t: [16, 20], wind: [5, 15], nat: false, regen: 0 },
+    { naam: 'zomer', t: [22, 27], wind: [5, 12], nat: false, regen: 0 },
+    { naam: 'hitte', t: [29, 33], wind: [3, 10], nat: false, regen: 0 }
+  ];
+  const tussen = ([a, b]) => Math.round(a + Math.random() * (b - a));
+  const plaatsen = schud(PLAATSEN);
+  schud(WEER).forEach((w, i) => {
+    const temp = tussen(w.t), wind = tussen(w.wind);
+    const uren = Array.from({ length: 6 }, (_, u) => ({ temp: temp + Math.round(u * (temp < 15 ? 0.7 : 0.4)), wind: wind + (u % 2), regen: u >= 1 && u <= 2 ? w.regen / 2 : 0 }));
+    const weer = { temp, laagste: temp, wind, nat: w.nat, regenStraks: w.regen > 0, uren };
+    const fiets = kies(FIETSEN), gewicht = kies([62, 68, 72, 75, 78, 82, 86, 92]), kouType = kies(['normaal', 'normaal', 'koud', 'warm']);
+    const profiel = { plaats: { naam: plaatsen[i] }, gewicht, kouType, fietsen: [fiets] };
+    const b = ochtendTekst(profiel, weer, 0, kies([1.5, 2, 3, 4]));
+    vb.push({ soort: `Ochtendbericht: ${w.naam} (${fiets.naam.toLowerCase()} ${fiets.breedte} mm, ${gewicht} kg${kouType !== 'normaal' ? ', snel ' + kouType : ''})`, ...b, url: '/app#rijden' });
+  });
   const dag = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10), op = (n) => new Date(Date.now() - n * 864e5).toISOString();
   const leeg = { analyse: false, schema: false, coaching: false };
+  const TOCHTEN = schud(['Amstel Gold Race Toerversie', 'Limburgs Mooiste', 'Tour du ALS', 'Fietselfstedentocht', 'Ronde van Vlaanderen Cyclo', 'Luik-Bastenaken-Luik Challenge', 'La Marmotte', "L'Étape du Tour", 'Mont Ventoux', 'Maratona dles Dolomites', 'Mallorca 312', 'Paris-Roubaix Challenge', 'Ötztaler Radmarathon', 'Les Trois Ballons', "Alpe d'HuZes", 'Unbound Gravel', 'The Traka', 'Dreiländergiro', 'Veenendaal-Veenendaal', 'Gravel One Fifty']);
   for (const [soort, d, info] of [
     ['Doel: sneller, na 3 weken', { doel: 'sneller', op: op(22) }, leeg],
     ['Doel: sneller, na de analyse', { doel: 'sneller', op: op(50) }, { ...leeg, analyse: true }],
-    ['Doel: tocht, 4 weken ervoor', { doel: 'evenement', naam: 'Amstel Gold Race', datum: dag(25), op: op(5) }, leeg],
-    ['Doel: tocht, week ervoor', { doel: 'evenement', naam: 'Amstel Gold Race', datum: dag(6), op: op(5) }, leeg],
-    ['Doel: tocht, dag ervoor', { doel: 'evenement', naam: 'Amstel Gold Race', datum: dag(1), op: op(5) }, leeg],
-    ['Doel: tocht, erna', { doel: 'evenement', naam: 'Amstel Gold Race', datum: dag(-3), op: op(40) }, leeg],
+    ['Doel: tocht, 4 weken ervoor', { doel: 'evenement', naam: TOCHTEN[0], datum: dag(26), op: op(5) }, leeg],
+    ['Doel: tocht, 3 weken ervoor', { doel: 'evenement', naam: TOCHTEN[1], datum: dag(19), op: op(5) }, leeg],
+    ['Doel: tocht, 2 weken ervoor', { doel: 'evenement', naam: TOCHTEN[2], datum: dag(12), op: op(5) }, leeg],
+    ['Doel: tocht, 4 weken ervoor (coaching)', { doel: 'evenement', naam: TOCHTEN[3], datum: dag(24), op: op(5) }, { ...leeg, coaching: true }],
+    ['Doel: tocht, week ervoor', { doel: 'evenement', naam: TOCHTEN[4], datum: dag(6), op: op(5) }, leeg],
+    ['Doel: tocht, week ervoor', { doel: 'evenement', naam: TOCHTEN[5], datum: dag(4), op: op(5) }, leeg],
+    ['Doel: tocht, dag ervoor', { doel: 'evenement', naam: TOCHTEN[6], datum: dag(1), op: op(5) }, leeg],
+    ['Doel: tocht, dag ervoor', { doel: 'evenement', naam: TOCHTEN[7], datum: dag(1), op: op(5) }, leeg],
+    ['Doel: tocht, erna', { doel: 'evenement', naam: TOCHTEN[8], datum: dag(-3), op: op(40) }, leeg],
+    ['Doel: tocht, erna', { doel: 'evenement', naam: TOCHTEN[9], datum: dag(-2), op: op(40) }, leeg],
     ['Doel: afvallen', { doel: 'afvallen', op: op(8) }, leeg],
     ['Doel: fit, groepsrit', { doel: 'fit', op: op(12) }, leeg],
     ['Doel: fit, winterplan', { doel: 'fit', op: op(35) }, leeg]
@@ -1442,8 +1485,11 @@ async function ochtendBericht(email) {
   if (!profiel || !profiel.plaats) return { title: 'Goedemorgen', body: 'Zet je woonplaats en fiets in de app, dan krijg je hier elke ochtend je bandenspanning en kledingadvies.' };
   const weer = await haalWeer(profiel.plaats.lat, profiel.plaats.lon);
   if (!weer) return null;
-  const rit = weerTijdensRit(weer, 0.5, 2);
-  const kl = kledingAdvies({ temp: rit.temp, start: rit.start, wind: rit.wind, regen: rit.regen, kouType: profiel.kouType || 'normaal', bijstel: kledingBijstel(ritten), duurUur: 2 });
+  return ochtendTekst(profiel, weer, kledingBijstel(ritten));
+}
+function ochtendTekst(profiel, weer, bijstel = 0, duurUur = 2) {
+  const rit = weerTijdensRit(weer, 0.5, duurUur);
+  const kl = kledingAdvies({ temp: rit.temp, start: rit.start, wind: rit.wind, regen: rit.regen, kouType: profiel.kouType || 'normaal', bijstel, duurUur });
   let banden = '';
   const f = (profiel.fietsen || [])[0];
   if (f && profiel.gewicht) {
@@ -1457,11 +1503,19 @@ async function ochtendBericht(email) {
   const natTekst = weer.nat ? 'nat wegdek' : rit.regen ? 'regen op komst' : 'droog';
   return {
     title: `Vandaag ${weer.temp}° en ${natTekst} in ${profiel.plaats.naam}`,
-    body: `${banden}Trek aan: ${kledingKort(kl)}.${kl && kl.tips[0] ? ' ' + kl.tips[0] : ''}`.slice(0, 230),
+    body: ochtendBody(banden, kledingKort(kl), kl && kl.tips[0]),
     url: '/app'
   };
 }
 
+// Pushtekst: nooit midden in een woord afkappen; de tip valt weg als het te lang wordt.
+function ochtendBody(banden, kort, tip) {
+  const kleren = /^vandaag liever binnen/i.test(kort || '') ? kort.charAt(0).toUpperCase() + kort.slice(1) + '.' : `Trek aan: ${kort}.`;
+  let t = `${banden}${kleren}`;
+  if (tip && (t + ' ' + tip).length <= 230) t += ' ' + tip;
+  if (t.length > 230) { t = t.slice(0, 229); t = t.slice(0, Math.max(t.lastIndexOf(','), t.lastIndexOf(' '))) + '...'; }
+  return t;
+}
 async function routePushTest(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const body = await leesBody(req);
