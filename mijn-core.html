@@ -257,6 +257,7 @@
   .pijnkeuze { display:grid; gap:8px; width:100%; max-width:440px; margin-top:14px; }
   .pijnkeuze button { padding:13px; border-radius:8px; border:1px solid var(--border); background:#111; color:var(--white); font-family:inherit; font-size:14.5px; cursor:pointer; text-align:left; }
   .pijnlaag { z-index:60; }
+  .speler .bediening .hoofd.klaarzet { background:#4CC38A; color:#0a0a0a; }
   .vervangknop { background:none; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:5px 10px; font-family:inherit; font-size:12.5px; margin-top:8px; cursor:pointer; }
   details.klap { background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-top:12px; }
   details.klap > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:14px 16px; font-size:15px; }
@@ -1157,16 +1158,32 @@ function klap(naam, titel, samenvatting, html, standaard = false) {
 }
 
 // ---- Gesproken aanwijzingen (12-10-2026) ----
-function stemAan() { try { return localStorage.getItem('coreStem') !== '0'; } catch (e) { return true; } }
+// Stem (12-10-2026): vrouw (standaard), man of uit. Welke Nederlandse stemmen er
+// zijn verschilt per telefoon; we zoeken op naam, en is er geen mannenstem, dan
+// zakt de toonhoogte van de standaardstem.
+function stemKeuze() { try { const v = localStorage.getItem('coreStem'); return v === '0' ? 'uit' : v === 'man' ? 'man' : 'vrouw'; } catch (e) { return 'vrouw'; } }
+function stemAan() { return stemKeuze() !== 'uit'; }
+const STEM_MAN = /xander|frank|daan|koen|guus|ruben|willem|bram|maarten|\bmale\b|\bman\b|nl-nl-x-bmh|nl-nl-x-dma|nl-be-x-bec/i;
+const STEM_VROUW = /claire|ellen|fenna|lotte|saskia|colette|anna|female|vrouw|nl-nl-x-tfb|nl-nl-x-lfc|nl-nl-x-yfr|nl-be-x-bed/i;
+try { if ('speechSynthesis' in window) { speechSynthesis.getVoices(); speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices(); } } catch (e) {}
+function kiesStem(type) {
+  const nl = speechSynthesis.getVoices().filter((x) => /^nl/i.test(x.lang));
+  const re = type === 'man' ? STEM_MAN : STEM_VROUW;
+  const echt = nl.find((v) => re.test(v.name + ' ' + v.voiceURI));
+  return { stem: echt || nl.find((v) => /nl-NL/i.test(v.lang)) || nl[0] || null, echt: !!echt };
+}
 function zeg(t) {
   if (!stemAan() || !('speechSynthesis' in window) || !t) return;
   try {
     speechSynthesis.cancel();
+    const type = stemKeuze(), k = kiesStem(type);
     const u = new SpeechSynthesisUtterance(t); u.lang = 'nl-NL'; u.rate = 1.05;
-    const v = speechSynthesis.getVoices().find((x) => /^nl/i.test(x.lang)); if (v) u.voice = v;
+    if (k.stem) u.voice = k.stem;
+    if (!k.echt) u.pitch = type === 'man' ? 0.7 : 1.1;
     speechSynthesis.speak(u);
   } catch (e) {}
 }
+function stemLabel() { return { vrouw: 'Stem: vrouw', man: 'Stem: man', uit: 'Stem uit' }[stemKeuze()]; }
 // iPhone: spraak mag pas na een tik, dus bij de startknop één keer "wakker maken".
 function zegWakker() { try { if ('speechSynthesis' in window && stemAan()) { const u = new SpeechSynthesisUtterance(' '); u.volume = 0; speechSynthesis.speak(u); } } catch (e) {} }
 function zegStap(st, sessie) {
@@ -1401,7 +1418,7 @@ async function startSpeler(sessie) {
   const stappen = bouwStappen(sessie);
   const totaal = stappen.reduce((n, s) => n + s.sec, 0);
   const el = document.createElement('div'); el.className = 'speler';
-  el.innerHTML = `<div class="balk"><div class="t">Sessie ${NR[sessie.letter]} &middot; ${esc(sessie.naam)}</div><button class="stemknop" data-sp="pijn" style="margin-left:auto;margin-right:6px">Pijn?</button><button class="stemknop" data-sp="stem" style="margin-left:0">${stemAan() ? 'Stem aan' : 'Stem uit'}</button><button class="sluit" data-sp="stop">Stoppen</button></div>
+  el.innerHTML = `<div class="balk"><div class="t">Sessie ${NR[sessie.letter]} &middot; ${esc(sessie.naam)}</div><button class="stemknop" data-sp="pijn" style="margin-left:auto;margin-right:6px">Pijn?</button><button class="stemknop" data-sp="stem" style="margin-left:0">${stemLabel()}</button><button class="sluit" data-sp="stop">Stoppen</button></div>
     <div class="voortgang"><i></i></div>
     <div class="midden"><div class="soort"></div><div class="naam"></div><div class="kant"></div><div class="beeld"></div><div class="spieren"></div><div class="klok"></div><div class="cue"></div><div class="straks"></div><div class="uitleg"></div></div>
     <div class="bediening"><button data-sp="terug" aria-label="Vorige">&#9664;&#9664;</button><button class="hoofd" data-sp="pauze">Pauze</button><button data-sp="verder" aria-label="Volgende">&#9654;&#9654;</button></div>`;
@@ -1409,7 +1426,7 @@ async function startSpeler(sessie) {
   document.body.style.overflow = 'hidden';
   let wakeLock = null;
   try { wakeLock = await navigator.wakeLock?.request('screen'); } catch {}
-  speler = { sessie, stappen, totaal, i: -1, over: 0, pauze: false, el, stopAnim: null, laatsteTik: 0, iv: null, finisherStart: 0, finisherSec: 0, wakeLock };
+  speler = { sessie, stappen, totaal, i: -1, over: 0, pauze: false, wacht: false, gezien: new Set(), el, stopAnim: null, laatsteTik: 0, iv: null, finisherStart: 0, finisherSec: 0, wakeLock };
   piep(880, .2);
   naarStap(0);
   speler.iv = setInterval(tik, 200);
@@ -1446,6 +1463,28 @@ function naarStap(i) {
   const beeld = $('.beeld', el); beeld.classList.toggle('gedimd', st.soort === 'rust');
   if (sp.stopAnim) sp.stopAnim();
   sp.stopAnim = A[st.id] ? F.speel(beeld, A[st.id]) : null;
+  // Eerste keer deze oefening (12-10-2026): eerst laten zien wat er komt, met
+  // plaatje en uitleg. De tijd loopt pas na "Start oefening".
+  const sleutel = st.soort + ':' + st.id;
+  sp.wacht = ['warm', 'werk', 'cool', 'finisher'].includes(st.soort) && !sp.gezien.has(sleutel);
+  if (sp.wacht) {
+    sp.gezien.add(sleutel);
+    soortEl.textContent = { warm: 'Warming-up', cool: 'Cooling-down', finisher: 'Finisher', werk: 'Volgende oefening' }[st.soort] + ' · zo doe je hem';
+    soortEl.classList.remove('rust');
+    if (lijst) {
+      uitleg.className = 'uitleg';
+      uitleg.innerHTML = '<ol>' + lijst + '</ol>' + (st.waarom ? '<div class="waarom">Op de fiets: ' + esc(st.waarom) + '</div>' : '') + (st.waaromDoel ? '<div class="waarom2"><b>Voor je ' + esc(soortKort(S)) + ':</b> ' + esc(st.waaromDoel) + '</div>' : '');
+      $('.cue', el).textContent = '';
+    }
+    $('.straks', el).textContent = st.soort === 'finisher' ? 'Houd zo lang vol als je kunt.' : (st.sec ? st.sec + ' seconden' + (st.kant ? ', ' + st.kant.split(' · ')[0].toLowerCase() + ' eerst' : '') : '');
+    $('[data-sp=pauze]', el).textContent = 'Start nu';
+    $('[data-sp=pauze]', el).classList.add('klaarzet');
+    sp.wachtOver = KLAARZET; sp.laatsteTik = Date.now();
+    $('.klok', el).textContent = KLAARZET;
+    zeg(`Volgende: ${st.naam}. Zet je klaar, over ${KLAARZET} seconden starten we.`);
+    return;
+  }
+  $('[data-sp=pauze]', el).classList.remove('klaarzet');
   if (st.soort === 'finisher') { sp.finisherStart = Date.now(); $('[data-sp=pauze]', el).textContent = 'Stop'; }
   else $('[data-sp=pauze]', el).textContent = sp.pauze ? 'Verder' : 'Pauze';
   if (st.soort === 'werk' || st.soort === 'finisher') piep(990, .25);
@@ -1464,6 +1503,14 @@ function toonKlok() {
 function tik() {
   const sp = speler; if (!sp) return;
   const st = sp.stappen[sp.i], nuMs = Date.now(), dt = (nuMs - sp.laatsteTik) / 1000; sp.laatsteTik = nuMs;
+  if (sp.wacht) {
+    if (sp.pauze) return;
+    const voorW = Math.ceil(sp.wachtOver); sp.wachtOver -= dt; const naW = Math.ceil(sp.wachtOver);
+    if (naW !== voorW && naW <= 3 && naW >= 1) piep(660, .1);
+    if (sp.wachtOver <= 0) return startNaWacht();
+    $('.klok', sp.el).textContent = naW;
+    return;
+  }
   if (st.soort === 'finisher') return toonKlok();
   if (sp.pauze) return;
   const voor = Math.ceil(sp.over);
@@ -1475,11 +1522,37 @@ function tik() {
   toonKlok();
 }
 
+// Klaarzetten (12-10-2026): 15 seconden het voorbeeld met aftelklok, dan start
+// de oefening vanzelf. "Start nu" mag eerder.
+const KLAARZET = 15;
+function startNaWacht() {
+  const sp = speler; if (!sp || !sp.wacht) return;
+  const st = sp.stappen[sp.i], k = $('[data-sp=pauze]', sp.el);
+  sp.wacht = false; sp.pauze = false; sp.laatsteTik = Date.now(); k.classList.remove('klaarzet');
+  $('.soort', sp.el).textContent = SOORT[st.soort] + (st.ronde ? ` · ronde ${st.ronde} van ${sp.sessie.rondes}` : '');
+  $('.straks', sp.el).textContent = '';
+  if (st.soort === 'finisher') { sp.finisherStart = Date.now(); k.textContent = 'Stop'; } else k.textContent = 'Pauze';
+  piep(990, .25); zegStap(st, sp.sessie); toonKlok();
+}
 function spelerKlik(e) {
   const k = e.target.closest('[data-sp]'); if (!k || !speler) return;
   const sp = speler, st = sp.stappen[sp.i];
-  if (k.dataset.sp === 'stem') { try { localStorage.setItem('coreStem', stemAan() ? '0' : '1'); } catch (er) {} k.textContent = stemAan() ? 'Stem aan' : 'Stem uit'; if (!stemAan()) { try { speechSynthesis.cancel(); } catch (er) {} } return; }
+  if (k.dataset.sp === 'stem') {
+    const volgende = { vrouw: 'man', man: '0', uit: 'vrouw' }[stemKeuze()];
+    try { localStorage.setItem('coreStem', volgende); } catch (er) {}
+    k.textContent = stemLabel();
+    if (!stemAan()) { try { speechSynthesis.cancel(); } catch (er) {} } else zeg('Zo klink ik. Succes met je sessie.');
+    return;
+  }
   if (k.dataset.sp === 'pijn') return pijnTijdens();
+  if (k.dataset.sp === 'pauze' && sp.wacht) return startNaWacht();
+  if (false) {
+    $('.soort', sp.el).textContent = SOORT[st.soort] + (st.ronde ? ` · ronde ${st.ronde} van ${sp.sessie.rondes}` : '');
+    $('.straks', sp.el).textContent = '';
+    if (st.soort === 'finisher') { sp.finisherStart = Date.now(); k.textContent = 'Stop'; } else k.textContent = 'Pauze';
+    piep(990, .25); zegStap(st, sp.sessie); toonKlok();
+    return;
+  }
   if (k.dataset.sp === 'pauze') {
     if (st.soort === 'finisher') { sp.finisherSec = Math.floor((Date.now() - sp.finisherStart) / 1000); piep(660, .2); return naarStap(sp.i + 1); }
     sp.pauze = !sp.pauze; k.textContent = sp.pauze ? 'Verder' : 'Pauze';

@@ -364,6 +364,20 @@
       armVer: { naar: [heup[0] + nx * 12, heup[1] + ny * 12], buig: 1 }
     };
   }
+  // Zonder stok (12-10-2026, besluit Michel): handen op je heupen.
+  function heupHanden(heupX, romp) {
+    var heup = [heupX, V - 80], nx = Math.cos((romp + 90) * Math.PI / 180), ny = Math.sin((romp + 90) * Math.PI / 180);
+    var r = romp * Math.PI / 180;
+    return {
+      armDicht: { naar: [heup[0] + Math.cos(r) * 8 + nx * 10, heup[1] + Math.sin(r) * 8 + ny * 10], buig: 1 },
+      armVer: { naar: [heup[0] + Math.cos(r) * 8 + nx * 8, heup[1] + Math.sin(r) * 8 + ny * 8], buig: 1 }
+    };
+  }
+  A['heupscharnier'] = {
+    spier: 'rug', beweeg: 1500, kader: STAAN,
+    reeks: [{ h: 'staan', vast: 500 }, { h: 'scharnier', vast: 700 }],
+    houdingen: { staan: staand(150, -90, heupHanden(150, -90)), scharnier: staand(170, 220, heupHanden(170, 220)) }
+  };
   A['scharnier-stok'] = {
     spier: 'rug', beweeg: 1500, kader: STAAN,
     reeks: [{ h: 'staan', vast: 500 }, { h: 'scharnier', vast: 700 }],

@@ -51,6 +51,7 @@
     'bridge-eenbeen-traag': { bil: 'p', hamstring: 'p', heupzij: 's' },
     // Lijn 5: onderrug en fietshouding
     'scharnier-stok':    { onderrug: 'p', bil: 's', hamstring: 's' },
+    'heupscharnier':     { onderrug: 'p', bil: 's', hamstring: 's' },
     'fietshouding':      { onderrug: 'p', bovenrug: 's', bil: 's' },
     'fietshouding-reiken': { onderrug: 'p', bovenrug: 'p', schouders: 's' },
     'fietshouding-eenbeen': { onderrug: 'p', bil: 'p', hamstring: 's' },
