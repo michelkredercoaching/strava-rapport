@@ -138,6 +138,12 @@
   details.klap.wind > summary svg { width:18px; height:18px; stroke:#8ab4ff; fill:none; stroke-width:2; flex:none; }
   details.klap .push { background:none; border:0; padding:0; margin:0; }
   details.klap > summary { color:var(--white); }
+  .schemaeinde { background:linear-gradient(160deg, rgba(255,107,26,.16), var(--surface) 60%); border:1px solid rgba(255,107,26,.55); border-radius:10px; padding:16px; margin:14px 0 4px; }
+  .schemaeinde b { display:block; font-family:'Bebas Neue',sans-serif; font-size:24px; font-weight:400; letter-spacing:.03em; line-height:1.05; }
+  .schemaeinde p { font-size:13.5px; color:var(--muted); margin:6px 0 12px; }
+  .se-keuze { display:grid; gap:8px; }
+  .se-keuze .knop { margin:0; display:flex; flex-direction:column; align-items:center; gap:2px; text-decoration:none; }
+  .se-keuze .knop small { font-family:'DM Sans',sans-serif; font-size:11.5px; letter-spacing:0; text-transform:none; opacity:.8; font-weight:500; }
   .lidbalk { display:flex; align-items:center; gap:12px; width:100%; margin-top:16px; text-align:left; background:linear-gradient(160deg, rgba(255,107,26,.16), var(--surface) 60%); border:1px solid rgba(255,107,26,.55); border-radius:10px; padding:14px 16px; color:var(--white); font-family:inherit; cursor:pointer; }
   .lidbalk span { flex:1; min-width:0; }
   .lidbalk b { display:block; font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.03em; font-weight:400; line-height:1; }
@@ -1846,11 +1852,38 @@ function tegelsHtml(d) {
   return `<div class="tegels">${t.join('')}</div>`;
 }
 // Volgende stap: alleen voor wie nog geen schema en geen coaching heeft.
+// Schema bijna klaar (12-10-2026): in de laatste 7 dagen van de app-toegang via
+// een schema (of gratis maand) een kaart met de twee manieren om verder te gaan.
+function schemaEindeHtml(d) {
+  const l = d.lid || {};
+  if (!['schema', 'cadeau'].includes(l.bron) || l.status !== 'actief' || !l.tot) return '';
+  const dagen = Math.ceil((Date.parse(l.tot) - Date.now()) / 864e5);
+  if (dagen > 7 || dagen < 0) return '';
+  const wanneer = dagen <= 0 ? 'vandaag' : dagen === 1 ? 'morgen' : 'over ' + dagen + ' dagen';
+  return `<div class="schemaeinde"><b>${l.bron === 'cadeau' ? 'Je gratis maand' : 'Je MKC-app via je schema'} loopt ${wanneer} af</b>
+    <p>Je hebt een mooi blok gereden. Hoe ga je verder?</p>
+    <div class="se-keuze">
+      <a class="knop" href="${SITE}/trainingsschema-vervolg/" target="_blank" rel="noopener">Vervolgschema<small>sluit aan op waar je nu staat, de app hoort erbij</small></a>
+      <button class="knop leeg" data-view="lid">Lid blijven<small>&euro;${APP_PRIJS.maand} per maand, altijd opzegbaar</small></button>
+    </div></div>`;
+}
 // Korte "Word lid"-balk op de startpagina; de voordelen, prijzen en factuurgegevens staan op de pagina MKC-Lid.
 function lidBalkHtml(d) {
   if (isLid(d) || (d.lid && d.lid.bron === 'coaching')) return '';
   if (!binnenkortNu() && !kanLidNu(d)) return '';
   return `<button type="button" class="lidbalk" data-view="lid"><span><b>Word lid van de MKC-app</b><em>${binnenkortNu() ? 'Open vanaf vrijdag 16 oktober &middot; bekijk wat je krijgt' : '&euro;' + APP_PRIJS.maand + ' per maand &middot; alles ontgrendeld'}</em></span><i>&#8250;</i></button>`;
+}
+// Na je analyse (12-10-2026): heb je nog geen schema of coaching, dan onderaan
+// de twee manieren om op je analyse te trainen. Je tegoed uit de analyse telt mee.
+function naAnalyseHtml(d) {
+  const coaching = !!(d.lid && d.lid.bron === 'coaching');
+  if (coaching || d.schema || (d.lid && d.lid.bron === 'schema')) return '';
+  const a = d.analyse || {}, maand = new Date().getMonth(), winter = maand >= 9 || maand <= 1;
+  const schemaLink = a.tegoedLink || (SITE + '/trainingsschemas/');
+  return `<div class="groepkop">Train op je analyse</div><div class="stap">
+    <a href="${esc(schemaLink)}" target="_blank" rel="noopener"><b>${a.advies ? esc(a.advies) : 'Een schema dat bij je analyse past'}</b><span>Je weet nu waar je staat. Met een schema van 8, 12 of 16 weken maak je er echte watts van, klaar in TrainingPeaks en met de MKC-app erbij.${a.adviesPrijs ? ' Met je tegoed uit de analyse: &euro;' + esc(a.adviesPrijs) + '.' : ''}</span><em>Bekijk mijn schema &rarr;</em></a>
+    ${winter && a.meet !== 'hartslag' ? `<a href="${SITE}/winterprogramma/" target="_blank" rel="noopener"><b>Deze winter binnen op je trainer?</b><span>12 weken Indoor Winterprogramma, afgestemd op je FTP, met een eindrapport van je vooruitgang.</span><em>Bekijk het winterprogramma &rarr;</em></a>` : ''}
+  </div>`;
 }
 function volgendeStapHtml(d) {
   const coaching = !!(d.lid && d.lid.bron === 'coaching');
@@ -1869,7 +1902,7 @@ function paginaHtml(d) {
   if (VIEW === 'rijden') return appBalkHtml('Vandaag rijden') + `<div class="kaarten">${bandenKaart(d)}${toonSlim(d) ? '' : windKaartHtml()}</div>` + voet;
   if (VIEW === 'schema') return appBalkHtml('Mijn schema') + `<div class="kaarten">${schemaKaart(d)}</div>` + voet;
   if (VIEW === 'core') return appBalkHtml('Core-app') + `<div class="kaarten">${coreKaart(dz.core)}</div>` + voet;
-  if (VIEW === 'analyse') return appBalkHtml('Strava-analyse') + (dz.analyse ? analyseBlok(dz.analyse, true) + `<a class="knop leeg" href="${analyseKoop()}" style="margin-top:14px">Doe een nieuwe analyse${analysePrijs() < 29 ? ' &middot; &euro;' + analysePrijs() : ''}</a><p class="klein">Na een paar weken gericht trainen zie je met een nieuwe analyse of je vooruit bent gegaan.</p>` : `<div class="kaarten">${analyseKaart(null)}</div>`) + voet;
+  if (VIEW === 'analyse') return appBalkHtml('Strava-analyse') + (dz.analyse ? analyseBlok(dz.analyse, true) + naAnalyseHtml(dz) + `<a class="knop leeg" href="${analyseKoop()}" style="margin-top:14px">Doe een nieuwe analyse${analysePrijs() < 29 ? ' &middot; &euro;' + analysePrijs() : ''}</a><p class="klein">Na een paar weken gericht trainen zie je met een nieuwe analyse of je vooruit bent gegaan.</p>` : `<div class="kaarten">${analyseKaart(null)}</div>`) + voet;
   if (VIEW === 'afval') return appBalkHtml('Afvalprogramma') + `<div class="kaarten">${afvalKaart()}</div>` + voet;
   if (VIEW === 'pacing') return appBalkHtml('Pacingplan') + `<div class="kaarten">${pacingKaart()}</div>` + voet;
   if (VIEW === 'lid') {
@@ -1905,6 +1938,7 @@ function teken() {
       <li><span>2</span>${binnenkortNu() ? 'Rechtsonder zit <em>Vraag je coach</em>: stel elke week 3 vragen gratis, over training, voeding, banden of herstel.' : 'Start je gratis week in de Core-app: korte sessies thuis, op de timer.'}</li>
       <li><span>3</span>${binnenkortNu() ? 'Zet de app op je beginscherm, dan heb je je bandenspanning altijd bij de hand.' : d.lidOpen ? 'Meer nodig? Als lid krijg je je eigen coach, de slimme bandenspanning en de Core-app doorlopend, voor &euro;' + APP_PRIJS.maand + ' per maand.' : 'Rechtsonder zit <em>Vraag je coach</em>: je eigen coach die je analyse en je plan kent, straks voor leden.'}</li></ol></div>`
       : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}
+    ${schemaEindeHtml(d)}
     <div id="doelvak">${doelHtml(d)}</div>
     ${tegelsHtml(d)}
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}

@@ -969,7 +969,13 @@ async function schemaEindeMails() {
     const lid = await haalLid(email);
     if (!lid || lid.bron !== 'schema' || lid.subscriptionId || lid.handmatig || !lid.tot) { await redis(['SREM', 'lid:schema', email]); continue; }
     const dagenOver = (Date.parse(lid.tot) - Date.now()) / 86400000;
+    // Laatste dag (12-10-2026): nog één melding in de app en als pushbericht.
+    if (dagenOver <= 1.2 && dagenOver > -1 && lid.schemaLaatsteMelding !== lid.tot && lid.schemaEindeGemaild === lid.tot) {
+      await appMelding(email, { soort: 'lid', titel: lid.cadeauMaand ? 'Je gratis maand loopt morgen af' : 'Je MKC-app loopt morgen af', tekst: 'Blijf lid voor ' + euro(PLANNEN.maand.bedrag) + ' per maand, of kies een vervolgschema: dan hoort de app er weer bij.', link: '/app#lid' });
+      lid.schemaLaatsteMelding = lid.tot; await bewaarLid(email, lid);
+    }
     if (dagenOver > 7 || dagenOver < -3 || lid.schemaEindeGemaild === lid.tot || !key) continue;
+    await appMelding(email, { soort: 'lid', titel: lid.cadeauMaand ? 'Je gratis maand loopt bijna af' : 'Je schema zit erop. Hoe ga je verder?', tekst: 'Kies een vervolgschema dat aansluit op waar je nu staat (de app hoort erbij), of blijf lid van de MKC-app.', link: '/app#lid' });
     const voornaam = String(lid.naam || '').split(' ')[0];
     const datum = new Date(lid.tot).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
     const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.7;color:#1a1a1a;max-width:560px">
