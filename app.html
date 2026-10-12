@@ -167,6 +167,18 @@
   .vd-tx b { display:block; font-size:14.5px; font-weight:600; line-height:1.3; }
   .vd-rij i { color:var(--accent); font-style:normal; font-size:20px; }
   .vd-zacht { display:block; font-size:12.5px; color:var(--muted); text-decoration:none; border-top:1px solid var(--border); padding:10px 0 4px; }
+  .tipdag { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin:14px 0 4px; }
+  .td-kop { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .td-kop .cc-av { width:34px; height:34px; }
+  .td-kop b { display:block; font-size:14px; }
+  .td-kop small { display:block; font-size:11.5px; color:var(--muted); }
+  .tipdag p { font-size:14.5px; line-height:1.5; }
+  .td-vraag { background:none; border:0; color:var(--accent); font:inherit; font-size:13.5px; font-weight:600; padding:8px 0 0; cursor:pointer; }
+  .vd-week { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12px; color:var(--muted); border-top:1px solid var(--border); padding:10px 0 4px; }
+  .vd-week b { color:var(--white); font-weight:600; }
+  .vd-week > span { white-space:nowrap; }
+  .vd-week > span + span::before { content:'·'; margin-right:14px; color:var(--muted); }
+  .vd-week .ok { color:#4CC38A; }
   .lidbalk { display:flex; align-items:center; gap:12px; width:100%; margin-top:16px; text-align:left; background:linear-gradient(160deg, rgba(255,107,26,.16), var(--surface) 60%); border:1px solid rgba(255,107,26,.55); border-radius:10px; padding:14px 16px; color:var(--white); font-family:inherit; cursor:pointer; }
   .lidbalk span { flex:1; min-width:0; }
   .lidbalk b { display:block; font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.03em; font-weight:400; line-height:1; }
@@ -1363,6 +1375,7 @@ async function btReken() {
   // Nat wegdek: 0,3 bar eraf, dezelfde regel als op de kaart en in de tips.
   const min = v.type === 'gravel' ? 1.3 : 2.5, eraf = 0, hook = v.type === 'weg' && v.hookless, max = hook ? BT_LIB.HOOKLESS_MAX : 99;
   const voor = Math.min(max, Math.max(min, a.voor - eraf)), achter = Math.min(max, Math.max(min, a.achter - eraf)), begrensd = hook && a.achter - eraf > max;
+  try { localStorage.setItem('mkcLaatsteSpanning', BT_LIB.nl(voor) + ' / ' + BT_LIB.nl(achter) + ' bar'); } catch (e) {}
   uit.innerHTML = `<div class="bt-uit"><div><span>Voor</span><b>${BT_LIB.nl(voor)}</b><small>bar &middot; ${BT_LIB.psi(voor)} psi</small></div><div><span>Achter</span><b>${BT_LIB.nl(achter)}</b><small>bar &middot; ${BT_LIB.psi(achter)} psi</small></div></div>
     <p class="klein">${begrensd ? 'Hookless velg: nooit boven de 5,0 bar, dus ik heb hem daarop gezet.' : ''}</p>${RK_KNOP}`;
   if (GR.data) grTeken();
@@ -1402,9 +1415,11 @@ function kaartenHtml(d) {
 // alles open met voorbeeldcijfers, zodat je ziet hoe elke kaart er straks uitziet.
 function voorbeeldData(d) {
   return { ...d,
-    core: d.core || { link: '#', naam: d.naam, betaald: true, opSlot: false, intakeNodig: false, klaar: false, week: 3, fase: 1, faseNaam: 'Fundament', gedaan: 1, frequentie: 3, afgerond: 7, startScore: 52, rompscore: 66, volgende: { letter: 'B', naam: 'Zijkant en rotatie', minuten: 11, oefeningen: ['zijplank-knieen', 'birddog', 'bridge', 'deadbug-gebogen'] } },
+    core: d.core || { link: '#', naam: d.naam, betaald: true, opSlot: false, intakeNodig: false, klaar: false, week: 3, fase: 1, faseNaam: 'Fundament', gedaan: 1, frequentie: 3, afgerond: 7, reeks: 3, startScore: 52, rompscore: 66, volgende: { letter: 'B', naam: 'Zijkant en rotatie', minuten: 11, oefeningen: ['zijplank-knieen', 'birddog', 'bridge', 'deadbug-gebogen'] } },
     analyse: d.analyse || { datum: '1 oktober 2026', ftp: '248', meet: 'vermogen', type: 'Klimmer', omslag: '', advies: 'Opbouw 12-wekenplan', score: '72', decoupling: '4.1', adviesPrijs: '49', adviesOud: '59', deadline: '15 oktober', tegoedLink: '#' },
     schema: d.schema || SIM_SCHEMA['opbouw-12-w|18'] || null,
+    lid: d.lid && d.lid.open ? d.lid : { status: 'actief', open: true, bron: 'abonnement', plan: 'maand', tot: new Date(Date.now() + 20 * 864e5).toISOString() },
+    bandenRitten: (d.bandenRitten || []).length ? d.bandenRitten : [{ op: new Date().toISOString() }, { op: new Date(Date.now() - 2 * 864e5).toISOString() }],
     banden: true };
 }
 // Aankondiging "3 gratis vragen" (11-10-2026): eerst proef (wie krijgt hem), dan versturen.
@@ -1777,7 +1792,8 @@ function doelHtml(d) {
   if (dl && !dl.klaar && !DOELV.open) {
     const nog = dl.doel === 'evenement' ? Math.ceil((Date.parse(dl.datum + 'T08:00:00') - Date.now()) / 864e5) : null;
     const wat = dl.doel === 'evenement' ? esc(dl.naam) + (nog > 0 ? ' &middot; nog ' + nog + (nog === 1 ? ' dag' : ' dagen') : '') : DOEL_NAMEN[dl.doel];
-    const regel = `<div class="doelregel">Jouw doel: <b>${wat}</b><a href="#" data-doel="wijzig">aanpassen</a></div>`;
+    const inVandaag = dl.doel === 'evenement' && dl.datum && (isLid(d) || (d.lid && d.lid.bron === 'coaching')) && Date.parse(dl.datum + 'T08:00:00') >= Date.now() - 864e5;
+    const regel = inVandaag ? '' : `<div class="doelregel">Jouw doel: <b>${wat}</b><a href="#" data-doel="wijzig">aanpassen</a></div>`;
     if (!DOELV.bevestig) return regel;
     const zin = { sneller: 'Top! Over een paar weken laat ik je zien hoe je meet of je echt sneller wordt.', evenement: `Top, op naar ${esc(dl.naam)}! Ik herinner je 4 weken, 1 week en de dag ervoor, met tips voor die dag.`, afvallen: 'Top! Je krijgt tips om lichter te worden zonder watts te verliezen, en je hoort als eerste over het Afvalprogramma.', fit: 'Top! Ik stuur je af en toe een tip om het leuk te houden en door te blijven rijden.' }[dl.doel];
     const pushVraag = pushKan() && PUSH.key && PUSH.inst && !PUSH.inst.aan && !(typeof Notification !== 'undefined' && Notification.permission === 'denied');
@@ -1870,7 +1886,8 @@ function tegelsHtml(d) {
   const coaching = !!(d.lid && d.lid.bron === 'coaching');
   const lid = isLid(d), slim = toonSlim(d);
   const t = [];
-  t.push(tegel({ v: 'rijden', ic: 'rijden', nm: 'Vandaag rijden', sub: slim ? 'Je bandenspanning, kleding, voeding en wind voor je rit' : 'Je bandenspanning en windadvies, en plan een groepsrit', tag: slim ? 'Lid' : 'Gratis', tagKlas: slim ? 'or' : 'gr', breed: true }));
+  const mijnSp = !slim ? laatsteSpanning() : '';
+  t.push(tegel({ v: 'rijden', ic: 'rijden', nm: 'Vandaag rijden', sub: slim ? 'Je bandenspanning, kleding, voeding en wind voor je rit' : mijnSp ? 'Jouw spanning: ' + mijnSp + ' &middot; plus wind en groepsrit' : 'Je bandenspanning en windadvies, en plan een groepsrit', tag: slim ? 'Lid' : 'Gratis', tagKlas: slim ? 'or' : 'gr', breed: true }));
   if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: schemaTegelSub(d.schema), tag: d.schema.status === 'klaar' ? 'Afgerond' : 'Actief', tagKlas: 'gr' }));
   if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.volgende && !d.core.intakeNodig && !d.core.opSlot ? 'Start' : 'Actief', tagKlas: 'gr' }));
   else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Core stability voor wielrenners, op de timer', tag: binnenkortNu() ? 'Binnenkort' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
@@ -1880,6 +1897,8 @@ function tegelsHtml(d) {
   const bk = `<div class="bk-rij"><span>Binnenkort</span><button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
   return `<div class="tegels">${t.join('')}</div>${bk}`;
 }
+// Laatst berekende gratis spanning (btReken bewaart hem), om op de tegel te tonen.
+function laatsteSpanning() { try { return localStorage.getItem('mkcLaatsteSpanning') || ''; } catch (e) { return ''; } }
 function schemaTegelSub(s) {
   if (s.status === 'voor') return 'Start ' + esc(datumKort(s.start));
   if (s.status === 'klaar') return 'Alle ' + s.weken + ' weken gedaan, kies je vervolg';
@@ -1910,6 +1929,66 @@ function schemaEindeHtml(d) {
       <button class="knop leeg" data-view="lid">Lid blijven<small>&euro;${APP_PRIJS.maand} per maand, altijd opzegbaar</small></button>
     </div></div>`;
 }
+// ---- Tip van Michel (12-10-2026) ----
+// Elke dag een andere tip, passend bij je doel, het seizoen en of je Core doet.
+// Reden om morgen weer te kijken. Doorvragen kan meteen bij de coach.
+const TIPS = [
+  { c: 'alg', t: 'Rijd je duurritten echt rustig. Kun je nog makkelijk praten, dan zit je goed. Te hard op een rustige dag kost je de kwaliteit op je zware dag.', v: 'Hoe weet ik of ik rustig genoeg rijd?' },
+  { c: 'alg', t: 'Eén zware training goed gedaan is meer waard dan drie halfslachtige. Plan je zware dag na een rustige dag.', v: 'Hoe verdeel ik zware en rustige dagen over mijn week?' },
+  { c: 'alg', t: 'Slaap is je goedkoopste prestatieverbeteraar. Een week lang een half uur eerder naar bed merk je op de fiets.', v: 'Hoeveel invloed heeft slaap op mijn herstel?' },
+  { c: 'alg', t: 'Moe en lusteloos voor je training? Maak er een rustig uur van in plaats van hem door te drukken. Morgen ben je er beter van.', v: 'Wanneer kan ik een training beter aanpassen?' },
+  { c: 'alg', t: 'Eet binnen een uur na een zware rit iets met koolhydraten en eiwit. Je herstel begint aan tafel, niet pas in bed.', v: 'Wat eet ik het beste na een zware training?' },
+  { c: 'alg', t: 'Cadans rond de 85 tot 95 spaart je benen op lange ritten. Trap je zwaar en traag, schakel dan eens een tandje lichter.', v: 'Welke cadans is goed voor mij?' },
+  { c: 'alg', t: 'Check voor elke rit je banden. De juiste spanning scheelt meer dan je denkt in comfort, grip en snelheid.', v: 'Waarom maakt bandenspanning zoveel uit?' },
+  { c: 'alg', t: 'Drink niet alleen als je dorst hebt. Op een rit van meer dan een uur is een bidon per uur een goed begin.', v: 'Hoeveel moet ik drinken op een lange rit?' },
+  { c: 'alg', t: 'Vooruitgang zie je niet per rit, maar per maand. Vergelijk jezelf met vier weken geleden, niet met gisteren.', v: 'Hoe meet ik of ik vooruit ga?' },
+  { c: 'alg', t: 'Een rustweek is geen verloren week. Daarin bouwt je lichaam de training van de weken ervoor om tot vorm.', v: 'Waarom zijn rustweken zo belangrijk?' },
+  { c: 'alg', t: 'Wind tegen op de heenweg is een cadeau voor de terugweg. Start tegen de wind in, dan heb je hem mee als je moe bent.', v: 'Hoe plan ik mijn rit met de wind?' },
+  { c: 'alg', t: 'Stress van werk telt ook als belasting. Drukke week op je werk? Haal dan wat intensiteit uit je schema.', v: 'Hoe pas ik mijn training aan in een drukke week?' },
+  { c: 'sneller', t: 'Sneller worden zit vooral in je drempelwerk. Blokken van 2 keer 20 minuten net onder je FTP doen meer dan elke rit vol gas.', v: 'Hoe train ik mijn FTP omhoog?' },
+  { c: 'sneller', t: 'Weet je je FTP niet zeker? Dan train je in de verkeerde zones. Een goede test of analyse is de basis van alles.', v: 'Hoe bepaal ik mijn FTP?' },
+  { c: 'sneller', t: 'Meer uren is niet altijd beter. Met 6 tot 8 uur per week en de juiste opbouw kun je flink sneller worden.', v: 'Hoe haal ik het meeste uit weinig uren?' },
+  { c: 'sneller', t: 'Sweetspot, net onder je drempel, geeft veel winst voor relatief weinig vermoeidheid. Ideaal als je weinig tijd hebt.', v: 'Wat is sweetspot en hoe train ik dat?' },
+  { c: 'evenement', t: 'Oefen je voeding voor je grote tocht op je lange trainingsritten. Op de dag zelf probeer je niets nieuws.', v: 'Hoe test ik mijn voeding voor mijn tocht?' },
+  { c: 'evenement', t: 'De laatste week voor je tocht word je niet fitter, wel frisser. Minder uren, korte prikkels, en vooral goed slapen.', v: 'Wat doe ik in de week voor mijn tocht?' },
+  { c: 'evenement', t: 'Begin je tocht rustiger dan je denkt. Wie in het eerste uur te hard gaat, betaalt dat in het laatste uur dubbel terug.', v: 'Hoe deel ik mijn krachten in op een lange tocht?' },
+  { c: 'evenement', t: 'Rijd een paar trainingsritten op het terrein van je tocht: lange klimmen, kasseien of gravel. Dan weet je wat je te wachten staat.', v: 'Hoe bereid ik me voor op het parcours van mijn tocht?' },
+  { c: 'afvallen', t: 'Afvallen en sneller worden gaat samen, zolang je op trainingsdagen genoeg eet. Bespaar liever op rustdagen.', v: 'Hoe val ik af zonder watts te verliezen?' },
+  { c: 'afvallen', t: 'Train niet nuchter als je zwaar gaat. Een rustige duurrit nuchter kan, een zware training niet.', v: 'Kan ik nuchter trainen om af te vallen?' },
+  { c: 'afvallen', t: 'Eiwit bij elke maaltijd houdt je langer vol en beschermt je spieren als je minder eet.', v: 'Hoeveel eiwit heb ik nodig als wielrenner?' },
+  { c: 'afvallen', t: 'Weeg jezelf liever een paar keer per week op hetzelfde moment en kijk naar het gemiddelde. Eén meting zegt weinig.', v: 'Hoe houd ik mijn gewicht goed bij?' },
+  { c: 'fit', t: 'Plezier houdt je op de fiets. Rij eens een nieuwe route of plan een rit met vrienden via de groepsrit in de app.', v: 'Hoe houd ik het leuk en blijf ik gemotiveerd?' },
+  { c: 'fit', t: 'Twee of drie keer per week rijden is genoeg om fit te blijven. Regelmaat wint het van af en toe heel lang.', v: 'Hoe vaak moet ik rijden om fit te blijven?' },
+  { c: 'fit', t: 'Wissel rustige ritten af met af en toe een stuk stevig doortrappen. Zo blijft je conditie groeien zonder dat het zwaar voelt.', v: 'Hoe blijf ik fit zonder strak schema?' },
+  { c: 'winter', t: 'In de winter leg je de basis voor het voorjaar. Rustige uren en wat drempelwerk op de trainer betalen zich in april terug.', v: 'Wat train ik in de winter?' },
+  { c: 'winter', t: 'Op de trainer is een uur gericht werk evenveel waard als anderhalf uur buiten. Je trapt continu door.', v: 'Hoe lang moet ik op de trainer trainen?' },
+  { c: 'winter', t: 'Koud weer? Kleed je zo dat je de eerste tien minuten iets fris hebt. Warm vertrekken betekent nat van het zweet terugkomen.', v: 'Wat trek ik aan als het koud is?' },
+  { c: 'winter', t: 'Zet een ventilator voor je trainer. Koel blijven scheelt flink in hoe zwaar een training voelt.', v: 'Hoe maak ik binnen trainen prettiger?' },
+  { c: 'winter', t: 'Bij kou mag je banden iets harder pompen als je binnen pompt. Buiten koelt de lucht af en zakt de spanning.', v: 'Hoe pomp ik mijn banden als het koud is?' },
+  { c: 'core', t: 'Een sterke romp zorgt dat je kracht op de pedalen komt in plaats van in een wiebelend bovenlijf. Vooral op het einde van een rit.', v: 'Waarom helpt core training op de fiets?' },
+  { c: 'core', t: 'Doe je core op een rustdag of na een rustige rit, niet vlak voor een zware training. Dan train je beide goed.', v: 'Wanneer doe ik het beste mijn core training?' },
+  { c: 'core', t: 'Liever drie keer per week tien minuten core dan één keer een half uur. Regelmaat maakt je sterk.', v: 'Hoe vaak moet ik core trainen?' },
+  { c: 'core', t: 'Last van je onderrug op de fiets? Vaak is het je romp die moe wordt, niet je rug zelf. Core helpt, en laat pijn altijd checken.', v: 'Kan core helpen tegen rugpijn op de fiets?' }
+];
+function tipVanDag(d) {
+  const maand = new Date().getMonth(), winter = maand >= 10 || maand <= 1;
+  const doel = d && d.doel && !d.doel.klaar ? d.doel.doel : null;
+  const pool = TIPS.filter((x) => x.c === 'alg' || x.c === doel || (winter && x.c === 'winter') || (x.c === 'core' && d && d.core));
+  const dag = Math.floor((Date.now() + 2 * 3600e3) / 864e5);
+  return pool[dag % pool.length];
+}
+function tipHtml(d) {
+  if (!d || d.gast) return '';
+  const t = tipVanDag(d); if (!t) return '';
+  return `<div class="tipdag"><div class="td-kop"><span class="cc-av"><img src="/icoon-192.png" alt=""></span><div><b>Tip van Michel</b><small>Morgen staat hier een nieuwe</small></div></div>
+    <p>${esc(t.t)}</p><button type="button" class="td-vraag" data-tipvraag="${esc(t.v)}">Vraag hier meer over &rarr;</button></div>`;
+}
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-tipvraag]'); if (!k) return;
+  coachOpen(true);
+  setTimeout(() => { const t = document.getElementById('ccTekst'); if (t) { t.value = k.dataset.tipvraag; t.focus(); } }, 250);
+});
+
 // ---- Vandaag (12-10-2026) ----
 // Bovenaan voor leden: in één blik je training, je core en je rit van vandaag.
 // Met schema: de training uit je schema. Coaching: je training staat in
@@ -1920,6 +1999,7 @@ function vdRij(ic, label, tekst, doel) {
   if (!doel) return `<div class="vd-rij">${bin.replace('<i>&#8250;</i>', '')}</div>`;
   if (doel.href) return `<a class="vd-rij" href="${esc(doel.href)}"${doel.extern ? ' target="_blank" rel="noopener"' : ''}>${bin}</a>`;
   if (doel.actie) return `<button type="button" class="vd-rij" data-actie="${doel.actie}">${bin}</button>`;
+  if (doel.doel) return `<button type="button" class="vd-rij" data-doel="wijzig">${bin}</button>`;
   return `<button type="button" class="vd-rij" data-view="${doel.view}">${bin}</button>`;
 }
 function vandaagHtml(d) {
@@ -1943,7 +2023,7 @@ function vandaagHtml(d) {
     const vandaagCore = !cd.length || cd.some((x) => x.vandaag);
     if (!c.volgende) rijen.push(vdRij('core', 'Core', 'Deze week klaar' + (c.rompscore ? ' &middot; Rompscore ' + c.rompscore : ''), { href: c.link + '#vandaag' }));
     else if (vandaagCore) rijen.push(vdRij('core', 'Core vandaag', esc(c.volgende.naam) + ' &middot; ' + c.volgende.minuten + ' min', { href: c.link + '#vandaag' }));
-    else rijen.push(vdRij('core', 'Core', 'Niet vandaag. Deze week op ' + cd.map((x) => x.dagnaam).join(', '), { href: c.link + '#vandaag' }));
+    else { const iNu = s.weekDagen.findIndex((x) => x.vandaag), nx = cd.find((x) => s.weekDagen.indexOf(x) > iNu) || cd[0]; rijen.push(vdRij('core', 'Core', 'Niet vandaag, je benen gaan voor. Volgende: ' + esc(datumKort(nx.datum)).split(' ')[0], { href: c.link + '#vandaag' })); }
   } else if (!c && kanLidNu(d)) rijen.push(vdRij('core', 'Core', 'Start je eerste sessie, thuis op de timer', { actie: 'startcore' }));
   // Rit: spanning en weer (zelfde berekening als op Rijden)
   const p = SB.profiel || d.bandenProfiel;
@@ -1954,6 +2034,20 @@ function vandaagHtml(d) {
     else if (!f) rijen.push(vdRij('rijden', 'Je rit', 'Zet je fiets erin, dan staat hier elke dag je spanning', { view: 'rijden' }));
     else rijen.push(vdRij('rijden', 'Je rit', 'Even je spanning uitrekenen...', { view: 'rijden' }));
   }
+  // Doel: aftellen naar je tocht, met wat dat nu betekent
+  const dl = d.doel;
+  if (dl && dl.doel === 'evenement' && dl.datum && !dl.klaar) {
+    const nog = Math.ceil((Date.parse(dl.datum + 'T08:00:00') - Date.now()) / 864e5);
+    if (nog >= 0) rijen.push(vdRij('pacing', 'Je doel', esc(dl.naam) + ' &middot; ' + (nog === 0 ? 'vandaag, succes!' : nog === 1 ? 'morgen' : 'nog ' + nog + ' dagen'), { doel: true }));
+  }
+  // Je week in één regel: wat je al deed, zodat je ziet dat het opbouwt
+  const wk = [];
+  if (c && !c.intakeNodig && c.frequentie) wk.push(c.gedaan >= c.frequentie ? '<span class="ok">&#10003; Core deze week rond</span>' : 'Core <b>' + c.gedaan + ' van ' + c.frequentie + '</b>');
+  if (c && c.reeks >= 2) wk.push('<b>' + c.reeks + ' weken</b> op rij');
+  const rw = (d.bandenRitten || []).filter((r) => r && r.op && Date.now() - Date.parse(r.op) < 7 * 864e5).length;
+  if (rw) wk.push('<b>' + rw + (rw === 1 ? ' rit' : ' ritten') + '</b> deze week');
+  if (c && c.rompscore != null && c.startScore != null && c.rompscore > c.startScore) wk.push('Rompscore <b>+' + (c.rompscore - c.startScore) + '</b>');
+  if (wk.length) rijen.push('<div class="vd-week">' + wk.map((x) => '<span>' + x + '</span>').join('') + '</div>');
   if (!s && !coaching) rijen.push(`<a class="vd-zacht" href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Met een schema staat hier ook elke dag je training klaar &rarr;</a>`);
   if (!rijen.length) return '';
   const dag = new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
@@ -2047,6 +2141,7 @@ function teken() {
     ${vandaagHtml(d)}
     ${schemaEindeHtml(d)}
     <div id="doelvak">${doelHtml(d)}</div>
+    ${tipHtml(d)}
     ${tegelsHtml(d)}
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     ${lidBalkHtml(d)}
@@ -3138,6 +3233,7 @@ document.addEventListener('click', async (e) => {
 function startlijstStappen(d) {
   const prof = d.bandenProfiel || {};
   return [
+    { k: 'doel', t: 'Kies waar je voor traint', klaar: !!d.doel, actie: 'doel' },
     { k: 'fiets', t: 'Zet je fiets en woonplaats erin', klaar: !!(prof.plaats && (prof.fietsen || []).length), actie: 'fiets' },
     { k: 'push', t: 'Zet meldingen aan', klaar: !!(PUSH.inst && PUSH.inst.aan), actie: 'push' },
     { k: 'core', t: 'Doe je Core-intake en starttest', klaar: !!(d.core && !d.core.intakeNodig && d.core.rompscore != null), actie: 'core' },
@@ -3157,7 +3253,8 @@ document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-start]'); if (!k || !k.dataset.start) return;
   const a = k.dataset.start;
   if (a === 'weg') { try { localStorage.setItem('mkcStartlijstWeg', '1'); } catch (er) {} const el = document.getElementById('startlijst'); if (el) el.innerHTML = ''; return; }
-  if (a === 'fiets') { const b = document.getElementById('banden'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  if (a === 'fiets') { naar('rijden'); setTimeout(() => { const b = document.getElementById('banden'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300); }
+  if (a === 'doel') { DOELV = { open: true, kies: null, fout: '', bezig: false }; teken(); setTimeout(() => document.getElementById('doelvraag')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150); }
   if (a === 'push') { const v = document.querySelector('[data-push="aan"]'); if (v) v.click(); else { const m = document.getElementById('meldinst') || document.getElementById('banden'); if (m) m.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }
   if (a === 'core') { const c = zicht() && zicht().core; if (c && c.link) location.href = c.link; else { const s = document.querySelector('[data-actie="startcore"]'); if (s) s.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }
   if (a === 'coach') coachOpen(true);
@@ -3225,7 +3322,7 @@ function meldInstHtml() {
   if (!PUSH.inst || !PUSH.inst.aan) return '';
   const i = PUSH.inst;
   return `<div class="meldinst"><b>Meldingen staan aan</b> op dit toestel.
-    <label><input type="checkbox" data-pushsoort="core" ${i.core ? 'checked' : ''}> Core-herinnering op maandag</label>
+    <label><input type="checkbox" data-pushsoort="core" ${i.core ? 'checked' : ''}> Core-herinnering</label>
     <label><input type="checkbox" data-pushsoort="doel" ${i.doel !== false ? 'checked' : ''}> Tips en herinneringen voor je doel</label>
     ${zicht() && isLid(zicht()) ? `<label><input type="checkbox" data-pushsoort="ochtend" ${i.ochtend ? 'checked' : ''}> Ochtendbericht (weer, banden en kleding)</label>` : ''}
     <p class="klein" style="margin-top:8px">Staat iets uit, dan zie je het gewoon hier in de app zodra je hem opent.</p></div>`;
