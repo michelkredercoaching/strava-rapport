@@ -41,7 +41,7 @@ import path from 'node:path';
 import { coreVoorEmail, emailVoorCoreToken } from './core.js';
 import { lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar, haalSchema, ledenOverzicht, lidZoek, geefToegang } from './lid.js';
 import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN } from '../lib/schema-app.js';
-import { haalMeldingen, leesMelding, appMelding } from '../lib/app-melding.js';
+import { haalMeldingen, leesMelding, appMelding, logPush } from '../lib/app-melding.js';
 import { leesDoel, nieuwDoel, volgendeStap, doelContext } from '../lib/doelen.js';
 import { maakKortingToken } from '../lib/korting.js';
 import { tel, overzicht as gebruikOverzicht, CLIENT_GEBEURTENISSEN, GAST_GEBEURTENISSEN } from '../lib/stat.js';
@@ -378,6 +378,45 @@ async function zetInteresse(email, product) {
   }
 }
 
+// ---- Push opnieuw (12-10-2026), alleen Michel, alleen naar zijn eigen telefoon ----
+// Voor screenshots op Instagram. GET = wat hij kreeg (logboek) + voorbeelden van
+// elk soort bericht. POST { t, title, body, url } = nu naar zijn eigen toestel.
+async function routePushOpnieuw(req, res) {
+  const body = req.method === 'POST' ? await leesBody(req) : {};
+  const ik = leesAppToken(String(req.method === 'POST' ? body.t : req.query?.t || ''));
+  if (!ik || !BEHEER.includes(ik)) return res.status(403).json({ ok: false });
+  if (req.method === 'POST') {
+    const p = await haalPush(ik);
+    if (!p || !p.sub) return res.status(400).json({ ok: false, fout: 'Zet eerst meldingen aan op deze telefoon.' });
+    await new Promise((ok) => setTimeout(ok, 5000)); // tijd om je scherm te vergrendelen
+    const r = await stuurPush(p.sub, { title: String(body.title || '').slice(0, 120), body: String(body.body || '').slice(0, 400), url: String(body.url || '/app').slice(0, 200), tag: 'mkc-opnieuw-' + Date.now() });
+    return res.status(r.ok ? 200 : 502).json({ ok: r.ok, fout: r.ok ? null : 'Versturen lukte niet' });
+  }
+  const l = await redis(['LRANGE', `app:pushlog:${ik}`, '0', '39']);
+  const log = ((l.ok && l.result) || []).map((x) => { try { return JSON.parse(x); } catch { return null; } }).filter(Boolean);
+  // Ook oudere meldingen uit de app (van vóór het logboek) erbij.
+  const ml = await redis(['LRANGE', `app:meldingen:${ik}`, '0', '19']);
+  for (const x of (ml.ok && ml.result) || []) { try { const m = JSON.parse(x); if (!log.some((g) => g.title === m.titel && Math.abs(Date.parse(g.op) - Date.parse(m.op)) < 6e4)) log.push({ title: m.titel, body: m.tekst, url: m.link, op: m.op }); } catch {} }
+  log.sort((a, b) => Date.parse(b.op) - Date.parse(a.op));
+  const vb = [];
+  const och = await ochtendBericht(ik).catch(() => null); if (och) vb.push({ soort: 'Ochtendbericht (nu)', ...och, url: '/app#rijden' });
+  const dag = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10), op = (n) => new Date(Date.now() - n * 864e5).toISOString();
+  const leeg = { analyse: false, schema: false, coaching: false };
+  for (const [soort, d, info] of [
+    ['Doel: sneller, na 3 weken', { doel: 'sneller', op: op(22) }, leeg],
+    ['Doel: sneller, na de analyse', { doel: 'sneller', op: op(50) }, { ...leeg, analyse: true }],
+    ['Doel: tocht, 4 weken ervoor', { doel: 'evenement', naam: 'Amstel Gold Race', datum: dag(25), op: op(5) }, leeg],
+    ['Doel: tocht, week ervoor', { doel: 'evenement', naam: 'Amstel Gold Race', datum: dag(6), op: op(5) }, leeg],
+    ['Doel: tocht, dag ervoor', { doel: 'evenement', naam: 'Amstel Gold Race', datum: dag(1), op: op(5) }, leeg],
+    ['Doel: tocht, erna', { doel: 'evenement', naam: 'Amstel Gold Race', datum: dag(-3), op: op(40) }, leeg],
+    ['Doel: afvallen', { doel: 'afvallen', op: op(8) }, leeg],
+    ['Doel: fit, groepsrit', { doel: 'fit', op: op(12) }, leeg],
+    ['Doel: fit, winterplan', { doel: 'fit', op: op(35) }, leeg]
+  ]) { const s = volgendeStap(d, info); if (s) vb.push({ soort, title: s.titel, body: s.tekst, url: s.link }); }
+  vb.push({ soort: 'Coach open', title: 'Vanaf nu: 3 gratis vragen per week', body: 'Je eigen coach staat open. Vraag over training, voeding, banden of herstel, met Michels kennis uit 9 jaar prof.', url: '/app#coach' });
+  return res.status(200).json({ ok: true, log, voorbeelden: vb });
+}
+
 // ---- Aankondiging "3 gratis vragen" (11-10-2026) ----
 // Alleen Michel. GET = proef: wie zou hem krijgen. POST { t, verstuur: true } =
 // melding in de app (+ push) en een mail via Resend naar iedereen met een gratis
@@ -638,6 +677,7 @@ export default async function handler(req, res) {
     if (actie === 'ritpagina') return await routeRitPagina(req, res);
     if (actie === 'doel') return await routeDoel(req, res);
     if (actie === 'aankondig') return await routeAankondig(req, res);
+    if (actie === 'pushopnieuw') return await routePushOpnieuw(req, res);
     if (actie === 'doelronde') return await routeDoelRonde(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
@@ -1459,7 +1499,7 @@ async function routePushCron(req, res) {
     if (!bericht) { overgeslagen++; continue; }
     const r = await stuurPush(p.sub, bericht);
     if (r.weg) { await redis(['DEL', `app:push:${email}`]); await redis(['SREM', 'app:push:alle', email]); weg++; continue; }
-    if (r.ok) { p.laatste = nu.datum; await redis(['SET', `app:push:${email}`, JSON.stringify(p)]); verstuurd++; }
+    if (r.ok) { p.laatste = nu.datum; await redis(['SET', `app:push:${email}`, JSON.stringify(p)]); await logPush(email, bericht); verstuurd++; }
   }
   return res.status(200).json({ ok: true, verstuurd, overgeslagen, weg });
 }
