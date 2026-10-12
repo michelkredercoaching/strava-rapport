@@ -312,6 +312,18 @@
     houdingen: { plat: kbPlat, dicht: kbDicht, ver: kbVer }
   };
 
+  // Curl-up (12-10-2026, rugprotocol): knieën gebogen, handen onder je onderrug,
+  // schouders en hoofd net los van de mat. Je onderrug blijft neutraal.
+  var cuLaag = kopie(bridgeLaag);
+  cuLaag.armDicht = { naar: [156, LIG - 2], buig: -1 }; cuLaag.armVer = { naar: [154, LIG - 2], buig: -1 };
+  var cuOp = kopie(cuLaag); cuOp.romp = 190; cuOp.hoofd = 193;
+  A['curl-up'] = { spier: 'romp', beweeg: 900, reeks: [{ h: 'laag', vast: 600 }, { h: 'op', vast: 1600 }], houdingen: { laag: cuLaag, op: cuOp } };
+
+  // Kin intrekken (12-10-2026, nekprotocol): op je rug, maak je nek lang door je
+  // kin rustig naar je borst te knikken, zonder je hoofd op te tillen.
+  var kinLos = kopie(bridgeLaag), kinIn = kopie(bridgeLaag); kinIn.hoofd = 195;
+  A['kin-intrekken'] = { spier: 'rug', beweeg: 900, reeks: [{ h: 'los', vast: 700 }, { h: 'in', vast: 1500 }], houdingen: { los: kinLos, in: kinIn } };
+
   // Couch-stretch: achterste knie tegen de bank, voet omhoog, heup naar voren.
   var BANK = '<rect x="192" y="146" width="62" height="54" rx="4" fill="#2a2420"/><rect x="186" y="128" width="12" height="72" rx="4" fill="#332b26"/>';
   function couch(heupX, romp) {

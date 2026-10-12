@@ -2434,6 +2434,16 @@ function gebruikHtml() {
     <div class="geb-dagen">${balken}</div>
     ${x.soorten ? `<table style="margin-bottom:12px"><tr><th>Actief</th><th>Vandaag</th><th>7 dagen</th><th>30 dagen</th></tr>
       ${[['totaal', 'Totaal'], ['gratis', 'Gratis account'], ['betaald', 'Betaald lid'], ['schema', 'Lid via schema'], ['coaching', 'Coaching']].map(([k, n]) => `<tr class="${k === 'totaal' ? 'top' : ''}"><td>${n}</td><td>${x.soorten.vandaag[k]}</td><td>${x.soorten.week[k]}</td><td>${x.soorten.maand[k]}</td></tr>`).join('')}</table>` : ''}
+    ${x.core ? (() => { const c = x.core, pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '–'; return `<table style="margin-bottom:12px"><tr><th>Core-app</th><th>Aantal</th><th>Van vorige</th></tr>
+      <tr class="top"><td>Dossiers</td><td>${c.dossiers}</td><td></td></tr>
+      <tr><td>Intake gedaan</td><td>${c.intake}</td><td>${pct(c.intake, c.dossiers)}</td></tr>
+      <tr><td>Sessie 1 gedaan</td><td>${c.sessie1}</td><td>${pct(c.sessie1, c.intake)}</td></tr>
+      <tr><td>Starttest gedaan</td><td>${c.starttest}</td><td>${pct(c.starttest, c.sessie1)}</td></tr>
+      <tr><td>Niveau 2 bereikt</td><td>${c.niveau2}</td><td>${pct(c.niveau2, c.sessie1)}</td></tr>
+      <tr><td>Betaald of via lid/schema</td><td>${c.betaald}</td><td>${pct(c.betaald, c.niveau2)}</td></tr>
+      <tr><td>Actief laatste 14 dagen</td><td>${c.actief14}</td><td></td></tr>
+      <tr><td>Na 4 weken nog actief</td><td>${c.na4weken} van ${c.gestart4wkGeleden}</td><td>${pct(c.na4weken, c.gestart4wkGeleden)}</td></tr>
+      ${c.pijnHoog ? `<tr><td style="color:#ff8a5c">Pijn 6+ (14 dagen)</td><td>${c.pijnHoog}</td><td></td></tr>` : ''}</table>`; })() : ''}
     <table><tr><th></th><th>Vandaag</th><th>Gisteren</th><th>7 dagen</th></tr>
       <tr class="top"><td>Mensen in de app</td><td>${d[0].actief}</td><td>${d[1] ? d[1].actief : 0}</td><td>&ndash;</td></tr>
       ${rijen}</table>

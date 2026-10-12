@@ -42,7 +42,8 @@ import {
   volgendeWeek, testNodig, meterNodig, verdiendeBadges, BADGES,
   WEEKTIPS, besteStart, FASES, WEKEN as WEEKTABEL, letters, nodigVoorWeek, frequentie, startniveau,
   weekRij, blokVan, BLOK_WEKEN, BLOKTIPS, disbalansUit, weekInBlok,
-  DISCIPLINES, disciplineVan, doelModus, MODUS_UITLEG, FASE_UITLEG, FIETSTIPS, extraSessie
+  DISCIPLINES, disciplineVan, doelModus, MODUS_UITLEG, FASE_UITLEG, FIETSTIPS, extraSessie,
+  BEPERKINGEN, vervangerKeuze
 } from '../lib/core.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
 import { COACH_TOON } from '../lib/coach-kennis.js';
@@ -315,7 +316,7 @@ function planIntake(d) {
   const start = (d.tests || []).find((t) => t.moment === 0);
   const laatste = (d.tests || []).filter((t) => t.uitslag).slice(-1)[0];
   return { ...(d.intake || {}), verlicht: !!d.verlicht, bijstel: d.bijstel || 0, startScore: start ? start.score : null, disbalans: laatste ? disbalansUit(laatste.uitslag) : null,
-    discipline: soortVan(d), doelModus: modusVan(d), bevrorenWeek: d.bevroren || null };
+    discipline: soortVan(d), doelModus: modusVan(d), bevrorenWeek: d.bevroren || null, vervang: d.vervang || {} };
 }
 // Periodisering (12-10-2026)
 function soortVan(d) { const x = d.intake && d.intake.discipline; return DISCIPLINES[x] ? x : (d.doel ? disciplineVan(d.doel.naam) : null); }
@@ -409,7 +410,7 @@ function klantBeeld(d) {
     doelModus: modus || null, modusUitleg: modus ? MODUS_UITLEG[modus] : null,
     faseUitleg: FASE_UITLEG[weekRij(week).fase], focus: sessies[0] ? sessies[0].focus || null : null,
     fietstip: d.geenFietstips ? null : (FIETSTIPS[modus] || FIETSTIPS[weekRij(week).fase] || null),
-    klachten: (d.intake && d.intake.klachten) || [], mobiliteit: fmtSessie(extraSessie('mobiliteit', intake)),
+    klachten: (d.intake && d.intake.klachten) || [], rugErnst: (d.intake && d.intake.rugErnst) || null, beperkingen: (d.intake && d.intake.beperkingen) || [], beperkingLabels: BEPERKINGEN, mobiliteit: fmtSessie(extraSessie('mobiliteit', intake)),
     doel, reeks, herinner: d.herinner ? { dagen: d.herinner.dagen, tijd: d.herinner.tijd } : null,
     vervolgVraag: d.afgerond >= 9, doorgaan: !!d.doorgaan,
     berichten: (d.berichten || []).map((b) => ({ van: b.van, tekst: b.tekst, op: b.op, medisch: !!b.medisch })),
@@ -426,6 +427,28 @@ export async function wisCore(email) {
   if (r.ok && r.result) await redis(['DEL', `core:d:${r.result}`]);
   await redis(['DEL', `core:email:${email}`]);
   return true;
+}
+// Core-trechter (12-10-2026): waar haken mensen af? Voor Michels beheerscherm.
+export async function coreTrechter() {
+  const ids = await redis(['SMEMBERS', 'core:actief']);
+  const t = { dossiers: 0, intake: 0, sessie1: 0, starttest: 0, niveau2: 0, betaald: 0, actief14: 0, na4weken: 0, gestart4wkGeleden: 0, pijnHoog: 0 };
+  const nuMs = Date.now();
+  for (const id of (ids.ok && ids.result) || []) {
+    const d = await haalDossier(id); if (!d) continue;
+    t.dossiers++;
+    if (d.intake) t.intake++;
+    const s = d.sessies || [];
+    if (s.length) t.sessie1++;
+    if ((d.tests || []).some((x) => x.moment === 0)) t.starttest++;
+    if ((d.afgerond || 0) >= 1) t.niveau2++;
+    if (isBetaald(d)) t.betaald++;
+    const laatste = s.length ? Date.parse(s[s.length - 1].op) : 0;
+    if (laatste && nuMs - laatste < 14 * 864e5) t.actief14++;
+    const eerste = s.length ? Date.parse(s[0].op) : 0;
+    if (eerste && nuMs - eerste > 28 * 864e5) { t.gestart4wkGeleden++; if (laatste && nuMs - laatste < 14 * 864e5) t.na4weken++; }
+    if ((d.pijn || []).some((x) => x.score >= 6 && nuMs - Date.parse(x.op) < 14 * 864e5)) t.pijnHoog++;
+  }
+  return t;
 }
 export async function coreVoorEmail(email) {
   if (!email) return null;
@@ -500,6 +523,8 @@ export default async function handler(req, res) {
       case 'doel':      return await routeDoel(req, res);
       case 'herinnering': return await routeHerinnering(req, res);
       case 'pijn':      return await routePijn(req, res);
+      case 'klachten':  return await routeKlachten(req, res);
+      case 'vervang':   return await routeVervang(req, res);
       case 'discipline': return await routeDiscipline(req, res);
       case 'herinnerdag': return await routeHerinnerDag(req, res);
       case 'afvink':    return await routeAfvink(req, res);
@@ -625,6 +650,36 @@ async function routePijn(req, res) {
   const licht = advies === 'licht' && letter ? fmtSessie(sessie(d.week, letter, { ...planIntake(d), verlicht: true })) : null;
   return res.status(200).json({ ok: true, advies, licht, ...klantBeeld(d) });
 }
+// Klachten en beperkingen aanpassen na de intake (12-10-2026).
+async function routeKlachten(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const r = await metToken(req, res); if (!r) return;
+  const { d, body } = r;
+  if (!d.intake) return res.status(400).json({ ok: false, fout: 'doe eerst je intake' });
+  const klachten = (Array.isArray(body.klachten) ? body.klachten : []).filter((x) => KLACHTEN.includes(x));
+  d.intake.klachten = klachten;
+  d.intake.rugErnst = klachten.includes('onderrug') ? (['lange-ritten', 'regelmatig', 'rust'].includes(body.rugErnst) ? body.rugErnst : (d.intake.rugErnst || 'lange-ritten')) : null;
+  d.intake.beperkingen = (Array.isArray(body.beperkingen) ? body.beperkingen : []).filter((x) => BEPERKINGEN[x]);
+  await bewaarDossier(d);
+  return res.status(200).json({ ok: true, ...klantBeeld(d) });
+}
+// "Kan ik niet": deze oefening voortaan vervangen (of terugzetten).
+async function routeVervang(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const r = await metToken(req, res); if (!r) return;
+  const { d, body } = r;
+  const id = String(body.id || '');
+  if (!OEFENINGEN[id]) return res.status(400).json({ ok: false, fout: 'onbekende oefening' });
+  d.vervang = { ...(d.vervang || {}) };
+  if (body.terug) delete d.vervang[id];
+  else {
+    const alt = vervangerKeuze(id, planIntake(d));
+    if (!alt) return res.status(400).json({ ok: false, fout: 'Voor deze oefening heb ik nog geen goede vervanger. Sla hem over en laat het Michel weten via de coach.' });
+    d.vervang[id] = alt;
+  }
+  await bewaarDossier(d);
+  return res.status(200).json({ ok: true, vervanger: d.vervang[id] ? OEFENINGEN[d.vervang[id]].naam : null, ...klantBeeld(d) });
+}
 async function routeDiscipline(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const r = await metToken(req, res); if (!r) return;
@@ -709,6 +764,7 @@ async function routeIntake(req, res) {
     zwaarsteDag: ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'].includes(body.zwaarsteDag) ? body.zwaarsteDag : null,
     kracht: ['nee', '1x', '2x'].includes(body.kracht) ? body.kracht : null,
     discipline: DISCIPLINES[body.discipline] ? body.discipline : null,
+    beperkingen: (Array.isArray(body.beperkingen) ? body.beperkingen : []).filter((x) => BEPERKINGEN[x]),
     // Uitdrukkelijke toestemming voor gezondheidsgegevens (AVG art. 9), 09-10-2026.
     toestemming: body.toestemming === true ? { op: nu(), versie: 'privacy-2026-10-09' } : null,
     op: nu()

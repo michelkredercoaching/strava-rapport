@@ -257,6 +257,7 @@
   .pijnkeuze { display:grid; gap:8px; width:100%; max-width:440px; margin-top:14px; }
   .pijnkeuze button { padding:13px; border-radius:8px; border:1px solid var(--border); background:#111; color:var(--white); font-family:inherit; font-size:14.5px; cursor:pointer; text-align:left; }
   .pijnlaag { z-index:60; }
+  .vervangknop { background:none; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:5px 10px; font-family:inherit; font-size:12.5px; margin-top:8px; cursor:pointer; }
   details.klap { background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-top:12px; }
   details.klap > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; padding:14px 16px; font-size:15px; }
   details.klap > summary::-webkit-details-marker { display:none; }
@@ -409,6 +410,7 @@ function teken() {
     const laatsteTest = d.tests[d.tests.length - 1];
     h += klap('voortgang', 'Je voortgang', [laatsteTest ? 'Rompscore ' + laatsteTest.score : '', d.reeks ? d.reeks + (d.reeks === 1 ? ' week' : ' weken') + ' op rij' : ''].filter(Boolean).join(' &middot; '), voortgangHtml(d));
     if (!d.opSlot) h += klap('agenda', 'Herinnering en agenda', d.herinner ? 'aan &middot; ' + esc(d.herinner.tijd) : 'nog niet ingesteld', agendaHtml(d));
+    h += klap('klachten', 'Klachten en wat je niet kunt', (d.klachten.length ? d.klachten.map((x) => ({ onderrug: 'rug', bekkenbodem: 'bekkenbodem' }[x] || x)).join(', ') : 'geen klachten') + (d.beperkingen.length ? ' &middot; ' + d.beperkingen.length + ' aangepast' : ''), klachtenHtml(d));
     h += klap('doel', 'Je doel', d.doel && d.doel.dagenTotDoel > 0 ? esc(d.doel.naam) + ' &middot; nog ' + d.doel.dagenTotDoel + ' d' : 'geen', doelHtml(d));
 
     h += vraagHtml(d);
@@ -478,12 +480,17 @@ function intakeHtml() {
       <select name="dag"><option value="">Wisselt, geen vaste dag</option><option value="ma">Maandag</option><option value="di">Dinsdag</option><option value="wo">Woensdag</option><option value="do">Donderdag</option><option value="vr">Vrijdag</option><option value="za">Zaterdag</option><option value="zo">Zondag</option></select></div>
     <div class="vraag" data-stap="6"><div class="v">Doe je ook krachttraining in de sportschool?</div>
       ${optie('kracht', 'nee', 'Nee')}${optie('kracht', '1x', 'Ja, 1 keer per week')}${optie('kracht', '2x', 'Ja, 2 keer of vaker per week')}</div>
-    <div class="vraag" data-stap="7"><div class="v">Wat rijd je vooral?</div>
+    <div class="vraag" data-stap="7"><div class="v">Zijn er houdingen die je niet kunt doen?</div>
+      <p class="klein muted" style="margin-bottom:8px">Dan krijg je bij die oefeningen meteen een gelijkwaardige vervanger.</p>
+      ${optie('beperking', 'knielen', 'Knielen of op mijn knieën steunen', 'checkbox')}${optie('beperking', 'polsen', 'Steunen op mijn handen (polsen)', 'checkbox')}
+      ${optie('beperking', 'schouders', 'Steunen op mijn ellebogen of schouders', 'checkbox')}${optie('beperking', 'rugligging', 'Plat op mijn rug liggen', 'checkbox')}
+      ${optie('beperking', 'staan', 'Voorover buigen of op één been staan', 'checkbox')}${optie('beperking', 'geen', 'Alles gaat prima', 'checkbox')}</div>
+    <div class="vraag" data-stap="8"><div class="v">Wat rijd je vooral?</div>
       <select name="discipline"><option value="">Weet ik niet</option><option value="toer">Lange toertochten of granfondo's</option><option value="bergen">Bergen en lange klimmen</option><option value="kasseien">Kasseien en klassiekers</option><option value="gravel">Gravel</option><option value="crit">Criteriums en wedstrijden</option></select></div>
-    <div class="vraag" data-stap="7"><div class="v">Train je naar iets toe? <span class="muted" style="font-weight:400">(mag je overslaan)</span></div>
+    <div class="vraag" data-stap="8"><div class="v">Train je naar iets toe? <span class="muted" style="font-weight:400">(mag je overslaan)</span></div>
       <div class="rij2"><input type="text" name="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60" value="${S.doel ? esc(S.doel.naam) : ''}">${datumVeld('name="doelDatum"', S.doel ? S.doel.datum : '')}</div>
       <p class="klein muted" style="margin-top:6px">Dit doel staat ook in je MKC-app, zodat je overal hetzelfde aftelt.</p></div>
-    <div data-stap="7"><label class="toestemming"><input type="checkbox" name="toestemming"> <span>Ik geef toestemming dat mijn antwoorden over klachten en gezondheid worden gebruikt om mijn plan op mij af te stemmen, en dat Michel meekijkt als de app me naar een arts of fysiotherapeut verwijst. Lees de <a href="/privacy#app" target="_blank" rel="noopener">privacyverklaring</a>.</span></label>
+    <div data-stap="8"><label class="toestemming"><input type="checkbox" name="toestemming"> <span>Ik geef toestemming dat mijn antwoorden over klachten en gezondheid worden gebruikt om mijn plan op mij af te stemmen, en dat Michel meekijkt als de app me naar een arts of fysiotherapeut verwijst. Lees de <a href="/privacy#app" target="_blank" rel="noopener">privacyverklaring</a>.</span></label>
     <button class="knop breed" data-actie="intake">Maak mijn plan</button></div><div class="fout" id="intakefout"></div><div id="intakenav"></div></div>`;
 }
 
@@ -601,7 +608,7 @@ function sessiesHtml(d) {
         ${spierHtml(s.oefeningen)}
         <div class="oefrij">${s.oefeningen.map((o) => `<div class="oefmini"><div data-anim="${o.id}"></div><span>${esc(o.naam)}${o.perKant ? (o.zwak ? ` (${o.zwak.toLowerCase()} eerst, +${o.extra} s)` : ' (L+R)') : ''}</span></div>`).join('')}</div>
         <button class="uitlegknop" data-actie="uitleg">Bekijk de oefeningen</button>
-        <div class="uitleglijst">${s.oefeningen.map((o) => `<div class="oef"><b>${esc(o.naam)}${o.perKant ? (o.zwak ? ` (begin ${o.zwak.toLowerCase()}, je zwakke kant: ${o.extra} s langer)` : ' (links en rechts)') : ''}</b><ol>${(o.stappen || []).map((z) => `<li>${esc(z)}</li>`).join('')}</ol>${o.waarom ? `<div class="waarom">Op de fiets: ${esc(o.waarom)}</div>` : ''}${o.waaromDoel ? `<div class="waarom2"><b>Voor je ${esc(soortKort(d))}:</b> ${esc(o.waaromDoel)}</div>` : ''}${o.waaromKlacht ? `<div class="waarom2"><b>Voor je klacht:</b> ${esc(o.waaromKlacht)}</div>` : ''}</div>`).join('')}</div>
+        <div class="uitleglijst">${s.oefeningen.map((o) => `<div class="oef">${o.vervangt ? `<div class="klein muted" style="margin-bottom:2px">In plaats van ${esc(o.vervangt)} &middot; <a href="#" data-actie="vervangterug" data-id="${esc(o.origId || '')}" style="color:var(--accent)">zet terug</a></div>` : ''}<b>${esc(o.naam)}${o.perKant ? (o.zwak ? ` (begin ${o.zwak.toLowerCase()}, je zwakke kant: ${o.extra} s langer)` : ' (links en rechts)') : ''}</b><ol>${(o.stappen || []).map((z) => `<li>${esc(z)}</li>`).join('')}</ol>${o.waarom ? `<div class="waarom">Op de fiets: ${esc(o.waarom)}</div>` : ''}${o.waaromDoel ? `<div class="waarom2"><b>Voor je ${esc(soortKort(d))}:</b> ${esc(o.waaromDoel)}</div>` : ''}${o.waaromKlacht ? `<div class="waarom2"><b>Voor je klacht:</b> ${esc(o.waaromKlacht)}</div>` : ''}${s.extra ? '' : `<button class="vervangknop" data-actie="vervang" data-id="${esc(o.id)}">Kan ik niet? Vervang hem</button>`}</div>`).join('')}</div>
         <div class="onder">${knop}</div>
       </div>`;
     }).join('')}</div></div>`;
@@ -825,6 +832,10 @@ function vraagHtml(d) {
 const keuzes = { onderrug: null, nek: null };
 const klokken = {};
 document.addEventListener('change', (e) => {
+  if (e.target.name === 'beperking' || e.target.name === 'kbep') {
+    const n = e.target.name, geen = e.target.value === 'geen' && e.target.checked;
+    document.querySelectorAll(`input[name=${n}]`).forEach((i) => { if (geen ? i.value !== 'geen' : i.value === 'geen' && e.target.checked) i.checked = false; });
+  }
   if (e.target.name === 'klacht') {
     const geen = e.target.value === 'geen' && e.target.checked;
     document.querySelectorAll('input[name=klacht]').forEach((i) => { if (geen ? i.value !== 'geen' : i.value === 'geen' && e.target.checked) i.checked = false; });
@@ -851,7 +862,7 @@ document.addEventListener('click', async (e) => {
     k.disabled = true; k.textContent = 'Plan maken...';
     const freq = $('input[name=freq]:checked')?.value;
     if (!freq) { k.disabled = false; k.textContent = 'Maak mijn plan'; return (fout.textContent = 'Kies bij vraag 5 hoe vaak per week.'); }
-    const j = await post('intake', { klachten, rugErnst: rug, rodeVlag: vlag === 'ja', ervaring: erv, leeftijd, frequentie: Number(freq), zwaarsteDag: $('select[name=dag]').value, discipline: $('select[name=discipline]') ? $('select[name=discipline]').value : '', kracht: $('input[name=kracht]:checked')?.value || 'nee', toestemming: true,
+    const j = await post('intake', { klachten, rugErnst: rug, rodeVlag: vlag === 'ja', ervaring: erv, leeftijd, frequentie: Number(freq), zwaarsteDag: $('select[name=dag]').value, discipline: $('select[name=discipline]') ? $('select[name=discipline]').value : '', beperkingen: [...document.querySelectorAll('input[name=beperking]:checked')].map((i) => i.value).filter((v) => v !== 'geen'), kracht: $('input[name=kracht]:checked')?.value || 'nee', toestemming: true,
       doelNaam: $('input[name=doelNaam]').value.trim(), doelDatum: $('input[name=doelDatum]').value });
     if (!j.ok) { k.disabled = false; k.textContent = 'Maak mijn plan'; fout.textContent = j.fout || 'Mislukt.'; }
     else window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -864,6 +875,18 @@ document.addEventListener('click', async (e) => {
     klokken[id] = { iv: setInterval(() => { invoer.value = Math.floor((Date.now() - start) / 1000); }, 250) };
   }
   if (actie === 'starttest') return startTest(S.testNodig === 0);
+  if (actie === 'vervang' || actie === 'vervangterug') {
+    e.preventDefault();
+    if (actie === 'vervang' && !confirm('Deze oefening voortaan vervangen door een gelijkwaardige oefening?')) return;
+    const j = await post('vervang', { id: k.dataset.id, terug: actie === 'vervangterug' });
+    if (!j.ok) melding(j.fout || 'Mislukt.', 4500); else melding(actie === 'vervang' ? 'Vervangen door ' + j.vervanger + '. Dat blijft zo, ook in je volgende niveaus.' : 'De oorspronkelijke oefening staat er weer in.', 4200);
+  }
+  if (actie === 'klachtenopslaan') {
+    const klachten = [...document.querySelectorAll('input[name=kklacht]:checked')].map((i) => i.value);
+    const beperkingen = [...document.querySelectorAll('input[name=kbep]:checked')].map((i) => i.value).filter((v) => v !== 'geen');
+    const j = await post('klachten', { klachten, rugErnst: document.querySelector('input[name=krug]:checked')?.value, beperkingen });
+    if (j.ok) melding('Opgeslagen. Je oefeningen zijn aangepast.', 3800); else melding(j.fout || 'Mislukt.');
+  }
   if (actie === 'test') {
     const uitslag = {}; let leeg = false;
     for (const t of S.testDefinities) { const v = $(`input[data-uitslag="${t.id}"]`).value; if (v === '') leeg = true; uitslag[t.id] = Number(v); }
@@ -1106,6 +1129,7 @@ function intakeStapFout(stap) {
   if (stap === 3 && !q('input[name=ervaring]:checked')) return 'Kies je ervaring.';
   if (stap === 4 && !q('input[name=freq]:checked')) return 'Kies hoe vaak per week.';
   if (stap === 6 && !q('input[name=kracht]:checked')) return 'Kies een antwoord.';
+  if (stap === 7 && !document.querySelector('input[name=beperking]:checked')) return 'Vink aan wat niet lukt, of kies "alles gaat prima".';
   return '';
 }
 document.addEventListener('click', (e) => {
@@ -1299,6 +1323,18 @@ function pijnTijdens() {
   });
 }
 
+// Klachten en beperkingen later aanpassen (12-10-2026)
+function klachtenHtml(d) {
+  if (!d.klachten) return '';
+  const k = (n, w, t, aan) => `<label class="optie"><input type="checkbox" name="${n}" value="${w}" ${aan ? 'checked' : ''}><span>${t}</span></label>`;
+  const r = (w, t) => `<label class="optie"><input type="radio" name="krug" value="${w}" ${d.rugErnst === w ? 'checked' : ''}><span>${t}</span></label>`;
+  return `<div><h2>Klachten</h2><p class="klein muted" style="margin-bottom:10px">Krijg je ergens last van, of gaat het juist beter? Pas het hier aan, dan past je programma zich aan.</p>
+    ${k('kklacht', 'onderrug', 'Onderrug', d.klachten.includes('onderrug'))}${k('kklacht', 'nek', 'Nek en schouders', d.klachten.includes('nek'))}${k('kklacht', 'knie', 'Knie', d.klachten.includes('knie'))}${k('kklacht', 'heup', 'Heup', d.klachten.includes('heup'))}${k('kklacht', 'bekkenbodem', 'Bekkenbodem of buikspieren', d.klachten.includes('bekkenbodem'))}
+    <div class="klein muted" style="margin:10px 0 6px">Bij rugklachten: hoe erg?</div>${r('lange-ritten', 'Alleen na lange ritten')}${r('regelmatig', 'Regelmatig, ook bij kortere ritten')}${r('rust', 'Ook in rust')}
+    <div class="klein muted" style="margin:14px 0 6px">Wat lukt niet?</div>
+    ${Object.entries(d.beperkingLabels || {}).map(([w, t]) => k('kbep', w, t, d.beperkingen.includes(w))).join('')}${k('kbep', 'geen', 'Alles gaat prima', !d.beperkingen.length)}
+    <button class="knop" data-actie="klachtenopslaan" style="margin-top:10px">Opslaan</button></div>`;
+}
 function toonBadge(b) {
   const o = document.createElement('div'); o.className = 'speler'; o.style.background = 'rgba(5,5,5,.96)';
   o.innerHTML = `<div class="midden"><div class="soort">Fase ${b.fase} rond</div><div class="naam" style="font-size:56px;color:#FF6B1A">${esc(b.naam)}</div>

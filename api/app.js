@@ -38,7 +38,7 @@
 import crypto from 'crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { coreVoorEmail, emailVoorCoreToken } from './core.js';
+import { coreVoorEmail, emailVoorCoreToken, coreTrechter } from './core.js';
 import { lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar, haalSchema, ledenOverzicht, lidZoek, geefToegang } from './lid.js';
 import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN } from '../lib/schema-app.js';
 import { haalMeldingen, leesMelding, appMelding, logPush } from '../lib/app-melding.js';
@@ -270,8 +270,8 @@ async function routeStat(req, res) {
 async function routeGebruik(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email || !BEHEER.includes(email)) return res.status(403).json({ ok: false });
-  const [ov, soorten] = await Promise.all([gebruikOverzicht(Math.min(30, Number(req.query?.dagen) || 14)), actiefPerSoort()]);
-  return res.status(200).json({ ok: true, ...ov, soorten });
+  const [ov, soorten, core] = await Promise.all([gebruikOverzicht(Math.min(30, Number(req.query?.dagen) || 14)), actiefPerSoort(), coreTrechter().catch(() => null)]);
+  return res.status(200).json({ ok: true, ...ov, soorten, core });
 }
 // Actieve mensen per soort (11-10-2026): vandaag, 7 en 30 dagen, gesplitst in
 // gratis, betaald lid, lid via schema en coaching.
