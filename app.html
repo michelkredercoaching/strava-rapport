@@ -181,7 +181,20 @@
   .vd-week > span { white-space:nowrap; }
   .vd-week > span + span::before { content:'·'; margin-right:14px; color:var(--muted); }
   .vd-week .ok { color:#4CC38A; }
-  .lid-sub { color:var(--muted); font-size:14.5px; margin:4px 0 12px; }
+  .lid-sub { color:rgba(245,243,239,.82); font-size:15px; line-height:1.5; margin:4px 0 14px; }
+  .lid-stapel { margin:14px 0 16px; display:grid; gap:8px; }
+  details.ls-rij { border:1px solid rgba(255,255,255,.12); border-radius:8px; background:rgba(0,0,0,.25); }
+  details.ls-rij > summary { list-style:none; cursor:pointer; padding:12px 34px 12px 14px; position:relative; display:block; }
+  details.ls-rij > summary::-webkit-details-marker { display:none; }
+  details.ls-rij > summary::after { content:'\25BE'; position:absolute; right:14px; top:13px; color:var(--accent); transition:transform .2s; }
+  details.ls-rij[open] > summary::after { transform:rotate(180deg); }
+  details.ls-rij > summary b { display:block; font-size:15px; }
+  details.ls-rij > summary span { display:block; font-size:12.5px; color:var(--muted); margin-top:2px; line-height:1.4; }
+  .ls-in { padding:0 14px 14px; }
+  .ls-in .mee-kop { display:none; }
+  .ls-in .mee, .ls-in .bank { margin:0; padding:0; border:0; background:none; }
+  .bewijs details.ls-rij { margin-top:8px; }
+  .lid-risico { text-align:center; margin-top:10px; }
   .lid-gebruik { background:rgba(76,195,138,.08); border:1px solid rgba(76,195,138,.35); color:rgba(245,243,239,.92); border-radius:10px; padding:10px 12px; font-size:13.5px; margin:0 0 14px; }
   .lid-push { background:#1f1f22; border:1px solid rgba(255,255,255,.1); border-radius:16px; padding:12px 14px; margin:4px 0 6px; box-shadow:0 10px 30px rgba(0,0,0,.35); }
   .lid-push .lp-kop { display:flex; align-items:center; gap:7px; font-size:11.5px; color:var(--muted); margin-bottom:6px; }
@@ -574,6 +587,19 @@
   .sb-rijd { margin-top:12px; }
   .sb-rijd .knop { font-size:17px; padding:10px 14px 8px; }
   .sb-bewaard { margin-top:12px; font-size:13.5px; color:var(--groen); }
+  .rv-instel { margin-top:12px; }
+  .rv-instel > summary b, .sb-oordeel-k > summary b { white-space:nowrap; flex-shrink:0; margin-right:10px; }
+  .rv-instel > summary span { font-size:12.5px; text-align:right; }
+  .rv-uit .kl-lijst { gap:4px; }
+  .rv-uit .kl-lijst li { padding:8px 12px; font-size:14px; }
+  .rv-instel .klap-in.gr-maak { background:none; border:0; padding:0 14px 14px; margin:0; }
+  .rv-instel .gr-maak label:first-child, .rv-instel .rij2:first-child label { margin-top:4px; }
+  .rv-uit { margin-top:14px; }
+  .rv-sub { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:14px 0 6px; }
+  .rv-uit .kl-gevoel { margin-top:0; }
+  .sb-oordeel-k { border-color:rgba(255,107,26,.45) !important; }
+  .sb-oordeel-k > summary b { font-size:13.5px; }
+  .sb-oordeel-k .w2 { font-size:12px; color:var(--muted); margin:8px 0 6px; }
   .sb-oordeel { background:var(--surface2); border:1px solid rgba(255,107,26,.45); border-radius:8px; padding:12px; margin:14px 0 4px; }
   .sb-oordeel b { display:block; font-size:15px; margin-bottom:2px; }
   .sb-oordeel .w { font-size:12.5px; color:var(--muted); margin-bottom:10px; }
@@ -1293,11 +1319,12 @@ function sbOordeelHtml() {
   const open = (x) => !x.oordeel || (x.kleding && !x.oordeelKleding);
   const r = (SB.ritten || []).find((x) => open(x) && Date.now() - Date.parse(x.op) > 3600000 && Date.now() - Date.parse(x.op) < 14 * 86400000 && !weg.includes(x.id));
   if (!r) return '';
-  return `<div class="sb-oordeel"><b>Hoe reed je ${esc(r.fietsNaam || 'fiets')} op ${sbDatum(r.op)}?</b>
-    <div class="w">${sbWeerTekst(r)} &middot; ${BT_LIB ? BT_LIB.nl(r.voor) : r.voor} voor, ${BT_LIB ? BT_LIB.nl(r.achter) : r.achter} achter</div>
-    ${!r.oordeel ? `<div class="w2">Je banden</div><div class="bt-keuze"><button type="button" data-sb="oordeel" data-id="${r.id}" data-w="zacht">Te zacht</button><button type="button" data-sb="oordeel" data-id="${r.id}" data-w="goed">Precies goed</button><button type="button" data-sb="oordeel" data-id="${r.id}" data-w="hard">Te hard</button></div>` : ''}
-    ${r.kleding && !r.oordeelKleding ? `<div class="w2">Je kleding${r.kleding.gevoel != null ? ` (voelde als ${r.kleding.gevoel}&deg;)` : ''}</div><div class="bt-keuze"><button type="button" data-sb="oordeel" data-soort="kleding" data-id="${r.id}" data-w="koud">Te koud</button><button type="button" data-sb="oordeel" data-soort="kleding" data-id="${r.id}" data-w="goed">Precies goed</button><button type="button" data-sb="oordeel" data-soort="kleding" data-id="${r.id}" data-w="warm">Te warm</button></div>` : ''}
-    <button type="button" class="sb-link" data-sb="ritweg" data-id="${r.id}">Niet gereden</button></div>`;
+  const dag = sbDatum(r.op);
+  return `<details class="klap sb-oordeel-k" data-klap="oordeel"${klapOpen('oordeel', false) ? ' open' : ''}><summary><b>Hoe ging je rit van ${esc(dag.split(' ')[0])}?</b><span>beoordeel</span></summary><div class="klap-in">
+    <p class="klein" style="margin:0 0 8px">${esc(r.fietsNaam || 'Fiets')}, ${esc(dag)} &middot; ${sbWeerTekst(r)} &middot; ${BT_LIB ? BT_LIB.nl(r.voor) : r.voor} voor, ${BT_LIB ? BT_LIB.nl(r.achter) : r.achter} achter</p>
+    ${!r.oordeel ? `<div class="w2">Je banden</div><div class="bt-keuze"><button type="button" data-sb="oordeel" data-id="${r.id}" data-w="zacht">Te zacht</button><button type="button" data-sb="oordeel" data-id="${r.id}" data-w="goed">Goed</button><button type="button" data-sb="oordeel" data-id="${r.id}" data-w="hard">Te hard</button></div>` : ''}
+    ${r.kleding && !r.oordeelKleding ? `<div class="w2">Je kleding${r.kleding.gevoel != null ? ` (voelde als ${r.kleding.gevoel}&deg;)` : ''}</div><div class="bt-keuze"><button type="button" data-sb="oordeel" data-soort="kleding" data-id="${r.id}" data-w="koud">Te koud</button><button type="button" data-sb="oordeel" data-soort="kleding" data-id="${r.id}" data-w="goed">Goed</button><button type="button" data-sb="oordeel" data-soort="kleding" data-id="${r.id}" data-w="warm">Te warm</button></div>` : ''}
+    <p class="klein" style="margin:8px 0 0">Zo wordt je advies steeds preciezer. <button type="button" class="sb-link" data-sb="ritweg" data-id="${r.id}" style="display:inline;margin:0">Niet gereden</button></p></div></details>`;
 }
 function sbGeheugenHtml(u) {
   const g = u.geheugen; if (!g) return '';
@@ -1371,12 +1398,15 @@ function slimBandenKaart() {
   const kop = `<span class="tag oranje">Lid</span><div class="label">Vandaag rijden</div><h2>${SB.bewerk ? 'Wat pomp je vandaag?' : tab === 'kleding' ? 'Wat trek je aan?' : tab === 'voeding' ? 'Wat neem je mee?' : tab === 'groep' ? 'Rij je samen?' : 'Wat pomp je vandaag?'}</h2>`;
   if (SB.bewerk) return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}<p>Zet je fietsen erin. Dan hoef je straks alleen nog te kiezen op welke je rijdt.</p>${sbBewerkHtml()}</div></div>`;
   const f = sbFiets(), uit = sbReken(f), nat = sbNat();
-  const chips = p.fietsen.map((x) => `<button type="button" data-sb="fiets" data-id="${x.id}" class="${f && x.id === f.id ? 'aan' : ''}">${esc(x.naam)} <small>${x.breedte}</small></button>`).join('');
-  const grond = f ? SB_GROND[f.type].map((g) => `<button type="button" data-sb="grond" data-w="${g[0]}" class="${uit && uit.grond[0] === g[0] ? 'aan' : ''}">${g[1]}</button>`).join('') : '';
+  const gNu = f ? sbGrond(f) : null;
+  const instel = f ? `<details class="klap rv-instel" data-klap="bandinstel"${klapOpen('bandinstel', false) ? ' open' : ''}><summary><b>Je fiets</b><span>${esc(f.naam)} ${f.breedte} mm &middot; ${esc(gNu[1].toLowerCase())} &middot; ${nat ? 'nat' : 'droog'}</span></summary><div class="klap-in gr-maak">
+    ${p.fietsen.length > 1 ? `<label for="sbFietsSel">Fiets</label><select id="sbFietsSel">${p.fietsen.map((x) => `<option value="${x.id}" ${x.id === f.id ? 'selected' : ''}>${esc(x.naam)} (${x.breedte} mm)</option>`).join('')}</select>` : ''}
+    <div class="rij2"><div><label for="sbGrondSel">Ondergrond</label><select id="sbGrondSel">${SB_GROND[f.type].map((g) => `<option value="${g[0]}" ${gNu[0] === g[0] ? 'selected' : ''}>${g[1]}</option>`).join('')}</select></div>
+      <div><label for="sbNatSel">Wegdek</label><select id="sbNatSel"><option value="false">Droog</option><option value="true" ${nat ? 'selected' : ''}>Nat</option></select></div></div>
+    <button type="button" class="sb-link" data-sb="bewerk" style="margin-top:12px">Fietsen en gewicht aanpassen</button></div></details>` : '';
   const res = !uit ? '<p class="klein">Vul je gewicht in bij je fietsen.</p>' : `<div class="bt-uit"><div><span>Voor</span><b>${BT_LIB.nl(uit.voor)}</b><small>bar &middot; ${BT_LIB.psi(uit.voor)} psi</small></div><div><span>Achter</span><b>${BT_LIB.nl(uit.achter)}</b><small>bar &middot; ${BT_LIB.psi(uit.achter)} psi</small></div></div>
     ${uit.binnenA != null ? `<div class="sb-kou">Het wordt ${uit.temp}&deg;. Pomp je binnen, pomp dan <b>${BT_LIB.nl(uit.binnenV)} voor en ${BT_LIB.nl(uit.binnenA)} achter</b>. Buiten krimpt de lucht en zit je precies goed.</div>` : ''}
     ${sbGeheugenHtml(uit)}
-    ${logboekHtml()}
     ${uit.redenen.length ? `<p class="klein">Meegerekend: ${uit.redenen.join(', ')}.</p>` : ''}
     ${sbRijdHtml(f, uit)}`;
   const tabs = `<div class="vr-tabs"><button type="button" data-kl="tab" data-w="banden" class="${tab === 'banden' ? 'aan' : ''}">Banden</button><button type="button" data-kl="tab" data-w="kleding" class="${tab === 'kleding' ? 'aan' : ''}">Kleding</button><button type="button" data-kl="tab" data-w="voeding" class="${tab === 'voeding' ? 'aan' : ''}">Voeding</button><button type="button" data-kl="tab" data-w="groep" class="${tab === 'groep' ? 'aan' : ''}">Groepsrit</button></div>`;
@@ -1385,36 +1415,33 @@ function slimBandenKaart() {
     <div id="grmaak">${grMaakHtml()}</div>
     <button type="button" class="sb-link" data-sb="bewerk" style="margin-top:14px">Mijn fietsen en gewicht</button></div></div>`; }
   if (tab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
-    ${sbOordeelHtml()}
     ${sbWeerHtml()}
     ${tabs}
+    ${sbOordeelHtml()}
     ${voedingTabHtml()}
     ${uit && SB.weer ? sbRijdHtml(f, uit) : ''}
-    ${pushHtml()}
-    <button type="button" class="sb-link" data-sb="bewerk" style="margin-top:14px">Mijn fietsen en gewicht</button></div></div>`;
+    ${windRegelHtml()}
+    ${pushHtml()}</div></div>`;
   if (tab === 'kleding') return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
-    ${sbOordeelHtml()}
     ${sbWeerHtml()}
     ${tabs}
+    ${sbOordeelHtml()}
     ${kledingTabHtml()}
-    ${windRegelHtml()}
     ${uit && SB.weer ? sbRijdHtml(f, uit) : ''}
-    ${pushHtml()}
-    <button type="button" class="sb-link" data-sb="bewerk" style="margin-top:14px">Mijn fietsen en gewicht</button></div></div>`;
+    ${windRegelHtml()}
+    ${pushHtml()}</div></div>`;
   return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
-    ${sbOordeelHtml()}
     ${sbWeerHtml()}
     ${tabs}
-    ${windRegelHtml()}
-    <div class="sb-chips">${chips}</div>
-    <div class="bt-keuze sb-grond">${grond}</div>
-    <div class="bt-keuze"><button type="button" data-sb="nat" data-w="false" class="${!nat ? 'aan' : ''}">Droog</button><button type="button" data-sb="nat" data-w="true" class="${nat ? 'aan' : ''}">Nat wegdek</button></div>
+    ${sbOordeelHtml()}
+    ${instel}
     ${res}
+    ${windRegelHtml()}
     <details class="klap" data-klap="bandvraag" ${SB.antwoord || SB.vraagBezig || klapOpen('bandvraag', false) ? 'open' : ''}><summary><b>Vraag het je bandencoach</b><span>kasseien, regen, tocht</span></summary><div class="klap-in sb-vraag" style="margin:0;border:0;padding-top:0">
       <div class="sb-rij"><input id="sbVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen de Ronde met kasseien" value="${esc(SB.vraag)}"><button type="button" class="knop" data-sb="vraag" ${SB.vraagBezig ? 'disabled' : ''}>${SB.vraagBezig ? '...' : 'Vraag'}</button></div>
       ${SB.antwoord ? `<div class="sb-antwoord">${opmaak(SB.antwoord)}</div>${nuttigHtml(SB.aid, SB.nuttig)}` : ''}</div></details>
-    ${pushHtml()}
-    <button type="button" class="sb-link" data-sb="bewerk" style="margin-top:14px">Mijn fietsen en gewicht</button></div></div>`;
+    ${logboekHtml()}
+    ${pushHtml()}</div></div>`;
 }
 
 function sbTeken() {
@@ -1782,11 +1809,11 @@ function weerNu() {
 function lidKopHtml(d) {
   const dl = d && d.doel && !d.doel.klaar ? d.doel : null;
   const nog = dl && dl.doel === 'evenement' && dl.datum ? Math.ceil((Date.parse(dl.datum + 'T08:00:00') - Date.now()) / 864e5) : null;
-  const [h, sub] = dl && dl.doel === 'evenement' && dl.naam ? ['Op weg naar ' + esc(dl.naam), nog > 0 ? 'Nog ' + nog + ' dagen. Haal alles uit de weken die je nog hebt.' : 'Haal alles uit je voorbereiding.']
-    : dl && dl.doel === 'sneller' ? ['Sneller worden, elke dag een stap', 'Je coach, je Core en je ritadvies, afgestemd op jou.']
-    : dl && dl.doel === 'afvallen' ? ['Lichter, zonder watts te verliezen', 'Je coach denkt mee over eten en trainen, je Core houdt je sterk.']
-    : dl && dl.doel === 'fit' ? ['Fit en met plezier op de fiets', 'Elke rit goed voorbereid, zonder gedoe.']
-    : ['Alles voor je rit, in één app', 'Je eigen coach, Core die met je meebeweegt en elke ochtend je ritadvies.'];
+  const [h, sub] = dl && dl.doel === 'evenement' && dl.naam ? ['Sterk en fris aan de start van ' + esc(dl.naam), (nog > 0 ? 'Nog ' + nog + ' dagen. ' : '') + 'Jij fietst, de app regelt de rest: elke ochtend je ritadvies, een romp die het volhoudt tot de finish en een coach voor elke vraag.']
+    : dl && dl.doel === 'sneller' ? ['Sneller worden zonder te gissen', 'Jij fietst, de app regelt de rest: elke ochtend je ritadvies, een sterke romp en een coach voor elke vraag.']
+    : dl && dl.doel === 'afvallen' ? ['Lichter, zonder watts te verliezen', 'Jij fietst, de app denkt mee: over eten, trainen en je rit van vandaag.']
+    : dl && dl.doel === 'fit' ? ['Elke rit lekker, zonder gedoe', 'Jij fietst, de app regelt de rest: spanning, kleding, voeding en een coach voor elke vraag.']
+    : ['Elke rit goed voorbereid, zonder te gissen', 'Jij fietst, de app regelt de rest: elke ochtend je ritadvies, een sterke romp en een coach voor elke vraag.'];
   return `<div class="label">MKC-app</div><h2>${h}</h2><p class="lid-sub">${sub}</p>`;
 }
 function lidGebruikHtml(d) {
@@ -1890,6 +1917,23 @@ const LID_BEWIJS = `<div class="bewijs"><div class="bw-kop"><span class="bw-ster
   <div class="bw-kaart"><span class="bw-soort">Schema</span><p class="bw-citaat">&ldquo;Dankzij Michel&rsquo;s aanpak &lsquo;train slimmer, niet harder&rsquo; heb ik met hetzelfde aantal trainingsuren duidelijk meer vermogen ontwikkeld.&rdquo;</p><b>Bjorn</b></div>
 </div>`;
 const LID_REKENSOM = '<p class="klein lid-reken">Rekensom: doe je als lid een Strava-analyse, dan betaal je &euro;19 in plaats van &euro;29. Die &euro;10 is je eerste maand al voor de helft.</p>';
+// Lidpagina kort (13-10-2026): droomuitkomst bovenaan, dan vier uitkomsten die je
+// zelf openklikt, kort bewijs en de prijs. Details blijven, maar alleen als je wilt.
+function lidStapelHtml(d) {
+  const rij = (naam, kop, sub, binnen) => `<details class="ls-rij" data-klap="ls-${naam}"${klapOpen('ls-' + naam, false) ? ' open' : ''}><summary><b>${kop}</b><span>${sub}</span></summary><div class="ls-in">${binnen}</div></details>`;
+  return `<div class="lid-stapel"><div class="rv-sub" style="margin-top:4px">Wat je krijgt</div>
+    ${rij('ochtend', 'Nooit meer twijfelen voor je rit', 'Elke ochtend om 7:00 je spanning, kleding en wind', lidOchtendHtml())}
+    ${rij('core', 'Een romp die het volhoudt tot de finish', '10 tot 15 minuten thuis, en hij beweegt mee naar je doel', coreMeeHtml(d))}
+    ${rij('coach', 'Michel in je broekzak', 'Onbeperkt vragen, direct antwoord op jouw situatie', coachBankHtml(d))}
+    ${rij('prijs', 'Goedkoper verder', 'Strava-analyse &euro;19 in plaats van &euro;29, &euro;20 korting op het Afvalprogramma', '<p class="klein" style="margin:0">Ook het pacingplan voor je tocht krijg je straks voor &euro;19. E&eacute;n analyse en je eerste maand is al voor de helft terugverdiend.</p>')}</div>`;
+}
+const LID_BEWIJS_KORT = `<div class="bewijs"><div class="bw-kop"><span class="bw-ster">&#9733;&#9733;&#9733;&#9733;&#9733;</span><b>4,9 uit 48 Google-reviews</b><small>en meer dan 1000 wielrenners trainen met mijn schema&rsquo;s</small></div>
+  <div class="bw-kaart"><span class="bw-soort">Schema</span><b>Bart, 50 jaar</b><p>Beste twintig minuten van 191 naar 221 watt in vier weken, op minder uren dan in het voorjaar.</p></div>
+  <details class="ls-rij"><summary><b>Meer ervaringen</b><span>Wilco, Marnix en Bjorn</span></summary><div class="ls-in">
+  <div class="bw-kaart"><span class="bw-soort">Coaching</span><b>Wilco, 30 jaar</b><p>Begon met een blessure. Zeven maanden later reed hij het hoogste uurvermogen van zijn leven: van 216 naar 279 watt.</p></div>
+  <div class="bw-kaart"><span class="bw-soort">Coaching</span><p class="bw-citaat">&ldquo;Mijn FTP is gestegen van 220 naar 290/300.&rdquo;</p><b>Marnix</b></div>
+  <div class="bw-kaart"><span class="bw-soort">Schema</span><p class="bw-citaat">&ldquo;Dankzij Michel&rsquo;s aanpak &lsquo;train slimmer, niet harder&rsquo; heb ik met hetzelfde aantal trainingsuren duidelijk meer vermogen ontwikkeld.&rdquo;</p><b>Bjorn</b></div></div></details>
+</div>`;
 let LV = { plan: null };
 function lidStap2Html() {
   if (!LV.plan) return '';
@@ -1905,9 +1949,9 @@ function binnenkortPitchHtml() {
   // Vóór de lancering: prijzen al zichtbaar, knoppen nog dicht (09-10-2026).
   const d = zicht();
   return `<div class="lidblok">${lidKopHtml(d).replace('<div class="label">MKC-app</div>', '<div class="label">MKC-app &middot; opent vrijdag 16 oktober</div>')}
-    ${lidGebruikHtml(d)}${lidOchtendHtml()}${coreMeeHtml(d)}${coachBankHtml(d)}${lidVoordelenHtml()}${LID_BEWIJS}
+    ${lidGebruikHtml(d)}${lidStapelHtml(d)}${LID_BEWIJS_KORT}
     ${plannenHtml(true)}
-    <p class="klein">Lid worden kan vanaf vrijdag 16 oktober om 12:00. Volg Michel op Instagram, daar hoor je het als eerste. Je bandenspanning en je 3 gratis coachvragen kun je nu al gebruiken.</p></div>`;
+    <p class="klein lid-risico">Lid worden kan vanaf vrijdag 16 oktober om 12:00. Per maand en altijd opzegbaar. Je bandenspanning en je 3 gratis coachvragen kun je nu al gebruiken.</p></div>`;
 }
 // De twee prijskaarten; dicht = vóór de lancering (knoppen uit).
 function plannenHtml(dicht) {
@@ -1952,8 +1996,9 @@ document.addEventListener('change', (e) => { if (e.target.id === 'lfLand') { lid
 function lidPitchHtml() {
   const d = zicht();
   return `<div class="lidblok">${lidKopHtml(d)}
-    ${lidGebruikHtml(d)}${lidOchtendHtml()}${coreMeeHtml(d)}${coachBankHtml(d)}${lidVoordelenHtml()}${LID_BEWIJS}
-    ${plannenHtml(false)}${LID_REKENSOM}
+    ${lidGebruikHtml(d)}${lidStapelHtml(d)}${LID_BEWIJS_KORT}
+    ${plannenHtml(false)}
+    <p class="klein lid-risico">Geen contract. Per maand altijd opzegbaar, met &eacute;&eacute;n tik in de app.</p>
     <div id="lidStap2">${lidStap2Html()}</div>
     <p class="klein">${D && D.automatisch ? 'Je betaalt de eerste keer met iDEAL, Apple Pay, Google Pay, Bancontact of je creditcard. Daarna wordt het bedrag automatisch afgeschreven, elke maand of elk jaar. Opzeggen kan altijd in de app; je houdt toegang tot het einde van wat je al betaalde.' : 'Je betaalt met iDEAL voor een maand of een jaar. Er wordt niets automatisch afgeschreven: vlak voor de einddatum krijg je een mail om te verlengen.'}</p></div>`;
 }
@@ -3035,19 +3080,14 @@ function windRegelHtml() {
 function voedingTabHtml() {
   if (!SB.weer) return '<p class="klein" style="margin-top:12px">Kies hierboven je plek, dan reken ik met de temperatuur tijdens je rit.</p>';
   if (!RV_LIB) return '<p class="klein">Even rekenen...</p>';
-  const k = klKeuze(), uren = SB.weer.uren || [], stuk = ritUren();
+  const k = klKeuze(), stuk = ritUren();
   const temp = stuk.length ? Math.round(stuk.reduce((t, u) => t + u.temp, 0) / stuk.length) : SB.weer.temp;
   const a = RV_LIB.voedingAdvies({ duur: k.duur, temp, hard: k.hard });
-  const vertrek = [`<option value="0" ${k.over === 0 ? 'selected' : ''}>Nu</option>`].concat(uren.slice(1, 11).map((u, i) => `<option value="${i + 1}" ${k.over === i + 1 ? 'selected' : ''}>${u.uur}:00</option>`)).join('');
-  return `<div class="kl-plan">
-      <div><label for="klOver">Vertrek</label><select id="klOver">${vertrek}</select></div>
-      <div><label for="klDuur">Hoe lang</label><select id="klDuur">${KL_DUUR.map(([v, t]) => `<option value="${v}" ${k.duur === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-    </div>
-    <div class="bt-keuze"><button type="button" data-kl="hard" data-w="0" class="${!k.hard ? 'aan' : ''}">Rustige rit</button><button type="button" data-kl="hard" data-w="1" class="${k.hard ? 'aan' : ''}">Harde training</button></div>
+  const tips = (temp <= 5 ? ['Koud weer: een thermosbidon met warme thee of sportdrank drinkt een stuk prettiger, en dan drink je ook echt genoeg.'] : []).concat(a.tips);
+  return sbRitInstelHtml(false) + `<div class="rv-uit">
     <div class="rv-kop"><div><b>${a.gPerUur || '0'}</b><span>gram per uur</span></div><div><b>${a.bidons}</b><span>${a.bidons === 1 ? 'bidon' : 'bidons'}</span></div><div><b>${temp}&deg;</b><span>onderweg</span></div></div>
-    <ul class="kl-lijst">${a.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
-    <div class="kl-tips">${(temp <= 5 ? ['Koud weer: een thermosbidon met warme thee of sportdrank drinkt een stuk prettiger, en dan drink je ook echt genoeg.'] : []).concat(a.tips).slice(0, 5).map((t) => `<p>${esc(t)}</p>`).join('')}</div>
-    ${windRegelHtml()}`;
+    <div class="rv-sub">Neem mee</div><ul class="kl-lijst">${a.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
+    ${sbTipsKlap('rvtips', tips, '')}`;
 }
 
 // ---- Gratis windadvies: lokkertje voor wie nog geen lid is (09-10-2026) ----
@@ -3111,24 +3151,31 @@ function klReken() {
   const a = KL_LIB.kledingAdvies({ temp: rw.temp, start: rw.start, wind: rw.wind, regen: rw.regen, regenMm: rw.regenMm, intensiteit: k.hard ? 'hard' : 'rustig', kouType: (SB.profiel && SB.profiel.kouType) || 'normaal', bijstel: KL_LIB.kledingBijstel(SB.ritten || []), duurUur: k.duur });
   return a ? { ...a, rw } : null;
 }
+function sbRitInstelHtml(metKou) {
+  const k = klKeuze(), uren = (SB.weer && SB.weer.uren) || [];
+  const kt = (SB.profiel && SB.profiel.kouType) || 'normaal';
+  const vertrekNaam = k.over === 0 ? 'nu' : uren[k.over] ? uren[k.over].uur + ':00' : 'later';
+  const duurNaam = (KL_DUUR.find((x) => x[0] === k.duur) || [0, k.duur + ' uur'])[1];
+  const sam = ['vertrek ' + vertrekNaam, duurNaam, k.hard ? 'hard' : 'rustig'].concat(metKou && kt !== 'normaal' ? [kt === 'koud' ? 'snel koud' : 'snel warm'] : []).join(' &middot; ');
+  const vertrek = ['<option value="0"' + (k.over === 0 ? ' selected' : '') + '>Nu</option>'].concat(uren.slice(1, 11).map((u, i) => `<option value="${i + 1}" ${k.over === i + 1 ? 'selected' : ''}>${u.uur}:00</option>`)).join('');
+  return `<details class="klap rv-instel" data-klap="ritinstel"${klapOpen('ritinstel', false) ? ' open' : ''}><summary><b>Je rit</b><span>${sam}</span></summary><div class="klap-in gr-maak">
+    <div class="rij2"><div><label for="klOver">Vertrek</label><select id="klOver">${vertrek}</select></div>
+      <div><label for="klDuur">Hoe lang</label><select id="klDuur">${KL_DUUR.map(([v, t]) => `<option value="${v}" ${k.duur === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
+    <div class="rij2"><div><label for="klTempo">Tempo</label><select id="klTempo"><option value="0">Rustige rit</option><option value="1" ${k.hard ? 'selected' : ''}>Harde training</option></select></div>
+      ${metKou ? `<div><label for="klKou">Heb je het snel koud?</label><select id="klKou"><option value="koud" ${kt === 'koud' ? 'selected' : ''}>Snel koud</option><option value="normaal" ${kt === 'normaal' ? 'selected' : ''}>Normaal</option><option value="warm" ${kt === 'warm' ? 'selected' : ''}>Snel warm</option></select></div>` : '<div></div>'}</div></div></details>`;
+}
+function sbTipsKlap(naam, tips, extra) {
+  if (!tips.length && !extra) return '';
+  return `<details class="klap" data-klap="${naam}"${klapOpen(naam, false) ? ' open' : ''}><summary><b>Tips voor deze rit</b><span>${tips.length} ${tips.length === 1 ? 'tip' : 'tips'}</span></summary><div class="klap-in kl-tips">${tips.map((t) => '<p>' + esc(t) + '</p>').join('')}${extra ? '<p class="klein" style="margin-top:6px">' + extra + '</p>' : ''}</div></details>`;
+}
 function kledingTabHtml() {
   if (!SB.weer) return '<p class="klein" style="margin-top:12px">Kies hierboven je plek, dan reken ik met het weer tijdens je rit.</p>';
-  const k = klKeuze(), uren = SB.weer.uren || [];
-  const vertrek = [`<option value="0" ${k.over === 0 ? 'selected' : ''}>Nu</option>`].concat(uren.slice(1, 11).map((u, i) => `<option value="${i + 1}" ${k.over === i + 1 ? 'selected' : ''}>${u.uur}:00</option>`)).join('');
-  const kt = (SB.profiel && SB.profiel.kouType) || 'normaal';
   const a = klReken();
-  const uit = !a ? '<p class="klein">Even rekenen...</p>' : `
+  const uit = !a ? '<p class="klein">Even rekenen...</p>' : `<div class="rv-uit">
     <div class="kl-gevoel"><b>${a.gevoel}&deg;</b><span>voelt het onderweg${a.rw.temp !== a.gevoel ? ` (het wordt ${a.rw.temp}&deg;)` : ''}</span></div>
-    <ul class="kl-lijst">${a.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
-    ${a.tips.length ? `<div class="kl-tips">${a.tips.map((t) => `<p>${esc(t)}</p>`).join('')}</div>` : ''}
-    <p class="klein">${esc(a.regel)}${a.redenen.length ? ` Meegerekend: ${esc(a.redenen.join(', '))}.` : ''}</p>`;
-  return `<div class="kl-plan">
-      <div><label for="klOver">Vertrek</label><select id="klOver">${vertrek}</select></div>
-      <div><label for="klDuur">Hoe lang</label><select id="klDuur">${KL_DUUR.map(([v, t]) => `<option value="${v}" ${k.duur === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
-    </div>
-    <div class="bt-keuze"><button type="button" data-kl="hard" data-w="0" class="${!k.hard ? 'aan' : ''}">Rustige rit</button><button type="button" data-kl="hard" data-w="1" class="${k.hard ? 'aan' : ''}">Harde training</button></div>
-    <div class="bt-keuze"><button type="button" data-kl="kou" data-w="koud" class="${kt === 'koud' ? 'aan' : ''}">Snel koud</button><button type="button" data-kl="kou" data-w="normaal" class="${kt === 'normaal' ? 'aan' : ''}">Normaal</button><button type="button" data-kl="kou" data-w="warm" class="${kt === 'warm' ? 'aan' : ''}">Snel warm</button></div>
-    ${uit}`;
+    <div class="rv-sub">Trek aan</div><ul class="kl-lijst">${a.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
+    ${sbTipsKlap('kltips', a.tips.concat(a.regel ? [a.regel] : []), a.redenen.length ? 'Meegerekend: ' + esc(a.redenen.join(', ')) + '.' : '')}`;
+  return sbRitInstelHtml(true) + uit;
 }
 document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-kl]'); if (!k) return;
@@ -3137,7 +3184,12 @@ document.addEventListener('click', async (e) => {
   if (k.dataset.kl === 'tab') { if (k.dataset.w === 'kleding') statEens('kleding'); sbBewaarKeuze({ tab: k.dataset.w }); return sbTeken(); }
   if (k.dataset.kl === 'vrijtab') { btBewaar({ ...btLees(), tab: k.dataset.w }); return teken(); }
 });
-document.addEventListener('change', (e) => {
+document.addEventListener('change', async (e) => {
+  if (e.target.id === 'klTempo') { sbBewaarKeuze({ klHard: e.target.value === '1' }); return sbTeken(); }
+  if (e.target.id === 'klKou') { SB.profiel.kouType = e.target.value; sbTeken(); return sbBewaarProfiel(true); }
+  if (e.target.id === 'sbFietsSel') { sbBewaarKeuze({ fiets: e.target.value }); SB.antwoord = ''; return sbTeken(); }
+  if (e.target.id === 'sbGrondSel') { const f = sbFiets(); sbBewaarKeuze({ ['grond_' + f.type]: e.target.value }); return sbTeken(); }
+  if (e.target.id === 'sbNatSel') { const w = e.target.value === 'true'; sbBewaarKeuze({ natHand: SB.weer && w === !!SB.weer.nat ? null : w }); return sbTeken(); }
   if (e.target.id === 'klOver') { sbBewaarKeuze({ klOver: Number(e.target.value) }); sbTeken(); }
   if (e.target.id === 'klDuur') { sbBewaarKeuze({ klDuur: Number(e.target.value) }); sbTeken(); }
 });
