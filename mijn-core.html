@@ -1485,7 +1485,7 @@ function naarStap(i) {
   if (i >= sp.stappen.length) return klaarSpeler();
   sp.i = Math.max(0, i);
   const st = sp.stappen[sp.i];
-  sp.over = st.sec; sp.laatsteTik = Date.now();
+  sp.over = st.sec; sp.laatsteTik = Date.now(); sp.gepland = (sp.gepland || 0) + st.sec;
   const el = sp.el;
   const soortEl = $('.soort', el); soortEl.textContent = SOORT[st.soort] + (st.ronde ? ` · ronde ${st.ronde} van ${sp.sessie.rondes}` : '');
   soortEl.classList.toggle('rust', st.soort === 'rust' || st.soort === 'wissel');
@@ -1562,7 +1562,7 @@ function tik() {
   if (st.soort === 'finisher') return toonKlok();
   if (sp.pauze) return;
   const voor = Math.ceil(sp.over);
-  sp.over -= dt;
+  sp.over -= dt; sp.echt = (sp.echt || 0) + Math.min(dt, 60);
   const na = Math.ceil(sp.over);
   if (na !== voor && na <= 3 && na >= 1) piep(660, .1);
   if (na !== voor && na === 10 && st.soort === 'werk' && st.sec >= 20) zeg('Nog tien seconden.');
@@ -1654,6 +1654,12 @@ function sluitSpeler() {
 async function klaarSpeler() {
   const sp = speler;
   clearInterval(sp.iv); if (sp.stopAnim) sp.stopAnim();
+  if (!sp.sessie.extra && !sp.bevestigd && (sp.gepland || 0) > 180 && (sp.echt || 0) < sp.gepland * 0.3) {
+    $('.midden', sp.el).innerHTML = '<div class="soort">Sessie ' + NR[sp.sessie.letter] + '</div><div class="naam" style="font-size:40px">Dat ging snel</div><p class="cue">Je hebt de oefeningen doorgeklikt. Heb je de sessie wel echt gedaan? Alleen dan vink ik hem af.</p>';
+    $('.bediening', sp.el).innerHTML = '<button class="hoofd" data-sp="echtwel">Ja, ik heb hem gedaan</button><button class="sb-link" data-sp="echtniet" style="display:block;margin:10px auto 0">Nee, niet afvinken</button>';
+    sp.el.addEventListener('click', function echt(e) { const b = e.target.closest('[data-sp="echtwel"], [data-sp="echtniet"]'); if (!b) return; sp.el.removeEventListener('click', echt); if (b.dataset.sp === 'echtwel') { sp.bevestigd = true; klaarSpeler(); } else sluitSpeler(); });
+    return;
+  }
   piep(660, .15); setTimeout(() => piep(880, .15), 160); setTimeout(() => piep(1100, .3), 320);
   zeg('Goed gedaan. Sessie klaar.');
   const finisher = sp.finisherSec;
@@ -1677,7 +1683,7 @@ async function klaarSpeler() {
   // Welke sessie gaat er nu open? De eerste die deze week nog niet gedaan is.
   const volgende = j.ok && S.sessies ? S.sessies.find((s) => !S.gedaanDezeWeek.includes(s.letter)) : null;
   $('.midden .cue:last-child', sp.el).innerHTML = j.ok
-    ? (volgende ? `<span style="color:#FF6B1A;font-weight:700">Sessie ${NR[volgende.letter]} is ontgrendeld.</span><br>` : '') + esc(S.weekRond ? 'Afgevinkt. Je kunt dit niveau nu afronden.' : `Afgevinkt. Nog ${S.nodigVoorWeek - S.gedaanDezeWeek.length} ${S.nodigVoorWeek - S.gedaanDezeWeek.length === 1 ? 'sessie' : 'sessies'} tot je dit niveau kunt afronden.`)
+    ? (volgende && S.testNodig === 0 ? `<span style="color:#FF6B1A;font-weight:700">Doe nu je starttest (15 min), dan gaat sessie ${NR[volgende.letter]} open.</span><br>` : volgende ? `<span style="color:#FF6B1A;font-weight:700">Sessie ${NR[volgende.letter]} is ontgrendeld.</span><br>` : '') + esc(S.weekRond ? 'Afgevinkt. Je kunt dit niveau nu afronden.' : `Afgevinkt. Nog ${S.nodigVoorWeek - S.gedaanDezeWeek.length} ${S.nodigVoorWeek - S.gedaanDezeWeek.length === 1 ? 'sessie' : 'sessies'} tot je dit niveau kunt afronden.`)
     : 'Afvinken lukte niet. Probeer het straks opnieuw vanaf je pagina.';
   if (volgende) { nieuwOpen = volgende.letter; setTimeout(() => piep(1320, .18), 500); }
   if (j.ok && sp.extraRegel) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<p class="cue" style="margin-top:10px;color:#4CC38A">${sp.extraRegel}</p>`);

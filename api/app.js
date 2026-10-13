@@ -338,7 +338,7 @@ async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], 
     coreSessies: (core && core.sessiesTotaal) || 0, coreNiveaus: (core && core.afgerond) || 0, reeks: (core && core.reeks) || 0,
     rompPlus: core && core.rompscore != null && core.startScore != null ? core.rompscore - core.startScore : 0,
     maten: (lidmaatschap && lidmaatschap.vriendAantal) || 0,
-    lidMaanden: lidmaatschap && lidmaatschap.sinds && ((lidmaatschap.tot && Date.parse(lidmaatschap.tot) > Date.now()) || lidmaatschap.bron === 'coaching') ? Math.floor((Date.now() - Date.parse(lidmaatschap.sinds)) / (30.44 * 864e5)) : 0
+    lidMaanden: lidmaatschap && lidmaatschap.sinds && ((lidmaatschap.tot && Date.parse(lidmaatschap.tot) > Date.now()) || lidmaatschap.bron === 'coaching') ? Math.max(0, Math.floor((Date.now() - Date.parse(lidmaatschap.sinds)) / (30.44 * 864e5))) : 0
   };
   let verdiend = {}; try { verdiend = (rm.ok && rm.result && JSON.parse(rm.result)) || {}; } catch (e) {}
   let bel = {}; try { bel = (rb.ok && rb.result && JSON.parse(rb.result)) || {}; } catch (e) {}
@@ -651,7 +651,7 @@ async function routePlaatsVrij(req, res) {
   try {
     const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=nl&format=json`, { signal: AbortSignal.timeout(8000) });
     const j = await r.json();
-    const l = (j.results || []).map((x) => ({ naam: x.name, regio: x.admin1 || '', land: x.country_code || '', lat: x.latitude, lon: x.longitude }))
+    const l = (j.results || []).map((x) => ({ naam: x.name, regio: x.admin1 || '', land: x.country_code || '', lat: x.latitude, lon: x.longitude })).filter((x, i, a) => a.findIndex((y) => y.naam === x.naam && y.regio === x.regio && y.land === x.land) === i)
       .sort((a, b) => (['NL', 'BE'].includes(b.land) ? 1 : 0) - (['NL', 'BE'].includes(a.land) ? 1 : 0));
     return res.status(200).json({ ok: true, plaatsen: l.slice(0, 5) });
   } catch (e) { return res.status(502).json({ ok: false, fout: 'Zoeken lukte niet.' }); }
@@ -1449,9 +1449,9 @@ const weerCache = new Map();
 async function haalWeer(lat, lon) {
   lat = Math.round(Number(lat) * 100) / 100; lon = Math.round(Number(lon) * 100) / 100;
   if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
-  const sleutel = `${lat},${lon},2`, c = weerCache.get(sleutel);
+  const sleutel = `${lat},${lon},3`, c = weerCache.get(sleutel);
   if (c && Date.now() - c.op < 15 * 60 * 1000) return c.weer;
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m&hourly=precipitation,temperature_2m,wind_speed_10m,wind_direction_10m&past_hours=3&forecast_hours=13&timezone=Europe%2FAmsterdam&wind_speed_unit=kmh`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,precipitation,weather_code,wind_speed_10m,wind_direction_10m&hourly=precipitation,temperature_2m,wind_speed_10m,wind_direction_10m&past_hours=3&forecast_hours=40&timezone=Europe%2FAmsterdam&wind_speed_unit=kmh`;
   const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
   if (!r.ok) throw new Error('weer ' + r.status);
   const j = await r.json();
@@ -1471,7 +1471,7 @@ async function haalWeer(lat, lon) {
     richting: Math.round(nu.wind_direction_10m ?? 0),
     code: nu.weather_code ?? null,
     // Per uur vanaf nu: { uur: '14', temp, regen (mm), wind (km/u) }
-    uren: tijden.slice(idx, idx + 13).map((t, i) => ({ uur: String(t).slice(11, 13), temp: Math.round(temps[idx + i] ?? 0), regen: Math.round((regen[idx + i] || 0) * 10) / 10, wind: Math.round(winden[idx + i] || 0), richting: Math.round(richtingen[idx + i] ?? 0) }))
+    uren: tijden.slice(idx, idx + 40).map((t, i) => ({ uur: String(t).slice(11, 13), temp: Math.round(temps[idx + i] ?? 0), regen: Math.round((regen[idx + i] || 0) * 10) / 10, wind: Math.round(winden[idx + i] || 0), richting: Math.round(richtingen[idx + i] ?? 0) }))
   };
   weerCache.set(sleutel, { op: Date.now(), weer });
   return weer;
@@ -1510,7 +1510,8 @@ async function routePlaats(req, res) {
     const j = await r.json();
     // Nederland en België eerst, daarna de buurlanden, de rest onderaan.
     const voorkeur = (c) => ({ NL: 0, BE: 1, DE: 2, LU: 2, FR: 3 })[c] ?? 9;
-    const plaatsen = (j.results || []).sort((x, y) => voorkeur(x.country_code) - voorkeur(y.country_code)).map((x) => ({ naam: x.name, regio: [x.admin1, x.country_code].filter(Boolean).join(', '), lat: x.latitude, lon: x.longitude }));
+    const gezien = new Set();
+    const plaatsen = (j.results || []).filter((x) => { const s = x.name + '|' + x.admin1 + '|' + x.country_code; if (gezien.has(s)) return false; gezien.add(s); return true; }).sort((x, y) => voorkeur(x.country_code) - voorkeur(y.country_code)).map((x) => ({ naam: x.name, regio: [x.admin1, x.country_code].filter(Boolean).join(', '), lat: x.latitude, lon: x.longitude }));
     return res.status(200).json({ ok: true, plaatsen });
   } catch { return res.status(502).json({ ok: false, fout: 'Zoeken lukt nu even niet.' }); }
 }

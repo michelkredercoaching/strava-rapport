@@ -1564,7 +1564,7 @@ function sbWeerHtml() {
 }
 function sbZoekHtml() {
   if (!SB.zoek.length) return '';
-  return `<div class="sb-zoek">${SB.zoek.map((x, i) => `<button type="button" data-sb="kiesplek" data-i="${i}">${esc(x.naam)} <small>${esc(x.regio)}</small></button>`).join('')}</div>`;
+  return `<div class="sb-zoek">${SB.zoek.map((x, i) => SB.zoek.findIndex((y) => y.naam === x.naam && y.regio === x.regio) !== i ? '' : `<button type="button" data-sb="kiesplek" data-i="${i}">${esc(x.naam)} <small>${esc(x.regio)}</small></button>`).join('')}</div>`;
 }
 
 function sbBewerkHtml() {
@@ -2811,11 +2811,11 @@ function vandaagHtml(d) {
     if (nog >= 0) rijen.push(vdRij('pacing', 'Je doel', esc(dl.naam) + ' &middot; ' + (nog === 0 ? 'vandaag, succes!' : nog === 1 ? 'morgen' : 'nog ' + nog + ' dagen'), { doel: true }));
   }
   // Bijna binnen: de volgende medaille, de sterkste reden om vandaag iets te doen
-  { const bn = (d.badges || []).filter((b) => b.volgende && !b.binnenkort && !b.goudLid && !b.goudKlaar && b.waarde > 0).sort((a, b) => (b.waarde / b.volgende) - (a.waarde / a.volgende))[0];
+  { const bn = (d.badges || []).filter((b) => b.volgende && !b.binnenkort && !b.goudLid && !b.goudKlaar && b.waarde > 0 && !(b.id === 'gemeten' && d.lid && d.lid.bron === 'coaching')).sort((a, b) => (b.waarde / b.volgende) - (a.waarde / a.volgende))[0];
     if (bn) rijen.push(vdRij('palmares', 'Bijna binnen', esc(bn.naam) + ' ' + ['brons', 'zilver', 'goud'][bn.niveau] + ' &middot; ' + bn.waarde + ' van ' + bn.volgende, { view: 'palmares' })); }
   // Je week in één regel: wat je al deed, zodat je ziet dat het opbouwt
   const wk = [];
-  if (c && !c.intakeNodig && c.frequentie) wk.push(c.gedaan >= c.frequentie ? '<span class="ok">&#10003; Core deze week rond</span>' : 'Core <b>' + c.gedaan + ' van ' + c.frequentie + '</b>');
+  if (c && !c.intakeNodig && c.frequentie) wk.push(c.gedaan >= c.frequentie ? '<span class="ok">&#10003; Core deze week rond</span>' : 'Core deze week <b>' + c.gedaan + ' van ' + c.frequentie + '</b>');
   if (c && c.reeks >= 2) wk.push('<b>' + c.reeks + ' weken</b> op rij');
   if (c && c.rompscore != null && c.startScore != null && c.rompscore > c.startScore) wk.push('Rompscore <b>+' + (c.rompscore - c.startScore) + '</b>');
   if (wk.length) rijen.push('<div class="vd-week">' + wk.map((x) => '<span>' + x + '</span>').join('') + '</div>');
@@ -3064,6 +3064,7 @@ async function zegOpNu(knop) {
     const r = await fetch('/api/lid?actie=opzeggen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), reden, toelichting }) });
     const j = await r.json();
     if (!j.ok) alert(j.fout || 'Opzeggen lukte niet.');
+    else { await laadOverzicht(); const tot = j.lid && j.lid.tot; return modal('<h3>Je lidmaatschap is opgezegd</h3><p>Er wordt niets meer afgeschreven.' + (tot ? ' Je kunt alles blijven gebruiken tot ' + esc(datumNl(tot)) + '.' : '') + '</p><p class="klein">Bedenk je je? Op je lidpagina word je met één tik weer lid, en alles wat je deed staat er dan nog.</p><button type="button" class="knop" data-lx="dicht">Oké</button>'); }
   } catch { alert('Verbinding mislukt.'); }
   lxDicht(); laadOverzicht();
 }
@@ -3906,7 +3907,10 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.
 let KL_LIB = null;
 async function klLaadLib() { if (!KL_LIB) { try { KL_LIB = await import('/lib/kleding.js'); } catch (e) {} } }
 const KL_DUUR = [[1, '1 uur'], [1.5, '1,5 uur'], [2, '2 uur'], [3, '3 uur'], [4, '4 uur'], [5, '5 uur of meer']];
-function klKeuze() { const k = sbKeuze(); return { over: Number(k.klOver || 0), duur: Number(k.klDuur || 2), hard: !!k.klHard }; }
+function klKeuze() { const k = sbKeuze(); const over = k.klOverUur != null ? Math.max(0, k.klOverUur - Math.floor(Date.now() / 36e5)) : Number(k.klOver || 0); return { over, duur: Number(k.klDuur || 2), hard: !!k.klHard }; }
+// Uurlabel: "8:00" vandaag of "morgen 8:00" (13-10-2026).
+function uurDag(uren, i) { let dag = 0; for (let j = 1; j <= i && j < uren.length; j++) if (uren[j].uur === '00') dag++; return dag; }
+function uurLabel(uren, i) { if (!uren[i]) return 'later'; return (uurDag(uren, i) ? 'morgen ' : '') + Number(uren[i].uur) + ':00'; }
 // Het weer tijdens je rit uit de uurlijst.
 function klRitWeer(over, duur) {
   const w = SB.weer; if (!w) return null;
@@ -3926,10 +3930,10 @@ function klReken() {
 function sbRitInstelHtml(metKou) {
   const k = klKeuze(), uren = (SB.weer && SB.weer.uren) || [];
   const kt = (SB.profiel && SB.profiel.kouType) || 'normaal';
-  const vertrekNaam = k.over === 0 ? 'nu' : uren[k.over] ? uren[k.over].uur + ':00' : 'later';
+  const vertrekNaam = k.over === 0 ? 'nu' : uurLabel(uren, k.over);
   const duurNaam = (KL_DUUR.find((x) => x[0] === k.duur) || [0, k.duur + ' uur'])[1];
   const sam = ['vertrek ' + vertrekNaam, duurNaam, k.hard ? 'hard' : 'rustig'].concat(metKou && kt !== 'normaal' ? [kt === 'koud' ? 'snel koud' : 'snel warm'] : []).join(' &middot; ');
-  const vertrek = ['<option value="0"' + (k.over === 0 ? ' selected' : '') + '>Nu</option>'].concat(uren.slice(1, 11).map((u, i) => `<option value="${i + 1}" ${k.over === i + 1 ? 'selected' : ''}>${u.uur}:00</option>`)).join('');
+  const vertrek = ['<option value="0"' + (k.over === 0 ? ' selected' : '') + '>Nu</option>'].concat(uren.map((u, i) => { const dag = uurDag(uren, i), h = Number(u.uur); return i && dag < 2 && h >= 5 && h <= 22 && !(dag === 1 && h > 12) ? `<option value="${i}" ${k.over === i ? 'selected' : ''}>${uurLabel(uren, i)}</option>` : ''; })).join('');
   return `<details class="klap rv-instel" data-klap="ritinstel"${klapOpen('ritinstel', false) ? ' open' : ''}><summary><b>Je rit</b><span>${sam.replace(/ &middot; snel (koud|warm)$/, '')}</span></summary><div class="klap-in gr-maak">
     <div class="rij2"><div><label for="klOver">Vertrek</label><select id="klOver">${vertrek}</select></div>
       <div><label for="klDuur">Hoe lang</label><select id="klDuur">${KL_DUUR.map(([v, t]) => `<option value="${v}" ${k.duur === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
@@ -3988,7 +3992,7 @@ function ritVoorNa(tab) {
 function ritVoorNaHtml(tab) {
   const v = ritVoorNa(tab); if (!v) return '';
   const blok = (kop, l) => l.length ? `<div class="vn-blok"><div class="rv-sub">${kop}</div>${l.map((t) => '<p>' + t + '</p>').join('')}</div>` : '';
-  return `<details class="klap" data-klap="voorna-${tab}"${klapOpen('voorna-' + tab, false) ? ' open' : ''}><summary><b>Voor en na je rit</b><span>vandaag</span></summary><div class="klap-in vn">${blok('Vooraf', v.voor)}${blok('Na je rit', v.na)}</div></details>`;
+  return `<details class="klap" data-klap="voorna-${tab}"${klapOpen('voorna-' + tab, false) ? ' open' : ''}><summary><b>Voor en na je rit</b><span>${(() => { const k = klKeuze(), u = (SB.weer && SB.weer.uren) || []; return k.over && uurDag(u, k.over) ? 'morgen' : 'vandaag'; })()}</span></summary><div class="klap-in vn">${blok('Vooraf', v.voor)}${blok('Na je rit', v.na)}</div></details>`;
 }
 function sbTipsKlap(naam, tips, extra) {
   if (!tips.length && !extra) return '';
@@ -4018,7 +4022,7 @@ document.addEventListener('change', async (e) => {
   if (e.target.id === 'sbFietsSel') { sbBewaarKeuze({ fiets: e.target.value }); SB.antwoord = ''; return sbTeken(); }
   if (e.target.id === 'sbGrondSel') { const f = sbFiets(); sbBewaarKeuze({ ['grond_' + f.type]: e.target.value }); return sbTeken(); }
   if (e.target.id === 'sbNatSel') { const w = e.target.value === 'true'; sbBewaarKeuze({ natHand: SB.weer && w === !!SB.weer.nat ? null : w }); return sbTeken(); }
-  if (e.target.id === 'klOver') { sbBewaarKeuze({ klOver: Number(e.target.value) }); sbTeken(); }
+  if (e.target.id === 'klOver') { const v = Number(e.target.value); sbBewaarKeuze({ klOver: v, klOverUur: Math.floor(Date.now() / 36e5) + v }); sbTeken(); }
   if (e.target.id === 'klDuur') { sbBewaarKeuze({ klDuur: Number(e.target.value) }); sbTeken(); }
 });
 
@@ -4405,7 +4409,9 @@ document.addEventListener('change', async (e) => {
 });
 // Plannen: iedereen met een (gratis) account.
 function grDagOpties() { const l = []; for (let i = 0; i < 14; i++) { const t = new Date(Date.now() + i * 864e5); const w = t.toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }); l.push([w, i === 0 ? 'Vandaag' : i === 1 ? 'Morgen' : t.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Europe/Amsterdam' })]); } return l; }
-function grZorg() { if (GR.maak) return; const vn = String((D && D.naam) || '').trim().split(' ')[0]; GR.maak = { door: vn, datum: new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }), tijd: '09:00', duur: 3, tempo: 'rustig', plaats: (SB.profiel && SB.profiel.plaats) || WK.plaats || null }; }
+// Na 8 uur 's ochtends staat de dag standaard op morgen (13-10-2026).
+function grStandaardDag() { const u = Number(new Date().toLocaleString('en-GB', { timeZone: 'Europe/Amsterdam', hour: '2-digit', hour12: false })); return new Date(Date.now() + (u >= 8 ? 864e5 : 0)).toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }); }
+function grZorg() { if (GR.maak) return; const vn = String((D && D.naam) || '').trim().split(' ')[0]; GR.maak = { door: vn, datum: grStandaardDag(), tijd: '09:00', duur: 3, tempo: 'rustig', plaats: (SB.profiel && SB.profiel.plaats) || WK.plaats || null }; }
 function grVriendHtml(d) {
   const l = vriendLid(d); if (!l) return '';
   return `<div class="gr-vriend"><b>Rijden je maten nog zonder de app?</b><p>Met jouw link krijgen ze 50% korting${l.vriendBeloning === false ? '' : l.gratis || l.vriendCadeau ? ', en jij 2 weken gratis lid per maat' : ', en jij 2 weken extra per maat'}.</p>${vriendKaartHtml(l, true)}</div>`;
@@ -4454,7 +4460,7 @@ document.addEventListener('click', async (e) => {
   if (a === 'open') {
     if (!D || D.gast) { const b = document.querySelector('[data-actie="gastlogin"]'); if (b) b.click(); return; }
     const vn = String((D && D.naam) || '').trim().split(' ')[0];
-    GR.maak = { door: vn, datum: new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }), tijd: '09:00', duur: 3, tempo: 'rustig', plaats: (SB.profiel && SB.profiel.plaats) || WK.plaats || null };
+    GR.maak = { door: vn, datum: grStandaardDag(), tijd: '09:00', duur: 3, tempo: 'rustig', plaats: (SB.profiel && SB.profiel.plaats) || WK.plaats || null };
     GR.gemaakt = null; grMaakTeken(); const el = document.getElementById('grmaak'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); return;
   }
   if (a === 'dicht') { GR.maak = null; GR.gemaakt = null; grZorg(); return grMaakTeken(); }
@@ -4468,6 +4474,7 @@ document.addEventListener('click', async (e) => {
   if (a === 'maak') {
     grLeesVelden(); const m = GR.maak;
     if (!m.plaats) { m.fout = 'Kies een startplaats.'; return grMaakTeken(); }
+    if (Date.parse(m.datum + 'T' + (m.tijd || '09:00')) < Date.now()) { m.fout = 'Dat moment is al voorbij. Kies een latere tijd of een andere dag.'; return grMaakTeken(); }
     m.bezig = true; m.fout = ''; grMaakTeken();
     try {
       const r = await fetch(API + '?actie=groepsrit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: m.naam, door: m.door, datum: m.datum, tijd: m.tijd, duur: Number(m.duur), tempo: m.tempo, plaats: m.plaats }) });
