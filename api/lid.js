@@ -158,7 +158,7 @@ async function leesBody(req) {
 // ---- Na lid worden (09-10-2026): welkom, win-back, weekoverzicht, back-up ----
 const knopHtml = (url, tekst) => `<p style="margin:22px 0 26px"><a href="${url}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">${tekst}</a></p>`;
 // WhatsApp-link met een kant-en-klaar berichtje en de persoonlijke link erin.
-const waLink = (code) => 'https://wa.me/?text=' + encodeURIComponent(`Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding en voeding voor elke rit, core-oefeningen en een eigen coach. Via mijn link krijgen we allebei 50% korting op een maand: ${APP_URL}?vriend=${code}`);
+const waLink = (code) => 'https://wa.me/?text=' + encodeURIComponent(`Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding en voeding voor elke rit, core-oefeningen en een eigen coach. Via mijn link krijg je 50% korting op je eerste maand: ${APP_URL}?vriend=${code}`);
 async function welkomMail(email, lid, naar) {
   const voornaam = String(lid.naam || '').split(' ')[0];
   const code = vriendCode(email);
@@ -170,7 +170,7 @@ async function welkomMail(email, lid, naar) {
     <p><b>Vul je fietsen en gewicht in</b> bij Vandaag rijden. Dan zie je voor elke rit wat je pompt, wat je aantrekt en wat je meeneemt.</p>
     <p><b>Start de Core-app.</b> Korte sessies van een kwartier, een paar keer per week. Je merkt het het eerst op lange ritten, in je onderrug en je nek.</p>
     ${knopHtml(APP_URL, 'Open de app')}
-    <p>Fiets je samen met anderen? Nodig een vriend of vriendin uit. Die krijgt de eerste maand voor de helft, en jij 50% korting op je volgende maand.</p>
+    <p>Fiets je samen met anderen? Nodig een vriend of vriendin uit: die krijgt 50% korting op de eerste maand. En jij krijgt er ook iets voor terug zodra die lid is.</p>
     <p><a href="${waLink(code)}" style="display:inline-block;background:#25D366;color:#fff;padding:12px 22px;border-radius:4px;text-decoration:none;font-weight:700">Nodig uit via WhatsApp</a></p>
     <p>Loop je ergens tegenaan of heb je een vraag? Stel hem aan de coach in de app, of mail me gewoon terug.</p>`));
 }
@@ -350,6 +350,8 @@ async function beloonVriend(code, maatEmail, maatNaam) {
   const v = await redis(['GET', `lid:vriend:${code}`]);
   const email = v.ok && v.result; if (!email || email === maatEmail) return;
   const lid = await haalLid(email); if (!lid) return;
+  const vnMaat = String(maatNaam || '').split(' ')[0] || 'Je maat';
+  if (inbegrepen(lid)) return appMelding(email, { soort: 'vriend', titel: vnMaat + ' is lid geworden', tekst: `${vnMaat} is lid geworden via jouw link en kreeg 50% korting op de eerste maand. Bedankt voor het delen!`, link: '/app#lid' });
   const jaar = new Date().getFullYear();
   if (lid.vriendJaar !== jaar) { lid.vriendJaar = jaar; lid.vriendBeloningen = 0; }
   if ((lid.vriendBeloningen || 0) >= VRIEND_MAX) return;
@@ -448,11 +450,14 @@ async function routeJaarKeuze(req, res) {
   return res.status(200).json({ ok: true, lid: lidBeeld(lid) });
 }
 
+// App inbegrepen bij coaching of schema (geen eigen betaald lidmaatschap): wel een
+// maat uitnodigen (die krijgt 50%), maar zelf geen beloning (besluit Michel 13-10-2026).
+function inbegrepen(lid) { return (lid.bron === 'coaching' && !lid.subscriptionId) || (lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig); }
 function lidBeeld(lid) {
   if (!lid) return { status: 'geen' };
   const open = lid.tot && Date.now() < Date.parse(lid.tot);
   const plan = planVan(lid.plan);
-  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: prijzenVan(lid)[plan], prijs: prijzenVan(lid), handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, terugAanbod: !!(lid.winbackTot && Date.parse(lid.winbackTot) > Date.now()), vriendKan: !!open && ['actief', 'opgezegd'].includes(lid.status) && !(lid.bron === 'coaching' && !lid.subscriptionId) && !(lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig), bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
+  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: prijzenVan(lid)[plan], prijs: prijzenVan(lid), handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, terugAanbod: !!(lid.winbackTot && Date.parse(lid.winbackTot) > Date.now()), vriendKan: (!!open || lid.bron === 'coaching') && ['actief', 'opgezegd'].includes(lid.status), vriendBeloning: !inbegrepen(lid), bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
 }
 
 // Kan Mollie al maandelijks incasseren? Zolang SEPA-incasso niet is goedgekeurd
@@ -539,7 +544,7 @@ async function routeStart(req, res) {
   // alleen voor wie nog nooit betaald lid was.
   let vriendVan = null;
   const vc = String(body.vriend || '').replace(/[^a-z0-9]/gi, '').slice(0, 12);
-  if (vc && !herstel && automatisch && planVan(body.plan) === 'maand' && !lid.betaaldOoit && lid.bron !== 'betaald') {
+  if (vc && !herstel && planVan(body.plan) === 'maand' && !lid.betaaldOoit && lid.bron !== 'betaald') {
     const v = await redis(['GET', `lid:vriend:${vc}`]);
     if (v.ok && v.result && v.result !== email) vriendVan = vc;
   }
@@ -640,6 +645,7 @@ async function routeWebhook(req, res) {
       // Eenmalige iDEAL-betaling (zonder incasso): een maand of jaar erbij,
       // vanaf de huidige einddatum als die nog loopt. Geen abonnement.
       const plan = planVan(p.metadata.plan);
+      if (p.metadata.vriend && !lid.vriendVan) { lid.vriendVan = p.metadata.vriend; await beloonVriend(p.metadata.vriend, lidEmail, lid.naam); }
       lid.plan = plan; lid.handmatig = true; lid.customerId = p.customerId || lid.customerId;
       const basis = lid.tot && Date.parse(lid.tot) > Date.now() ? new Date(lid.tot) : new Date(betaaldOp);
       lid.tot = plusMaanden(basis, PLANNEN[plan].maanden).toISOString();

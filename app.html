@@ -181,6 +181,9 @@
   .vd-week > span { white-space:nowrap; }
   .vd-week > span + span::before { content:'·'; margin-right:14px; color:var(--muted); }
   .vd-week .ok { color:#4CC38A; }
+  .vr-uitnodig { background:var(--accent); color:#0a0a0a; border-radius:8px; padding:12px 14px; margin-bottom:14px; }
+  .vr-uitnodig b { display:block; font-size:15px; }
+  .vr-uitnodig span { display:block; font-size:13.5px; margin-top:2px; }
   .lid-sub { color:rgba(245,243,239,.82); font-size:15px; line-height:1.5; margin:4px 0 14px; }
   .lid-stapel { margin:14px 0 16px; display:grid; gap:8px; }
   details.ls-rij { border:1px solid rgba(255,255,255,.12); border-radius:8px; background:rgba(0,0,0,.25); }
@@ -1958,10 +1961,14 @@ function lidStap2Html() {
     <button type="button" class="sb-link" data-lidplan="terug" style="display:block;margin:8px auto 0">Ander plan kiezen</button></div>`;
 }
 document.addEventListener('click', (e) => { const k = e.target.closest('[data-lidplan="terug"]'); if (!k) return; LV.plan = null; const s2 = document.getElementById('lidStap2'); if (s2) s2.innerHTML = ''; document.querySelector('.plannen')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+function vriendUitnodigHtml() {
+  if (!vriendCodeLs()) return '';
+  return `<div class="vr-uitnodig"><b>Je bent uitgenodigd door een maat</b><span>Je krijgt 50% korting op je eerste maand: &euro;${APP_PRIJS.half} in plaats van &euro;${APP_PRIJS.maand}. Kies hieronder per maand.</span></div>`;
+}
 function binnenkortPitchHtml() {
   // Vóór de lancering: prijzen al zichtbaar, knoppen nog dicht (09-10-2026).
   const d = zicht();
-  return `<div class="lidblok">${lidKopHtml(d).replace('<div class="label">MKC-app</div>', '<div class="label">MKC-app &middot; opent vrijdag 16 oktober</div>')}
+  return `<div class="lidblok">${vriendUitnodigHtml()}${lidKopHtml(d).replace('<div class="label">MKC-app</div>', '<div class="label">MKC-app &middot; opent vrijdag 16 oktober</div>')}
     ${lidGebruikHtml(d)}${lidStapelHtml(d)}${LID_BEWIJS_KORT}
     ${plannenHtml(true)}
     <p class="klein lid-risico">Lid worden kan vanaf vrijdag 16 oktober om 12:00. Per maand en altijd opzegbaar. Je bandenspanning en je 3 gratis coachvragen kun je nu al gebruiken.</p></div>`;
@@ -1980,7 +1987,7 @@ function plannenHtml(dicht) {
       <div class="plan">
         <div class="plan-naam">Per maand</div>
         <div class="prijs">&euro;${APP_PRIJS.maand}<small>per maand</small></div>
-        <div class="plan-sub">${vriendCodeLs() ? 'via je maat: eerste maand &euro;' + APP_PRIJS.half : D && D.lid && D.lid.terugAanbod ? 'welkom terug: eerste maand &euro;' + APP_PRIJS.half : 'op elk moment opzegbaar'}</div>
+        <div class="plan-sub">${vriendCodeLs() ? '<b style="color:var(--accent)">50% korting via je maat:</b> eerste maand &euro;' + APP_PRIJS.half : D && D.lid && D.lid.terugAanbod ? 'welkom terug: eerste maand &euro;' + APP_PRIJS.half : 'op elk moment opzegbaar'}</div>
         ${knop('maand', 'Kies per maand', true)}</div>
     </div>`;
 }
@@ -2008,7 +2015,7 @@ document.addEventListener('change', (e) => { if (e.target.id === 'lfLand') { lid
 // €9,99 x 12 = €119,88, jaar €89: bijna €31 voordeel, ruim 3 maanden.
 function lidPitchHtml() {
   const d = zicht();
-  return `<div class="lidblok">${lidKopHtml(d)}
+  return `<div class="lidblok">${vriendUitnodigHtml()}${lidKopHtml(d)}
     ${lidGebruikHtml(d)}${lidStapelHtml(d)}${LID_BEWIJS_KORT}
     ${plannenHtml(false)}
     <p class="klein lid-risico">Geen contract. Per maand altijd opzegbaar, met &eacute;&eacute;n tik in de app.</p>
@@ -2666,7 +2673,7 @@ function teken() {
     ${beheerHtml(d)}${d.beheer ? `<details class="bh-groep" data-klap="beheer" ${klapOpen('beheer', true) ? 'open' : ''}><summary><b>Beheer</b><span>leden, gebruik, doelen, schema's, Core, nakijken</span></summary>${aankondigHtml()}${pushOpnieuwHtml()}${ledenHtml()}${gebruikHtml()}${doelenBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}${opvolgHtml()}${nakijkHtml()}</details>` : ''}
     <div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
     ${welkomNu() ? '<p class="welkom-michel">Begin hieronder met je eerste week. Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
-    ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
+    ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${vriendCodeLs() ? '<a href="#" data-actie="naarlid">je maat gaf je 50% korting op je eerste maand</a>' : kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
     <div id="groepsrit">${grHtml()}</div>
     ${reviewHtml(d)}
     ${meldingenHtml(d)}<div id="meldvraag">${startlijstHtml(d) || eersteWeekHtml(d) ? '' : meldVraagHtml()}</div>
@@ -2798,9 +2805,12 @@ document.addEventListener('click', (e) => {
   setTimeout(() => { const el = document.getElementById('review'); if (el) el.remove(); }, k.dataset.review === 'later' ? 0 : 400);
 });
 function lidExtraHtml(l) {
-  if (!l || l.bron === 'coaching' || l.bron === 'schema' || l.bron === 'cadeau') return '';
+  if (!l) return '';
+  const inbegrepen = l.vriendBeloning === false || ['coaching', 'schema', 'cadeau'].includes(l.bron);
+  const wat = l.bron === 'coaching' ? 'je coaching' : 'je schema';
+  const jij = inbegrepen ? 'Omdat de app bij ' + wat + ' inbegrepen is, krijg je er zelf geen korting voor. Je maat wel, en je krijgt een berichtje zodra die lid is.' : 'En jij krijgt er ook iets voor terug: ' + (l.plan === 'jaar' || l.handmatig || l.status !== 'actief' ? 'een halve maand gratis erbij' : '50% korting op je volgende maand') + ', zodra die lid is.';
   return `<div class="lid-extra">
-    ${l.vriendKan ? '<div class="vriend"><b>Nodig een vriend of vriendin uit, samen voor de helft</b><p>Die krijgt de eerste maand voor de helft, en jij ' + (l.plan === 'jaar' || l.handmatig || l.status !== 'actief' ? 'krijgt er een halve maand gratis bij' : 'krijgt 50% korting op je volgende maand') + ' zodra die lid is.</p><div class="rij2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app</button></div></div>' : ''}
+    ${l.vriendKan ? '<div class="vriend"><b>Nodig een vriend uit: die krijgt 50% korting</b><p>Je vriend of vriendin betaalt de eerste maand de helft. ' + jij + '</p><div class="rij2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app</button></div></div>' : ''}
     ${l.facturen ? '<button type="button" class="lid-link" data-lx="facturen">Mijn facturen</button>' : ''}</div>`;
 }
 document.addEventListener('click', async (e) => {
@@ -2834,7 +2844,7 @@ document.addEventListener('click', async (e) => {
   if (a === 'vriend') {
     try { const j = await (await fetch('/api/lid?actie=vriend&t=' + encodeURIComponent(leesToken()))).json();
       if (!j.ok) return alert(j.fout || 'Dat lukte niet.');
-      const tekst = 'Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding, voeding, core en een eigen coach. Via mijn link krijgen we allebei 50% korting op een maand.';
+      const tekst = 'Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding, voeding, core en een eigen coach. Via mijn link krijg je 50% korting op je eerste maand.';
       if (navigator.share) { try { await navigator.share({ title: 'MKC-app', text: tekst, url: j.url }); return; } catch (er) { if (er && er.name === 'AbortError') return; } }
       try { await navigator.clipboard.writeText(j.url); alert('Link gekopieerd: ' + j.url); } catch (er) { prompt('Kopieer je link:', j.url); }
     } catch (er) { alert('Verbinding mislukt.'); }
