@@ -269,6 +269,11 @@
   .maand-tekst > span { display:block; font-size:12.5px; color:var(--muted); line-height:1.35; } .maand-tekst .md-balk { width:100%; margin-top:8px; } .maand-nog { margin-top:4px; font-size:12px !important; color:var(--white) !important; }
   .maand-klaar { margin-top:6px; color:var(--accent) !important; font-weight:700; } .maand-klaar.slot { color:var(--muted) !important; font-weight:400; }
   .maand-col { display:flex; gap:8px; margin-top:8px; overflow-x:auto; } .maand-col div { text-align:center; } .maand-col small { display:block; font-size:9.5px; color:var(--muted); }
+  .rl-tabs { display:grid; grid-template-columns:1fr 1fr; gap:4px; background:rgba(0,0,0,.35); border-radius:10px; padding:4px; margin-top:14px; }
+  .rl-tabs button { background:none; border:0; color:var(--muted); font-family:inherit; font-size:13px; font-weight:700; padding:8px 0; border-radius:8px; cursor:pointer; } .rl-tabs button.aan { background:var(--accent); color:#0a0a0a; }
+  .rl-uitleg { margin:8px 0 0; text-align:center; }
+  .pm-intro { border-color:var(--accent) !important; } .pm-stappen { margin:10px 0 14px; padding-left:20px; display:grid; gap:10px; } .pm-stappen b { display:block; font-size:14.5px; } .pm-stappen span { font-size:13px; color:var(--muted); line-height:1.4; }
+  .maand-spoor { display:block; font-style:normal; font-size:11.5px; color:var(--accent); margin-top:3px; }
   .pm-reeks { display:flex; align-items:center; gap:10px; margin-top:12px; background:rgba(255,107,26,.1); border:1px solid rgba(255,107,26,.35); border-radius:10px; padding:8px 12px; }
   .pm-reeks b { font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1; color:var(--accent); } .pm-reeks span { font-size:12.5px; color:var(--muted); }
   .pm-goud { display:inline-block; margin-left:6px; background:linear-gradient(90deg,#fff1a8,#f3c22c); color:#3d2700; font-size:10px; font-weight:800; letter-spacing:.08em; padding:2px 8px; border-radius:20px; }
@@ -2738,6 +2743,9 @@ function vandaagHtml(d) {
     const nog = Math.ceil((Date.parse(dl.datum + 'T08:00:00') - Date.now()) / 864e5);
     if (nog >= 0) rijen.push(vdRij('pacing', 'Je doel', esc(dl.naam) + ' &middot; ' + (nog === 0 ? 'vandaag, succes!' : nog === 1 ? 'morgen' : 'nog ' + nog + ' dagen'), { doel: true }));
   }
+  // Bijna binnen: de volgende medaille, de sterkste reden om vandaag iets te doen
+  { const bn = (d.badges || []).filter((b) => b.volgende && !b.binnenkort && !b.goudLid && !b.goudKlaar && b.waarde > 0).sort((a, b) => (b.waarde / b.volgende) - (a.waarde / a.volgende))[0];
+    if (bn) rijen.push(vdRij('palmares', 'Bijna binnen', esc(bn.naam) + ' ' + ['brons', 'zilver', 'goud'][bn.niveau] + ' &middot; ' + bn.waarde + ' van ' + bn.volgende, { view: 'palmares' })); }
   // Je week in één regel: wat je al deed, zodat je ziet dat het opbouwt
   const wk = [];
   if (c && !c.intakeNodig && c.frequentie) wk.push(c.gedaan >= c.frequentie ? '<span class="ok">&#10003; Core deze week rond</span>' : 'Core <b>' + c.gedaan + ' van ' + c.frequentie + '</b>');
@@ -3093,6 +3101,16 @@ function medailleSvg(b, maat, opts = {}) {
     ${niv === 4 ? '<path d="M38 128h44l-4 8H42z" fill="#0b0b0b"/><text x="60" y="134.5" text-anchor="middle" font-family="DM Sans, Arial, sans-serif" font-size="6.5" font-weight="800" letter-spacing="1" fill="#FF6B1A">LIMITED</text>' : slot ? `<g transform="translate(84 106)"><circle r="13" fill="#0b0b0b" stroke="#FF6B1A" stroke-width="2"/><rect x="-5.5" y="-2" width="11" height="9" rx="2" fill="#FF6B1A"/><path d="M-3.4-2v-3a3.4 3.4 0 0 1 6.8 0v3" fill="none" stroke="#FF6B1A" stroke-width="2"/></g>` : [1, 2, 3].slice(0, niv).map((n, i) => ster(60 + (i - (niv - 1) / 2) * 15)).join('')}
   </svg>`;
 }
+function pmIntroWeg() { try { return localStorage.getItem('mkcPmIntro') === '1'; } catch (e) { return false; } }
+function pmIntroHtml() {
+  if (pmIntroWeg()) return '';
+  return `<div class="kaart actief pm-intro"><div class="kaart-in"><div class="label">Zo werkt je palmares</div><h2>Verdien je medailles</h2>
+    <ol class="pm-stappen"><li><b>Brons, zilver en goud</b><span>Elke badge heeft drie medailles. Je verdient ze met wat je echt doet: Core, ritten, groepsritten, maten en elke dag de app openen.</span></li>
+    <li><b>Beloningen</b><span>Bij 5, 10, 15 en 25 medailles speel je iets vrij, van een extra sessie van Michel tot een gratis analyse.</span></li>
+    <li><b>Je renner en het podium</b><span>Je staat op de ranglijst met je eigen renner. Elke maand begint de maandstand opnieuw, dus iedereen maakt kans op het podium.</span></li></ol>
+    <button type="button" class="knop" data-pmintro="weg">Begrepen, laat zien</button></div></div>`;
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-pmintro]')) { try { localStorage.setItem('mkcPmIntro', '1'); } catch (er) {} teken(); } });
 function palmaresStand(d) {
   const l = (d && d.badges) || [], m = (d && d.medailles) || l.reduce((t, b) => t + (b.niveau || 0), 0);
   const tel = [1, 2, 3].map((n) => l.filter((b) => b.niveau >= n).length);
@@ -3119,7 +3137,7 @@ function palmaresHtml(d) {
   const gratisHaal = l.filter((b) => !b.lid && !b.binnenkort).length;
   const allesGoud = (g) => l.filter((b) => b.groep === g && !b.binnenkort).every((b) => b.niveau === 3);
   const bijna = open.filter((b) => b.waarde > 0).slice(0, 3);
-  return `${ranglijstHtml(d)}<div class="kaart actief palmares"><div class="kaart-in">
+  return `${pmIntroHtml()}${ranglijstHtml(d)}<div class="kaart actief palmares"><div class="kaart-in">
     <div class="pm-kop"><div><div class="label">Je palmares</div><h2>${m} ${m === 1 ? 'medaille' : 'medailles'}</h2><p class="klein" style="margin:2px 0 0">${m - ((d.maandCollectie || []).length)} van de ${max} badge-medailles${(d.maandCollectie || []).length ? ' + ' + d.maandCollectie.length + ' maandmedaille' + (d.maandCollectie.length === 1 ? '' : 's') : ''}</p><p class="klein" style="margin:4px 0 0">Elke badge heeft drie medailles: brons, zilver en goud. Verdiend met wat je echt doet.</p></div></div>
     ${d.appReeks ? `<div class="pm-reeks"><b>${d.appReeks}</b><span>${d.appReeks === 1 ? 'dag' : 'dagen'} op rij de app geopend${d.appReeks < 7 ? ' &middot; bij 7 dagen je eerste medaille' : ''}</span></div>` : ''}
     ${maandHtml(d)}
@@ -3133,7 +3151,7 @@ function palmaresHtml(d) {
   </div></div>`;
 }
 // ---- Ranglijst (13-10-2026): eigen renner met bijnaam en avatar ----
-let RL = { data: null, laden: false, maak: false, keuze: null };
+let RL = { data: null, laden: false, maak: false, keuze: null, periode: 'maand' };
 const RL_IC = {
   fiets: MD_IC.fiets, berg: '<path d="M2 20l7-12 4 6 3-4 6 10z"/><path d="M7.5 10.5l1.5 1.5 1.5-1.5"/>', bliksem: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
   wiel: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M12 3v7M12 14v7M3 12h7M14 12h7M5.6 5.6l5 5M13.4 13.4l5 5M18.4 5.6l-5 5M10.6 13.4l-5 5"/>',
@@ -3238,7 +3256,7 @@ function avatarSvg(p, maat) {
 }
 async function rlLaad() {
   if (RL.laden) return; RL.laden = true;
-  try { const j = await (await fetch(API + '?actie=ranglijst&t=' + encodeURIComponent(leesToken()))).json(); if (j.ok) RL.data = j; } catch (e) {}
+  try { const j = await (await fetch(API + '?actie=ranglijst&periode=' + RL.periode + '&t=' + encodeURIComponent(leesToken()))).json(); if (j.ok) RL.data = j; } catch (e) {}
   RL.laden = false; if (VIEW === 'palmares') rlTeken();
 }
 function rlTeken() { const el = document.getElementById('ranglijst'); if (el) el.outerHTML = ranglijstHtml(zicht()); }
@@ -3274,20 +3292,25 @@ function ranglijstHtml(d) {
       <button type="button" class="knop" data-rl="bewaar" style="margin-top:12px">${x.profiel ? 'Bewaar mijn renner' : 'Zet me op de ranglijst'}</button>${x.profiel ? '<button type="button" class="sb-link" data-rl="annuleer" style="display:block;margin:8px auto 0">Annuleren</button>' : ''}<p class="klein rl-fout" id="rlFout"></p></div></div>`;
   }
   // Podium (2-1-3) en daaronder alleen je eigen plek. Geen totaal aantal deelnemers.
-  const blok = (r, plek) => r ? `<div class="pd-plek p${plek}${r.ik ? ' ik' : ''}"><div class="pd-renner">${avatarSvg(r, plek === 1 ? 70 : 56)}${plek === 1 ? '<span class="pd-kroon">' + medailleSvg({ icoon: 'ster', niveau: 3 }, 26) + '</span>' : ''}</div><b>${esc(r.naam)}${r.ik ? ' <em>jij</em>' : ''}</b><small>${r.medailles} medailles${r.goud ? ' &middot; ' + r.goud + ' goud' : ''}</small><div class="pd-trede"><span>${plek}</span></div></div>`
+  const blok = (r, plek) => r ? `<div class="pd-plek p${plek}${r.ik ? ' ik' : ''}"><div class="pd-renner">${avatarSvg(r, plek === 1 ? 70 : 56)}${plek === 1 ? '<span class="pd-kroon">' + medailleSvg({ icoon: 'ster', niveau: 3 }, 26) + '</span>' : ''}</div><b>${esc(r.naam)}${r.ik ? ' <em>jij</em>' : ''}</b><small>${r.medailles} ${r.medailles === 1 ? 'medaille' : 'medailles'}${r.goud ? ' &middot; ' + r.goud + ' goud' : ''}</small><div class="pd-trede"><span>${plek}</span></div></div>`
     : `<div class="pd-plek p${plek} leeg"><div class="pd-renner"><span class="pd-vrij">?</span></div><b>Nog vrij</b><small>&nbsp;</small><div class="pd-trede"><span>${plek}</span></div></div>`;
   const r1 = x.rijen[0], r2 = x.rijen[1], r3 = x.rijen[2];
   const opPodium = x.rijen.some((r) => r.ik);
   const nogNaar3 = r3 && x.ik ? Math.max(1, r3.medailles - x.ik.medailles + (r3.medailles === x.ik.medailles ? 1 : 0)) : 0;
-  const mijnPlek = !opPodium && x.ik ? `<div class="pd-ik">${avatarSvg(x.profiel, 44)}<div><b>Jouw plek: #${x.ik.plek}</b><small>${x.ik.medailles} medailles${x.ik.goud ? ' &middot; ' + x.ik.goud + ' goud' : ''}${nogNaar3 ? ' &middot; nog ' + nogNaar3 + (nogNaar3 === 1 ? ' medaille' : ' medailles') + ' tot het podium' : ''}</small></div></div>` : '';
+  const mijnPlek = !opPodium && x.ik ? `<div class="pd-ik">${avatarSvg(x.profiel, 44)}<div><b>Jouw plek: #${x.ik.plek}</b><small>${x.ik.medailles} ${x.ik.medailles === 1 ? 'medaille' : 'medailles'}${x.ik.goud ? ' &middot; ' + x.ik.goud + ' goud' : ''}${nogNaar3 ? ' &middot; nog ' + nogNaar3 + (nogNaar3 === 1 ? ' medaille' : ' medailles') + ' tot het podium' : ''}</small></div></div>` : '';
   return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in">
     <div class="rl-kop"><div><div class="label">Ranglijst</div><h2>${opPodium ? 'Jij staat op het podium!' : 'Het podium'}</h2><p class="klein" style="margin:2px 0 0">Op medailles, bij gelijke stand telt goud.</p></div><div class="rl-ik">${x.profiel.trui ? rennerFiets(x.profiel, 110) : avatarSvg(x.profiel, 54)}<small>${esc(x.profiel.naam)}</small></div></div>
     ${x.profiel.auto ? `<div class="rl-auto">Je doet mee als <b>${esc(x.profiel.naam)}</b>. Andere naam of een eigen renner? <button type="button" class="sb-link" data-rl="wijzig" style="display:inline;margin:0">Naar je kleedkamer</button></div>` : ''}
+    <div class="rl-tabs"><button type="button" data-rlper="maand" class="${RL.periode === 'maand' ? 'aan' : ''}">Deze maand</button><button type="button" data-rlper="alles" class="${RL.periode === 'alles' ? 'aan' : ''}">Aller tijden</button></div>
+    ${RL.periode === 'maand' ? '<p class="klein rl-uitleg">Elke maand begint iedereen weer bij nul. Medailles die je deze maand haalt, tellen.</p>' : ''}
     <div class="podium">${blok(r2, 2)}${blok(r1, 1)}${blok(r3, 3)}</div>
+    ${!opPodium && !x.ik && RL.periode === 'maand' ? '<div class="pd-ik"><div><b>Nog niet in de maandstand</b><small>Haal deze maand een medaille en je staat erop.</small></div></div>' : ''}
     ${mijnPlek}
+    <button type="button" class="knop leeg" data-rl="deel" style="margin-bottom:8px">Deel je renner als story</button>
     <button type="button" class="sb-link" data-rl="wijzig">Naar je kleedkamer</button> <button type="button" class="sb-link" data-rl="weg" style="margin-left:12px">Van de ranglijst af</button></div></div>`;
 }
 document.addEventListener('click', async (e) => {
+  const per = e.target.closest('[data-rlper]'); if (per) { RL.periode = per.dataset.rlper; RL.data = null; return rlTeken(); }
   const kl = e.target.closest('[data-rlkleur]'), ic = e.target.closest('[data-rlicoon]'), a = e.target.closest('[data-rl]'), tb = e.target.closest('[data-rltab]'), it = e.target.closest('[data-rlitem]');
   if (!kl && !ic && !a && !tb && !it) return;
   const veld = document.getElementById('rlNaam'); if (veld && RL.keuze) RL.keuze.naam = veld.value;
@@ -3296,6 +3319,7 @@ document.addEventListener('click', async (e) => {
   if (kl) { RL.keuze.kleur = kl.dataset.rlkleur; return rlTeken(); }
   if (ic) { RL.keuze.icoon = ic.dataset.rlicoon; return rlTeken(); }
   const w = a.dataset.rl;
+  if (w === 'deel') { a.disabled = true; a.textContent = 'Even maken...'; try { await rennerStory(); } catch (er) { alert('Het plaatje maken lukte niet.'); } a.disabled = false; a.textContent = 'Deel je renner als story'; return; }
   if (w === 'wijzig') { RL.maak = true; RL.keuze = null; return rlTeken(); }
   if (w === 'annuleer') { RL.maak = false; return rlTeken(); }
   if (w === 'weg') { if (!confirm('Van de ranglijst af? Je medailles blijven gewoon staan, en je kunt altijd weer meedoen.')) return; await fetch(API + '?actie=rangprofiel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), weg: true }) }); RL.data = null; RL.keuze = null; RL.maak = false; return rlTeken(); }
@@ -3315,7 +3339,7 @@ function maandMedaille(u, behaald, maat) { return medailleSvg({ tekst: u.kort, n
 function maandHtml(d) {
   const u = d && d.maand; if (!u) return '';
   const p = Math.round((u.waarde / u.doel) * 100), col = (d.maandCollectie || []).filter((c) => c.sleutel !== u.sleutel);
-  return `<div class="maand${u.behaald ? ' aan' : ''}" data-maand="1"><div class="maand-md">${maandMedaille(u, u.behaald, 78)}</div><div class="maand-tekst"><small>Maanduitdaging &middot; limited edition</small><b>${esc(u.naam)}</b><span>${esc(u.uitleg)}</span>
+  return `<div class="maand${u.behaald ? ' aan' : ''}" data-maand="1"><div class="maand-md">${maandMedaille(u, u.behaald, 78)}</div><div class="maand-tekst"><small>Maanduitdaging &middot; limited edition</small><b>${esc(u.naam)}</b><span>${esc(u.uitleg)}${u.gratisSpoor ? ' <em class="maand-spoor">Gratis variant &middot; leden: ' + esc(u.ledenUitleg) + '</em>' : ''}</span>
     ${u.behaald ? '<span class="maand-klaar">&#10003; Binnen! Deze medaille is van jou.</span>' : u.opSlot ? '<span class="maand-klaar slot">Deze maand voor leden. Volgende maand weer voor iedereen.</span>' : `<span class="md-balk"><i style="width:${p}%"></i></span><span class="maand-nog">${u.waarde} / ${u.doel} &middot; nog ${u.dagenOver} ${u.dagenOver === 1 ? 'dag' : 'dagen'}</span>`}</div></div>
     ${col.length ? `<div class="maand-col">${col.map((c) => `<div title="${esc(c.naam)}">${maandMedaille(c, true, 36)}<small>${c.kort}</small></div>`).join('')}</div>` : ''}`;
 }
@@ -3334,6 +3358,33 @@ function rnNieuwVrij() {
   if (!R || !vorig) return [];
   const open = (it, mm, gg) => !it.vanaf || (mm >= (it.vanaf.m || 0) && gg >= (it.vanaf.g || 0));
   return Object.values(R).flat().filter((it) => it.vanaf && open(it, m, g) && !open(it, vorig.m, vorig.g)).map((it) => it.naam);
+}
+// Story van je renner: renner op de fiets, je naam, je plek en medailles, en je uitnodiglink.
+async function rennerStory() {
+  const x = RL.data, d = zicht() || {}; if (!x || !x.profiel) return;
+  try { await Promise.all([document.fonts.load('120px "Bebas Neue"'), document.fonts.load('600 40px "DM Sans"')]); } catch (e) {}
+  let url = 'rapport.michelkredercoaching.nl/app';
+  try { const j = await (await fetch('/api/lid?actie=uitnodig', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), mijnNaam: String((D && D.naam) || '').split(' ')[0] }) })).json(); if (j.ok) url = j.url.replace(/^https?:\/\//, ''); } catch (e) {}
+  const W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H; const g2 = c.getContext('2d');
+  let g = g2.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1d120b'); g.addColorStop(.6, '#0b0b0b'); g2.fillStyle = g; g2.fillRect(0, 0, W, H);
+  g = g2.createRadialGradient(W / 2, 900, 60, W / 2, 900, 700); g.addColorStop(0, 'rgba(255,107,26,.3)'); g.addColorStop(1, 'rgba(255,107,26,0)'); g2.fillStyle = g; g2.fillRect(0, 0, W, H);
+  const bebas = (px) => px + 'px "Bebas Neue", Impact, sans-serif', dm = (px, w = 400) => w + ' ' + px + 'px "DM Sans", Arial, sans-serif';
+  g2.fillStyle = '#F5F3EF'; g2.font = bebas(110); g2.fillText('MKC', 80, 190); const w1 = g2.measureText('MKC').width; g2.fillStyle = '#FF6B1A'; g2.fillText('.', 80 + w1, 190);
+  g2.font = dm(30, 700); g2.textAlign = 'right'; g2.fillText('MIJN RENNER', W - 80, 150); g2.textAlign = 'center';
+  const svg = rennerFiets(x.profiel, 960).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+  const img = await new Promise((ok, nee) => { const i = new Image(); i.onload = () => ok(i); i.onerror = nee; i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });
+  g2.drawImage(img, 60, 420, 960, 600);
+  g2.fillStyle = '#F5F3EF'; g2.font = bebas(160); g2.fillText(String(x.profiel.naam).toUpperCase(), W / 2, 1230);
+  const plek = x.ik ? (x.periode === 'maand' ? '#' + x.ik.plek + ' deze maand' : '#' + x.ik.plek + ' aller tijden') : '';
+  g2.fillStyle = '#FF6B1A'; g2.font = dm(46, 700); g2.fillText([(d.medailles || 0) + ' medailles', plek].filter(Boolean).join('  ·  '), W / 2, 1320);
+  g2.fillStyle = 'rgba(245,243,239,.75)'; g2.font = dm(40, 500); g2.fillText('Medailles verdienen met elke rit en elke Core-sessie.', W / 2, 1420);
+  g2.fillStyle = '#FF6B1A'; g2.font = dm(36, 700); g2.fillText('Rij mee met 50% korting:', W / 2, 1720);
+  g2.fillStyle = '#F5F3EF'; g2.font = dm(32, 600); g2.fillText(url, W / 2, 1772);
+  const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.92));
+  const file = new File([blob], 'mkc-renner.jpg', { type: 'image/jpeg' });
+  statEens('deel');
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: 'Mijn renner in de MKC-app. Rij mee met 50% korting: https://' + url }); return; } catch (er) { if (er && er.name === 'AbortError') return; } }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 function medailleSlot() { return '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>'; }
 function badgeModal(id, nieuwNiveau) {
@@ -3949,7 +4000,10 @@ function badgeBeheerHtml() {
   if (!x) return `<div class="geb" id="bhbadges">${kop}<div class="geb-in"><p class="klein">Laden...</p></div></div>`;
   const w = BH.badges.wie;
   const nakijk = w ? `<div class="bh-nakijk"><b>${esc(w.email)}</b><p class="klein">Tellers: ${Object.entries(w.teller || {}).filter(([k]) => k !== 'gezaaid').map(([k, v]) => esc(k) + ' ' + v).join(' &middot; ') || 'geen'}</p><table class="geb-tab">${Object.entries(w.verdiend || {}).flatMap(([id, niv]) => Object.entries(niv || {}).map(([n, op]) => `<tr><td>${esc(((x.badges.find((b) => b.id === id)) || {}).naam || id)} &middot; ${['', 'brons', 'zilver', 'goud'][n] || n}</td><td><small>${esc(new Date(op).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}</small></td></tr>`)).join('') || '<tr><td><small>Nog geen medailles</small></td></tr>'}${Object.keys(w.beloning || {}).length ? `<tr><td colspan="2"><small>Beloningen: ${Object.entries(w.beloning).map(([k, v]) => esc(k) + ' (' + esc(new Date(v.op).toLocaleDateString('nl-NL')) + ')').join(', ')}</small></td></tr>` : ''}</table></div>` : '';
+  const st = x.stats || {}, bl = st.beloningen || {};
+  const totalen = `<div class="bh-cellen"><div class="bh-cel"><b>${st.medailles || 0}</b><span>medailles uitgedeeld</span></div><div class="bh-cel"><b>${st.klassement || 0}</b><span>in het klassement</span></div><div class="bh-cel"><b>${st.klassementMaand || 0}</b><span>in de maandstand</span></div><div class="bh-cel"><b>${st.maandWinnaars || 0}</b><span>${esc(st.maandNaam || 'maanduitdaging')} gehaald</span></div></div><p class="klein" style="margin:6px 0 10px">Beloningen: ${['m5', 'm10', 'm15', 'm25'].map((k) => ({ m5: '5', m10: '10', m15: '15', m25: '25' })[k] + ' medailles: ' + (bl[k] || 0)).join(' &middot; ')}. Alleen voor jou zichtbaar.</p>`;
   return `<div class="geb" id="bhbadges">${kop}<div class="geb-in">
+    ${totalen}
     <table class="geb-tab"><tr><th>Badge</th><th>Brons</th><th>Zilver</th><th>Goud</th></tr>${x.badges.map((b) => `<tr><td>${esc(b.naam)}</td><td><b>${b.aantal[0]}</b></td><td><b>${b.aantal[1]}</b></td><td><b>${b.aantal[2]}</b></td></tr>`).join('')}</table>
     <div class="rv-sub">Meeste medailles</div><table class="geb-tab">${x.top.map((m) => `<tr><td><button type="button" class="sb-link" data-bhbadge="${esc(m.email)}" style="margin:0">${esc(m.email)}</button></td><td><b>${m.aantal}</b></td></tr>`).join('') || '<tr><td><small>Nog niemand</small></td></tr>'}</table>
     <div class="gr-maak" style="margin-top:10px"><label>Nakijken: mailadres</label><div style="display:grid;grid-template-columns:1fr auto;gap:8px"><input id="bhBadgeMail" type="email" placeholder="naam@voorbeeld.nl"><button type="button" class="knop" data-bhbadge="veld" style="width:auto;padding:0 16px">Bekijk</button></div></div>
@@ -4709,6 +4763,7 @@ function meldInstHtml() {
     <label><input type="checkbox" data-pushsoort="core" ${i.core ? 'checked' : ''}> Core-herinnering</label>
     ${zicht() && !isLid(zicht()) ? `<label><input type="checkbox" data-pushsoort="tip" ${i.tip !== false ? 'checked' : ''}> Elke ochtend een tip van Michel</label>` : ''}
     <label><input type="checkbox" data-pushsoort="doel" ${i.doel !== false ? 'checked' : ''}> Tips en herinneringen voor je doel</label>
+    <label><input type="checkbox" data-pushsoort="reeks" ${i.reeks !== false ? 'checked' : ''}> Seintje als je reeks dreigt te stoppen (19:00)</label>
     ${zicht() && isLid(zicht()) ? `<label><input type="checkbox" data-pushsoort="ochtend" ${i.ochtend ? 'checked' : ''}> Ochtendbericht (weer, banden en kleding)</label>` : ''}
     <p class="klein" style="margin-top:8px">Staat iets uit, dan zie je het gewoon hier in de app zodra je hem opent.</p></div></div></details>`;
 }

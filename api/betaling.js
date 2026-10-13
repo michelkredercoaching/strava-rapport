@@ -347,6 +347,8 @@ export default async function handler(req, res) {
       // via de gemailde link ophaalt daarna nog een keer gratis kunnen leveren
       // via het webshop-vangnet verderop. Eén betaling blijft één rapport.
       if (email) await markeerGratisOpgehaald(email);
+      // Badge "Gemeten" in de MKC-app: ook een gratis analyse telt (13-10-2026).
+      if (email) { try { await redis(['HINCRBY', `app:teller:${String(email).trim().toLowerCase()}`, 'analyses', '1']); } catch (e) {} }
       // gratis:true → de funnel stuurt de bezoeker naar het 'check je mail'-scherm.
       return res.status(200).json({ gratis: true, prijs: 0 });
     } catch (err) {
