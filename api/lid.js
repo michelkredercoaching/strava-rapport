@@ -347,10 +347,11 @@ async function routeFactuurPdf(req, res) {
 async function routeVriend(req, res) {
   const email = await lidUitToken(req, res, req.query?.t); if (!email) return;
   const lid = await haalLid(email);
-  if (!lid || !lidBeeld(lid).vriendKan) return res.status(400).json({ ok: false, fout: 'Uitnodigen kan als je lid bent.' });
+  // Iedereen met een account mag uitnodigen, ook gratis (13-10-2026).
+  if (lid && lid.status === 'verwijderd') return res.status(400).json({ ok: false, fout: 'Uitnodigen kan nu niet.' });
   const code = vriendCode(email);
   await redis(['SET', `lid:vriend:${code}`, email]);
-  return res.status(200).json({ ok: true, code, url: `${APP_URL}?vriend=${code}`, whatsapp: waLink(code), beloningen: lid.vriendBeloningen || 0 });
+  return res.status(200).json({ ok: true, code, url: `${APP_URL}?vriend=${code}`, whatsapp: waLink(code), beloningen: (lid && lid.vriendBeloningen) || 0 });
 }
 // Mijlpalen (13-10-2026, besluit Michel): bovenop de 2 weken per maat.
 // 3 maten: gratis Strava-analyse (ook bij schema; niet bij coaching, dat regelt Michel).
@@ -373,15 +374,23 @@ async function vriendTijdErbij(lid, email, { dagen = 0, maanden = 0 }, wat) {
     lid.tot = plusDagen(nieuw, SPELING_DAGEN).toISOString();
     return `je volgende betaling schuift op naar ${datumKort(nieuw)}`;
   }
-  if (lid.tot && Date.parse(lid.tot) > Date.now()) { lid.tot = verder(lid.tot).toISOString(); return `je app loopt nu tot ${datumKort(lid.tot)}`; }
-  return null;
+  lid.tot = verder(new Date(Math.max(Date.now(), Date.parse(lid.tot || 0) || 0))).toISOString();
+  return `je app loopt nu tot ${datumKort(lid.tot)}`;
 }
 async function beloonVriend(code, maatEmail, maatNaam) {
   const v = await redis(['GET', `lid:vriend:${code}`]);
   const email = v.ok && v.result; if (!email || email === maatEmail) return;
-  const lid = await haalLid(email); if (!lid) return;
+  const lid = (await haalLid(email)) || {};
+  if (lid.status === 'verwijderd') return;
   const vn = String(maatNaam || '').split(' ')[0] || 'Je maat';
   lid.vriendAantal = (lid.vriendAantal || 0) + 1;
+  // Gratis account (of verlopen): wordt gratis lid via zijn maten, 2 weken per maat.
+  const gratis = !lid.subscriptionId && lid.bron !== 'coaching' && !(lid.tot && Date.parse(lid.tot) > Date.now());
+  if (gratis) {
+    lid.bron = 'schema'; lid.cadeauMaand = true; lid.vriendCadeau = true; lid.handmatig = false;
+    lid.status = 'actief'; lid.plan = lid.plan || 'maand'; lid.sinds = lid.sinds || new Date().toISOString();
+    await mcTag(email, 'mkc-lid'); await redis(['SADD', 'lid:schema', email]); await redis(['SADD', 'lid:cadeau', email]);
+  }
   const n = lid.vriendAantal, zelf = !inbegrepen(lid), coaching = lid.bron === 'coaching' && !lid.subscriptionId;
   const meldingen = [];
   // Per maat: 2 weken extra (max 12 per kalenderjaar), alleen voor wie zelf betaalt.
@@ -390,7 +399,7 @@ async function beloonVriend(code, maatEmail, maatNaam) {
     if (lid.vriendJaar !== jaar) { lid.vriendJaar = jaar; lid.vriendBeloningen = 0; }
     if ((lid.vriendBeloningen || 0) < VRIEND_MAX) {
       const zin = await vriendTijdErbij(lid, email, { dagen: VRIEND_DAGEN }, '2 weken extra');
-      if (zin) { lid.vriendBeloningen = (lid.vriendBeloningen || 0) + 1; lid.vriendDagen = (lid.vriendDagen || 0) + VRIEND_DAGEN; meldingen.push({ titel: '2 weken extra voor jou', tekst: `${vn} is lid geworden via jouw link. Je krijgt 2 weken extra: ${zin}.` }); }
+      if (zin) { lid.vriendBeloningen = (lid.vriendBeloningen || 0) + 1; lid.vriendDagen = (lid.vriendDagen || 0) + VRIEND_DAGEN; meldingen.push({ titel: lid.vriendCadeau ? '2 weken gratis lid' : '2 weken extra voor jou', tekst: `${vn} is lid geworden via jouw link. Je krijgt 2 weken ${lid.vriendCadeau ? 'gratis lid, met alles erop en eraan' : 'extra'}: ${zin}.` }); }
     }
   }
   if (!meldingen.length) meldingen.push({ titel: vn + ' is lid geworden', tekst: `${vn} is lid geworden via jouw link en kreeg korting op het lidmaatschap. Bedankt voor het delen!` });
@@ -494,12 +503,12 @@ async function routeJaarKeuze(req, res) {
 
 // App inbegrepen bij coaching of schema (geen eigen betaald lidmaatschap): wel een
 // maat uitnodigen (die krijgt 50%), maar zelf geen beloning (besluit Michel 13-10-2026).
-function inbegrepen(lid) { return (lid.bron === 'coaching' && !lid.subscriptionId) || (lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig); }
+function inbegrepen(lid) { return (lid.bron === 'coaching' && !lid.subscriptionId) || (lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig && !lid.vriendCadeau); }
 function lidBeeld(lid) {
   if (!lid) return { status: 'geen' };
   const open = lid.tot && Date.now() < Date.parse(lid.tot);
   const plan = planVan(lid.plan);
-  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: prijzenVan(lid)[plan], prijs: prijzenVan(lid), handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, terugAanbod: !!(lid.winbackTot && Date.parse(lid.winbackTot) > Date.now()), vriendKan: (!!open || lid.bron === 'coaching') && ['actief', 'opgezegd'].includes(lid.status), vriendBeloning: !inbegrepen(lid), vriendAantal: lid.vriendAantal || 0, vriendDagen: lid.vriendDagen || 0, vriendAnalyse: lid.vriendAnalyse || null, bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
+  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: prijzenVan(lid)[plan], prijs: prijzenVan(lid), handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, terugAanbod: !!(lid.winbackTot && Date.parse(lid.winbackTot) > Date.now()), vriendKan: (!!open || lid.bron === 'coaching') && ['actief', 'opgezegd'].includes(lid.status), vriendBeloning: !inbegrepen(lid), vriendAantal: lid.vriendAantal || 0, vriendDagen: lid.vriendDagen || 0, vriendAnalyse: lid.vriendAnalyse || null, vriendCadeau: !!lid.vriendCadeau, bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
 }
 
 // Kan Mollie al maandelijks incasseren? Zolang SEPA-incasso niet is goedgekeurd
@@ -663,7 +672,7 @@ async function routeWebhook(req, res) {
       const vanaf = soort === 'lid-herstel' && lid.mislukt && lid.mislukt.periodeStart ? new Date(lid.mislukt.periodeStart) : lid.bron === 'schema' && lid.tot && Date.parse(lid.tot) > Date.now() ? new Date(lid.tot) : new Date(betaaldOp);
       lid.mislukt = null;
       if (p.metadata && p.metadata.vriend && !lid.vriendVan) { lid.vriendVan = p.metadata.vriend; await beloonVriend(p.metadata.vriend, lidEmail, lid.naam); }
-      lid.bron = 'betaald';
+      lid.bron = 'betaald'; lid.vriendCadeau = false; lid.cadeauMaand = false;
       if (soort !== 'lid-herstel' || !lid.prijs) lid.prijs = { maand: PLANNEN.maand.bedrag, jaar: PLANNEN.jaar.bedrag };
       const start = plusMaanden(vanaf, PLANNEN[plan].maanden);
       const s = await mollie(`/customers/${p.customerId}/subscriptions`, {
@@ -1019,16 +1028,16 @@ async function schemaEindeMails() {
     const dagenOver = (Date.parse(lid.tot) - Date.now()) / 86400000;
     // Laatste dag (12-10-2026): nog één melding in de app en als pushbericht.
     if (dagenOver <= 1.2 && dagenOver > -1 && lid.schemaLaatsteMelding !== lid.tot && lid.schemaEindeGemaild === lid.tot) {
-      await appMelding(email, { soort: 'lid', titel: lid.cadeauMaand ? 'Je gratis maand loopt morgen af' : 'Je MKC-app loopt morgen af', tekst: 'Blijf lid voor ' + euro(PLANNEN.maand.bedrag) + ' per maand, of kies een vervolgschema: dan hoort de app er weer bij.', link: '/app#lid' });
+      await appMelding(email, { soort: 'lid', titel: lid.cadeauMaand ? 'Je gratis lidmaatschap loopt morgen af' : 'Je MKC-app loopt morgen af', tekst: 'Blijf lid voor ' + euro(PLANNEN.maand.bedrag) + ' per maand, of kies een vervolgschema: dan hoort de app er weer bij.', link: '/app#lid' });
       lid.schemaLaatsteMelding = lid.tot; await bewaarLid(email, lid);
     }
     if (dagenOver > 7 || dagenOver < -3 || lid.schemaEindeGemaild === lid.tot || !key) continue;
-    await appMelding(email, { soort: 'lid', titel: lid.cadeauMaand ? 'Je gratis maand loopt bijna af' : 'Je schema zit erop. Hoe ga je verder?', tekst: 'Kies een vervolgschema dat aansluit op waar je nu staat (de app hoort erbij), of blijf lid van de MKC-app.', link: '/app#lid' });
+    await appMelding(email, { soort: 'lid', titel: lid.cadeauMaand ? 'Je gratis lidmaatschap loopt bijna af' : 'Je schema zit erop. Hoe ga je verder?', tekst: 'Kies een vervolgschema dat aansluit op waar je nu staat (de app hoort erbij), of blijf lid van de MKC-app.', link: '/app#lid' });
     const voornaam = String(lid.naam || '').split(' ')[0];
     const datum = new Date(lid.tot).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
     const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.7;color:#1a1a1a;max-width:560px">
       <p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
-      <p>${lid.cadeauMaand ? `Je gratis maand in de MKC-app loopt op <b>${datum}</b> af. Ik hoop dat je er veel aan had.` : `Je schema zit erop, knap gedaan. De MKC-app die erbij hoorde loopt op <b>${datum}</b> af.`}</p>
+      <p>${lid.cadeauMaand ? `Je gratis lidmaatschap van de MKC-app loopt op <b>${datum}</b> af. Ik hoop dat je er veel aan had.` : `Je schema zit erop, knap gedaan. De MKC-app die erbij hoorde loopt op <b>${datum}</b> af.`}</p>
       <p>Je kunt op twee manieren verder:</p>
       <p><b>Een vervolgschema.</b> Een nieuw blok dat aansluit op waar je nu staat. De app hoort er weer bij, voor de hele looptijd.</p>
       <p style="margin:14px 0 22px"><a href="https://michelkredercoaching.nl/trainingsschema-vervolg/" style="background:#ff6b1a;color:#0a0a0a;padding:13px 24px;border-radius:4px;text-decoration:none;font-weight:700">Kies je vervolgschema</a></p>
@@ -1038,7 +1047,7 @@ async function schemaEindeMails() {
     try {
       const r = await fetch('https://api.resend.com/emails', {
         method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: email, subject: lid.cadeauMaand ? 'Je gratis maand loopt af. Hoe ga je verder?' : 'Je schema zit erop. Hoe ga je verder?', html }),
+        body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: email, subject: lid.cadeauMaand ? 'Je gratis lidmaatschap loopt af. Hoe ga je verder?' : 'Je schema zit erop. Hoe ga je verder?', html }),
         signal: AbortSignal.timeout(8000)
       });
       if (r.ok) { lid.schemaEindeGemaild = lid.tot; await bewaarLid(email, lid); n++; }

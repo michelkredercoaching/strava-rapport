@@ -211,6 +211,13 @@
   .vr-kaart.compact .vr-n b { font-size:34px; }
   .vr-kaart.compact .vr-doel { text-align:left; margin:8px 0 10px; }
   .gr-vriend .vr-kaart.compact { background:rgba(0,0,0,.25); }
+  .of-gratis { text-align:center; margin:18px 0 12px; position:relative; }
+  .of-gratis::before { content:''; position:absolute; left:0; right:0; top:50%; border-top:1px solid rgba(255,255,255,.15); }
+  .of-gratis span { position:relative; background:#1a1310; padding:0 12px; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .vr-moment { position:relative; margin-top:16px; border:1px solid rgba(255,107,26,.5); background:linear-gradient(160deg, rgba(255,107,26,.16), rgba(255,107,26,.02) 60%), var(--surface); border-radius:8px; padding:14px; }
+  .vr-moment small { display:block; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin-bottom:4px; padding-right:24px; }
+  .vr-moment b { display:block; font-size:16px; }
+  .vr-moment p { font-size:13.5px; color:var(--muted); margin:4px 0 10px; }
   .vr-teller { display:flex; gap:8px; margin-top:12px; }
   .vr-teller > div { flex:1; background:rgba(0,0,0,.3); border:1px solid rgba(255,107,26,.35); border-radius:8px; padding:10px 12px; }
   .vr-teller b { display:block; font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1; color:var(--accent); }
@@ -2055,13 +2062,14 @@ function lidPitchHtml() {
     ${lidGebruikHtml(d)}${lidStapelHtml(d)}${LID_BEWIJS_KORT}
     ${plannenHtml(false)}
     <p class="klein lid-risico">Geen contract. Per maand altijd opzegbaar, met &eacute;&eacute;n tik in de app.</p>
+    ${vriendLid(d) ? '<div class="of-gratis"><span>of</span></div>' + vriendKaartHtml(vriendLid(d)) : ''}
     <div id="lidStap2">${lidStap2Html()}</div>
     <p class="klein">${D && D.automatisch ? 'Je betaalt de eerste keer met iDEAL, Apple Pay, Google Pay, Bancontact of je creditcard. Daarna wordt het bedrag automatisch afgeschreven, elke maand of elk jaar. Opzeggen kan altijd in de app; je houdt toegang tot het einde van wat je al betaalde.' : 'Je betaalt met iDEAL voor een maand of een jaar. Er wordt niets automatisch afgeschreven: vlak voor de einddatum krijg je een mail om te verlengen.'}</p></div>`;
 }
 function lidStatusHtml(l) {
   if (!l || l.status === 'geen' || l.status === 'nieuw') return '';
   if (l.status === 'actief' && l.bron === 'coaching') return `<div class="lidrij" id="lid"><span><b>Inbegrepen bij je coaching</b> &middot; ${l.coaching === 'premium' ? 'Premium' : 'Flexibel'}</span></div><p class="klein">Zolang je coaching loopt, heb je de hele MKC-app erbij. Je hoeft niets te regelen. Vragen over je coaching? Mail <a href="mailto:info@michelkredercoaching.nl" style="color:var(--accent)">info@michelkredercoaching.nl</a>.</p>`;
-  if (l.status === 'actief' && l.bron === 'cadeau') return `<div class="lidrij" id="lid"><span><b>Gratis maand</b> &middot; je hebt alles tot ${esc(datumNl(l.tot))}</span></div>`;
+  if (l.status === 'actief' && l.bron === 'cadeau') return `<div class="lidrij" id="lid"><span><b>${l.vriendCadeau ? 'Gratis lid via je maten' : 'Gratis maand'}</b> &middot; je hebt alles tot ${esc(datumNl(l.tot))}</span></div>`;
   if (l.status === 'actief' && l.bron === 'schema') return `<div class="lidrij" id="lid"><span><b>Inbegrepen bij je schema</b> &middot; je hebt alles tot ${esc(datumNl(l.tot))}</span></div>`;
   if (l.status === 'actief' && l.handmatig) return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid" data-plan="${l.plan === 'jaar' ? 'jaar' : 'maand'}">Verlengen</button></div>`;
   if (l.status === 'actief' && l.jaarKeuze && !l.jaarKeuze.gekozen) return `<div class="lidkeuze" id="lid"><b>Je jaar zit er op ${esc(datumNl(l.jaarKeuze.op))} op</b><p>Hoe wil je verder? Kies je niets, dan ga je per maand verder.</p>
@@ -2303,7 +2311,7 @@ function tegelsHtml(d) {
   else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Core stability voor wielrenners, op de timer', tag: binnenkortNu() ? 'Binnenkort' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Tijd voor een nieuwe' : 'Jouw uitslag') : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' }));
   t.push(tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? 'Lid' : '3 gratis', tagKlas: 'or' }));
-  if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : 'Status, facturen en een vriend uitnodigen', tag: '', breed: true }));
+  if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true }));
   const bk = `<div class="bk-rij"><span>Binnenkort</span><button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
   return `<div class="tegels">${t.join('')}</div>${bk}`;
 }
@@ -2660,6 +2668,14 @@ function naAnalyseHtml(d) {
     ${winter && a.meet !== 'hartslag' ? `<a href="${SITE}/winterprogramma/" target="_blank" rel="noopener"><b>Deze winter binnen op je trainer?</b><span>12 weken Indoor Winterprogramma, afgestemd op je FTP, met een eindrapport van je vooruitgang.</span><em>Bekijk het winterprogramma &rarr;</em></a>` : ''}
   </div>`;
 }
+function vriendMomentHtml(d) {
+  const l = vriendLid(d); if (!l || ![5, 6, 0].includes(new Date().getDay())) return '';
+  const wk = Math.floor((Date.now() / 864e5 + 3) / 7);
+  try { if (Number(localStorage.getItem('mkcVrWeg')) === wk) return ''; } catch (e) {}
+  const n = l.vriendAantal || 0, rang = VR_RANG.find(([m]) => n >= m)[1];
+  const jij = l.vriendBeloning === false ? '' : l.gratis || l.vriendCadeau ? ' Jij krijgt 2 weken gratis lid per maat.' : ' Jij krijgt 2 weken extra per maat.';
+  return `<div class="vr-moment"><button type="button" class="welkom-x" data-actie="vrweg" aria-label="Sluiten">&times;</button><small>Weekend, tijd om te fietsen ${n ? '&middot; ' + rang + ', ' + n + (n === 1 ? ' maat' : ' maten') : ''}</small><b>Rijd je met maten? Geef ze 50% korting</b><p>Met jouw link is hun eerste maand de helft.${jij}</p><div class="vr-knoppen" style="grid-template-columns:1fr 1fr"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-actie="naarlid">Bekijk je ladder</button></div></div>`;
+}
 function volgendeStapHtml(d) {
   const coaching = !!(d.lid && d.lid.bron === 'coaching');
   if (coaching || d.schema || (d.lid && d.lid.bron === 'schema')) return '';
@@ -2726,6 +2742,7 @@ function teken() {
     ${tegelsHtml(d)}
     ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     ${verkoopMomentHtml(d) || lidBalkHtml(d)}
+    ${vriendMomentHtml(d)}
     ${volgendeStapHtml(d)}
     <div id="meldinst">${meldInstHtml()}</div>
     ${feedbackHtml()}
@@ -2768,6 +2785,7 @@ document.addEventListener('click', (e) => {
   if (actie === 'opzeggen') zegOp(k);
   if (actie === 'uitloggen') { wisToken(); D = null; CC.berichten = null; document.getElementById('ccFab')?.remove(); document.getElementById('ccPaneel')?.remove(); toonLogin('Je bent uitgelogd.'); }
   if (actie === 'appweg') { try { localStorage.setItem('mkcAppWeg', '1'); } catch (e) {} teken(); }
+  if (actie === 'vrweg') { try { localStorage.setItem('mkcVrWeg', String(Math.floor((Date.now() / 864e5 + 3) / 7))); } catch (e) {} teken(); }
   if (actie === 'welkomweg') { try { localStorage.setItem('mkcWelkomBlokWeg', '1'); } catch (e) {} teken(); }
   if (actie === 'installeer' && installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; teken(); }); }
 });
@@ -2842,14 +2860,21 @@ document.addEventListener('click', (e) => {
 });
 // Uitnodigen als spelletje (13-10-2026): rang, mijlpalen en een voortgangsbalk.
 // Zelfde mijlpalen als VRIEND_MIJLPALEN in api/lid.js.
+// Wie ziet de uitnodigkaart: leden (ook coaching/schema) en gratis accounts. Niet vóór de lancering.
+function vriendLid(d) {
+  if (!d || d.gast || binnenkortNu()) return null;
+  if (d.lid && d.lid.vriendKan) return d.lid;
+  if (!isLid(d) && !(d.lid && d.lid.bron === 'coaching')) return Object.assign({}, d.lid || {}, { gratis: true, vriendBeloning: true, bron: 'gratis' });
+  return null;
+}
 const VR_RANG = [[10, 'Ploegleider'], [5, 'Kopman'], [3, 'Wegkapitein'], [1, 'Gangmaker'], [0, 'Solo']];
 function vriendKaartHtml(l, compact) {
-  const n = l.vriendAantal || 0, zelf = !(l.vriendBeloning === false || ['coaching', 'schema', 'cadeau'].includes(l.bron)), coaching = l.bron === 'coaching';
+  const n = l.vriendAantal || 0, zelf = l.gratis || l.vriendBeloning !== false, coaching = l.bron === 'coaching', gratisLid = l.gratis || l.vriendCadeau;
   const rang = VR_RANG.find(([m]) => n >= m)[1];
   const paal = zelf ? [{ n: 1, t: '2 weken', sub: 'per maat' }, { n: 3, t: 'Analyse', sub: 'gratis' }, { n: 5, t: 'Maand', sub: 'gratis' }, { n: 10, t: 'Jaar', sub: 'gratis' }]
     : [{ n: 1, t: 'Gangmaker', sub: 'rang' }, coaching ? { n: 3, t: 'Wegkapitein', sub: 'rang' } : { n: 3, t: 'Analyse', sub: 'gratis' }, { n: 5, t: 'Kopman', sub: 'rang' }, { n: 10, t: 'Ploegleider', sub: 'rang' }];
   const volgende = paal.find((p) => p.n > n);
-  const naam = (p) => p.sub === 'rang' ? 'de rang ' + p.t : p.n === 1 ? '2 weken extra' : p.n === 3 ? 'je gratis Strava-analyse' : p.n === 5 ? 'een gratis maand' : 'een gratis jaar';
+  const naam = (p) => p.sub === 'rang' ? 'de rang ' + p.t : p.n === 1 ? (gratisLid ? '2 weken gratis lid' : '2 weken extra') : p.n === 3 ? 'je gratis Strava-analyse' : p.n === 5 ? 'een gratis maand' : 'een gratis jaar';
   // Gelijke afstanden; de balk loopt per stuk tussen twee mijlpalen.
   const pos = (i) => paal.length === 1 ? 50 : Math.round(i / (paal.length - 1) * 100);
   const i2 = paal.findIndex((p) => p.n > n);
@@ -2859,8 +2884,8 @@ function vriendKaartHtml(l, compact) {
   const knoppen = `<div class="vr-knoppen"><button type="button" class="knop wa-knop" data-lx="whatsapp">Stuur via WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app of kopieer link</button></div>`;
   if (compact) return `<div class="vr-kaart compact"><div class="vr-kop"><div><small>Jouw rang</small><b>${rang}</b></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'}</small></div></div><p class="vr-doel">${doel}</p>${knoppen}</div>`;
   return `<div class="vr-kaart"><div class="vr-kop"><div><small>Jouw rang</small><b>${rang}</b></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'} via jouw link</small></div></div>
-    <h3>Nodig je maten uit</h3>
-    <div class="vr-geef"><div><small>Jouw maat krijgt</small><b>50% korting</b><span>eerste maand &euro;${APP_PRIJS.half}, of een jaar voor &euro;${APP_PRIJS.jaarMaat}</span></div><div><small>Jij krijgt</small><b>${zelf ? '2 weken' : coaching ? 'Een rang' : 'Analyse'}</b><span>${zelf ? 'extra per maat, plus de mijlpalen hieronder' : coaching ? 'van Gangmaker tot Ploegleider' : 'gratis bij 3 maten, plus je rang'}</span></div></div>
+    <h3>${l.gratis ? 'Word gratis lid via je maten' : 'Nodig je maten uit'}</h3>
+    <div class="vr-geef"><div><small>Jouw maat krijgt</small><b>50% korting</b><span>eerste maand &euro;${APP_PRIJS.half}, of een jaar voor &euro;${APP_PRIJS.jaarMaat}</span></div><div><small>Jij krijgt</small><b>${zelf ? '2 weken' : coaching ? 'Een rang' : 'Analyse'}</b><span>${zelf ? (gratisLid ? 'gratis lid per maat, plus de mijlpalen hieronder' : 'extra per maat, plus de mijlpalen hieronder') : coaching ? 'van Gangmaker tot Ploegleider' : 'gratis bij 3 maten, plus je rang'}</span></div></div>
     ${ladder}<p class="vr-doel">${doel}</p>
     ${l.vriendAnalyse ? `<a class="knop" href="${esc(l.vriendAnalyse)}" target="_blank" rel="noopener" style="margin-bottom:10px">Claim je gratis analyse</a>` : ''}
     ${knoppen}
@@ -2868,7 +2893,7 @@ function vriendKaartHtml(l, compact) {
 }
 function lidExtraHtml(l) {
   if (!l) return '';
-  return `<div class="lid-extra">${l.vriendKan ? vriendKaartHtml(l) : ''}
+  return `<div class="lid-extra">${l.vriendKan && !binnenkortNu() ? vriendKaartHtml(l) : ''}
     ${l.facturen ? '<button type="button" class="lid-link" data-lx="facturen">Mijn facturen</button>' : ''}</div>`;
 }
 document.addEventListener('click', async (e) => {
@@ -3596,7 +3621,7 @@ function grHtml() {
     ${voorbij ? '' : `<button type="button" class="knop ${GR.data.ikMee ? '' : 'leeg'}" data-gr="mee" style="margin-top:14px">${GR.data.ikMee ? '&#10003; Je rijdt mee' : 'Ik rijd mee'}</button>`}
     <div class="gr-kijk">${[GR.data.mee ? `${GR.data.mee} ${GR.data.mee === 1 ? 'rijdt' : 'rijden'} mee` : '', kijkers >= 2 ? `${kijkers} keken al` : ''].filter(Boolean).join(' &middot; ')}</div>
     ${voorbij ? '' : '<button type="button" class="knop" data-gr="deel" style="margin-top:14px">Deel deze rit</button>'}
-    ${!voorbij && D && !D.gast && D.lid && D.lid.vriendKan ? `<div class="gr-vriend"><b>Rijden je maten nog zonder de app?</b><p>Met jouw link krijgen ze 50% korting${D.lid.vriendBeloning === false ? '' : ', en jij 2 weken extra per maat'}.</p>${vriendKaartHtml(D.lid, true)}</div>` : ''}
+    ${!voorbij && vriendLid(d) ? `<div class="gr-vriend"><b>Rijden je maten nog zonder de app?</b><p>Met jouw link krijgen ze 50% korting${vriendLid(d).vriendBeloning === false ? '' : vriendLid(d).gratis || vriendLid(d).vriendCadeau ? ', en jij 2 weken gratis lid per maat' : ', en jij 2 weken extra per maat'}.</p>${vriendKaartHtml(vriendLid(d), true)}</div>` : ''}
     <details class="klap" data-klap="grfoto" ${klapOpen('grfoto', voorbij) ? 'open' : ''}><summary><b>Maak een foto-story</b><span>jouw foto, met de rit erover</span></summary><div class="klap-in">
       <p class="klein" style="margin-top:0">Kies een foto van de groep, de koffiestop of het uitzicht. De app zet de naam van de rit, de datum en het weer eroverheen, klaar voor je Instagram-story of Strava.</p>
       <input id="grFotoTekst" type="text" maxlength="60" placeholder="Jouw tekst, bijv. Zondagsrondje met de mannen" style="width:100%;margin-bottom:10px">
