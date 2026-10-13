@@ -219,7 +219,7 @@
   .vr-st { font-size:11.5px; font-weight:700; padding:3px 8px; border-radius:20px; background:rgba(255,255,255,.08); color:var(--muted); white-space:nowrap; }
   .vr-st.half { background:rgba(255,107,26,.15); color:var(--accent); } .vr-st.aan { background:var(--accent); color:#0a0a0a; }
   .vr-nog { grid-column:1 / -1; justify-self:start; background:none; border:0; color:var(--accent); font-size:12.5px; padding:0; cursor:pointer; text-decoration:underline; }
-  .rang-plek { margin:4px 0 -6px; }
+  .rang-plek { margin:14px 0 4px; }
   .rang-chip { display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted); text-decoration:none; border:1px solid rgba(255,107,26,.4); border-radius:20px; padding:4px 12px 4px 4px; }
   .rang-chip span { background:var(--accent); color:#0a0a0a; font-weight:800; font-size:11px; letter-spacing:.06em; text-transform:uppercase; padding:3px 9px; border-radius:20px; }
   .rang-chip i { font-style:normal; color:var(--accent); }
@@ -2745,8 +2745,9 @@ function teken() {
   const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `${appBalkHtml()}
     ${beheerHtml(d)}${d.beheer ? `<details class="bh-groep" data-klap="beheer" ${klapOpen('beheer', true) ? 'open' : ''}><summary><b>Beheer</b><span>leden, gebruik, doelen, schema's, Core, nakijken</span></summary>${aankondigHtml()}${pushOpnieuwHtml()}${ledenHtml()}${gebruikHtml()}${doelenBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}${opvolgHtml()}${nakijkHtml()}</details>` : ''}
-    ${rangChipHtml(d) ? '<div class="rang-plek">' + rangChipHtml(d) + '</div>' : ''}<div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
+    <div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
     ${welkomNu() ? '<p class="welkom-michel">Begin hieronder met je eerste week. Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
+    ${rangChipHtml(d) ? '<div class="rang-plek">' + rangChipHtml(d) + '</div>' : ''}
     ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${vriendActief() ? '<a href="#" data-actie="naarlid">' + (vriendDoor() ? esc(vriendDoor()) + ' gaf je' : 'je maat gaf je') + ' korting op je lidmaatschap</a>' : kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
     <div id="groepsrit">${grHtml()}</div>
     ${reviewHtml(d)}
