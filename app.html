@@ -3066,7 +3066,7 @@ function palmaresHtml(d) {
   if (!lidNu) groepen.sort((x, y) => (l.filter((b) => b.groep === x).every((b) => b.lid) ? 1 : 0) - (l.filter((b) => b.groep === y).every((b) => b.lid) ? 1 : 0));
   const tegeltje = (b) => {
     const p = b.volgende ? Math.round(Math.min(b.waarde, b.volgende) / b.volgende * 100) : 100;
-    return `<button type="button" class="md-tegel n${b.niveau}" data-badge="${b.id}">${medailleSvg(b, 74)}<b>${b.naam}</b><small>${b.binnenkort ? 'Binnenkort' : b.niveau ? MD_NAAM[b.niveau - 1] : !lidNu && b.lid ? 'Met lidmaatschap' : 'Op slot'}</small>${b.volgende && !b.binnenkort ? `<span class="md-balk"><i style="width:${p}%"></i></span><em>${Math.min(b.waarde, b.volgende)} / ${b.volgende}</em>` : !b.volgende ? '<em class="goud">Alles goud</em>' : ''}</button>`;
+    return `<button type="button" class="md-tegel n${b.niveau}" data-badge="${b.id}">${medailleSvg(b, 74)}<b>${b.naam}</b><small>${b.binnenkort ? 'Binnenkort' : b.niveau ? MD_NAAM[b.niveau - 1] : !lidNu && b.lid ? 'Met lidmaatschap' : 'Op slot'}</small>${b.goudKlaar ? '<em class="goud">Goud staat klaar</em>' : b.goudLid ? '<em>Goud: als lid</em>' : b.volgende && !b.binnenkort ? `<span class="md-balk"><i style="width:${p}%"></i></span><em>${Math.min(b.waarde, b.volgende)} / ${b.volgende}</em>` : !b.volgende ? '<em class="goud">Alles goud</em>' : ''}</button>`;
   };
   const belKaart = (r) => {
     const nog = Math.max(0, r.n - m), goudNog = Math.max(0, (r.goud || 0) - ((d && d.goud) || 0));
@@ -3083,7 +3083,7 @@ function palmaresHtml(d) {
     <div class="pm-tel">${[0, 1, 2].map((i) => `<div class="pm-t">${medailleSvg({ icoon: 'vink', niveau: i + 1 }, 30)}<div><b>${tel[i]}</b><small>${MD_NAAM[i]}</small></div></div>`).join('')}</div>
     <div class="pm-balk"><i style="width:${Math.round(m / max * 100)}%"></i></div>
     <div class="rv-sub">Beloningen</div><div class="bel-lijst">${bel.map(belKaart).join('')}</div>
-    ${!lidNu ? `<div class="pm-gratis"><b>Je doet mee met een gratis account</b><span>${gratisHaal} van de ${l.length} badges haal je nu al: elke dag de app openen, groepsritten, coachvragen, je analyse, maten en je tocht. De Core- en rit-badges verdien je met het lidmaatschap.</span>${typeof kanLidNu === 'function' && kanLidNu(d) ? '<button type="button" class="sb-link" data-actie="naarlid" style="margin:6px 0 0">Bekijk het lidmaatschap</button>' : ''}</div>` : ''}
+    ${!lidNu ? `<div class="pm-gratis"><b>Je doet mee met een gratis account</b><span>Brons en zilver haal je gratis bij ${gratisHaal} badges: elke dag de app openen, groepsritten, coachvragen, je analyse, maten en je tocht. Goud en de Core-, rit- en ledenbadges verdien je met het lidmaatschap. Staat je goud al klaar, dan krijg je het meteen als je lid wordt.</span>${typeof kanLidNu === 'function' && kanLidNu(d) ? '<button type="button" class="sb-link" data-actie="naarlid" style="margin:6px 0 0">Bekijk het lidmaatschap</button>' : ''}</div>` : ''}
     ${bijna.length ? `<div class="rv-sub">Bijna binnen</div><div class="md-raster">${bijna.map(tegeltje).join('')}</div>` : ''}
     ${groepen.map((g) => `<div class="rv-sub">${g}${allesGoud(g) ? ' <span class="pm-goud">Alles goud</span>' : ''}</div><div class="md-raster${allesGoud(g) ? ' goudrand' : ''}">${l.filter((b) => b.groep === g).map(tegeltje).join('')}</div>`).join('')}
     <p class="klein" style="margin-top:14px">De app rekent je medailles zelf uit met wat er echt gebeurt: je Core-sessies, je ritten met het weer van dat moment, je groepsritten, je analyses en maten die lid werden. Tik op een medaille voor de details of om hem te delen.</p>
@@ -3155,10 +3155,12 @@ function medailleSlot() { return '<svg viewBox="0 0 24 24" width="22" height="22
 function badgeModal(id, nieuwNiveau) {
   const b = ((zicht() || {}).badges || []).find((x) => x.id === id); if (!b) return;
   const dag = (x) => x ? new Date(x).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
-  const rij = (i) => { const gehaald = b.niveau > i; return `<li class="${gehaald ? 'aan' : ''}">${medailleSvg(b, 30, { niveau: gehaald ? i + 1 : 0 })}<div><b>${MD_NAAM[i]}</b><span>${b.uitleg[i]}</span></div><small>${gehaald ? dag(b.op[i + 1]) || 'gehaald' : b.binnenkort ? 'binnenkort' : Math.min(b.waarde, b.drempels[i]) + ' / ' + b.drempels[i]}</small></li>`; };
+  const gratisNu = !(isLid(zicht()) || ((zicht() || {}).lid || {}).bron === 'coaching');
+  const rij = (i) => { const gehaald = b.niveau > i; return `<li class="${gehaald ? 'aan' : ''}">${medailleSvg(b, 30, { niveau: gehaald ? i + 1 : 0 })}<div><b>${MD_NAAM[i]}</b><span>${b.uitleg[i]}</span></div><small>${gehaald ? dag(b.op[i + 1]) || 'gehaald' : b.binnenkort ? 'binnenkort' : gratisNu && (i === 2 || b.lid) ? (b.waarde >= b.drempels[i] ? 'klaar, als lid' : 'als lid') : Math.min(b.waarde, b.drempels[i]) + ' / ' + b.drempels[i]}</small></li>`; };
   modal(`<div class="md-modal${nieuwNiveau ? ' nieuw' : ''}">${nieuwNiveau ? `<div class="md-unlock">Ontgrendeld!</div>` : ''}<div class="md-groot">${medailleSvg(b, 150, nieuwNiveau ? { niveau: nieuwNiveau } : {})}</div>
     <h3>${b.naam}</h3><p class="md-niv">${b.niveau ? MD_NAAM[b.niveau - 1] : b.binnenkort ? 'Binnenkort te verdienen' : 'Nog op slot'}</p>
     <ul class="md-rijen">${[0, 1, 2].map(rij).join('')}</ul>
+    ${b.goudKlaar || b.goudLid ? `<p class="klein">${esc(b.nog)}</p>${kanLidNu(zicht()) ? '<button type="button" class="sb-link" data-actie="naarlid" style="margin:0 0 8px">Bekijk het lidmaatschap</button>' : ''}` : ''}
     ${b.niveau ? `<button type="button" class="knop" data-badgedeel="${b.id}">Deel als story</button>` : b.lid && !(isLid(zicht()) || ((zicht() || {}).lid || {}).bron === 'coaching') ? `<p class="klein">Deze badge verdien je met het lidmaatschap: met de ${b.groep === 'Core' ? 'Core-app' : 'slimme bandenspanning en Ik rijd hiermee'}.</p>${kanLidNu(zicht()) ? '<button type="button" class="knop" data-actie="naarlid">Bekijk het lidmaatschap</button>' : ''}` : `<p class="klein">${esc(b.nog)}</p>`}
     <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">${nieuwNiveau ? 'Top!' : 'Sluiten'}</button>${nieuwNiveau ? '<button type="button" class="sb-link" data-view="palmares" style="display:block;margin:4px auto 0">Bekijk je palmares</button>' : ''}</div>`);
 }
@@ -3765,8 +3767,25 @@ function badgeBeheerHtml() {
     <div class="rv-sub">Meeste medailles</div><table class="geb-tab">${x.top.map((m) => `<tr><td><button type="button" class="sb-link" data-bhbadge="${esc(m.email)}" style="margin:0">${esc(m.email)}</button></td><td><b>${m.aantal}</b></td></tr>`).join('') || '<tr><td><small>Nog niemand</small></td></tr>'}</table>
     <div class="gr-maak" style="margin-top:10px"><label>Nakijken: mailadres</label><div style="display:grid;grid-template-columns:1fr auto;gap:8px"><input id="bhBadgeMail" type="email" placeholder="naam@voorbeeld.nl"><button type="button" class="knop" data-bhbadge="veld" style="width:auto;padding:0 16px">Bekijk</button></div></div>
     ${nakijk}
+    <div class="rv-sub">Ranglijst</div><div id="bhRang">${bhRangHtml()}</div>
+    <div class="rv-sub">Zelf bekijken</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="knop" data-bhrang="geef">Geef mezelf 3 testmedailles</button><button type="button" class="knop leeg" data-bhrang="weg">Testmedailles weg</button></div>
     <button type="button" class="sb-link" data-bh="ververs" data-w="badges">Ververs</button></div></div>`;
 }
+let BH_RANG = null;
+function bhRangHtml() {
+  if (!BH_RANG) { bhRang({}); return '<p class="klein">Laden...</p>'; }
+  return BH_RANG.length ? `<table class="geb-tab">${BH_RANG.map((r, i) => `<tr><td>${i + 1}. <b>${esc(r.naam)}</b><br><small>${esc(r.email)}</small></td><td>${r.medailles}</td><td><button type="button" class="sb-link" data-bhrangweg="${esc(r.email)}" style="margin:0">Weghalen</button></td></tr>`).join('')}</table>` : '<p class="klein">Nog niemand op de ranglijst.</p>';
+}
+async function bhRang(extra) {
+  try { const j = await (await fetch(API + '?actie=rangbeheer&t=' + encodeURIComponent(leesToken()), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), ...extra }) })).json(); if (j.ok) BH_RANG = j.rijen; } catch (e) {}
+  const el = document.getElementById('bhRang'); if (el) el.innerHTML = bhRangHtml();
+}
+document.addEventListener('click', async (e) => {
+  const w = e.target.closest('[data-bhrangweg]'); if (w) { if (!confirm('Bijnaam van ' + w.dataset.bhrangweg + ' weghalen? Deze renner verdwijnt van de ranglijst.')) return; return bhRang({ weg: w.dataset.bhrangweg }); }
+  const g = e.target.closest('[data-bhrang]'); if (!g) return;
+  g.disabled = true; await bhRang({ test: g.dataset.bhrang }); RL.data = null; await laadOverzicht(); g.disabled = false;
+  if (g.dataset.bhrang === 'geef') naar('palmares');
+});
 document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-bhbadge]'); if (!k) return;
   const mail = k.dataset.bhbadge === 'veld' ? (document.getElementById('bhBadgeMail') || {}).value : k.dataset.bhbadge;
