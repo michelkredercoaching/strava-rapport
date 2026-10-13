@@ -2800,7 +2800,7 @@ document.addEventListener('click', (e) => {
 function lidExtraHtml(l) {
   if (!l || l.bron === 'coaching' || l.bron === 'schema' || l.bron === 'cadeau') return '';
   return `<div class="lid-extra">
-    ${l.vriendKan ? '<div class="vriend"><b>Nodig een vriend of vriendin uit, samen voor de helft</b><p>Die krijgt de eerste maand voor de helft, en jij ' + (l.plan === 'jaar' ? 'krijgt er een halve maand gratis bij' : 'krijgt 50% korting op je volgende maand') + ' zodra die lid is.</p><div class="rij2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app</button></div></div>' : ''}
+    ${l.vriendKan ? '<div class="vriend"><b>Nodig een vriend of vriendin uit, samen voor de helft</b><p>Die krijgt de eerste maand voor de helft, en jij ' + (l.plan === 'jaar' || l.handmatig || l.status !== 'actief' ? 'krijgt er een halve maand gratis bij' : 'krijgt 50% korting op je volgende maand') + ' zodra die lid is.</p><div class="rij2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app</button></div></div>' : ''}
     ${l.facturen ? '<button type="button" class="lid-link" data-lx="facturen">Mijn facturen</button>' : ''}</div>`;
 }
 document.addEventListener('click', async (e) => {
