@@ -282,8 +282,8 @@ async function routeBackup(req, res) {
   const key = process.env.RESEND_API_KEY;
   if (!key) return res.status(500).json({ ok: false });
   const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: 'michel.kredercoaching@gmail.com', subject: `Back-up MKC-app leden ${datum}`,
-      html: `<p style="font-family:Arial,sans-serif">Wekelijkse back-up van de MKC-app: ${Object.keys(leden).length} leden, ${Object.keys(schemas).length} schema's en de palmares van ${Object.keys(palmares).length} mensen. Bewaar deze mail; bij een probleem zet Claude alles hiermee terug. Core-voortgang zit er bewust niet in (gezondheidsgegevens).</p>`,
+    body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: 'michel.kredercoaching@gmail.com', subject: `Back-up MKC-app ${datum}`,
+      html: `<p style="font-family:Arial,sans-serif">Dagelijkse back-up van de MKC-app: ${Object.keys(leden).length} leden, ${Object.keys(schemas).length} schema's en de palmares van ${Object.keys(palmares).length} mensen. Bewaar deze mail; bij een probleem zet Claude alles hiermee terug. Core-voortgang zit er bewust niet in (gezondheidsgegevens).</p>`,
       attachments: [{ filename: `mkc-app-backup-${datum}.json.gz`, content: inhoud.toString('base64') }] }), signal: AbortSignal.timeout(15000) });
   return res.status(200).json({ ok: r.ok, leden: Object.keys(leden).length, kb: Math.round(inhoud.length / 1024) });
 }

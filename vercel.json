@@ -86,7 +86,7 @@
     },
     {
       "path": "/api/lid?actie=backup",
-      "schedule": "0 2 * * 0"
+      "schedule": "0 2 * * *"
     },
     {
       "path": "/api/lid?actie=cadeaumail",
