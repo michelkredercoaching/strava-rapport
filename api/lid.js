@@ -270,13 +270,20 @@ async function routeBackup(req, res) {
     const r = await redis(['GET', `lid:${email}`]); if (r.ok && r.result) { try { leden[email] = JSON.parse(r.result); } catch {} }
     const s = await redis(['GET', `schema:${email}`]); if (s.ok && s.result) { try { schemas[email] = JSON.parse(s.result); } catch {} }
   }
+  // Palmares (13-10-2026): medailles, beloningen, tellers en renner, zodat niemand zijn medailles kwijt kan raken.
+  const palmares = {};
+  const ba = await redis(['SMEMBERS', 'app:badges:alle']);
+  for (const email of (ba.ok && ba.result) || []) {
+    const [m, bl, t, rp] = await Promise.all([redis(['GET', `app:medailles:${email}`]), redis(['GET', `app:badgebeloning:${email}`]), redis(['HGETALL', `app:teller:${email}`]), redis(['GET', `app:rangprofiel:${email}`])]);
+    palmares[email] = { medailles: m.result || null, beloningen: bl.result || null, teller: t.result || null, renner: rp.result || null };
+  }
   const datum = new Date().toISOString().slice(0, 10);
-  const inhoud = zlib.gzipSync(Buffer.from(JSON.stringify({ gemaakt: new Date().toISOString(), sets, leden, schemas })));
+  const inhoud = zlib.gzipSync(Buffer.from(JSON.stringify({ gemaakt: new Date().toISOString(), sets, leden, schemas, palmares })));
   const key = process.env.RESEND_API_KEY;
   if (!key) return res.status(500).json({ ok: false });
   const r = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: 'michel.kredercoaching@gmail.com', subject: `Back-up MKC-app leden ${datum}`,
-      html: `<p style="font-family:Arial,sans-serif">Wekelijkse back-up van de MKC-app: ${Object.keys(leden).length} leden en ${Object.keys(schemas).length} schema's. Bewaar deze mail; bij een probleem zet Claude alles hiermee terug. Core-voortgang zit er bewust niet in (gezondheidsgegevens).</p>`,
+      html: `<p style="font-family:Arial,sans-serif">Wekelijkse back-up van de MKC-app: ${Object.keys(leden).length} leden, ${Object.keys(schemas).length} schema's en de palmares van ${Object.keys(palmares).length} mensen. Bewaar deze mail; bij een probleem zet Claude alles hiermee terug. Core-voortgang zit er bewust niet in (gezondheidsgegevens).</p>`,
       attachments: [{ filename: `mkc-app-backup-${datum}.json.gz`, content: inhoud.toString('base64') }] }), signal: AbortSignal.timeout(15000) });
   return res.status(200).json({ ok: r.ok, leden: Object.keys(leden).length, kb: Math.round(inhoud.length / 1024) });
 }
