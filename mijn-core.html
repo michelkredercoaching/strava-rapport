@@ -189,6 +189,8 @@
   /* ===== Core-coach (chat) ===== */
   .cc-fab { position:fixed; right:16px; bottom:max(16px, env(safe-area-inset-bottom)); z-index:40; display:flex; align-items:center; gap:10px; background:var(--accent); color:#0A0A0A; border:none; border-radius:99px; padding:6px 18px 6px 6px; font-family:'Bebas Neue',sans-serif; font-size:19px; letter-spacing:.05em; cursor:pointer; box-shadow:0 10px 30px rgba(0,0,0,.5), 0 0 0 1px rgba(255,107,26,.4); }
   .cc-fab .cc-av { width:38px; height:38px; }
+  /* Op de telefoon alleen het rondje, zodat de knop geen knoppen in je sessie afdekt (13-10-2026) */
+  @media (max-width:600px) { .cc-fab { padding:5px; } .cc-fab .cc-av { width:44px; height:44px; } .cc-fab .cc-tekst { display:none; } body { padding-bottom:80px; } }
   .cc-av { border-radius:50%; background:#0A0A0A; border:2px solid var(--accent); overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .cc-av svg { width:150%; height:auto; transform:translateY(8%); }
   .cc-paneel { position:fixed; right:16px; bottom:16px; z-index:45; width:min(400px, calc(100vw - 32px)); height:min(620px, calc(100vh - 32px)); background:#101010; border:1px solid rgba(255,107,26,.35); border-radius:14px; display:none; flex-direction:column; overflow:hidden; box-shadow:0 24px 70px rgba(0,0,0,.7); }
@@ -1704,7 +1706,7 @@ function avatarSvg() { return '<img src="/icoon-192.png" alt="" style="width:100
 function coachBouw() {
   if ($('#ccPaneel')) return;
   document.body.insertAdjacentHTML('beforeend', `
-    <button class="cc-fab" id="ccFab" aria-label="Vraag je ${CC_NAAM}"><span class="cc-av">${avatarSvg()}</span>Vraag je coach</button>
+    <button class="cc-fab" id="ccFab" aria-label="Vraag je ${CC_NAAM}"><span class="cc-av">${avatarSvg()}</span><span class="cc-tekst">Vraag je coach</span></button>
     <div class="cc-paneel" id="ccPaneel" role="dialog" aria-label="${CC_NAAM}">
       <div class="cc-kop"><button class="cc-terug" id="ccTerug" aria-label="Terug"><span>&#8249;</span>Terug</button><span class="cc-av">${avatarSvg()}</span>
         <div><div class="nm">${CC_NAAM}<span class="ai">AI</span></div><div class="st">Getraind op Michels methode &middot; antwoordt direct</div></div>
