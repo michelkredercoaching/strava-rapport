@@ -231,6 +231,20 @@
   .rl-slot { position:absolute; top:16px; right:16px; color:var(--accent); }
   .rl-kop { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
   .rl-ik { text-align:center; } .rl-ik small { display:block; font-size:11px; color:var(--muted); margin-top:2px; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .podium { display:grid; grid-template-columns:1fr 1.15fr 1fr; align-items:end; gap:6px; margin:16px 0 10px; }
+  .pd-plek { text-align:center; min-width:0; } .pd-renner { position:relative; display:flex; justify-content:center; margin-bottom:4px; }
+  .pd-kroon { position:absolute; top:-18px; left:50%; transform:translateX(-50%); }
+  .pd-plek b { display:block; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .pd-plek b em { font-style:normal; font-size:9.5px; background:var(--accent); color:#0a0a0a; padding:1px 5px; border-radius:8px; margin-left:3px; }
+  .pd-plek small { display:block; font-size:10.5px; color:var(--muted); margin-bottom:6px; }
+  .pd-trede { border-radius:8px 8px 0 0; display:flex; align-items:flex-start; justify-content:center; padding-top:6px; }
+  .pd-trede span { font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1; color:rgba(0,0,0,.55); }
+  .pd-plek.p1 .pd-trede { height:74px; background:linear-gradient(180deg,#ffe58a,#e0a91a); }
+  .pd-plek.p2 .pd-trede { height:54px; background:linear-gradient(180deg,#f1f3f6,#a9b0ba); }
+  .pd-plek.p3 .pd-trede { height:40px; background:linear-gradient(180deg,#f0b47a,#b8681f); }
+  .pd-plek.ik .pd-renner .rl-av { filter:drop-shadow(0 0 8px rgba(255,107,26,.8)); }
+  .pd-plek.leeg { opacity:.5; } .pd-vrij { display:flex; align-items:center; justify-content:center; width:56px; height:56px; border-radius:50%; border:2px dashed rgba(255,255,255,.3); font-family:'Bebas Neue',sans-serif; font-size:26px; color:var(--muted); }
+  .pd-ik { display:flex; align-items:center; gap:12px; background:rgba(255,107,26,.12); border:1px solid rgba(255,107,26,.5); border-radius:10px; padding:10px 12px; margin-bottom:10px; }
+  .pd-ik b { display:block; font-family:'Bebas Neue',sans-serif; font-size:24px; line-height:1; } .pd-ik small { font-size:12px; color:var(--muted); }
   .rl-lijst { list-style:none; margin:14px 0 8px; padding:0; display:grid; gap:6px; }
   .rl-lijst li { display:grid; grid-template-columns:30px 34px 1fr auto; gap:10px; align-items:center; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:6px 10px; }
   .rl-lijst li.p1 { border-color:rgba(243,194,44,.6); background:linear-gradient(90deg, rgba(243,194,44,.14), rgba(0,0,0,0)); }
@@ -3243,11 +3257,17 @@ function ranglijstHtml(d) {
       ${volgend ? `<p class="klein kk-volgend">Volgende in je kleedkamer: <b>${esc(volgend.it.naam)}</b> (${volgend.s}) bij ${volgend.it.vanaf.m} medailles${volgend.it.vanaf.g ? ' waarvan ' + volgend.it.vanaf.g + ' goud' : ''}.</p>` : '<p class="klein kk-volgend">Je hebt alles vrijgespeeld. Respect.</p>'}</div></div>
       <button type="button" class="knop" data-rl="bewaar" style="margin-top:12px">Zet me op de ranglijst</button>${x.profiel ? '<button type="button" class="sb-link" data-rl="annuleer" style="display:block;margin:8px auto 0">Annuleren</button>' : ''}<p class="klein rl-fout" id="rlFout"></p></div></div>`;
   }
-  const rij = (r) => `<li class="${r.ik ? 'ik' : ''} p${r.plek}"><span class="rl-plek">${r.plek <= 3 ? medailleSvg({ icoon: 'ster', niveau: 4 - r.plek }, 26) : r.plek}</span>${avatarSvg(r, 34)}<b>${esc(r.naam)}${r.ik ? ' <em>jij</em>' : ''}</b><span class="rl-score"><strong>${r.medailles}</strong><small>${r.goud ? r.goud + ' goud' : 'medailles'}</small></span></li>`;
-  const ikInTop = x.rijen.some((r) => r.ik);
+  // Podium (2-1-3) en daaronder alleen je eigen plek. Geen totaal aantal deelnemers.
+  const blok = (r, plek) => r ? `<div class="pd-plek p${plek}${r.ik ? ' ik' : ''}"><div class="pd-renner">${avatarSvg(r, plek === 1 ? 70 : 56)}${plek === 1 ? '<span class="pd-kroon">' + medailleSvg({ icoon: 'ster', niveau: 3 }, 26) + '</span>' : ''}</div><b>${esc(r.naam)}${r.ik ? ' <em>jij</em>' : ''}</b><small>${r.medailles} medailles${r.goud ? ' &middot; ' + r.goud + ' goud' : ''}</small><div class="pd-trede"><span>${plek}</span></div></div>`
+    : `<div class="pd-plek p${plek} leeg"><div class="pd-renner"><span class="pd-vrij">?</span></div><b>Nog vrij</b><small>&nbsp;</small><div class="pd-trede"><span>${plek}</span></div></div>`;
+  const r1 = x.rijen[0], r2 = x.rijen[1], r3 = x.rijen[2];
+  const opPodium = x.rijen.some((r) => r.ik);
+  const nogNaar3 = r3 && x.ik ? Math.max(1, r3.medailles - x.ik.medailles + (r3.medailles === x.ik.medailles ? 1 : 0)) : 0;
+  const mijnPlek = !opPodium && x.ik ? `<div class="pd-ik">${avatarSvg(x.profiel, 44)}<div><b>Jouw plek: #${x.ik.plek}</b><small>${x.ik.medailles} medailles${x.ik.goud ? ' &middot; ' + x.ik.goud + ' goud' : ''}${nogNaar3 ? ' &middot; nog ' + nogNaar3 + (nogNaar3 === 1 ? ' medaille' : ' medailles') + ' tot het podium' : ''}</small></div></div>` : '';
   return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in">
-    <div class="rl-kop"><div><div class="label">Ranglijst</div><h2>${x.ik ? 'Jij staat op #' + x.ik.plek : 'Ranglijst'}</h2><p class="klein" style="margin:2px 0 0">van ${x.totaal} ${x.totaal === 1 ? 'renner' : 'renners'} &middot; op medailles, bij gelijke stand telt goud</p></div><div class="rl-ik">${x.profiel.trui ? rennerFiets(x.profiel, 120) : avatarSvg(x.profiel, 54)}<small>${esc(x.profiel.naam)}</small></div></div>
-    <ol class="rl-lijst">${x.rijen.map(rij).join('')}${!ikInTop && x.ik ? `<li class="rl-gat">&hellip;</li>${rij({ plek: x.ik.plek, naam: x.profiel.naam, kleur: x.profiel.kleur, icoon: x.profiel.icoon, medailles: x.ik.medailles, goud: x.ik.goud, ik: true })}` : ''}</ol>
+    <div class="rl-kop"><div><div class="label">Ranglijst</div><h2>${opPodium ? 'Jij staat op het podium!' : 'Het podium'}</h2><p class="klein" style="margin:2px 0 0">Op medailles, bij gelijke stand telt goud.</p></div><div class="rl-ik">${x.profiel.trui ? rennerFiets(x.profiel, 110) : avatarSvg(x.profiel, 54)}<small>${esc(x.profiel.naam)}</small></div></div>
+    <div class="podium">${blok(r2, 2)}${blok(r1, 1)}${blok(r3, 3)}</div>
+    ${mijnPlek}
     <button type="button" class="sb-link" data-rl="wijzig">Naar je kleedkamer</button> <button type="button" class="sb-link" data-rl="weg" style="margin-left:12px">Van de ranglijst af</button></div></div>`;
 }
 document.addEventListener('click', async (e) => {

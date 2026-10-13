@@ -452,7 +452,8 @@ async function routeRangBeheer(req, res) {
 async function routeRanglijst(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email) return res.status(401).json({ ok: false });
-  const [top, n, mijn, mijnRang, mijnScore] = await Promise.all([redis(['ZREVRANGE', 'app:ranglijst', '0', '19', 'WITHSCORES']), redis(['ZCARD', 'app:ranglijst']), rlProfiel(email), redis(['ZREVRANK', 'app:ranglijst', email]), redis(['ZSCORE', 'app:ranglijst', email])]);
+  // Alleen het podium en je eigen plek (13-10-2026): niemand ziet hoeveel mensen er meedoen.
+  const [top, mijn, mijnRang, mijnScore] = await Promise.all([redis(['ZREVRANGE', 'app:ranglijst', '0', '2', 'WITHSCORES']), rlProfiel(email), redis(['ZREVRANK', 'app:ranglijst', email]), redis(['ZSCORE', 'app:ranglijst', email])]);
   const l = (top.ok && top.result) || [], rijen = [];
   for (let i = 0; i < l.length; i += 2) {
     const p = await rlProfiel(l[i]); if (!p) continue;
@@ -460,7 +461,7 @@ async function routeRanglijst(req, res) {
     rijen.push({ plek: rijen.length + 1, naam: p.naam, kleur: p.kleur, icoon: p.icoon, huid: p.huid, trui: p.trui, helm: p.helm, bril: p.bril, fiets: p.fiets, wielen: p.wielen, medailles: Math.floor(sc / 100), goud: sc % 100, ik: l[i] === email });
   }
   const sc = Number(mijnScore.ok && mijnScore.result) || 0;
-  return res.status(200).json({ ok: true, rijen, totaal: Number(n.ok && n.result) || 0, profiel: mijn,
+  return res.status(200).json({ ok: true, rijen, profiel: mijn,
     ik: mijnRang.ok && mijnRang.result != null ? { plek: Number(mijnRang.result) + 1, medailles: Math.floor(sc / 100), goud: sc % 100 } : null,
     kleuren: RL_KLEUREN, iconen: RL_ICONEN, renner: RENNER });
 }
