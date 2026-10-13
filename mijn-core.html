@@ -282,6 +282,10 @@
   .reekspil { display:inline-block; margin:8px 0 0 6px; }
   .speler .balk .t { margin-right:auto; }
   .speler .spk { background:rgba(255,107,26,.1); border:1px solid rgba(255,107,26,.6); color:#FF6B1A; border-radius:99px; padding:7px 14px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .speler .stemklap { margin-top:8px; }
+  .speler .stemklap summary { list-style:none; cursor:pointer; font-size:12.5px; color:var(--muted); }
+  .speler .stemklap summary::-webkit-details-marker { display:none; }
+  .speler .stemklap summary b { color:#FF6B1A; font-weight:700; }
   .speler .stemkeuze { display:flex; align-items:center; gap:6px; margin-top:10px; }
   .speler .stemkeuze span { font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-right:4px; }
   .speler .stemkeuze button { flex:1; max-width:110px; background:none; border:1px solid rgba(255,107,26,.45); color:rgba(245,243,239,.8); border-radius:99px; padding:7px 0; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; }
@@ -1176,10 +1180,11 @@ function klap(naam, titel, samenvatting, html, standaard = false) {
 }
 
 // ---- Gesproken aanwijzingen (12-10-2026) ----
-// Stem (12-10-2026): vrouw (standaard), man of uit. Welke Nederlandse stemmen er
+// Stem (12-10-2026): vrouw, man of uit. Sinds 13-10 standaard uit, aanzetten via het uitklapblokje. Welke Nederlandse stemmen er
 // zijn verschilt per telefoon; we zoeken op naam, en is er geen mannenstem, dan
 // zakt de toonhoogte van de standaardstem.
-function stemKeuze() { try { const v = localStorage.getItem('coreStem'); return v === '0' ? 'uit' : v === 'man' ? 'man' : 'vrouw'; } catch (e) { return 'vrouw'; } }
+function stemKeuze() { try { const v = localStorage.getItem('coreStem'); return v === 'man' ? 'man' : v === 'vrouw' ? 'vrouw' : 'uit'; } catch (e) { return 'uit'; } }
+function stemSamen() { return stemAan() ? 'Stem: ' + stemKeuze() + ' &middot; <b>wijzig</b>' : 'Liever een stem horen? <b>Tik hier</b>'; }
 function stemAan() { return stemKeuze() !== 'uit'; }
 const STEM_MAN = /xander|frank|daan|koen|guus|ruben|willem|bram|maarten|\bmale\b|\bman\b|nl-nl-x-bmh|nl-nl-x-dma|nl-be-x-bec/i;
 const STEM_VROUW = /claire|ellen|fenna|lotte|saskia|colette|anna|dena|female|vrouw|nl-nl-x-tfb|nl-nl-x-lfc|nl-nl-x-yfr|nl-be-x-bed/i;
@@ -1456,7 +1461,7 @@ async function startSpeler(sessie, hervat) {
   const totaal = stappen.reduce((n, s) => n + s.sec, 0);
   const el = document.createElement('div'); el.className = 'speler';
   el.innerHTML = `<div class="balk"><div class="t">Sessie ${NR[sessie.letter]} &middot; ${esc(sessie.naam)}</div><button class="spk" data-sp="pijn">Pijn?</button><button class="spk" data-sp="stop">Stoppen</button></div>
-    <div class="stemkeuze" role="radiogroup" aria-label="Stem"><span>Stem</span>${['vrouw', 'man', 'uit'].map((x) => `<button type="button" data-sp="stem" data-stem="${x}" class="${stemKeuze() === x ? 'aan' : ''}" role="radio">${{ vrouw: 'Vrouw', man: 'Man', uit: 'Uit' }[x]}</button>`).join('')}</div><div class="stemhint"></div>
+    <details class="stemklap"><summary>${stemSamen()}</summary><div class="stemkeuze" role="radiogroup" aria-label="Stem"><span>Stem</span>${['vrouw', 'man', 'uit'].map((x) => `<button type="button" data-sp="stem" data-stem="${x}" class="${stemKeuze() === x ? 'aan' : ''}" role="radio">${{ vrouw: 'Vrouw', man: 'Man', uit: 'Uit' }[x]}</button>`).join('')}</div><div class="stemhint"></div></details>
     <div class="voortgang"><i></i></div>
     <div class="midden"><div class="soort"></div><div class="naam"></div><div class="kant"></div><div class="beeld"></div><div class="spieren"></div><div class="klok"></div><div class="cue"></div><div class="straks"></div><div class="uitleg"></div></div>
     <div class="bediening"><button data-sp="terug" aria-label="Vorige">&#9664;&#9664;</button><button class="hoofd" data-sp="pauze">Pauze</button><button data-sp="verder" aria-label="Volgende">&#9654;&#9654;</button></div>`;
@@ -1622,6 +1627,7 @@ function spelerKlik(e) {
     try { localStorage.setItem('coreStem', keuze === 'uit' ? '0' : keuze); } catch (er) {}
     setTimeout(() => stemHint(sp.el), 0);
     k.parentElement.querySelectorAll('button').forEach((b) => b.classList.toggle('aan', b === k));
+    { const sm = sp.el.querySelector('.stemklap summary'); if (sm) sm.innerHTML = stemSamen(); }
     if (!stemAan()) { try { speechSynthesis.cancel(); } catch (er) {} } else zeg('Zo klink ik. Succes met je sessie.');
     return;
   }
