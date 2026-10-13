@@ -38,9 +38,9 @@
 import crypto from 'crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { coreVoorEmail, emailVoorCoreToken, coreTrechter } from './core.js';
+import { coreVoorEmail, emailVoorCoreToken, coreTrechter, coreOverzicht } from './core.js';
 import { lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar, haalSchema, ledenOverzicht, lidZoek, geefToegang } from './lid.js';
-import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN } from '../lib/schema-app.js';
+import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN, laadPlan } from '../lib/schema-app.js';
 import { haalMeldingen, leesMelding, appMelding, logPush } from '../lib/app-melding.js';
 import { leesDoel, nieuwDoel, volgendeStap, doelContext } from '../lib/doelen.js';
 import { maakKortingToken } from '../lib/korting.js';
@@ -269,6 +269,94 @@ async function routeStat(req, res) {
   if (CLIENT_GEBEURTENISSEN.includes(body.e) || GAST_GEBEURTENISSEN.includes(body.e)) await tel(email, body.e);
   return res.status(200).json({ ok: true });
 }
+// ---- Beheer (13-10-2026): doelen, schema bijstellen, Core-voortgang ----------
+function beheerEmail(req, t) { const e = leesAppToken(String(t || '')); return e && BEHEER.includes(e) ? e : null; }
+
+// Wie rijdt waar naartoe? Telling per soort doel en per tocht.
+async function routeDoelenOverzicht(req, res) {
+  if (!beheerEmail(req, req.query?.t)) return res.status(403).json({ ok: false });
+  const r = await redis(['SMEMBERS', 'app:doel:alle']);
+  const perSoort = {}, tochten = {};
+  let totaal = 0;
+  for (const email of (r.ok && r.result) || []) {
+    if (BEHEER.includes(email)) continue;
+    const d = await haalDoel(email); if (!d || !d.doel) continue;
+    totaal++;
+    perSoort[d.doel] = (perSoort[d.doel] || 0) + 1;
+    if (d.doel === 'evenement' && d.naam) {
+      const k = String(d.naam).trim();
+      const t = tochten[k] || (tochten[k] = { naam: k, aantal: 0, datums: [] });
+      t.aantal++; if (d.datum && !t.datums.includes(d.datum)) t.datums.push(d.datum);
+    }
+  }
+  const lijst = Object.values(tochten).map((t) => ({ ...t, datums: t.datums.sort() })).sort((a, b) => b.aantal - a.aantal || a.naam.localeCompare(b.naam));
+  return res.status(200).json({ ok: true, totaal, perSoort, tochten: lijst });
+}
+
+// Schema bijstellen: atleet kiezen, schema (vermogen of hartslag) en de week waar
+// hij nu in zit. De weekdagen blijven op dezelfde dagen vallen: alleen de
+// verschuiving verandert. Nog geen schema? Dan krijgt hij er een (geefToegang).
+function schemaTitel(plan) {
+  const winter = plan.startsWith('winter');
+  const nv = winter ? plan.split('-')[1] : plan.split('-')[0];
+  const niveauNaam = nv.replace(/^./, (c) => c.toUpperCase());
+  const p = laadPlan(plan);
+  return { niveauNaam, titel: winter ? 'Indoor Winterprogramma ' + niveauNaam : niveauNaam + ' ' + p.weken + ' weken', weken: p.weken };
+}
+function nlVandaag() { return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Europe/Amsterdam' }).format(new Date()); }
+function dagVerschil(van, tot) { return Math.round((Date.parse(tot + 'T12:00:00Z') - Date.parse(van + 'T12:00:00Z')) / 864e5); }
+async function routeSchemaBeheer(req, res) {
+  if (req.method !== 'POST') {
+    if (!beheerEmail(req, req.query?.t)) return res.status(403).json({ ok: false });
+    const [ls, act] = await Promise.all([redis(['SMEMBERS', 'lid:schema']), redis(['ZRANGE', 'app:actief', '0', '-1'])]);
+    const metSchema = [];
+    for (const email of (ls.ok && ls.result) || []) {
+      const s = await haalSchema(email); const h = s && s.huidig; if (!h || !h.plan) continue;
+      const b = schemaBeeld(h);
+      metSchema.push({ email, titel: h.titel || '', plan: h.plan, start: h.start, verschuif: Number(h.verschuif) || 0, week: b ? b.week : null, weken: b ? b.weken : null, status: b ? b.status : null });
+    }
+    metSchema.sort((a, b) => a.email.localeCompare(b.email));
+    const iedereen = [...new Set([...metSchema.map((x) => x.email), ...((act.ok && act.result) || [])])].filter((e) => !BEHEER.includes(e)).sort();
+    const plannen = [...SCHEMA_PLANNEN, ...['winter-basis-w', 'winter-opbouw-w'].filter((p) => laadPlan(p))];
+    return res.status(200).json({ ok: true, metSchema, iedereen, plannen });
+  }
+  const body = await leesBody(req);
+  if (!beheerEmail(req, body.t)) return res.status(403).json({ ok: false });
+  const email = String(body.email || '').trim().toLowerCase();
+  const plan = String(body.plan || '');
+  if (!geldigMail(email)) return res.status(400).json({ ok: false, fout: 'Kies een atleet.' });
+  if (!laadPlan(plan)) return res.status(400).json({ ok: false, fout: 'Kies een schema.' });
+  const { niveauNaam, titel, weken } = schemaTitel(plan);
+  const week = Math.max(1, Math.min(weken, Number(body.week) || 1));
+  const vandaag = nlVandaag();
+  const oud = await haalSchema(email);
+  const h = oud && oud.huidig && oud.huidig.plan ? oud.huidig : null;
+  // Welke dag van de week is het vandaag in het schema? Zelfde weekdag houden.
+  const dagInWeek = Number.isFinite(Number(body.dag)) && Number(body.dag) >= 1 && Number(body.dag) <= 7 ? Number(body.dag)
+    : h ? ((((dagVerschil(h.start, vandaag) - (Number(h.verschuif) || 0)) % 7) + 7) % 7) + 1
+    : ((new Date(vandaag + 'T12:00:00Z').getUTCDay() + 6) % 7) + 1;   // nieuw schema: dag 1 = maandag
+  const nieuwDagNr = (week - 1) * 7 + dagInWeek;
+  if (!h) {
+    // Nog geen schema: start zo kiezen dat vandaag op die dag valt.
+    const start = new Date(Date.parse(vandaag + 'T12:00:00Z') - (nieuwDagNr - 1) * 864e5).toISOString().slice(0, 10);
+    const r = await geefToegang({ email, naam: '', soort: 'schema', plan, start });
+    return res.status(r.ok ? 200 : 400).json({ ...r, nieuw: true });
+  }
+  const verschuif = dagVerschil(h.start, vandaag) + 1 - nieuwDagNr;
+  const huidig = { ...h, plan, weken, niveauNaam, titel, verschuif, bijgesteld: new Date().toISOString() };
+  await redis(['SET', `schema:${email}`, JSON.stringify({ ...oud, huidig })]);
+  const b = schemaBeeld(huidig);
+  return res.status(200).json({ ok: true, schema: { email, titel, plan, week: b ? b.week : week, dagNr: b ? b.dagNr : nieuwDagNr, status: b ? b.status : null, vandaag: b && b.vandaag.length ? b.vandaag.map((w) => w.titel).join(' + ') : 'rust' } });
+}
+
+// Core-voortgang per deelnemer, met wie in coaching zit.
+async function routeCoreOverzicht(req, res) {
+  if (!beheerEmail(req, req.query?.t)) return res.status(403).json({ ok: false });
+  const l = await coreOverzicht().catch(() => []);
+  for (const x of l) { const lm = await haalLid(x.email).catch(() => null); x.coaching = lm && lm.coaching ? lm.coaching : null; x.lid = !!(lm && lidBeeld(lm).open); }
+  return res.status(200).json({ ok: true, deelnemers: l.filter((x) => !BEHEER.includes(x.email)) });
+}
+
 async function routeGebruik(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email || !BEHEER.includes(email)) return res.status(403).json({ ok: false });
@@ -711,6 +799,9 @@ export default async function handler(req, res) {
     if (actie === 'pushtest') return await routePushTest(req, res);
     if (actie === 'pushcron') return await routePushCron(req, res);
     if (actie === 'startbonus') return await routeStartBonus(req, res);
+    if (actie === 'doelenoverzicht') return await routeDoelenOverzicht(req, res);
+    if (actie === 'schemabeheer') return await routeSchemaBeheer(req, res);
+    if (actie === 'coreoverzicht') return await routeCoreOverzicht(req, res);
     if (actie === 'schema') return await routeSchema(req, res);
     if (actie === 'melding') return await routeMelding(req, res);
     if (actie === 'leden') return await routeLeden(req, res);
@@ -1220,6 +1311,7 @@ async function coachContext(email) {
   if (lidm && lidm.coaching) regels.push(`BELANGRIJK: deze renner zit in persoonlijke coaching bij Michel (${lidm.coaching === 'premium' ? 'Premium' : 'Flexibel'}). Michel maakt zijn trainingsplan zelf, persoonlijk in TrainingPeaks. Pas dat plan nooit aan en schuif geen trainingen: bij vragen over zijn plan, zijn trainingen of zijn opbouw zeg je vriendelijk dat hij dat even met Michel kortsluit, via TrainingPeaks of de mail, omdat Michel zijn plan zo heeft opgebouwd. Algemene vragen over voeding, herstel, materiaal, kleding, banden en techniek beantwoord je gewoon. Raad hem nooit een Strava-analyse, een trainingsschema of een pacingplan aan: dat regelt Michel binnen zijn coaching.`);
   const sb = schemaDossier && schemaDossier.huidig && schemaDossier.huidig.plan ? schemaBeeld(schemaDossier.huidig) : null;
   if (sb) regels.push(schemaContext(sb));
+  else if (!(lidm && lidm.coaching)) regels.push('Deze renner heeft geen trainingsschema en geen persoonlijke coaching.');
   const naam = (core && core.naam) || mf.FNAME || '';
   if (naam) regels.push(`Naam: ${String(naam).split(' ')[0]}.`);
   if (core) {

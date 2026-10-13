@@ -284,6 +284,30 @@
   .eersteweek .knop { margin-top:10px; }
   .welkom-michel { font-size:14px; color:rgba(245,243,239,.8); margin:-4px 0 14px; line-height:1.5; }
   .welkom-michel b { color:var(--accent); font-weight:600; }
+  .geb-tab td:first-child, .geb-tab td:last-child { white-space:normal; }
+  .bh-cellen { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:12px; }
+  .bh-cel { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px; }
+  .bh-cel b { display:block; font-size:22px; }
+  .bh-cel span { font-size:12px; color:var(--muted); }
+  .bh-form label { display:block; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin:10px 0 4px; }
+  .bh-form select, .bh-form input { width:100%; background:var(--surface2); border:1px solid var(--border); color:var(--white); border-radius:8px; padding:10px; font:inherit; font-size:14px; }
+  .bh-rij { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .bh-form .knop { margin-top:12px; }
+  .bh-nu { color:#4CC38A; margin:6px 0 0; }
+  .bh-melding { margin-top:10px; }
+  .bh-filter { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+  .bh-filter button { background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:99px; padding:6px 12px; font:inherit; font-size:12.5px; cursor:pointer; }
+  .bh-filter button.aan { border-color:var(--accent); color:var(--white); background:rgba(255,107,26,.12); }
+  .bh-kaart { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; }
+  .bh-kaart.stil { opacity:.55; }
+  .bh-k1 { display:flex; justify-content:space-between; gap:8px; align-items:center; }
+  .bh-k1 b { font-size:14px; }
+  .bh-tag { font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#0A0A0A; background:var(--accent); border-radius:99px; padding:2px 8px; white-space:nowrap; }
+  .bh-tag.lid { background:#4CC38A; } .bh-tag.grijs { background:rgba(255,255,255,.2); color:var(--white); }
+  .bh-k2 { font-size:12px; color:var(--muted); margin:3px 0 6px; }
+  .bh-k3, .bh-k4 { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:12.5px; }
+  .bh-k4 { color:var(--muted); margin-top:4px; font-size:12px; }
+  .bh-k4 .rood { color:#ff8a5c; font-weight:600; }
   .lidbalk { display:flex; align-items:center; gap:12px; width:100%; margin-top:16px; text-align:left; background:linear-gradient(160deg, rgba(255,107,26,.16), var(--surface) 60%); border:1px solid rgba(255,107,26,.55); border-radius:10px; padding:14px 16px; color:var(--white); font-family:inherit; cursor:pointer; }
   .lidbalk span { flex:1; min-width:0; }
   .lidbalk b { display:block; font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.03em; font-weight:400; line-height:1; }
@@ -2432,8 +2456,6 @@ function vandaagHtml(d) {
   const wk = [];
   if (c && !c.intakeNodig && c.frequentie) wk.push(c.gedaan >= c.frequentie ? '<span class="ok">&#10003; Core deze week rond</span>' : 'Core <b>' + c.gedaan + ' van ' + c.frequentie + '</b>');
   if (c && c.reeks >= 2) wk.push('<b>' + c.reeks + ' weken</b> op rij');
-  const rw = (d.bandenRitten || []).filter((r) => r && r.op && Date.now() - Date.parse(r.op) < 7 * 864e5).length;
-  if (rw) wk.push('<b>' + rw + (rw === 1 ? ' rit' : ' ritten') + '</b> deze week');
   if (c && c.rompscore != null && c.startScore != null && c.rompscore > c.startScore) wk.push('Rompscore <b>+' + (c.rompscore - c.startScore) + '</b>');
   if (wk.length) rijen.push('<div class="vd-week">' + wk.map((x) => '<span>' + x + '</span>').join('') + '</div>');
   if (!s && !coaching) rijen.push(`<a class="vd-zacht" href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Met een schema staat hier ook elke dag je training klaar &rarr;</a>`);
@@ -2542,7 +2564,7 @@ function teken() {
   }
   const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `${appBalkHtml()}
-    ${beheerHtml(d)}${aankondigHtml()}${pushOpnieuwHtml()}${ledenHtml()}${gebruikHtml()}${opvolgHtml()}${nakijkHtml()}
+    ${beheerHtml(d)}${aankondigHtml()}${pushOpnieuwHtml()}${ledenHtml()}${gebruikHtml()}${doelenBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}${opvolgHtml()}${nakijkHtml()}
     <div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
     ${welkomNu() ? '<p class="welkom-michel">Begin hieronder met je eerste week. Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
     ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
@@ -3127,6 +3149,102 @@ function gebruikHtml() {
   </div></div>`;
 }
 function gebTeken() { const el = document.getElementById('gebruik'); if (el) el.outerHTML = gebruikHtml(); }
+// ---- Beheer (13-10-2026): doelen, schema bijstellen, Core-voortgang ----
+const BH = { doelen: { open: false, data: null }, schema: { open: false, data: null, email: '', plan: '', week: 1, dag: '', melding: '', bezig: false }, core: { open: false, data: null, filter: 'coaching' } };
+async function bhLaad(wat) {
+  const actie = { doelen: 'doelenoverzicht', schema: 'schemabeheer', core: 'coreoverzicht' }[wat];
+  try { const j = await (await fetch(API + '?actie=' + actie + '&t=' + encodeURIComponent(leesToken()))).json(); if (j.ok) BH[wat].data = j; } catch (e) {}
+  bhTeken(wat);
+}
+function bhTeken(wat) { const id = { doelen: 'bhdoelen', schema: 'bhschema', core: 'bhcore' }[wat]; const el = document.getElementById(id); if (el) el.outerHTML = { doelen: doelenBeheerHtml, schema: schemaBeheerHtml, core: coreBeheerHtml }[wat](); }
+function bhKop(wat, titel, sub) { return `<button type="button" class="opv-kop" data-bh="klap" data-w="${wat}"><span><b>${titel}</b>${sub ? '<em>' + sub + '</em>' : ''}</span><span>${BH[wat].open ? '&#9650;' : '&#9660;'}</span></button>`; }
+const DOEL_LABEL = { sneller: 'Sneller worden', evenement: 'Een tocht of wedstrijd', afvallen: 'Afvallen', fit: 'Fit blijven en plezier' };
+function doelenBeheerHtml() {
+  if (!D || !D.beheer) return '';
+  const x = BH.doelen.data, kop = bhKop('doelen', 'Doelen', x ? x.totaal + (x.totaal === 1 ? ' persoon' : ' mensen') + ' met een doel' : 'wie rijdt waar naartoe');
+  if (!BH.doelen.open) return `<div class="geb" id="bhdoelen">${kop}</div>`;
+  if (!x) return `<div class="geb" id="bhdoelen">${kop}<div class="geb-in"><p class="klein">Laden...</p></div></div>`;
+  const soorten = Object.entries(DOEL_LABEL).map(([k, n]) => `<div class="bh-cel"><b>${x.perSoort[k] || 0}</b><span>${n}</span></div>`).join('');
+  const fmt = (dt) => new Date(dt + 'T12:00:00').toLocaleDateString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric' });
+  const tochten = x.tochten.length ? x.tochten.map((t) => `<tr><td>${esc(t.naam)}</td><td><b>${t.aantal}</b></td><td><small>${t.datums.map(fmt).join(', ') || '&ndash;'}</small></td></tr>`).join('') : '<tr><td colspan="3"><small>Nog niemand met een tocht.</small></td></tr>';
+  return `<div class="geb" id="bhdoelen">${kop}<div class="geb-in"><div class="bh-cellen">${soorten}</div>
+    <table class="geb-tab"><tr><th>Tocht</th><th>Aantal</th><th>Datum</th></tr>${tochten}</table>
+    <button type="button" class="sb-link" data-bh="ververs" data-w="doelen">Ververs</button></div></div>`;
+}
+function planLabel(pl) {
+  if (/^winter/.test(pl)) return 'Winterprogramma ' + pl.split('-')[1].replace(/^./, (c) => c.toUpperCase());
+  const [n, w, m] = pl.split('-'); return n.replace(/^./, (c) => c.toUpperCase()) + ' ' + w + ' weken &middot; ' + (m === 'hr' ? 'hartslag' : 'vermogen');
+}
+function schemaBeheerHtml() {
+  if (!D || !D.beheer) return '';
+  const S = BH.schema, x = S.data, kop = bhKop('schema', 'Schema bijstellen', x ? x.metSchema.length + (x.metSchema.length === 1 ? ' persoon' : ' mensen') + ' met een schema' : 'atleet, schema en week');
+  if (!S.open) return `<div class="geb" id="bhschema">${kop}</div>`;
+  if (!x) return `<div class="geb" id="bhschema">${kop}<div class="geb-in"><p class="klein">Laden...</p></div></div>`;
+  const huidig = x.metSchema.find((m) => m.email === S.email);
+  const opties = x.iedereen.map((e) => { const m = x.metSchema.find((y) => y.email === e); return `<option value="${esc(e)}" ${S.email === e ? 'selected' : ''}>${esc(e)}${m ? ' &middot; ' + esc(m.titel) + ' (week ' + m.week + ' van ' + m.weken + ')' : ''}</option>`; }).join('');
+  const weken = S.plan ? Number((S.plan.match(/-(\d+)-/) || [0, 12])[1]) : 16;
+  const planOpt = x.plannen.map((pl) => `<option value="${pl}" ${S.plan === pl ? 'selected' : ''}>${planLabel(pl)}</option>`).join('');
+  return `<div class="geb" id="bhschema">${kop}<div class="geb-in bh-form">
+    <p class="klein">Ziek geweest, een week niet gereden of later begonnen? Kies de atleet, het schema en de week waar diegene nu zit. De trainingen in de app lopen dan weer gelijk met TrainingPeaks.</p>
+    <label>Atleet</label><select id="bhAtleet"><option value="">Kies een atleet</option>${opties}</select>
+    ${huidig ? `<p class="klein bh-nu">Nu: ${esc(huidig.titel)}, week ${huidig.week} van ${huidig.weken}${huidig.status === 'voor' ? ' (nog niet begonnen)' : huidig.status === 'klaar' ? ' (afgerond)' : ''}.</p>` : S.email ? '<p class="klein bh-nu">Heeft nog geen schema. Je geeft er nu een.</p>' : ''}
+    <label>Schema</label><select id="bhPlan"><option value="">Kies een schema</option>${planOpt}</select>
+    <div class="bh-rij"><div><label>Week waar diegene nu zit</label><input id="bhWeek" type="number" min="1" max="${weken}" value="${S.week}"></div>
+      <div><label>Dag in die week</label><select id="bhDag"><option value="">Zelfde weekdag houden</option>${[1, 2, 3, 4, 5, 6, 7].map((n) => `<option value="${n}" ${String(S.dag) === String(n) ? 'selected' : ''}>Dag ${n}</option>`).join('')}</select></div></div>
+    <button type="button" class="knop" data-bh="zetschema" ${S.bezig ? 'disabled' : ''}>${S.bezig ? 'Even opslaan...' : 'Zet schema'}</button>
+    ${S.melding ? `<p class="klein bh-melding">${S.melding}</p>` : ''}</div></div>`;
+}
+function dagenGeleden(iso) { if (!iso) return '&ndash;'; const n = Math.floor((Date.now() - Date.parse(iso)) / 864e5); return n <= 0 ? 'vandaag' : n === 1 ? 'gisteren' : n + ' dagen geleden'; }
+function coreBeheerHtml() {
+  if (!D || !D.beheer) return '';
+  const C = BH.core, x = C.data, kop = bhKop('core', 'Core-voortgang', x ? x.deelnemers.length + (x.deelnemers.length === 1 ? ' deelnemer' : ' deelnemers') : 'progressie per renner');
+  if (!C.open) return `<div class="geb" id="bhcore">${kop}</div>`;
+  if (!x) return `<div class="geb" id="bhcore">${kop}<div class="geb-in"><p class="klein">Laden...</p></div></div>`;
+  const l = x.deelnemers.filter((d) => C.filter === 'alle' || (C.filter === 'coaching' ? d.coaching : C.filter === 'leden' ? d.lid && !d.coaching : !d.lid && !d.coaching));
+  const knop = (f, n) => `<button type="button" class="${C.filter === f ? 'aan' : ''}" data-bh="corefilter" data-f="${f}">${n}</button>`;
+  const kaart = (d) => {
+    const winst = d.rompStart != null && d.rompNu != null ? d.rompNu - d.rompStart : null;
+    const stil = d.laatste && Date.now() - Date.parse(d.laatste) > 10 * 864e5;
+    return `<div class="bh-kaart${stil ? ' stil' : ''}"><div class="bh-k1"><b>${esc(d.naam || d.email)}</b>${d.coaching ? `<span class="bh-tag">Coaching ${d.coaching === 'premium' ? 'Premium' : 'Flex'}</span>` : d.lid ? '<span class="bh-tag lid">Lid</span>' : '<span class="bh-tag grijs">Proef</span>'}</div>
+      <div class="bh-k2">${d.naam ? esc(d.email) + ' &middot; ' : ''}${d.intake ? 'Niveau ' + d.niveau + (d.fase ? ' (' + esc(d.fase) + ')' : '') : 'Intake nog niet gedaan'}${d.doel ? ' &middot; doel: ' + esc(d.doel) : ''}</div>
+      <div class="bh-k3"><span>Deze week <b>${d.deze7}${d.frequentie ? '/' + d.frequentie : ''}</b></span><span>Reeks <b>${d.reeks} wk</b></span><span>Sessies <b>${d.sessies}</b></span><span>Rompscore <b>${d.rompStart != null ? d.rompStart + ' &rarr; ' + d.rompNu : '&ndash;'}${winst ? ' (' + (winst > 0 ? '+' : '') + winst + ')' : ''}</b></span></div>
+      <div class="bh-k4"><span>Laatste sessie: ${dagenGeleden(d.laatste)}</span>${d.pijnMax != null ? `<span class="${d.pijnMax >= 5 ? 'rood' : ''}">Pijn max ${d.pijnMax}/10 (4 wk)</span>` : ''}${d.klachten.length ? '<span>Klachten: ' + esc(d.klachten.join(', ')) + '</span>' : ''}</div></div>`;
+  };
+  return `<div class="geb" id="bhcore">${kop}<div class="geb-in"><div class="bh-filter">${knop('coaching', 'Coaching')}${knop('leden', 'Leden')}${knop('proef', 'Proef')}${knop('alle', 'Alle')}</div>
+    ${l.length ? l.map(kaart).join('') : '<p class="klein">Niemand in deze groep.</p>'}
+    <p class="klein">Grijs = langer dan 10 dagen geen sessie.</p><button type="button" class="sb-link" data-bh="ververs" data-w="core">Ververs</button></div></div>`;
+}
+document.addEventListener('change', (e) => {
+  const S = BH.schema;
+  if (e.target.id === 'bhAtleet') {
+    S.email = e.target.value; S.melding = '';
+    const m = S.data && S.data.metSchema.find((y) => y.email === S.email);
+    if (m) { S.plan = m.plan; S.week = m.week || 1; }
+    bhTeken('schema');
+  }
+  if (e.target.id === 'bhPlan') { S.plan = e.target.value; bhTeken('schema'); }
+  if (e.target.id === 'bhWeek') S.week = e.target.value;
+  if (e.target.id === 'bhDag') S.dag = e.target.value;
+});
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-bh]'); if (!k) return;
+  const a = k.dataset.bh, w = k.dataset.w;
+  if (a === 'klap') { BH[w].open = !BH[w].open; bhTeken(w); if (BH[w].open && !BH[w].data) bhLaad(w); return; }
+  if (a === 'ververs') { BH[w].data = null; bhTeken(w); return bhLaad(w); }
+  if (a === 'corefilter') { BH.core.filter = k.dataset.f; return bhTeken('core'); }
+  if (a === 'zetschema') {
+    const S = BH.schema; S.week = document.getElementById('bhWeek')?.value || S.week; S.dag = document.getElementById('bhDag')?.value || '';
+    if (!S.email || !S.plan) { S.melding = 'Kies een atleet en een schema.'; return bhTeken('schema'); }
+    S.bezig = true; S.melding = ''; bhTeken('schema');
+    try {
+      const j = await (await fetch(API + '?actie=schemabeheer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), email: S.email, plan: S.plan, week: Number(S.week), dag: S.dag ? Number(S.dag) : undefined }) })).json();
+      if (j.ok && j.schema) S.melding = '&#10003; ' + esc(S.email) + ': ' + esc(j.schema.titel) + ', nu week ' + j.schema.week + '. Vandaag: ' + esc(j.schema.vandaag) + '.';
+      else if (j.ok && j.nieuw) S.melding = '&#10003; ' + esc(S.email) + ' heeft nu ' + esc(planLabel(S.plan)) + ', week ' + S.week + '.';
+      else S.melding = esc(j.fout || 'Dat lukte niet.');
+      S.data = null; S.bezig = false; bhTeken('schema'); bhLaad('schema');
+    } catch (er) { S.bezig = false; S.melding = 'Verbinding mislukt.'; bhTeken('schema'); }
+  }
+});
 async function gebLaad() {
   try { const j = await (await fetch(API + '?actie=gebruik&t=' + encodeURIComponent(leesToken()))).json(); if (j.ok) GEB.data = j; } catch (e) {}
   gebTeken();

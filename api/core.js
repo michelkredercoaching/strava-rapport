@@ -428,6 +428,29 @@ export async function wisCore(email) {
   await redis(['DEL', `core:email:${email}`]);
   return true;
 }
+// Core-voortgang per deelnemer (13-10-2026), voor Michels beheerscherm: o.a.
+// om de voortgang van coachingklanten te checken.
+export async function coreOverzicht() {
+  const ids = await redis(['SMEMBERS', 'core:actief']);
+  const nuMs = Date.now(), l = [];
+  for (const id of (ids.ok && ids.result) || []) {
+    const d = await haalDossier(id); if (!d || !d.email) continue;
+    let b = null; try { b = klantBeeld(d); } catch (e) {}
+    const s = d.sessies || [], tests = d.tests || [];
+    const laatste = s.length ? s[s.length - 1].op : null;
+    const pijn = (d.pijn || []).filter((x) => nuMs - Date.parse(x.op) < 28 * 864e5);
+    l.push({
+      email: d.email, naam: d.naam || '', betaald: isBetaald(d), bron: d.bron || '', intake: !!d.intake,
+      niveau: b ? b.week : d.week, fase: b ? b.faseNaam : '', afgerond: d.afgerond || 0,
+      sessies: s.length, deze7: s.filter((x) => nuMs - Date.parse(x.op) < 7 * 864e5).length, laatste,
+      reeks: b ? b.reeks || 0 : 0, frequentie: b ? b.frequentie : null,
+      rompStart: tests[0] ? tests[0].score : null, rompNu: tests.length ? tests[tests.length - 1].score : null, tests: tests.length,
+      pijnMax: pijn.length ? Math.max(...pijn.map((x) => x.score || 0)) : null,
+      klachten: (d.intake && d.intake.klachten) || [], doel: b && b.doel ? (b.doel.naam || b.doel.doel || '') : ''
+    });
+  }
+  return l.sort((a, b) => String(b.laatste || '').localeCompare(String(a.laatste || '')));
+}
 // Core-trechter (12-10-2026): waar haken mensen af? Voor Michels beheerscherm.
 export async function coreTrechter() {
   const ids = await redis(['SMEMBERS', 'core:actief']);
