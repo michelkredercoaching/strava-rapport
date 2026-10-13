@@ -802,6 +802,23 @@ async function routePushOpnieuw(req, res) {
 // melding in de app (+ push) en een mail via Resend naar iedereen met een gratis
 // account die de app de laatste 120 dagen opende. Leden en coaching niet.
 // Eén keer per persoon (app:aankondig:gratisvragen).
+// Beheer-dashboard (13-10-2026): de kerncijfers in één keer, alleen voor Michel.
+async function routeBeheerDash(req, res) {
+  if (!beheerEmail(req, req.query?.t)) return res.status(403).json({ ok: false });
+  const nlDag = (t) => new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+  const dagen = (n) => Array.from({ length: n }, (_, i) => `stat:${nlDag(Date.now() - i * 86400000)}:actief`);
+  const [acc, vandaag, w7, w30, nieuw7, leden] = await Promise.all([
+    redis(['ZCARD', 'app:actief']), redis(['SMEMBERS', dagen(1)[0]]), redis(['SUNION', ...dagen(7)]), redis(['SUNION', ...dagen(30)]),
+    redis(['ZCOUNT', 'app:actief', String(Date.now() - 7 * 864e5), '+inf']), ledenOverzicht().catch(() => null)
+  ]);
+  const zonder = (r) => ((r.ok && r.result) || []).filter((e) => !BEHEER.includes(e)).length;
+  const tel = (leden && leden.tel) || {};
+  return res.status(200).json({ ok: true,
+    accounts: Math.max(0, (Number(acc.result) || 0) - BEHEER.length), vandaag: zonder(vandaag), week: zonder(w7), maand: zonder(w30),
+    betaald: (tel['betaald-maand'] || 0) + (tel['betaald-jaar'] || 0), maandLeden: tel['betaald-maand'] || 0, jaarLeden: tel['betaald-jaar'] || 0,
+    coaching: (tel['coaching-flex'] || 0) + (tel['coaching-premium'] || 0), schema: (tel.schema || 0) + (tel.cadeau || 0),
+    mrr: leden ? leden.mrr : null, nieuwVandaag: leden ? leden.nieuwVandaag : 0 });
+}
 async function routeAankondig(req, res) {
   const body = req.method === 'POST' ? await leesBody(req) : {};
   const ik = leesAppToken(String(req.method === 'POST' ? body.t : req.query?.t || ''));
@@ -1075,6 +1092,7 @@ export default async function handler(req, res) {
     if (actie === 'ritpagina') return await routeRitPagina(req, res);
     if (actie === 'doel') return await routeDoel(req, res);
     if (actie === 'aankondig') return await routeAankondig(req, res);
+    if (actie === 'beheerdash') return await routeBeheerDash(req, res);
     if (actie === 'pushopnieuw') return await routePushOpnieuw(req, res);
     if (actie === 'doelronde') return await routeDoelRonde(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });

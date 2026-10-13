@@ -309,6 +309,14 @@
   .md-rijen li { display:grid; grid-template-columns:30px 1fr auto; gap:10px; align-items:center; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:6px 10px; }
   .md-rijen li.aan { border-color:rgba(255,107,26,.4); } .md-rijen b { display:block; font-size:13.5px; } .md-rijen span { font-size:12px; color:var(--muted); } .md-rijen small { font-size:11.5px; color:var(--muted); white-space:nowrap; }
   .ms-lijst { text-align:left; margin:8px 0 12px; padding-left:20px; display:grid; gap:8px; } .ms-lijst b { display:block; font-size:14px; } .ms-lijst span { font-size:12.5px; color:var(--muted); }
+  .bhd { margin:8px 0 6px; }
+  .bhd-rij { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-bottom:6px; }
+  .bhd-cel { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:10px 8px; min-width:0; }
+  .bhd-cel b { display:block; font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1; color:var(--accent); }
+  .bhd-cel span { display:block; font-size:11.5px; font-weight:700; margin-top:2px; }
+  .bhd-cel small { display:block; font-size:10.5px; color:var(--muted); line-height:1.3; margin-top:2px; }
+  .bh-sec { font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin:16px 0 6px; padding-top:10px; border-top:1px solid rgba(255,255,255,.08); }
+  @media (max-width:420px) { .bhd-rij { grid-template-columns:repeat(2, 1fr); } }
   .bh-nakijk { margin-top:10px; padding:10px; border:1px solid rgba(255,255,255,.12); border-radius:8px; }
   .vr-label { display:block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:4px 0 5px; }
   .vr-naam { width:100%; height:46px; background:#000; border:1px solid rgba(255,255,255,.18); border-radius:6px; color:var(--white); padding:0 12px; font-size:15px; margin-bottom:8px; }
@@ -1859,6 +1867,25 @@ document.addEventListener('click', async (e) => {
     AK.bezig = false; akTeken();
   }
 });
+// Beheer-dashboard: kerncijfers bovenaan (alleen voor Michel).
+let BHD = null, BHD_LADEN = false;
+async function bhDashLaad() {
+  if (BHD_LADEN) return; BHD_LADEN = true;
+  try { const j = await (await fetch(API + '?actie=beheerdash&t=' + encodeURIComponent(leesToken()))).json(); if (j.ok) BHD = j; } catch (e) {}
+  BHD_LADEN = false; const el = document.getElementById('bhdash'); if (el) el.innerHTML = bhDashHtml();
+  const kop = document.querySelector('.bh-groep > summary span'); if (kop) kop.innerHTML = bhDashKort();
+}
+function bhDashKort() { return BHD ? BHD.accounts + ' accounts &middot; ' + BHD.betaald + ' betalend &middot; ' + BHD.week + ' actief deze week' : 'kerncijfers, te doen, mensen, groei'; }
+function bhDashHtml() {
+  if (!BHD) { bhDashLaad(); return '<div class="bhd"><p class="klein">Cijfers laden...</p></div>'; }
+  const x = BHD, eur = (v) => v == null ? '&ndash;' : '&euro;' + String(Math.round(v * 100) / 100).replace('.', ',');
+  const cel = (n, t, sub) => `<div class="bhd-cel"><b>${n}</b><span>${t}</span>${sub ? '<small>' + sub + '</small>' : ''}</div>`;
+  return `<div class="bhd"><div class="bhd-rij">
+    ${cel(x.accounts, 'accounts', 'iedereen die de app gebruikte')}${cel(x.vandaag, 'actief vandaag')}${cel(x.week, 'actief 7 dagen')}${cel(x.maand, 'actief 30 dagen')}</div>
+    <div class="bhd-rij">${cel(x.betaald, 'betalende leden', x.maandLeden + ' maand &middot; ' + x.jaarLeden + ' jaar' + (x.nieuwVandaag ? ' &middot; ' + x.nieuwVandaag + ' nieuw vandaag' : ''))}${cel(eur(x.mrr), 'omzet per maand', 'uit lidmaatschappen')}${cel(x.coaching, 'coaching')}${cel(x.schema, 'via schema')}</div>
+    <button type="button" class="sb-link" data-bhd="ververs" style="margin:6px 0 0">Ververs</button></div>`;
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-bhd]')) { BHD = null; const el = document.getElementById('bhdash'); if (el) el.innerHTML = bhDashHtml(); } });
 function beheerHtml(d) {
   if (!d.beheer) return '';
   const ai = d.aiGebruik;
@@ -2881,7 +2908,7 @@ function teken() {
   }
   const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `${appBalkHtml()}
-    ${beheerHtml(d)}${d.beheer ? `<details class="bh-groep" data-klap="beheer" ${klapOpen('beheer', true) ? 'open' : ''}><summary><b>Beheer</b><span>leden, gebruik, doelen, schema's, Core, nakijken</span></summary>${aankondigHtml()}${pushOpnieuwHtml()}${ledenHtml()}${gebruikHtml()}${doelenBeheerHtml()}${badgeBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}${opvolgHtml()}${nakijkHtml()}</details>` : ''}
+    ${beheerHtml(d)}${d.beheer ? `<details class="bh-groep" data-klap="beheer" ${klapOpen('beheer', true) ? 'open' : ''}><summary><b>Beheer</b><span>${bhDashKort()}</span></summary><div id="bhdash">${bhDashHtml()}</div><div class="bh-sec">Te doen</div>${opvolgHtml()}${nakijkHtml()}<div class="bh-sec">Mensen</div>${ledenHtml()}${doelenBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}<div class="bh-sec">Groei en gebruik</div>${gebruikHtml()}${badgeBeheerHtml()}<div class="bh-sec">Berichten versturen</div>${aankondigHtml()}${pushOpnieuwHtml()}</details>` : ''}
     <div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
     ${welkomNu() ? '<p class="welkom-michel">' + (eersteWeekHtml(d) ? 'Begin hieronder met je eerste week.' : startlijstHtml(d) ? 'Begin hieronder met je startlijst, dan staat de app helemaal goed.' : 'Fijn dat je er bent.') + ' Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
     ${!d.gast ? '<div class="rang-plek">' + palmaresChipHtml(d) + rangChipHtml(d) + '</div>' : ''}
