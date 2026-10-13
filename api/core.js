@@ -485,6 +485,7 @@ export async function coreVoorEmail(email) {
     week: b.week, blok: b.blok, weekInBlok: b.weekInBlok, fase: b.fase, faseNaam: b.faseNaam, magDoorlopen: b.magDoorlopen,
     gedaan: b.gedaanDezeWeek.length, frequentie: b.frequentie, afgerond: b.afgerond,
     reeks: b.reeks || 0,
+    sessiesTotaal: (d.sessies || []).length,
     startScore: tests[0] ? tests[0].score : null,
     rompscore: tests.length ? tests[tests.length - 1].score : null,
     kracht: b.kracht, disbalans: b.disbalans, zwaarsteDag: b.zwaarsteDag,

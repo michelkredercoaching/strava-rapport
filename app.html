@@ -206,6 +206,21 @@
   .vr-paal small { display:block; font-size:10.5px; color:var(--muted); }
   .vr-doel { font-size:14px; margin:8px 0 12px; text-align:center; }
   .vr-doel b { color:var(--accent); }
+  .pm-kop { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
+  .pm-n { font-family:'Bebas Neue',sans-serif; font-size:64px; line-height:.85; color:var(--accent); }
+  .pm-balk { height:6px; background:rgba(255,255,255,.1); border-radius:3px; margin:14px 0 4px; overflow:hidden; } .pm-balk i { display:block; height:100%; background:var(--accent); }
+  .md-raster { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+  .md-tegel { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:12px 6px 10px; text-align:center; color:var(--white); font-family:inherit; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .md-tegel.aan { border-color:rgba(255,107,26,.5); background:linear-gradient(170deg, rgba(255,107,26,.14), rgba(255,107,26,.02)); }
+  .md-tegel b { font-size:12.5px; line-height:1.2; margin-top:4px; } .md-tegel small { font-size:11px; color:var(--muted); }
+  .md { display:flex; align-items:center; justify-content:center; width:52px; height:52px; border-radius:50%; background:#161616; border:2px dashed rgba(255,255,255,.18); }
+  .md i { font-style:normal; font-family:'Bebas Neue',sans-serif; font-size:21px; color:rgba(255,255,255,.35); letter-spacing:.02em; }
+  .md.aan { background:radial-gradient(circle at 35% 30%, #ffa063, var(--accent) 60%, #d9520c); border:3px solid rgba(255,255,255,.18); box-shadow:0 4px 16px rgba(255,107,26,.35); }
+  .md.aan i { color:#0a0a0a; }
+  .md.groot { width:120px; height:120px; margin:6px auto 12px; } .md.groot i { font-size:48px; }
+  .md-balk { width:80%; height:4px; background:rgba(255,255,255,.1); border-radius:2px; overflow:hidden; margin-top:3px; } .md-balk i { display:block; height:100%; background:var(--accent); }
+  .md-modal { text-align:center; } .md-modal h3 { font-family:'Bebas Neue',sans-serif; font-size:34px; margin:0 0 6px; text-transform:uppercase; } .md-modal p { margin:0 0 8px; }
+  .bh-nakijk { margin-top:10px; padding:10px; border:1px solid rgba(255,255,255,.12); border-radius:8px; }
   .vr-label { display:block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:4px 0 5px; }
   .vr-naam { width:100%; height:46px; background:#000; border:1px solid rgba(255,255,255,.18); border-radius:6px; color:var(--white); padding:0 12px; font-size:15px; margin-bottom:8px; }
   details.vr-lijst { margin-top:14px; border-top:1px solid rgba(255,255,255,.1); padding-top:10px; }
@@ -2202,6 +2217,7 @@ window.addEventListener('popstate', (e) => { VIEW = (e.state && e.state.v) || 'h
 document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-view]'); if (!k) return;
   e.preventDefault();
+  if (k.closest('#lxModal')) lxDicht();
   const v = k.dataset.view;
   if (v === 'coach') { const f = document.getElementById('ccFab'); if (f) f.click(); return; }
   if (v === 'home') { if (history.state && history.state.v && history.state.v !== 'home') { history.back(); return; } VIEW = 'home'; teken(); window.scrollTo(0, 0); return; }
@@ -2210,6 +2226,7 @@ document.addEventListener('click', (e) => {
 function klapOpen(naam, standaard) { try { const w = localStorage.getItem('mkcKlap:' + naam); return w == null ? standaard : w === '1'; } catch (e) { return standaard; } }
 document.addEventListener('toggle', (e) => { const d = e.target; if (d && d.dataset && d.dataset.klap) { try { localStorage.setItem('mkcKlap:' + d.dataset.klap, d.open ? '1' : '0'); } catch (er) {} } }, true);
 const IC = {
+  palmares: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="M8.5 14 7 22l5-3 5 3-1.5-8"/><path d="m12 6 .9 1.9 2.1.3-1.5 1.4.4 2-1.9-1-1.9 1 .4-2L9 8.2l2.1-.3z"/></svg>',
   rijden: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17" r="3.5"/><circle cx="18.5" cy="17" r="3.5"/><path d="M15 6h2l3 11M5.5 17l4-8h7l-5 8M9 9l-1.5-3H5"/></svg>',
   schema: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h3M8 17h6"/></svg>',
   core: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="6" width="3.5" height="12" rx="1.2"/><rect x="15.5" y="6" width="3.5" height="12" rx="1.2"/><path d="M2.5 9.5v5M21.5 9.5v5M8.5 12h7"/></svg>',
@@ -2292,7 +2309,7 @@ document.addEventListener('click', (e) => {
 function naarAnker() {
   const h = location.hash.slice(1); if (!h || !D || D.gast) return;
   const schoon = () => { try { history.replaceState({ v: 'home' }, '', location.pathname + location.search); } catch (e) {} };
-  if (['rijden', 'schema', 'core', 'analyse', 'afval', 'pacing', 'lid'].includes(h)) { schoon(); return naar(h); }
+  if (['rijden', 'schema', 'core', 'analyse', 'afval', 'pacing', 'lid', 'palmares'].includes(h)) { schoon(); return naar(h); }
   if (h === 'coach') { schoon(); setTimeout(() => { const f = document.getElementById('ccFab'); if (f) f.click(); }, 300); return; }
   if (h === 'doel') { schoon(); DOELV = { open: true, kies: null, fout: '', bezig: false }; VIEW = 'home'; teken(); setTimeout(() => document.getElementById('doelvraag')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200); return; }
   naarLidAnker();
@@ -2301,6 +2318,7 @@ window.addEventListener('hashchange', naarAnker);
 // Kop zoals bij de MKC-coach (11-10-2026): Terug, rond logo, MKC-naam en een statusregel.
 const KOPPEN = {
   home: ['MKC-App', 'Michel Kreder Coaching'],
+  palmares: ['MKC-Palmares', 'Je badges, verdiend met wat je echt doet'],
   rijden: ['MKC-Rijden', 'Banden, kleding, voeding en wind voor je rit'],
   schema: ['MKC-Schema', 'Je training van vandaag'],
   core: ['MKC-Core', 'Core stability voor wielrenners'],
@@ -2332,6 +2350,7 @@ function tegelsHtml(d) {
   if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
   else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Core stability voor wielrenners, op de timer', tag: binnenkortNu() ? 'Binnenkort' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Tijd voor een nieuwe' : 'Jouw uitslag') : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' }));
+  if ((d.badges || []).length) { const pb = palmaresStand(d); t.push(tegel({ v: 'palmares', ic: 'palmares', nm: 'Je palmares', sub: pb.n + ' van ' + pb.tot + ' badges' + (pb.dichtst ? ' &middot; bijna: ' + pb.dichtst.naam : ''), tag: pb.n ? String(pb.n) : '', tagKlas: 'or', breed: true })); }
   t.push(tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? 'Lid' : '3 gratis', tagKlas: 'or' }));
   if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true }));
   const bk = `<div class="bk-rij"><span>Binnenkort</span><button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
@@ -2720,6 +2739,7 @@ function paginaHtml(d) {
   if (VIEW === 'analyse') return appBalkHtml('Strava-analyse') + (dz.analyse ? (dz.analyse.datum ? `<p class="klein" style="margin:14px 0 -4px">Gemeten op ${esc(dz.analyse.datum)}${analyseWeken(dz.analyse) >= 1 ? ' &middot; ' + analyseWeken(dz.analyse) + (analyseWeken(dz.analyse) === 1 ? ' week' : ' weken') + ' geleden' : ''}</p>` : '') + analyseBlok(dz.analyse, true) + naAnalyseHtml(dz) + (inCoaching() ? '<p class="klein" style="margin-top:14px">Een nieuwe meting regelt Michel binnen je coaching.</p>' : `<a class="knop ${analyseWeken(dz.analyse) >= 8 ? '' : 'leeg'}" href="${analyseKoop()}" style="margin-top:14px">${analyseWeken(dz.analyse) >= 8 ? 'Tijd voor een nieuwe meting' : 'Doe een nieuwe analyse'}${analysePrijs() < 29 ? ' &middot; &euro;' + analysePrijs() : ''}</a><p class="klein">Na een paar weken gericht trainen zie je met een nieuwe analyse of je vooruit bent gegaan.</p>`) : `<div class="kaarten">${analyseKaart(null)}</div>`) + voet;
   if (VIEW === 'afval') return appBalkHtml('Afvalprogramma') + `<div class="kaarten">${afvalKaart()}</div>` + voet;
   if (VIEW === 'pacing') return appBalkHtml('Pacingplan') + `<div class="kaarten">${pacingKaart()}</div>` + voet;
+  if (VIEW === 'palmares') return appBalkHtml() + palmaresHtml(d) + voet;
   if (VIEW === 'lid') {
     const lid = isLid(d), tijdelijk = lid && d.lid && ['schema', 'cadeau'].includes(d.lid.bron);
     const pitch = binnenkortNu() ? binnenkortPitchHtml() : kanLidNu(d) ? lidPitchHtml() : '';
@@ -2744,7 +2764,7 @@ function teken() {
   }
   const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `${appBalkHtml()}
-    ${beheerHtml(d)}${d.beheer ? `<details class="bh-groep" data-klap="beheer" ${klapOpen('beheer', true) ? 'open' : ''}><summary><b>Beheer</b><span>leden, gebruik, doelen, schema's, Core, nakijken</span></summary>${aankondigHtml()}${pushOpnieuwHtml()}${ledenHtml()}${gebruikHtml()}${doelenBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}${opvolgHtml()}${nakijkHtml()}</details>` : ''}
+    ${beheerHtml(d)}${d.beheer ? `<details class="bh-groep" data-klap="beheer" ${klapOpen('beheer', true) ? 'open' : ''}><summary><b>Beheer</b><span>leden, gebruik, doelen, schema's, Core, nakijken</span></summary>${aankondigHtml()}${pushOpnieuwHtml()}${ledenHtml()}${gebruikHtml()}${doelenBeheerHtml()}${badgeBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}${opvolgHtml()}${nakijkHtml()}</details>` : ''}
     <div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
     ${welkomNu() ? '<p class="welkom-michel">Begin hieronder met je eerste week. Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
     ${rangChipHtml(d) ? '<div class="rang-plek">' + rangChipHtml(d) + '</div>' : ''}
@@ -2933,6 +2953,81 @@ function vriendLijstHtml() {
   const rij = (x) => { const [t, c] = st[x.status] || st.verstuurd; return `<li><div><b>${esc(x.naam)}</b><small>${x.zelf ? 'via je link' : 'uitgenodigd'} ${dag(x.op)}${x.lidOp ? ' &middot; lid sinds ' + dag(x.lidOp) : ''}</small></div><span class="vr-st ${c}">${x.status === 'lid' ? '&#10003; ' : ''}${t}</span>${x.status !== 'lid' && !x.zelf ? `<button type="button" class="vr-nog" data-lx="whatsapp" data-u="${esc(x.id)}" data-naam="${esc(x.naam)}">Stuur nog eens</button>` : ''}</li>`; };
   const lid = l.filter((x) => x.status === 'lid').length;
   return `<details class="vr-lijst" data-klap="vrlijst"${klapOpen('vrlijst', l.length <= 4) ? ' open' : ''}><summary><b>Jouw uitnodigingen</b><span>${l.length} uitgenodigd &middot; ${lid} lid</span></summary><ul>${l.map(rij).join('')}</ul></details>`;
+}
+// ---- Palmares (13-10-2026): badges, uitgerekend door de server (lib/badges.js) ----
+function palmaresStand(d) {
+  const l = (d && d.badges) || [], n = l.filter((b) => b.behaald).length;
+  const open = l.filter((b) => !b.behaald && b.nodig > 0).sort((a, b) => b.nu / b.nodig - a.nu / a.nodig);
+  return { l, n, tot: l.length, dichtst: open.find((b) => b.nu > 0) || open[0] || null, open };
+}
+function medaille(b, groot) { return `<span class="md${b.behaald ? ' aan' : ''}${groot ? ' groot' : ''}"><i>${b.kort}</i></span>`; }
+function palmaresHtml(d) {
+  const { l, n, tot, open } = palmaresStand(d);
+  if (!l.length) return '<div class="kaart actief"><div class="kaart-in"><p class="klein">Je palmares laden...</p></div></div>';
+  const groepen = [...new Set(l.map((b) => b.groep))];
+  const dag = (x) => new Date(x).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+  const tegeltje = (b) => `<button type="button" class="md-tegel${b.behaald ? ' aan' : ''}" data-badge="${b.id}">${medaille(b)}<b>${b.naam}</b><small>${b.behaald ? (b.op ? dag(b.op) : 'verdiend') : b.nodig > 1 ? b.nu + ' / ' + b.nodig : 'nog niet'}</small>${!b.behaald && b.nodig > 1 ? `<span class="md-balk"><i style="width:${Math.round(b.nu / b.nodig * 100)}%"></i></span>` : ''}</button>`;
+  const bijna = open.filter((b) => b.nu > 0).slice(0, 3);
+  return `<div class="kaart actief palmares"><div class="kaart-in">
+    <div class="pm-kop"><div><div class="label">Je palmares</div><h2>${n} van ${tot} badges</h2><p class="klein" style="margin:4px 0 0">Verdiend met wat je echt doet: je Core, je ritten, je groep en je maten.</p></div><div class="pm-n">${n}</div></div>
+    <div class="pm-balk"><i style="width:${Math.round(n / tot * 100)}%"></i></div>
+    ${bijna.length ? `<div class="rv-sub">Bijna binnen</div><div class="md-raster">${bijna.map(tegeltje).join('')}</div>` : ''}
+    ${groepen.map((g) => `<div class="rv-sub">${g}</div><div class="md-raster">${l.filter((b) => b.groep === g).map(tegeltje).join('')}</div>`).join('')}
+    <p class="klein" style="margin-top:14px">Badges rekent de app zelf uit met wat er echt gebeurt: je Core-sessies, je ritten met het weer van dat moment, je groepsritten en maten die lid werden. Tik op een badge die je hebt om hem te delen.</p>
+  </div></div>`;
+}
+function badgeModal(id, nieuw) {
+  const b = ((zicht() || {}).badges || []).find((x) => x.id === id); if (!b) return;
+  const dag = b.op ? new Date(b.op).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  modal(`<div class="md-modal">${nieuw ? '<div class="label" style="text-align:center">Nieuwe badge</div>' : ''}${medaille(b, true)}<h3>${b.naam}</h3><p>${b.uitleg}</p>
+    ${b.behaald ? `<p class="klein">${dag ? 'Verdiend op ' + dag : 'Verdiend'}</p><button type="button" class="knop" data-badgedeel="${b.id}">Deel als story</button>` : `<p class="klein">${b.nodig > 1 ? 'Je staat op ' + b.nu + ' van ' + b.nodig + '.' : 'Nog niet verdiend.'}</p>`}
+    <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">${nieuw ? 'Top' : 'Sluiten'}</button>${nieuw ? '<button type="button" class="sb-link" data-view="palmares" style="display:block;margin:4px auto 0">Bekijk je palmares</button>' : ''}</div>`);
+}
+// Story-plaatje van een badge, met je eigen uitnodiglink (50% voor je maten).
+async function badgeStory(b) {
+  try { await Promise.all([document.fonts.load('120px "Bebas Neue"'), document.fonts.load('600 40px "DM Sans"')]); } catch (e) {}
+  let url = 'rapport.michelkredercoaching.nl/app';
+  try { const j = await (await fetch('/api/lid?actie=uitnodig', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), mijnNaam: String((D && D.naam) || '').split(' ')[0] }) })).json(); if (j.ok) url = j.url.replace(/^https?:\/\//, ''); } catch (e) {}
+  const W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
+  const OR = '#FF6B1A', WIT = '#F5F3EF', GRIJS = 'rgba(245,243,239,0.7)';
+  const bebas = (px) => `${px}px "Bebas Neue", Impact, sans-serif`, dm = (px, w = 400) => `${w} ${px}px "DM Sans", Arial, sans-serif`;
+  let g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1d120b'); g.addColorStop(0.55, '#0b0b0b'); g.addColorStop(1, '#0b0b0b'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  g = x.createRadialGradient(W / 2, 760, 50, W / 2, 760, 620); g.addColorStop(0, 'rgba(255,107,26,0.35)'); g.addColorStop(1, 'rgba(255,107,26,0)'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  x.textAlign = 'left'; x.fillStyle = WIT; x.font = bebas(110); x.fillText('MKC', 80, 190); const w1 = x.measureText('MKC').width; x.fillStyle = OR; x.fillText('.', 80 + w1, 190);
+  x.font = dm(30, 700); x.fillStyle = OR; x.textAlign = 'right'; x.fillText('PALMARES', W - 80, 150);
+  // Medaille
+  x.textAlign = 'center';
+  x.beginPath(); x.arc(W / 2, 760, 250, 0, Math.PI * 2); x.fillStyle = OR; x.fill();
+  x.beginPath(); x.arc(W / 2, 760, 214, 0, Math.PI * 2); x.lineWidth = 10; x.strokeStyle = 'rgba(10,10,10,0.35)'; x.stroke();
+  const kort = String(b.kort).replace(/&lt;/g, '<').replace(/&deg;/g, '°').replace(/&amp;/g, '&');
+  x.fillStyle = '#0b0b0b'; x.font = bebas(kort.length > 3 ? 170 : 230); x.fillText(kort, W / 2, 760 + (kort.length > 3 ? 60 : 80));
+  x.fillStyle = OR; x.font = dm(34, 700); x.fillText('BADGE VERDIEND', W / 2, 1110);
+  x.fillStyle = WIT; let px = 150; x.font = bebas(px); while (x.measureText(b.naam.toUpperCase()).width > W - 140 && px > 80) { px -= 10; x.font = bebas(px); } x.fillText(b.naam.toUpperCase(), W / 2, 1250);
+  x.fillStyle = GRIJS; x.font = dm(40, 500); rkRegels(x, b.uitleg, W - 200).slice(0, 3).forEach((r, i) => x.fillText(r, W / 2, 1340 + i * 56));
+  const nm = String((D && D.naam) || '').split(' ')[0];
+  if (nm) { x.fillStyle = WIT; x.font = dm(44, 700); x.fillText(nm + ' in de MKC-app', W / 2, 1560); }
+  x.fillStyle = OR; x.font = dm(36, 700); x.fillText('Train mee met 50% korting:', W / 2, 1720);
+  x.fillStyle = WIT; x.font = dm(32, 600); x.fillText(url, W / 2, 1772);
+  const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.92));
+  const file = new File([blob], 'mkc-badge-' + b.id + '.jpg', { type: 'image/jpeg' });
+  statEens('deel');
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: b.naam + ' in de MKC-app. Train mee met 50% korting: https://' + url }); return; } catch (er) { if (er && er.name === 'AbortError') return; } }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+document.addEventListener('click', async (e) => {
+  const t = e.target.closest('[data-badge]'); if (t) { e.preventDefault(); return badgeModal(t.dataset.badge); }
+  const s = e.target.closest('[data-badgedeel]'); if (!s) return;
+  const b = ((zicht() || {}).badges || []).find((x) => x.id === s.dataset.badgedeel); if (!b) return;
+  s.disabled = true; s.textContent = 'Even maken...';
+  try { await badgeStory(b); } catch (er) { alert('Het plaatje maken lukte niet.'); }
+  s.disabled = false; s.textContent = 'Deel als story';
+});
+// Nieuwe badge sinds je laatste bezoek: één keer een feestje.
+function badgeFeest() {
+  const ids = (D && D.nieuweBadges) || []; if (!ids.length || D.gast) return;
+  const sleutel = 'mkcBadgeFeest:' + ids.join(',');
+  try { if (sessionStorage.getItem(sleutel)) return; sessionStorage.setItem(sleutel, '1'); } catch (e) {}
+  setTimeout(() => badgeModal(ids[0], true), 600);
 }
 // Je rang, op meer plekken, met een tik naar je ladder.
 function rangChipHtml(d) {
@@ -3455,13 +3550,34 @@ function gebruikHtml() {
 }
 function gebTeken() { const el = document.getElementById('gebruik'); if (el) el.outerHTML = gebruikHtml(); }
 // ---- Beheer (13-10-2026): doelen, schema bijstellen, Core-voortgang ----
-const BH = { doelen: { open: false, data: null }, schema: { open: false, data: null, email: '', plan: '', week: 1, dag: '', melding: '', bezig: false }, core: { open: false, data: null, filter: 'coaching' } };
+const BH = { badges: { open: false, data: null, wie: null }, doelen: { open: false, data: null }, schema: { open: false, data: null, email: '', plan: '', week: 1, dag: '', melding: '', bezig: false }, core: { open: false, data: null, filter: 'coaching' } };
 async function bhLaad(wat) {
-  const actie = { doelen: 'doelenoverzicht', schema: 'schemabeheer', core: 'coreoverzicht' }[wat];
+  const actie = { doelen: 'doelenoverzicht', schema: 'schemabeheer', core: 'coreoverzicht', badges: 'badgeoverzicht' }[wat];
   try { const j = await (await fetch(API + '?actie=' + actie + '&t=' + encodeURIComponent(leesToken()))).json(); if (j.ok) BH[wat].data = j; } catch (e) {}
   bhTeken(wat);
 }
-function bhTeken(wat) { const id = { doelen: 'bhdoelen', schema: 'bhschema', core: 'bhcore' }[wat]; const el = document.getElementById(id); if (el) el.outerHTML = { doelen: doelenBeheerHtml, schema: schemaBeheerHtml, core: coreBeheerHtml }[wat](); }
+function bhTeken(wat) { const id = { doelen: 'bhdoelen', schema: 'bhschema', core: 'bhcore', badges: 'bhbadges' }[wat]; const el = document.getElementById(id); if (el) el.outerHTML = { doelen: doelenBeheerHtml, schema: schemaBeheerHtml, core: coreBeheerHtml, badges: badgeBeheerHtml }[wat](); }
+function badgeBeheerHtml() {
+  if (!D || !D.beheer) return '';
+  const x = BH.badges.data, kop = bhKop('badges', 'Badges', x ? x.totaal + ' mensen met badges' : 'wie verdiende wat, en waarom');
+  if (!BH.badges.open) return `<div class="geb" id="bhbadges">${kop}</div>`;
+  if (!x) return `<div class="geb" id="bhbadges">${kop}<div class="geb-in"><p class="klein">Laden...</p></div></div>`;
+  const w = BH.badges.wie;
+  const nakijk = w ? `<div class="bh-nakijk"><b>${esc(w.email)}</b><p class="klein">Tellers: ${Object.entries(w.teller || {}).filter(([k]) => k !== 'gezaaid').map(([k, v]) => esc(k) + ' ' + v).join(' &middot; ') || 'geen'}</p><table class="geb-tab">${Object.entries(w.verdiend || {}).map(([id, op]) => `<tr><td>${esc(((x.badges.find((b) => b.id === id)) || {}).naam || id)}</td><td><small>${esc(new Date(op).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}</small></td></tr>`).join('') || '<tr><td><small>Nog geen badges</small></td></tr>'}</table></div>` : '';
+  return `<div class="geb" id="bhbadges">${kop}<div class="geb-in">
+    <table class="geb-tab"><tr><th>Badge</th><th>Groep</th><th>Verdiend</th></tr>${x.badges.map((b) => `<tr><td>${esc(b.naam)}</td><td><small>${esc(b.groep)}</small></td><td><b>${b.aantal}</b></td></tr>`).join('')}</table>
+    <div class="rv-sub">Meeste badges</div><table class="geb-tab">${x.top.map((m) => `<tr><td><button type="button" class="sb-link" data-bhbadge="${esc(m.email)}" style="margin:0">${esc(m.email)}</button></td><td><b>${m.aantal}</b></td></tr>`).join('') || '<tr><td><small>Nog niemand</small></td></tr>'}</table>
+    <div class="gr-maak" style="margin-top:10px"><label>Nakijken: mailadres</label><div style="display:grid;grid-template-columns:1fr auto;gap:8px"><input id="bhBadgeMail" type="email" placeholder="naam@voorbeeld.nl"><button type="button" class="knop" data-bhbadge="veld" style="width:auto;padding:0 16px">Bekijk</button></div></div>
+    ${nakijk}
+    <button type="button" class="sb-link" data-bh="ververs" data-w="badges">Ververs</button></div></div>`;
+}
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-bhbadge]'); if (!k) return;
+  const mail = k.dataset.bhbadge === 'veld' ? (document.getElementById('bhBadgeMail') || {}).value : k.dataset.bhbadge;
+  if (!mail) return;
+  try { const j = await (await fetch(API + '?actie=badgeoverzicht&email=' + encodeURIComponent(mail.trim()) + '&t=' + encodeURIComponent(leesToken()))).json(); if (j.ok) BH.badges.wie = j; } catch (er) {}
+  bhTeken('badges');
+});
 function bhKop(wat, titel, sub) { return `<button type="button" class="opv-kop" data-bh="klap" data-w="${wat}"><span><b>${titel}</b>${sub ? '<em>' + sub + '</em>' : ''}</span><span>${BH[wat].open ? '&#9650;' : '&#9660;'}</span></button>`; }
 const DOEL_LABEL = { sneller: 'Sneller worden', evenement: 'Een tocht of wedstrijd', afvallen: 'Afvallen', fit: 'Fit blijven en plezier' };
 function doelenBeheerHtml() {
@@ -4295,7 +4411,7 @@ async function laadOverzicht() {
     const r = await fetch(API + '?actie=overzicht&t=' + encodeURIComponent(t));
     const j = await r.json();
     if (!j.ok) { wisToken(); return toonLogin(j.fout, 'fout'); }
-    D = j; teken(); naarAnker(); pushLaad(); vriendKoppel();
+    D = j; teken(); naarAnker(); pushLaad(); vriendKoppel(); badgeFeest();
     if (D.beheer && BEKIJK === 'zelf' && SIM.schema && SIM.schema.includes('|')) simSchemaLaad(SIM.schema).then(teken);
     if (D.beheer && !D.schema) simSchemaLaad('opbouw-12-w|18').then(() => { if (BEKIJK === 'alles') teken(); });
     if (D.beheer && OPV.meldingen === null) opvLaad();
