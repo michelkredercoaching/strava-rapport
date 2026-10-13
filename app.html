@@ -717,6 +717,21 @@
   .geb-dagen div { flex:1; background:rgba(76,195,138,.55); border-radius:2px 2px 0 0; min-height:2px; position:relative; }
   .geb-dagen div.nu { background:#4CC38A; }
   /* Startlijst voor nieuwe leden */
+  details.start > summary { list-style:none; cursor:pointer; }
+  details.start > summary::-webkit-details-marker { display:none; }
+  details.start .start-kop { align-items:center; }
+  details.start .start-kop span { margin-left:auto; font-size:12.5px; color:var(--muted); }
+  .start-pijl { width:9px; height:9px; border-right:2px solid var(--accent); border-bottom:2px solid var(--accent); transform:rotate(45deg); margin:0 4px 4px 4px; transition:transform .2s; flex-shrink:0; }
+  details.start[open] .start-pijl { transform:rotate(-135deg); margin-bottom:-2px; }
+  details.start:not([open]) { padding-bottom:16px; }
+  details.start[open] > summary { margin-bottom:10px; }
+  .start-weg { display:block; margin:10px auto 0; font-size:12px; color:var(--muted); }
+  .bh-groep { border:1px dashed rgba(255,107,26,.35); border-radius:12px; padding:10px 12px 4px; margin:0 0 16px; }
+  .bh-groep > summary { list-style:none; cursor:pointer; display:flex; flex-direction:column; gap:2px; padding:4px 0 8px; }
+  .bh-groep > summary::-webkit-details-marker { display:none; }
+  .bh-groep > summary b { font-size:15px; } .bh-groep > summary b::after { content:' \25BE'; color:var(--accent); }
+  .bh-groep[open] > summary b::after { content:' \25B4'; }
+  .bh-groep > summary span { font-size:12px; color:var(--muted); }
   .start { background:var(--surface); border:1px solid rgba(255,107,26,.45); border-radius:8px; padding:16px; margin:0 0 14px; }
   .start-kop { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
   .start-kop b { font-size:16px; }
@@ -2336,6 +2351,7 @@ function eersteWeekStappen(d) {
   const l = [
     { k: 'spanning', t: 'Bekijk je bandenspanning', klaar: !!laatsteSpanning() },
     { k: 'doel', t: 'Kies waar je voor traint', klaar: !!d.doel },
+    { k: 'tip', t: 'Zet je dagelijkse tip aan', klaar: !!(PUSH.inst && PUSH.inst.aan) || !pushKan() },
     { k: 'scherm', t: 'Zet de app op je beginscherm', klaar: isApp() || (() => { try { return localStorage.getItem('mkcBeginscherm') === '1'; } catch (e) { return false; } })() },
     { k: 'coach', t: 'Stel je eerste vraag aan je coach', klaar: !!d.coachGesteld }
   ];
@@ -2346,11 +2362,12 @@ function eersteWeekHtml(d) {
   if (!d || d.gast || isLid(d) || (d.lid && d.lid.bron === 'coaching')) return '';
   try { if (localStorage.getItem('mkcEersteWeekWeg') === '1' || localStorage.getItem('mkcBonusKlaar') === '1') return ''; } catch (e) {}
   const st = eersteWeekStappen(d), klaar = st.filter((x) => x.klaar).length, alles = klaar === st.length;
-  return `<div class="start eersteweek" id="eersteweek"><div class="start-kop"><b>Je eerste week</b><span>${klaar} van ${st.length} &middot; <button type="button" class="sb-link" data-ew="weg">verberg</button></span></div>
+  return `<details class="start eersteweek" id="eersteweek" data-klap="eersteweek" ${klapOpen('eersteweek', true) ? 'open' : ''}><summary class="start-kop"><b>Je eerste week</b><span>${klaar} van ${st.length}</span><i class="start-pijl"></i></summary>
     <p class="ew-uitleg">${alles ? 'Alles gedaan. Je extra vraag staat klaar.' : 'Vink alles af, dan krijg je deze week een extra vraag aan je coach.'}</p>
     <div class="start-balk"><i style="width:${Math.round(klaar / st.length * 100)}%"></i></div>
     ${st.map((x) => `<button type="button" class="start-stap ${x.klaar ? 'klaar' : ''}" data-ew="${x.klaar ? '' : x.k}"><span class="v">${x.klaar ? '&#10003;' : ''}</span>${x.t}${x.klaar ? '' : '<em>&rsaquo;</em>'}</button>`).join('')}
-    ${alles ? '<button type="button" class="knop" data-ew="claim">Pak je extra vraag</button>' : ''}</div>`;
+    ${alles ? '<button type="button" class="knop" data-ew="claim">Pak je extra vraag</button>' : ''}
+    <button type="button" class="sb-link start-weg" data-ew="weg">Niet meer tonen</button></details>`;
 }
 document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-ew]'); if (!k || !k.dataset.ew) return;
@@ -2359,6 +2376,7 @@ document.addEventListener('click', async (e) => {
   if (a === 'spanning' || a === 'core') return naar(a === 'spanning' ? 'rijden' : 'core');
   if (a === 'doel') { DOELV = { open: true, kies: null, fout: '', bezig: false }; teken(); setTimeout(() => document.getElementById('doelvraag')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150); return; }
   if (a === 'coach') return coachOpen(true);
+  if (a === 'tip') { if (iosZonderApp()) { modal('<h3>Eerst op je beginscherm</h3><p>Op een iPhone werken meldingen pas als de app op je beginscherm staat. Tik onderaan in Safari op de deel-knop en kies Zet op beginscherm. Open de app daarna vanaf je beginscherm.</p><button type="button" class="knop" data-lx="dicht">Oké</button>'); return; } const b = document.createElement('button'); b.dataset.push = 'aan'; b.style.display = 'none'; document.body.appendChild(b); b.click(); b.remove(); setTimeout(() => teken(), 1500); return; }
   if (a === 'scherm') {
     if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.then((c) => { if (c && c.outcome === 'accepted') { try { localStorage.setItem('mkcBeginscherm', '1'); } catch (er) {} } installPrompt = null; teken(); }); return; }
     const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
@@ -2568,19 +2586,20 @@ function teken() {
   }
   const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `${appBalkHtml()}
-    ${beheerHtml(d)}${aankondigHtml()}${pushOpnieuwHtml()}${ledenHtml()}${gebruikHtml()}${doelenBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}${opvolgHtml()}${nakijkHtml()}
+    ${beheerHtml(d)}${d.beheer ? `<details class="bh-groep" data-klap="beheer" ${klapOpen('beheer', true) ? 'open' : ''}><summary><b>Beheer</b><span>leden, gebruik, doelen, schema's, Core, nakijken</span></summary>${aankondigHtml()}${pushOpnieuwHtml()}${ledenHtml()}${gebruikHtml()}${doelenBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}${opvolgHtml()}${nakijkHtml()}</details>` : ''}
     <div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
     ${welkomNu() ? '<p class="welkom-michel">Begin hieronder met je eerste week. Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
     ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
     <div id="groepsrit">${grHtml()}</div>
     ${reviewHtml(d)}
-    ${meldingenHtml(d)}<div id="meldvraag">${startlijstHtml(d) ? '' : meldVraagHtml()}</div><div id="startlijst">${startlijstHtml(d)}</div>
+    ${meldingenHtml(d)}<div id="meldvraag">${startlijstHtml(d) || eersteWeekHtml(d) ? '' : meldVraagHtml()}</div>
     ${eersteWeekHtml(d) ? eersteWeekHtml(d) + '<div style="display:none">' : ''}${isNieuw(d) ? `<div class="welkom"><b>Zo werkt je app</b>
       <ol><li><span>1</span>Tik op Vandaag rijden en vul je gewicht en band in: je ziet meteen wat je pompt. Gratis, voor elke rit.</li>
       <li><span>2</span>${binnenkortNu() ? 'Rechtsonder zit <em>Vraag je coach</em>: stel elke week 3 vragen gratis, over training, voeding, banden of herstel.' : 'Start je gratis week in de Core-app: korte sessies thuis, op de timer.'}</li>
       <li><span>3</span>${binnenkortNu() ? 'Zet de app op je beginscherm, dan heb je je bandenspanning altijd bij de hand.' : d.lidOpen ? 'Meer nodig? Als lid krijg je je eigen coach, de slimme bandenspanning en de Core-app doorlopend, voor &euro;' + APP_PRIJS.maand + ' per maand.' : 'Rechtsonder zit <em>Vraag je coach</em>: je eigen coach die je analyse en je plan kent, straks voor leden.'}</li></ol></div>`
       : isLid(d) || (d.lid && d.lid.bron === 'coaching') ? '' : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}${eersteWeekHtml(d) ? '</div>' : ''}
     ${vandaagHtml(d)}
+    <div id="startlijst">${startlijstHtml(d)}</div>
     ${schemaEindeHtml(d)}
     <div id="doelvak">${doelHtml(d)}</div>
     ${tipHtml(d)}
@@ -3791,9 +3810,10 @@ function startlijstHtml(d) {
   if (!d || !isLid(d) || binnenkortNu() || startlijstWeg()) return '';
   const st = startlijstStappen(d), klaar = st.filter((x) => x.klaar).length;
   if (klaar === st.length) return '';
-  return `<div class="start"><div class="start-kop"><b>Haal alles uit je app</b><span>${klaar} van ${st.length} &middot; <button type="button" class="sb-link" data-start="weg">verberg</button></span></div>
+  return `<details class="start" data-klap="startlijst" ${klapOpen('startlijst', true) ? 'open' : ''}><summary class="start-kop"><b>Haal alles uit je app</b><span>${klaar} van ${st.length}</span><i class="start-pijl"></i></summary>
     <div class="start-balk"><i style="width:${Math.round(klaar / st.length * 100)}%"></i></div>
-    ${st.map((x) => `<button type="button" class="start-stap ${x.klaar ? 'klaar' : ''}" data-start="${x.klaar ? '' : x.actie}"><span class="v">${x.klaar ? '&#10003;' : ''}</span>${x.t}${x.klaar ? '' : '<em>&rsaquo;</em>'}</button>`).join('')}</div>`;
+    ${st.map((x) => `<button type="button" class="start-stap ${x.klaar ? 'klaar' : ''}" data-start="${x.klaar ? '' : x.actie}"><span class="v">${x.klaar ? '&#10003;' : ''}</span>${x.t}${x.klaar ? '' : '<em>&rsaquo;</em>'}</button>`).join('')}
+    <button type="button" class="sb-link start-weg" data-start="weg">Niet meer tonen</button></details>`;
 }
 document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-start]'); if (!k || !k.dataset.start) return;
@@ -3867,15 +3887,15 @@ function meldVraagHtml() {
 function meldInstHtml() {
   if (!PUSH.inst || !PUSH.inst.aan) return '';
   const i = PUSH.inst;
-  return `<div class="meldinst"><b>Meldingen staan aan</b> op dit toestel.
+  return `<details class="klap" data-klap="meldinst" ${klapOpen('meldinst', false) ? 'open' : ''}><summary><b>Meldingen</b><span>staan aan op dit toestel</span></summary><div class="klap-in"><div class="meldinst">
     <label><input type="checkbox" data-pushsoort="core" ${i.core ? 'checked' : ''}> Core-herinnering</label>
     ${zicht() && !isLid(zicht()) ? `<label><input type="checkbox" data-pushsoort="tip" ${i.tip !== false ? 'checked' : ''}> Elke ochtend een tip van Michel</label>` : ''}
     <label><input type="checkbox" data-pushsoort="doel" ${i.doel !== false ? 'checked' : ''}> Tips en herinneringen voor je doel</label>
     ${zicht() && isLid(zicht()) ? `<label><input type="checkbox" data-pushsoort="ochtend" ${i.ochtend ? 'checked' : ''}> Ochtendbericht (weer, banden en kleding)</label>` : ''}
-    <p class="klein" style="margin-top:8px">Staat iets uit, dan zie je het gewoon hier in de app zodra je hem opent.</p></div>`;
+    <p class="klein" style="margin-top:8px">Staat iets uit, dan zie je het gewoon hier in de app zodra je hem opent.</p></div></div></details>`;
 }
 function meldTeken() {
-  const a = document.getElementById('meldvraag'); if (a) a.innerHTML = D && startlijstHtml(zicht()) ? '' : meldVraagHtml();
+  const a = document.getElementById('meldvraag'); if (a) a.innerHTML = D && (startlijstHtml(zicht()) || eersteWeekHtml(zicht())) ? '' : meldVraagHtml();
   const sl = document.getElementById('startlijst'); if (sl && D) sl.innerHTML = startlijstHtml(zicht());
   const b = document.getElementById('meldinst'); if (b) b.innerHTML = meldInstHtml();
   const dv = document.getElementById('doelvak'); if (dv && D && !D.gast) dv.innerHTML = doelHtml(zicht());
