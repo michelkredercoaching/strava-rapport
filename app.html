@@ -2140,6 +2140,7 @@ function lidStapelHtml(d) {
     ${rij('ochtend', 'Nooit meer twijfelen voor je rit', 'Elke ochtend om 7:00 je spanning, kleding en wind', lidOchtendHtml())}
     ${rij('core', 'Een romp die het volhoudt tot de finish', '10 tot 15 minuten thuis, en hij beweegt mee naar je doel', coreMeeHtml(d))}
     ${rij('coach', 'Michel in je broekzak', 'Onbeperkt vragen, direct antwoord op jouw situatie', coachBankHtml(d))}
+    ${rij('goud', 'Goud en de grote beloningen', (() => { const k = ((d && d.badges) || []).filter((b) => b.goudKlaar).length; return k ? '<b style="color:var(--accent)">' + k + (k === 1 ? ' gouden medaille staat' : ' gouden medailles staan') + ' al voor je klaar.</b> ' : ''; })() + 'Alle badges en goud, plus een gratis analyse en pacingplan als beloning', '<p class="klein" style="margin:0">Als gratis gebruiker haal je brons en zilver. Als lid ook goud, de Core- en ritbadges, en de beloningen bij 15 en 25 medailles: een gratis Strava-analyse en straks een gratis pacingplan. Goud dat al klaarstaat, krijg je meteen.</p>')}
     ${rij('prijs', 'Goedkoper verder', 'Strava-analyse &euro;19 in plaats van &euro;29, &euro;20 korting op het Afvalprogramma', '<p class="klein" style="margin:0">Ook het pacingplan voor je tocht krijg je straks voor &euro;19. E&eacute;n analyse en je eerste maand is al voor de helft terugverdiend.</p>')}</div>`;
 }
 const LID_BEWIJS_KORT = `<div class="bewijs"><div class="bw-kop"><span class="bw-ster">&#9733;&#9733;&#9733;&#9733;&#9733;</span><b>4,9 uit 48 Google-reviews</b><small>en meer dan 1000 wielrenners trainen met mijn schema&rsquo;s</small></div>
@@ -2241,9 +2242,9 @@ function lidPitchHtml() {
     ${lidGebruikHtml(d)}${lidStapelHtml(d)}${LID_BEWIJS_KORT}
     ${plannenHtml(false)}
     <p class="klein lid-risico">Geen contract. Per maand altijd opzegbaar, met &eacute;&eacute;n tik in de app.</p>
-    ${vriendLid(d) ? '<div class="of-gratis"><span>of</span></div>' + vriendKaartHtml(vriendLid(d)) : ''}
     <div id="lidStap2">${lidStap2Html()}</div>
-    <p class="klein">${D && D.automatisch ? 'Je betaalt de eerste keer met iDEAL, Apple Pay, Google Pay, Bancontact of je creditcard. Daarna wordt het bedrag automatisch afgeschreven, elke maand of elk jaar. Opzeggen kan altijd in de app; je houdt toegang tot het einde van wat je al betaalde.' : 'Je betaalt met iDEAL voor een maand of een jaar. Er wordt niets automatisch afgeschreven: vlak voor de einddatum krijg je een mail om te verlengen.'}</p></div>`;
+    <p class="klein">${D && D.automatisch ? 'Je betaalt de eerste keer met iDEAL, Apple Pay, Google Pay, Bancontact of je creditcard. Daarna wordt het bedrag automatisch afgeschreven, elke maand of elk jaar. Opzeggen kan altijd in de app; je houdt toegang tot het einde van wat je al betaalde.' : 'Je betaalt met iDEAL voor een maand of een jaar. Er wordt niets automatisch afgeschreven: vlak voor de einddatum krijg je een mail om te verlengen.'}</p>
+    ${vriendLid(d) ? '<div class="of-gratis"><span>of</span></div>' + vriendKaartHtml(vriendLid(d)) : ''}</div>`;
 }
 function lidStatusHtml(l) {
   if (!l || l.status === 'geen' || l.status === 'nieuw') return '';
@@ -4950,13 +4951,23 @@ async function laadOverzicht() {
     const r = await fetch(API + '?actie=overzicht&t=' + encodeURIComponent(t));
     const j = await r.json();
     if (!j.ok) { wisToken(); return toonLogin(j.fout, 'fout'); }
-    D = j; teken(); naarAnker(); pushLaad(); vriendKoppel(); badgeFeest();
+    D = j; teken(); naarAnker(); pushLaad(); vriendKoppel(); if (NA_BETALING) naBetalingTonen(); else badgeFeest();
     if (D.beheer && BEKIJK === 'zelf' && SIM.schema && SIM.schema.includes('|')) simSchemaLaad(SIM.schema).then(teken);
     if (D.beheer && !D.schema) simSchemaLaad('opbouw-12-w|18').then(() => { if (BEKIJK === 'alles') teken(); });
     if (D.beheer && OPV.meldingen === null) opvLaad();
   } catch { $('#app').innerHTML = '<div class="laden">Verbinding mislukt. Probeer het zo nog eens.</div>'; }
 }
 
+// Na de betaling (13-10-2026): een welkom met de eerste stappen, of uitleg als het (nog) niet lukte.
+let NA_BETALING = null;
+function naBetalingTonen() {
+  if (!NA_BETALING || !D || D.gast) return;
+  const soort = NA_BETALING; NA_BETALING = null;
+  if (soort === 'welkom') return modal(`<div class="md-modal"><div class="md-unlock">Welkom als lid</div><h3 style="margin-top:8px">Je hebt nu alles</h3><p>Fijn dat je erbij bent. Met deze drie stappen staat je app helemaal goed:</p>
+    <ol class="pm-stappen" style="text-align:left"><li><b>Zet je fiets erin</b><span>Bij Vandaag rijden: dan zie je elke dag je spanning, kleding en voeding.</span></li><li><b>Start de Core-app</b><span>Een korte intake van een minuut, dan staat je eerste sessie klaar.</span></li><li><b>Zet je ochtendbericht aan</b><span>Elke ochtend om 7:00 alles voor je rit op je telefoon.</span></li></ol>
+    <button type="button" class="knop" data-view="rijden">Begin met je fiets</button><button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:8px auto 0">Later</button></div>`);
+  modal(`<h3>Je betaling is nog niet binnen</h3><p>Dat kan gebeuren als je de betaling hebt afgebroken, of als je bank er even over doet. Zonder geslaagde betaling wordt er niets afgeschreven.</p><p class="klein">Kwam de betaling wel door? Dan staat je lidmaatschap er binnen een paar minuten. Ververs de app dan even.</p><button type="button" class="knop" data-view="lid">Opnieuw proberen</button><button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:8px auto 0">Sluiten</button>`);
+}
 async function start() {
   const p = new URLSearchParams(location.search);
   // Login uit de mail-knop of de app-start (?t=), of doorklik vanuit de Core-app (?ct=).
@@ -4969,10 +4980,13 @@ async function start() {
   }
   if (p.get('lid') === 'terug') {
     $('#app').innerHTML = '<div class="laden">Bedankt! Je betaling wordt verwerkt...</div>';
+    let gelukt = false;
     for (let i = 0; i < 8; i++) {
       await new Promise((r) => setTimeout(r, 1500));
-      try { const s = await (await fetch('/api/lid?actie=status&t=' + encodeURIComponent(leesToken()))).json(); if (s.ok && s.lid && s.lid.status === 'actief') break; } catch (e) {}
+      try { const s = await (await fetch('/api/lid?actie=status&t=' + encodeURIComponent(leesToken()))).json(); if (s.ok && s.lid && s.lid.status === 'actief') { gelukt = true; break; } } catch (e) {}
     }
+    try { history.replaceState(null, '', location.pathname + '#' + (gelukt ? '' : 'lid')); } catch (e) {}
+    NA_BETALING = gelukt ? 'welkom' : 'niet';
   }
   return laadOverzicht();
 }
