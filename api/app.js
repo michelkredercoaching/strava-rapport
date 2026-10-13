@@ -883,12 +883,17 @@ async function routeOverzicht(req, res) {
   // Ledenprijs Strava-analyse (11-10-2026): leden (maand, jaar of via schema)
   // betalen €19 i.p.v. €29, via een persoonlijk kortingstoken voor de funnel.
   const lb = lidBeeld(lidmaatschap);
+  // Maten (13-10-2026): door wie ben je uitgenodigd, en hoeveel maten maakten via jou een account.
+  const [uitg, vacc] = await Promise.all([redis(['GET', `lid:uitgenodigd:${email}`]), redis(['GET', `lid:vriendaccounts:${email}`])]);
+  let uitgenodigd = null; try { const u = uitg.ok && uitg.result ? JSON.parse(uitg.result) : null; if (u && !(lidmaatschap && lidmaatschap.betaaldOoit)) uitgenodigd = { naam: u.naam || '' }; } catch (e) {}
   const ledenAnalyse = lb.open && lb.bron !== 'coaching' && !lb.coaching ? (() => { const t = maakKortingToken(LEDEN_ANALYSE, 30); return t ? `https://rapport.michelkredercoaching.nl/?korting=${t}` : null; })() : null;
   return res.status(200).json({ doel, ledenAnalyse, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1) }, 
     ok: true,
     email,
     beheer: BEHEER.includes(email),
     lid: lidBeeld(lidmaatschap),
+    uitgenodigd,
+    vriendAccounts: Number(vacc.ok && vacc.result) || 0,
     lidOpen: kanLid,
     // Vóór de Instagram-lancering staat alles behalve de bandenspanning op
     // "binnenkort beschikbaar" (wat iemand al heeft blijft zichtbaar).

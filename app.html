@@ -206,6 +206,7 @@
   .vr-paal small { display:block; font-size:10.5px; color:var(--muted); }
   .vr-doel { font-size:14px; margin:8px 0 12px; text-align:center; }
   .vr-doel b { color:var(--accent); }
+  .vr-uitleg { display:block; font-size:12px; color:var(--muted); margin-top:6px; line-height:1.4; }
   .vr-knoppen { display:grid; gap:8px; }
   .vr-kaart.compact { margin:10px 0 0; padding:12px; }
   .vr-kaart.compact .vr-n b { font-size:34px; }
@@ -1996,7 +1997,7 @@ let LV = { plan: null };
 function lidStap2Html() {
   if (!LV.plan) return '';
   const jaar = LV.plan === 'jaar';
-  const maat = !!vriendCodeLs();
+  const maat = vriendActief();
   return `<div class="lid-stap2"><b>Bijna klaar: ${jaar ? 'per jaar, &euro;' + (maat ? APP_PRIJS.jaarMaat + ' het eerste jaar (via je maat), daarna &euro;' + APP_PRIJS.jaar : APP_PRIJS.jaar) : 'per maand, &euro;' + (maat ? APP_PRIJS.half + ' de eerste maand (via je maat), daarna &euro;' + APP_PRIJS.maand : APP_PRIJS.maand)}</b>
     ${lidFactuurHtml()}
     <label class="lid-akkoord"><input type="checkbox" id="lidAkkoord"> <span>Ik wil direct toegang en weet dat ik daarmee afzie van mijn bedenktijd van 14 dagen. Ik ga akkoord met de <a href="/voorwaarden" target="_blank" rel="noopener">voorwaarden</a> en de <a href="/privacy#app" target="_blank" rel="noopener">privacyverklaring</a>.</span></label>
@@ -2005,8 +2006,8 @@ function lidStap2Html() {
 }
 document.addEventListener('click', (e) => { const k = e.target.closest('[data-lidplan="terug"]'); if (!k) return; LV.plan = null; const s2 = document.getElementById('lidStap2'); if (s2) s2.innerHTML = ''; document.querySelector('.plannen')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
 function vriendUitnodigHtml() {
-  if (!vriendCodeLs()) return '';
-  return `<div class="vr-uitnodig"><b>Je bent uitgenodigd door een maat</b><span>Je eerste maand voor &euro;${APP_PRIJS.half} in plaats van &euro;${APP_PRIJS.maand} (50% korting), of een jaar voor &euro;${APP_PRIJS.jaarMaat} in plaats van &euro;${APP_PRIJS.jaar}.</span></div>`;
+  if (!vriendActief()) return '';
+  return `<div class="vr-uitnodig"><b>${vriendDoor() ? esc(vriendDoor()) + ' nodigt je uit' : 'Je bent uitgenodigd door een maat'}</b><span>Je eerste maand voor &euro;${APP_PRIJS.half} in plaats van &euro;${APP_PRIJS.maand} (50% korting), of een jaar voor &euro;${APP_PRIJS.jaarMaat} in plaats van &euro;${APP_PRIJS.jaar}.</span></div>`;
 }
 function binnenkortPitchHtml() {
   // Vóór de lancering: prijzen al zichtbaar, knoppen nog dicht (09-10-2026).
@@ -2025,12 +2026,12 @@ function plannenHtml(dicht) {
       <div class="plan jaar"><span class="plan-badge">Beste keuze &middot; ruim 3 maanden gratis</span>
         <div class="plan-naam">Per jaar</div>
         <div class="prijs">&euro;${APP_PRIJS.jaarPerMaand}<small>per maand</small></div>
-        <div class="plan-sub">${vriendCodeLs() ? '<b style="color:var(--accent)">&euro;5 korting via je maat:</b> &euro;' + APP_PRIJS.jaarMaat + ' in plaats van &euro;' + APP_PRIJS.jaar : '&euro;' + APP_PRIJS.jaar + ' per jaar in &eacute;&eacute;n keer'}</div>
+        <div class="plan-sub">${vriendActief() ? '<b style="color:var(--accent)">&euro;5 korting via je maat:</b> &euro;' + APP_PRIJS.jaarMaat + ' in plaats van &euro;' + APP_PRIJS.jaar : '&euro;' + APP_PRIJS.jaar + ' per jaar in &eacute;&eacute;n keer'}</div>
         ${knop('jaar', 'Kies per jaar')}</div>
       <div class="plan">
         <div class="plan-naam">Per maand</div>
         <div class="prijs">&euro;${APP_PRIJS.maand}<small>per maand</small></div>
-        <div class="plan-sub">${vriendCodeLs() ? '<b style="color:var(--accent)">50% korting via je maat:</b> eerste maand &euro;' + APP_PRIJS.half : D && D.lid && D.lid.terugAanbod ? 'welkom terug: eerste maand &euro;' + APP_PRIJS.half : 'op elk moment opzegbaar'}</div>
+        <div class="plan-sub">${vriendActief() ? '<b style="color:var(--accent)">50% korting via je maat:</b> eerste maand &euro;' + APP_PRIJS.half : D && D.lid && D.lid.terugAanbod ? 'welkom terug: eerste maand &euro;' + APP_PRIJS.half : 'op elk moment opzegbaar'}</div>
         ${knop('maand', 'Kies per maand', true)}</div>
     </div>`;
 }
@@ -2725,7 +2726,7 @@ function teken() {
     ${beheerHtml(d)}${d.beheer ? `<details class="bh-groep" data-klap="beheer" ${klapOpen('beheer', true) ? 'open' : ''}><summary><b>Beheer</b><span>leden, gebruik, doelen, schema's, Core, nakijken</span></summary>${aankondigHtml()}${pushOpnieuwHtml()}${ledenHtml()}${gebruikHtml()}${doelenBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}${opvolgHtml()}${nakijkHtml()}</details>` : ''}
     <div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
     ${welkomNu() ? '<p class="welkom-michel">Begin hieronder met je eerste week. Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
-    ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${vriendCodeLs() ? '<a href="#" data-actie="naarlid">je maat gaf je korting op je lidmaatschap</a>' : kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
+    ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${vriendActief() ? '<a href="#" data-actie="naarlid">' + (vriendDoor() ? esc(vriendDoor()) + ' gaf je' : 'je maat gaf je') + ' korting op je lidmaatschap</a>' : kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
     <div id="groepsrit">${grHtml()}</div>
     ${reviewHtml(d)}
     ${meldingenHtml(d)}<div id="meldvraag">${startlijstHtml(d) || eersteWeekHtml(d) ? '' : meldVraagHtml()}</div>
@@ -2869,18 +2870,22 @@ function vriendLid(d) {
 }
 const VR_RANG = [[10, 'Ploegleider'], [5, 'Kopman'], [3, 'Wegkapitein'], [1, 'Gangmaker'], [0, 'Solo']];
 function vriendKaartHtml(l, compact) {
-  const n = l.vriendAantal || 0, zelf = l.gratis || l.vriendBeloning !== false, coaching = l.bron === 'coaching', gratisLid = l.gratis || l.vriendCadeau;
+  const n = l.vriendAantal || 0, nb = l.vriendBevestigd || 0, wacht = (D && D.vriendAccounts) || 0, zelf = l.gratis || l.vriendBeloning !== false, coaching = l.bron === 'coaching', gratisLid = l.gratis || l.vriendCadeau;
   const rang = VR_RANG.find(([m]) => n >= m)[1];
   const paal = zelf ? [{ n: 1, t: '2 weken', sub: 'per maat' }, { n: 3, t: 'Analyse', sub: 'gratis' }, { n: 5, t: 'Maand', sub: 'gratis' }, { n: 10, t: 'Jaar', sub: 'gratis' }]
     : [{ n: 1, t: 'Gangmaker', sub: 'rang' }, coaching ? { n: 3, t: 'Wegkapitein', sub: 'rang' } : { n: 3, t: 'Analyse', sub: 'gratis' }, { n: 5, t: 'Kopman', sub: 'rang' }, { n: 10, t: 'Ploegleider', sub: 'rang' }];
-  const volgende = paal.find((p) => p.n > n);
+  const telt = (p) => (zelf && p.n >= 5 ? nb : n) >= p.n;
+  const volgende = paal.find((p) => !telt(p));
   const naam = (p) => p.sub === 'rang' ? 'de rang ' + p.t : p.n === 1 ? (gratisLid ? '2 weken gratis lid' : '2 weken extra') : p.n === 3 ? 'je gratis Strava-analyse' : p.n === 5 ? 'een gratis maand' : 'een gratis jaar';
   // Gelijke afstanden; de balk loopt per stuk tussen twee mijlpalen.
   const pos = (i) => paal.length === 1 ? 50 : Math.round(i / (paal.length - 1) * 100);
-  const i2 = paal.findIndex((p) => p.n > n);
+  const i2 = paal.findIndex((p) => !telt(p));
   const pct = i2 === -1 ? 100 : i2 === 0 ? Math.round(n / paal[0].n * pos(0)) : Math.round(pos(i2 - 1) + (n - paal[i2 - 1].n) / (paal[i2].n - paal[i2 - 1].n) * (pos(i2) - pos(i2 - 1)));
-  const ladder = `<div class="vr-ladder"><div class="vr-lijn"><i style="width:${pct}%"></i></div>${paal.map((p, i) => `<div class="vr-paal${n >= p.n ? ' aan' : ''}" style="left:${pos(i)}%"><span>${n >= p.n ? '&#10003;' : p.n}</span><b>${p.t}</b><small>${p.sub}</small></div>`).join('')}</div>`;
-  const doel = volgende ? `Nog <b>${volgende.n - n} ${volgende.n - n === 1 ? 'maat' : 'maten'}</b> tot ${naam(volgende)}` : 'Alle mijlpalen gehaald. Jij bent de motor van de groep.';
+  const ladder = `<div class="vr-ladder"><div class="vr-lijn"><i style="width:${pct}%"></i></div>${paal.map((p, i) => `<div class="vr-paal${telt(p) ? ' aan' : ''}" style="left:${pos(i)}%"><span>${telt(p) ? '&#10003;' : p.n}</span><b>${p.t}</b><small>${p.sub}</small></div>`).join('')}</div>`;
+  const tel = volgende && zelf && volgende.n >= 5 ? nb : n, nog = volgende ? volgende.n - tel : 0;
+  const doel = (volgende ? `Nog <b>${nog} ${nog === 1 ? 'maat' : 'maten'}</b> tot ${naam(volgende)}` : 'Alle mijlpalen gehaald. Jij bent de motor van de groep.')
+    + (volgende && tel < n ? `<small class="vr-uitleg">Voor de maand en het jaar telt een maat zodra die een tweede keer betaalt, of meteen bij een jaar. Nu ${nb} van je ${n}.</small>` : '')
+    + (wacht > n ? `<small class="vr-uitleg">${wacht - n} ${wacht - n === 1 ? 'maat heeft' : 'maten hebben'} al een gratis account via jou, maar ${wacht - n === 1 ? 'is' : 'zijn'} nog geen lid. Een berichtje helpt.</small>` : '');
   const knoppen = `<div class="vr-knoppen"><button type="button" class="knop wa-knop" data-lx="whatsapp">Stuur via WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app of kopieer link</button></div>`;
   if (compact) return `<div class="vr-kaart compact"><div class="vr-kop"><div><small>Jouw rang</small><b>${rang}</b></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'}</small></div></div><p class="vr-doel">${doel}</p>${knoppen}</div>`;
   return `<div class="vr-kaart"><div class="vr-kop"><div><small>Jouw rang</small><b>${rang}</b></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'} via jouw link</small></div></div>
@@ -2918,14 +2923,14 @@ document.addEventListener('click', async (e) => {
   }
   if (a === 'whatsapp') {
     const w = window.open('', '_blank');
-    try { const j = await (await fetch('/api/lid?actie=vriend&t=' + encodeURIComponent(leesToken()))).json();
+    try { const j = await (await fetch('/api/lid?actie=vriend&t=' + encodeURIComponent(leesToken()) + '&naam=' + encodeURIComponent(String((D && D.naam) || '').split(' ')[0]))).json();
       if (!j.ok) { if (w) w.close(); return alert(j.fout || 'Dat lukte niet.'); }
       if (w) w.location.href = j.whatsapp; else location.href = j.whatsapp;
     } catch (er) { if (w) w.close(); alert('Verbinding mislukt.'); }
     return;
   }
   if (a === 'vriend') {
-    try { const j = await (await fetch('/api/lid?actie=vriend&t=' + encodeURIComponent(leesToken()))).json();
+    try { const j = await (await fetch('/api/lid?actie=vriend&t=' + encodeURIComponent(leesToken()) + '&naam=' + encodeURIComponent(String((D && D.naam) || '').split(' ')[0]))).json();
       if (!j.ok) return alert(j.fout || 'Dat lukte niet.');
       const tekst = 'Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding, voeding, core en een eigen coach. Via mijn link krijg je 50% korting op je eerste maand, of 5 euro korting op een jaar.';
       if (navigator.share) { try { await navigator.share({ title: 'MKC-app', text: tekst, url: j.url }); return; } catch (er) { if (er && er.name === 'AbortError') return; } }
@@ -3515,6 +3520,19 @@ document.addEventListener('click', (e) => {
 // Uitnodiging van een maat (?vriend=code) bewaren voor bij lid worden.
 try { const vr = new URLSearchParams(location.search).get('vriend'); if (vr) localStorage.setItem('mkcVriend', vr.replace(/[^a-z0-9]/gi, '').slice(0, 12)); } catch (e) {}
 function vriendCodeLs() { try { return localStorage.getItem('mkcVriend') || ''; } catch (e) { return ''; } }
+// Uitgenodigd? Uit het account (werkt op elk toestel) of uit deze browser.
+function vriendActief() { return !!((D && D.uitgenodigd) || vriendCodeLs()); }
+function vriendDoor() { return (D && D.uitgenodigd && D.uitgenodigd.naam) || (() => { try { return localStorage.getItem('mkcVriendNaam') || ''; } catch (e) { return ''; } })(); }
+// Koppel de uitnodiging aan het account, één keer per browser.
+async function vriendKoppel() {
+  const code = vriendCodeLs(); if (!code || !D || D.gast || isLid(D)) return;
+  try { if (localStorage.getItem('mkcVriendGekoppeld') === code) return; } catch (e) {}
+  try {
+    const j = await (await fetch('/api/lid?actie=vriendkoppel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), code }) })).json();
+    try { localStorage.setItem('mkcVriendGekoppeld', code); if (j.naam) localStorage.setItem('mkcVriendNaam', j.naam); } catch (e) {}
+    if (j.ok && j.naam && !(D.uitgenodigd && D.uitgenodigd.naam)) { D.uitgenodigd = { naam: j.naam }; teken(); }
+  } catch (e) {}
+}
 
 // ---- Toestemming advertentiemeting (09-10-2026) ----
 // De app heeft geen cookiebanner van de hoofdsite (beginscherm-apps hebben eigen
@@ -4230,7 +4248,7 @@ async function laadOverzicht() {
     const r = await fetch(API + '?actie=overzicht&t=' + encodeURIComponent(t));
     const j = await r.json();
     if (!j.ok) { wisToken(); return toonLogin(j.fout, 'fout'); }
-    D = j; teken(); naarAnker(); pushLaad();
+    D = j; teken(); naarAnker(); pushLaad(); vriendKoppel();
     if (D.beheer && BEKIJK === 'zelf' && SIM.schema && SIM.schema.includes('|')) simSchemaLaad(SIM.schema).then(teken);
     if (D.beheer && !D.schema) simSchemaLaad('opbouw-12-w|18').then(() => { if (BEKIJK === 'alles') teken(); });
     if (D.beheer && OPV.meldingen === null) opvLaad();

@@ -344,6 +344,27 @@ async function routeFactuurPdf(req, res) {
 }
 // Maat uitnodigen: persoonlijke link. De maat betaalt de eerste maand de helft,
 // het lid krijgt een maand gratis zodra die maat betaald heeft (max 12 per jaar).
+// Uitnodiging vastleggen bij het account van de maat (13-10-2026). Dan telt hij ook
+// als die later of op een ander toestel lid wordt. Eerste uitnodiger telt.
+async function routeVriendKoppel(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email) return res.status(401).json({ ok: false });
+  const code = String(body.code || '').replace(/[^a-z0-9]/gi, '').slice(0, 12);
+  const v = code ? await redis(['GET', `lid:vriend:${code}`]) : { ok: false };
+  const door = v.ok && v.result;
+  if (!door || door === email) return res.status(200).json({ ok: false });
+  const lid = (await haalLid(email)) || {};
+  if (lid.betaaldOoit || lid.bron === 'betaald') return res.status(200).json({ ok: false, alLid: true });
+  const nm = await redis(['GET', `lid:vriendnaam:${code}`]);
+  const naam = (nm.ok && nm.result) || '';
+  const nieuw = await redis(['SET', `lid:uitgenodigd:${email}`, JSON.stringify({ code, naam, op: new Date().toISOString() }), 'NX', 'EX', String(400 * 86400)]);
+  if (nieuw.ok && nieuw.result === 'OK') await redis(['INCR', `lid:vriendaccounts:${door}`]);
+  const nu = await redis(['GET', `lid:uitgenodigd:${email}`]);
+  let u = null; try { u = JSON.parse(nu.result); } catch (e) {}
+  return res.status(200).json({ ok: true, naam: (u && u.naam) || '' });
+}
 async function routeVriend(req, res) {
   const email = await lidUitToken(req, res, req.query?.t); if (!email) return;
   const lid = await haalLid(email);
@@ -351,12 +372,16 @@ async function routeVriend(req, res) {
   if (lid && lid.status === 'verwijderd') return res.status(400).json({ ok: false, fout: 'Uitnodigen kan nu niet.' });
   const code = vriendCode(email);
   await redis(['SET', `lid:vriend:${code}`, email]);
+  const vn = String(req.query?.naam || (lid && lid.naam) || '').trim().split(' ')[0].replace(/[^\p{L}\-']/gu, '').slice(0, 30);
+  if (vn) await redis(['SET', `lid:vriendnaam:${code}`, vn]);
   return res.status(200).json({ ok: true, code, url: `${APP_URL}?vriend=${code}`, whatsapp: waLink(code), beloningen: (lid && lid.vriendBeloningen) || 0 });
 }
 // Mijlpalen (13-10-2026, besluit Michel): bovenop de 2 weken per maat.
 // 3 maten: gratis Strava-analyse (ook bij schema; niet bij coaching, dat regelt Michel).
 // 5 maten: een maand extra. 10 maten: een jaar extra. Alleen voor wie zelf betaalt.
-// Geteld over alle jaren; elke mijlpaal één keer.
+// Geteld over alle jaren; elke mijlpaal één keer. De analyse telt alle betaalde maten;
+// de maand en het jaar alleen BEVESTIGDE maten: die betaalden een tweede keer, of namen
+// meteen een jaar (tegen misbruik met goedkope eerste maanden, 13-10-2026).
 const VRIEND_MIJLPALEN = [
   { n: 3, soort: 'analyse', titel: 'Gratis Strava-analyse' },
   { n: 5, soort: 'maand', titel: 'Een maand gratis' },
@@ -377,36 +402,11 @@ async function vriendTijdErbij(lid, email, { dagen = 0, maanden = 0 }, wat) {
   lid.tot = verder(new Date(Math.max(Date.now(), Date.parse(lid.tot || 0) || 0))).toISOString();
   return `je app loopt nu tot ${datumKort(lid.tot)}`;
 }
-async function beloonVriend(code, maatEmail, maatNaam) {
-  const v = await redis(['GET', `lid:vriend:${code}`]);
-  const email = v.ok && v.result; if (!email || email === maatEmail) return;
-  const lid = (await haalLid(email)) || {};
-  if (lid.status === 'verwijderd') return;
-  const vn = String(maatNaam || '').split(' ')[0] || 'Je maat';
-  lid.vriendAantal = (lid.vriendAantal || 0) + 1;
-  // Gratis account (of verlopen): wordt gratis lid via zijn maten, 2 weken per maat.
-  const gratis = !lid.subscriptionId && lid.bron !== 'coaching' && !(lid.tot && Date.parse(lid.tot) > Date.now());
-  if (gratis) {
-    lid.bron = 'schema'; lid.cadeauMaand = true; lid.vriendCadeau = true; lid.handmatig = false;
-    lid.status = 'actief'; lid.plan = lid.plan || 'maand'; lid.sinds = lid.sinds || new Date().toISOString();
-    await mcTag(email, 'mkc-lid'); await redis(['SADD', 'lid:schema', email]); await redis(['SADD', 'lid:cadeau', email]);
-  }
-  const n = lid.vriendAantal, zelf = !inbegrepen(lid), coaching = lid.bron === 'coaching' && !lid.subscriptionId;
-  const meldingen = [];
-  // Per maat: 2 weken extra (max 12 per kalenderjaar), alleen voor wie zelf betaalt.
-  if (zelf) {
-    const jaar = new Date().getFullYear();
-    if (lid.vriendJaar !== jaar) { lid.vriendJaar = jaar; lid.vriendBeloningen = 0; }
-    if ((lid.vriendBeloningen || 0) < VRIEND_MAX) {
-      const zin = await vriendTijdErbij(lid, email, { dagen: VRIEND_DAGEN }, '2 weken extra');
-      if (zin) { lid.vriendBeloningen = (lid.vriendBeloningen || 0) + 1; lid.vriendDagen = (lid.vriendDagen || 0) + VRIEND_DAGEN; meldingen.push({ titel: lid.vriendCadeau ? '2 weken gratis lid' : '2 weken extra voor jou', tekst: `${vn} is lid geworden via jouw link. Je krijgt 2 weken ${lid.vriendCadeau ? 'gratis lid, met alles erop en eraan' : 'extra'}: ${zin}.` }); }
-    }
-  }
-  if (!meldingen.length) meldingen.push({ titel: vn + ' is lid geworden', tekst: `${vn} is lid geworden via jouw link en kreeg korting op het lidmaatschap. Bedankt voor het delen!` });
-  // Mijlpalen
+async function vriendMijlpalen(lid, email, meldingen) {
+  const n = lid.vriendAantal || 0, nb = lid.vriendBevestigd || 0, zelf = !inbegrepen(lid), coaching = lid.bron === 'coaching' && !lid.subscriptionId;
   lid.vriendMijlpalen = lid.vriendMijlpalen || [];
   for (const m of VRIEND_MIJLPALEN) {
-    if (n < m.n || lid.vriendMijlpalen.includes(m.n)) continue;
+    if (lid.vriendMijlpalen.includes(m.n) || (m.soort === 'analyse' ? n : nb) < m.n) continue;
     if (m.soort === 'analyse') {
       if (coaching) { lid.vriendMijlpalen.push(m.n); continue; }
       const t = maakKortingToken(0, 365);
@@ -424,6 +424,47 @@ async function beloonVriend(code, maatEmail, maatNaam) {
     }
     await meldIntern(`MIJLPAAL ${m.n} MATEN - ${email}`, `${lid.naam || email} heeft ${m.n} maten aangebracht en kreeg: ${m.titel}.`);
   }
+}
+// Een maat betaalde een tweede keer (of nam meteen een jaar): telt nu mee voor maand en jaar.
+async function bevestigVriend(code) {
+  const v = await redis(['GET', `lid:vriend:${code}`]);
+  const email = v.ok && v.result; if (!email) return;
+  const lid = await haalLid(email); if (!lid || lid.status === 'verwijderd') return;
+  lid.vriendBevestigd = (lid.vriendBevestigd || 0) + 1;
+  const meldingen = [];
+  await vriendMijlpalen(lid, email, meldingen);
+  await bewaarLid(email, lid);
+  if (meldingen.length && !inbegrepen(lid)) await zetLidmaatschap({ email, naam: lid.naam, tot: lid.tot, stil: true });
+  for (const m of meldingen) await appMelding(email, { soort: 'vriend', titel: m.titel, tekst: m.tekst, link: '/app#lid' });
+}
+async function beloonVriend(code, maatEmail, maatNaam, meteenBevestigd = false) {
+  const v = await redis(['GET', `lid:vriend:${code}`]);
+  const email = v.ok && v.result; if (!email || email === maatEmail) return;
+  const lid = (await haalLid(email)) || {};
+  if (lid.status === 'verwijderd') return;
+  const vn = String(maatNaam || '').split(' ')[0] || 'Je maat';
+  lid.vriendAantal = (lid.vriendAantal || 0) + 1;
+  if (meteenBevestigd) lid.vriendBevestigd = (lid.vriendBevestigd || 0) + 1;
+  // Gratis account (of verlopen): wordt gratis lid via zijn maten, 2 weken per maat.
+  const gratis = !lid.subscriptionId && lid.bron !== 'coaching' && !(lid.tot && Date.parse(lid.tot) > Date.now());
+  if (gratis) {
+    lid.bron = 'schema'; lid.cadeauMaand = true; lid.vriendCadeau = true; lid.handmatig = false;
+    lid.status = 'actief'; lid.plan = lid.plan || 'maand'; lid.sinds = lid.sinds || new Date().toISOString();
+    await mcTag(email, 'mkc-lid'); await redis(['SADD', 'lid:schema', email]); await redis(['SADD', 'lid:cadeau', email]);
+  }
+  const zelf = !inbegrepen(lid);
+  const meldingen = [];
+  // Per maat: 2 weken extra (max 12 per kalenderjaar), alleen voor wie zelf betaalt.
+  if (zelf) {
+    const jaar = new Date().getFullYear();
+    if (lid.vriendJaar !== jaar) { lid.vriendJaar = jaar; lid.vriendBeloningen = 0; }
+    if ((lid.vriendBeloningen || 0) < VRIEND_MAX) {
+      const zin = await vriendTijdErbij(lid, email, { dagen: VRIEND_DAGEN }, '2 weken extra');
+      if (zin) { lid.vriendBeloningen = (lid.vriendBeloningen || 0) + 1; lid.vriendDagen = (lid.vriendDagen || 0) + VRIEND_DAGEN; meldingen.push({ titel: lid.vriendCadeau ? '2 weken gratis lid' : '2 weken extra voor jou', tekst: `${vn} is lid geworden via jouw link. Je krijgt 2 weken ${lid.vriendCadeau ? 'gratis lid, met alles erop en eraan' : 'extra'}: ${zin}.` }); }
+    }
+  }
+  if (!meldingen.length) meldingen.push({ titel: vn + ' is lid geworden', tekst: `${vn} is lid geworden via jouw link en kreeg korting op het lidmaatschap. Bedankt voor het delen!` });
+  await vriendMijlpalen(lid, email, meldingen);
   await bewaarLid(email, lid);
   if (zelf) await zetLidmaatschap({ email, naam: lid.naam, tot: lid.tot, stil: true });
   for (const m of meldingen) await appMelding(email, { soort: 'vriend', titel: m.titel, tekst: m.tekst, link: '/app#lid' });
@@ -508,7 +549,7 @@ function lidBeeld(lid) {
   if (!lid) return { status: 'geen' };
   const open = lid.tot && Date.now() < Date.parse(lid.tot);
   const plan = planVan(lid.plan);
-  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: prijzenVan(lid)[plan], prijs: prijzenVan(lid), handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, terugAanbod: !!(lid.winbackTot && Date.parse(lid.winbackTot) > Date.now()), vriendKan: (!!open || lid.bron === 'coaching') && ['actief', 'opgezegd'].includes(lid.status), vriendBeloning: !inbegrepen(lid), vriendAantal: lid.vriendAantal || 0, vriendDagen: lid.vriendDagen || 0, vriendAnalyse: lid.vriendAnalyse || null, vriendCadeau: !!lid.vriendCadeau, bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
+  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: prijzenVan(lid)[plan], prijs: prijzenVan(lid), handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, terugAanbod: !!(lid.winbackTot && Date.parse(lid.winbackTot) > Date.now()), vriendKan: (!!open || lid.bron === 'coaching') && ['actief', 'opgezegd'].includes(lid.status), vriendBeloning: !inbegrepen(lid), vriendAantal: lid.vriendAantal || 0, vriendDagen: lid.vriendDagen || 0, vriendAnalyse: lid.vriendAnalyse || null, vriendCadeau: !!lid.vriendCadeau, vriendBevestigd: lid.vriendBevestigd || 0, bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
 }
 
 // Kan Mollie al maandelijks incasseren? Zolang SEPA-incasso niet is goedgekeurd
@@ -552,6 +593,7 @@ export default async function handler(req, res) {
     if (actie === 'facturen') return await routeFacturen(req, res);
     if (actie === 'factuur') return await routeFactuurPdf(req, res);
     if (actie === 'vriend') return await routeVriend(req, res);
+    if (actie === 'vriendkoppel') return await routeVriendKoppel(req, res);
     if (actie === 'herinner') return await routeHerinner(req, res);
     if (actie === 'schema') return await routeSchema(req, res);
     if (actie === 'cadeaumail') return await routeCadeauMail(req, res);
@@ -594,7 +636,8 @@ async function routeStart(req, res) {
   // Via een maat (09-10-2026): eerste maand voor de helft, alleen per maand en
   // alleen voor wie nog nooit betaald lid was.
   let vriendVan = null;
-  const vc = String(body.vriend || '').replace(/[^a-z0-9]/gi, '').slice(0, 12);
+  let vc = String(body.vriend || '').replace(/[^a-z0-9]/gi, '').slice(0, 12);
+  if (!vc) { const u = await redis(['GET', `lid:uitgenodigd:${email}`]); try { vc = (u.ok && u.result && JSON.parse(u.result).code) || ''; } catch (e) {} }
   if (vc && !herstel && !lid.betaaldOoit && lid.bron !== 'betaald') {
     const v = await redis(['GET', `lid:vriend:${vc}`]);
     if (v.ok && v.result && v.result !== email) vriendVan = vc;
@@ -671,7 +714,7 @@ async function routeWebhook(req, res) {
       // Nog app via een schema? Dan begint de betaalde periode pas daarna.
       const vanaf = soort === 'lid-herstel' && lid.mislukt && lid.mislukt.periodeStart ? new Date(lid.mislukt.periodeStart) : lid.bron === 'schema' && lid.tot && Date.parse(lid.tot) > Date.now() ? new Date(lid.tot) : new Date(betaaldOp);
       lid.mislukt = null;
-      if (p.metadata && p.metadata.vriend && !lid.vriendVan) { lid.vriendVan = p.metadata.vriend; await beloonVriend(p.metadata.vriend, lidEmail, lid.naam); }
+      if (p.metadata && p.metadata.vriend && !lid.vriendVan) { lid.vriendVan = p.metadata.vriend; lid.vriendKlaar = plan === 'jaar'; await beloonVriend(p.metadata.vriend, lidEmail, lid.naam, plan === 'jaar'); }
       lid.bron = 'betaald'; lid.vriendCadeau = false; lid.cadeauMaand = false;
       if (soort !== 'lid-herstel' || !lid.prijs) lid.prijs = { maand: PLANNEN.maand.bedrag, jaar: PLANNEN.jaar.bedrag };
       const start = plusMaanden(vanaf, PLANNEN[plan].maanden);
@@ -696,7 +739,8 @@ async function routeWebhook(req, res) {
       // Eenmalige iDEAL-betaling (zonder incasso): een maand of jaar erbij,
       // vanaf de huidige einddatum als die nog loopt. Geen abonnement.
       const plan = planVan(p.metadata.plan);
-      if (p.metadata.vriend && !lid.vriendVan) { lid.vriendVan = p.metadata.vriend; await beloonVriend(p.metadata.vriend, lidEmail, lid.naam); }
+      if (p.metadata.vriend && !lid.vriendVan) { lid.vriendVan = p.metadata.vriend; lid.vriendKlaar = plan === 'jaar'; await beloonVriend(p.metadata.vriend, lidEmail, lid.naam, plan === 'jaar'); }
+      else if (lid.vriendVan && !lid.vriendKlaar) { lid.vriendKlaar = true; await bevestigVriend(lid.vriendVan); }
       lid.plan = plan; lid.handmatig = true; lid.customerId = p.customerId || lid.customerId;
       const basis = lid.tot && Date.parse(lid.tot) > Date.now() ? new Date(lid.tot) : new Date(betaaldOp);
       lid.tot = plusMaanden(basis, PLANNEN[plan].maanden).toISOString();
@@ -708,6 +752,7 @@ async function routeWebhook(req, res) {
       lid.tot = plusDagen(plusMaanden(basis, PLANNEN[planVan(lid.plan)].maanden), SPELING_DAGEN).toISOString();
       if (lid.status !== 'opgezegd') lid.status = 'actief';
       lid.jaarVraagVoor = null;
+      if (lid.vriendVan && !lid.vriendKlaar) { lid.vriendKlaar = true; await bevestigVriend(lid.vriendVan); }
       if (lid.kortingActief && p.amount && p.amount.value === halve(prijzenVan(lid).maand)) {
         lid.kortingTegoed = Math.max(0, (lid.kortingTegoed || 1) - 1);
         if (!lid.kortingTegoed && lid.subscriptionId) {
