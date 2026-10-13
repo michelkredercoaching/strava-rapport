@@ -45,6 +45,7 @@ import { appMelding } from '../lib/app-melding.js';
 import { overzicht as gebruikOverzicht } from '../lib/stat.js';
 import { reviewMoment } from '../lib/review.js';
 import zlib from 'node:zlib';
+import { maakKortingToken } from '../lib/korting.js';
 
 const MOLLIE_KEY  = process.env.MOLLIE_API_KEY || '';
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
@@ -351,35 +352,72 @@ async function routeVriend(req, res) {
   await redis(['SET', `lid:vriend:${code}`, email]);
   return res.status(200).json({ ok: true, code, url: `${APP_URL}?vriend=${code}`, whatsapp: waLink(code), beloningen: lid.vriendBeloningen || 0 });
 }
+// Mijlpalen (13-10-2026, besluit Michel): bovenop de 2 weken per maat.
+// 3 maten: gratis Strava-analyse (ook bij schema; niet bij coaching, dat regelt Michel).
+// 5 maten: een maand extra. 10 maten: een jaar extra. Alleen voor wie zelf betaalt.
+// Geteld over alle jaren; elke mijlpaal één keer.
+const VRIEND_MIJLPALEN = [
+  { n: 3, soort: 'analyse', titel: 'Gratis Strava-analyse' },
+  { n: 5, soort: 'maand', titel: 'Een maand gratis' },
+  { n: 10, soort: 'jaar', titel: 'Een jaar gratis' }
+];
+const datumKort = (d) => new Date(d).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+// Tijd erbij: met een lopend abonnement schuift de volgende incasso op (zoals
+// pauzeren), anders loopt de einddatum door. Geeft de uitlegzin terug, of null.
+async function vriendTijdErbij(lid, email, { dagen = 0, maanden = 0 }, wat) {
+  const verder = (d) => maanden ? plusMaanden(new Date(d), maanden) : plusDagen(new Date(d), dagen);
+  if (lid.subscriptionId && lid.status === 'actief' && incassoOp(lid)) {
+    const nieuw = verder(incassoOp(lid));
+    const s = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'PATCH', body: JSON.stringify({ startDate: dag(nieuw) }) });
+    if (!s.ok) { await meldIntern(`MAAT-BELONING MISLUKT - ${email}`, `${wat} voor ${email} lukte niet in Mollie: ${JSON.stringify(s.j).slice(0, 300)}. Schuif de volgende incasso van abonnement ${lid.subscriptionId} met de hand op naar ${dag(nieuw)}.`); return null; }
+    lid.tot = plusDagen(nieuw, SPELING_DAGEN).toISOString();
+    return `je volgende betaling schuift op naar ${datumKort(nieuw)}`;
+  }
+  if (lid.tot && Date.parse(lid.tot) > Date.now()) { lid.tot = verder(lid.tot).toISOString(); return `je app loopt nu tot ${datumKort(lid.tot)}`; }
+  return null;
+}
 async function beloonVriend(code, maatEmail, maatNaam) {
   const v = await redis(['GET', `lid:vriend:${code}`]);
   const email = v.ok && v.result; if (!email || email === maatEmail) return;
   const lid = await haalLid(email); if (!lid) return;
-  const vnMaat = String(maatNaam || '').split(' ')[0] || 'Je maat';
-  lid.vriendAantal = (lid.vriendAantal || 0) + 1;
-  if (inbegrepen(lid)) { await bewaarLid(email, lid); return appMelding(email, { soort: 'vriend', titel: vnMaat + ' is lid geworden', tekst: `${vnMaat} is lid geworden via jouw link en kreeg korting op het lidmaatschap. Bedankt voor het delen!`, link: '/app#lid' }); }
-  const jaar = new Date().getFullYear();
-  if (lid.vriendJaar !== jaar) { lid.vriendJaar = jaar; lid.vriendBeloningen = 0; }
-  if ((lid.vriendBeloningen || 0) >= VRIEND_MAX) { await bewaarLid(email, lid); return; }
-  // 2 weken extra (13-10-2026). Met een lopend abonnement schuift de volgende
-  // incasso 2 weken op (zelfde aanpak als pauzeren), anders gaat de einddatum 2 weken verder.
-  let tekstBeloning;
-  if (lid.subscriptionId && lid.status === 'actief' && incassoOp(lid)) {
-    const nieuw = plusDagen(new Date(incassoOp(lid)), VRIEND_DAGEN);
-    const s = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'PATCH', body: JSON.stringify({ startDate: dag(nieuw) }) });
-    if (!s.ok) { await meldIntern(`MAAT-BELONING MISLUKT - ${email}`, `2 weken extra voor ${email} (maat ${maatEmail}) lukte niet in Mollie: ${JSON.stringify(s.j).slice(0, 300)}. Schuif de volgende incasso van abonnement ${lid.subscriptionId} met de hand 2 weken op.`); return; }
-    lid.tot = plusDagen(nieuw, SPELING_DAGEN).toISOString();
-    tekstBeloning = `Je krijgt 2 weken extra: je volgende betaling schuift op naar ${new Date(nieuw).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' })}.`;
-  } else if (lid.tot && Date.parse(lid.tot) > Date.now()) {
-    lid.tot = plusDagen(lid.tot, VRIEND_DAGEN).toISOString();
-    tekstBeloning = `Je krijgt 2 weken extra: je app loopt nu tot ${new Date(lid.tot).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' })}.`;
-  } else return;
-  lid.vriendBeloningen = (lid.vriendBeloningen || 0) + 1;
-  lid.vriendDagen = (lid.vriendDagen || 0) + VRIEND_DAGEN;
-  await bewaarLid(email, lid);
-  await zetLidmaatschap({ email, naam: lid.naam, tot: lid.tot, stil: true });
   const vn = String(maatNaam || '').split(' ')[0] || 'Je maat';
-  await appMelding(email, { soort: 'vriend', titel: '2 weken extra voor jou', tekst: `${vn} is lid geworden via jouw link. ${tekstBeloning}`, link: '/app#lid' });
+  lid.vriendAantal = (lid.vriendAantal || 0) + 1;
+  const n = lid.vriendAantal, zelf = !inbegrepen(lid), coaching = lid.bron === 'coaching' && !lid.subscriptionId;
+  const meldingen = [];
+  // Per maat: 2 weken extra (max 12 per kalenderjaar), alleen voor wie zelf betaalt.
+  if (zelf) {
+    const jaar = new Date().getFullYear();
+    if (lid.vriendJaar !== jaar) { lid.vriendJaar = jaar; lid.vriendBeloningen = 0; }
+    if ((lid.vriendBeloningen || 0) < VRIEND_MAX) {
+      const zin = await vriendTijdErbij(lid, email, { dagen: VRIEND_DAGEN }, '2 weken extra');
+      if (zin) { lid.vriendBeloningen = (lid.vriendBeloningen || 0) + 1; lid.vriendDagen = (lid.vriendDagen || 0) + VRIEND_DAGEN; meldingen.push({ titel: '2 weken extra voor jou', tekst: `${vn} is lid geworden via jouw link. Je krijgt 2 weken extra: ${zin}.` }); }
+    }
+  }
+  if (!meldingen.length) meldingen.push({ titel: vn + ' is lid geworden', tekst: `${vn} is lid geworden via jouw link en kreeg korting op het lidmaatschap. Bedankt voor het delen!` });
+  // Mijlpalen
+  lid.vriendMijlpalen = lid.vriendMijlpalen || [];
+  for (const m of VRIEND_MIJLPALEN) {
+    if (n < m.n || lid.vriendMijlpalen.includes(m.n)) continue;
+    if (m.soort === 'analyse') {
+      if (coaching) { lid.vriendMijlpalen.push(m.n); continue; }
+      const t = maakKortingToken(0, 365);
+      if (!t) { await meldIntern(`MIJLPAAL ANALYSE - ${email}`, `${email} heeft 3 maten aangebracht, maar de gratis analyselink kon niet gemaakt worden. Stuur hem met de hand een gratis analyselink.`); continue; }
+      lid.vriendAnalyse = `https://rapport.michelkredercoaching.nl/?korting=${t}`;
+      lid.vriendMijlpalen.push(m.n);
+      meldingen.push({ titel: 'Mijlpaal: gratis Strava-analyse', tekst: '3 maten via jouw link. Je gratis Strava-analyse staat klaar bij Mijn lidmaatschap.' });
+    } else {
+      if (!zelf) { lid.vriendMijlpalen.push(m.n); continue; }
+      const zin = await vriendTijdErbij(lid, email, m.soort === 'jaar' ? { maanden: 12 } : { maanden: 1 }, m.titel);
+      if (!zin) continue;
+      lid.vriendDagen = (lid.vriendDagen || 0) + (m.soort === 'jaar' ? 365 : 30);
+      lid.vriendMijlpalen.push(m.n);
+      meldingen.push({ titel: 'Mijlpaal: ' + m.titel.toLowerCase(), tekst: `${m.n} maten via jouw link. ${m.titel}: ${zin}.` });
+    }
+    await meldIntern(`MIJLPAAL ${m.n} MATEN - ${email}`, `${lid.naam || email} heeft ${m.n} maten aangebracht en kreeg: ${m.titel}.`);
+  }
+  await bewaarLid(email, lid);
+  if (zelf) await zetLidmaatschap({ email, naam: lid.naam, tot: lid.tot, stil: true });
+  for (const m of meldingen) await appMelding(email, { soort: 'vriend', titel: m.titel, tekst: m.tekst, link: '/app#lid' });
 }
 
 // ---- Jaarlid: na een jaar zelf kiezen (09-10-2026) -----------------------------
@@ -461,7 +499,7 @@ function lidBeeld(lid) {
   if (!lid) return { status: 'geen' };
   const open = lid.tot && Date.now() < Date.parse(lid.tot);
   const plan = planVan(lid.plan);
-  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: prijzenVan(lid)[plan], prijs: prijzenVan(lid), handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, terugAanbod: !!(lid.winbackTot && Date.parse(lid.winbackTot) > Date.now()), vriendKan: (!!open || lid.bron === 'coaching') && ['actief', 'opgezegd'].includes(lid.status), vriendBeloning: !inbegrepen(lid), vriendAantal: lid.vriendAantal || 0, vriendDagen: lid.vriendDagen || 0, bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
+  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: prijzenVan(lid)[plan], prijs: prijzenVan(lid), handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, terugAanbod: !!(lid.winbackTot && Date.parse(lid.winbackTot) > Date.now()), vriendKan: (!!open || lid.bron === 'coaching') && ['actief', 'opgezegd'].includes(lid.status), vriendBeloning: !inbegrepen(lid), vriendAantal: lid.vriendAantal || 0, vriendDagen: lid.vriendDagen || 0, vriendAnalyse: lid.vriendAnalyse || null, bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
 }
 
 // Kan Mollie al maandelijks incasseren? Zolang SEPA-incasso niet is goedgekeurd

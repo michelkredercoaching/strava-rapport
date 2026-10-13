@@ -184,6 +184,33 @@
   .vr-uitnodig { background:var(--accent); color:#0a0a0a; border-radius:8px; padding:12px 14px; margin-bottom:14px; }
   .vr-uitnodig b { display:block; font-size:15px; }
   .vr-uitnodig span { display:block; font-size:13.5px; margin-top:2px; }
+  .vr-kaart { background:linear-gradient(160deg, rgba(255,107,26,.2), rgba(255,107,26,.03) 55%), var(--surface); border:1px solid rgba(255,107,26,.55); border-radius:10px; padding:16px; margin-bottom:12px; }
+  .vr-kaart h3 { font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1; text-transform:uppercase; margin:14px 0 10px; }
+  .vr-kop { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .vr-kop small { display:block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .vr-kop > div:first-child b { display:inline-block; margin-top:4px; background:var(--accent); color:#0a0a0a; font-size:13px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; padding:4px 10px; border-radius:20px; }
+  .vr-n { text-align:right; }
+  .vr-n b { display:block; font-family:'Bebas Neue',sans-serif; font-size:44px; line-height:.9; color:var(--accent); }
+  .vr-geef { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .vr-geef > div { background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.1); border-radius:8px; padding:10px 12px; }
+  .vr-geef small { display:block; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .vr-geef b { display:block; font-family:'Bebas Neue',sans-serif; font-size:26px; line-height:1.05; color:var(--white); margin-top:2px; }
+  .vr-geef span { display:block; font-size:12px; color:var(--muted); line-height:1.35; margin-top:2px; }
+  .vr-ladder { position:relative; height:74px; margin:20px 30px 4px; }
+  .vr-lijn { position:absolute; left:0; right:0; top:13px; height:4px; background:rgba(255,255,255,.12); border-radius:2px; }
+  .vr-lijn i { display:block; height:100%; background:var(--accent); border-radius:2px; }
+  .vr-paal { position:absolute; top:0; transform:translateX(-50%); text-align:center; width:64px; }
+  .vr-paal span { display:flex; align-items:center; justify-content:center; width:30px; height:30px; margin:0 auto; border-radius:50%; background:#141414; border:2px solid rgba(255,255,255,.25); font-size:12.5px; font-weight:700; color:var(--muted); }
+  .vr-paal.aan span { background:var(--accent); border-color:var(--accent); color:#0a0a0a; }
+  .vr-paal b { display:block; font-size:12px; margin-top:5px; }
+  .vr-paal small { display:block; font-size:10.5px; color:var(--muted); }
+  .vr-doel { font-size:14px; margin:8px 0 12px; text-align:center; }
+  .vr-doel b { color:var(--accent); }
+  .vr-knoppen { display:grid; gap:8px; }
+  .vr-kaart.compact { margin:10px 0 0; padding:12px; }
+  .vr-kaart.compact .vr-n b { font-size:34px; }
+  .vr-kaart.compact .vr-doel { text-align:left; margin:8px 0 10px; }
+  .gr-vriend .vr-kaart.compact { background:rgba(0,0,0,.25); }
   .vr-teller { display:flex; gap:8px; margin-top:12px; }
   .vr-teller > div { flex:1; background:rgba(0,0,0,.3); border:1px solid rgba(255,107,26,.35); border-radius:8px; padding:10px 12px; }
   .vr-teller b { display:block; font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1; color:var(--accent); }
@@ -2813,15 +2840,35 @@ document.addEventListener('click', (e) => {
   fetch(API + '?actie=review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), keuze: k.dataset.review }) }).catch(() => {});
   setTimeout(() => { const el = document.getElementById('review'); if (el) el.remove(); }, k.dataset.review === 'later' ? 0 : 400);
 });
+// Uitnodigen als spelletje (13-10-2026): rang, mijlpalen en een voortgangsbalk.
+// Zelfde mijlpalen als VRIEND_MIJLPALEN in api/lid.js.
+const VR_RANG = [[10, 'Ploegleider'], [5, 'Kopman'], [3, 'Wegkapitein'], [1, 'Gangmaker'], [0, 'Solo']];
+function vriendKaartHtml(l, compact) {
+  const n = l.vriendAantal || 0, zelf = !(l.vriendBeloning === false || ['coaching', 'schema', 'cadeau'].includes(l.bron)), coaching = l.bron === 'coaching';
+  const rang = VR_RANG.find(([m]) => n >= m)[1];
+  const paal = zelf ? [{ n: 1, t: '2 weken', sub: 'per maat' }, { n: 3, t: 'Analyse', sub: 'gratis' }, { n: 5, t: 'Maand', sub: 'gratis' }, { n: 10, t: 'Jaar', sub: 'gratis' }]
+    : [{ n: 1, t: 'Gangmaker', sub: 'rang' }, coaching ? { n: 3, t: 'Wegkapitein', sub: 'rang' } : { n: 3, t: 'Analyse', sub: 'gratis' }, { n: 5, t: 'Kopman', sub: 'rang' }, { n: 10, t: 'Ploegleider', sub: 'rang' }];
+  const volgende = paal.find((p) => p.n > n);
+  const naam = (p) => p.sub === 'rang' ? 'de rang ' + p.t : p.n === 1 ? '2 weken extra' : p.n === 3 ? 'je gratis Strava-analyse' : p.n === 5 ? 'een gratis maand' : 'een gratis jaar';
+  // Gelijke afstanden; de balk loopt per stuk tussen twee mijlpalen.
+  const pos = (i) => paal.length === 1 ? 50 : Math.round(i / (paal.length - 1) * 100);
+  const i2 = paal.findIndex((p) => p.n > n);
+  const pct = i2 === -1 ? 100 : i2 === 0 ? Math.round(n / paal[0].n * pos(0)) : Math.round(pos(i2 - 1) + (n - paal[i2 - 1].n) / (paal[i2].n - paal[i2 - 1].n) * (pos(i2) - pos(i2 - 1)));
+  const ladder = `<div class="vr-ladder"><div class="vr-lijn"><i style="width:${pct}%"></i></div>${paal.map((p, i) => `<div class="vr-paal${n >= p.n ? ' aan' : ''}" style="left:${pos(i)}%"><span>${n >= p.n ? '&#10003;' : p.n}</span><b>${p.t}</b><small>${p.sub}</small></div>`).join('')}</div>`;
+  const doel = volgende ? `Nog <b>${volgende.n - n} ${volgende.n - n === 1 ? 'maat' : 'maten'}</b> tot ${naam(volgende)}` : 'Alle mijlpalen gehaald. Jij bent de motor van de groep.';
+  const knoppen = `<div class="vr-knoppen"><button type="button" class="knop wa-knop" data-lx="whatsapp">Stuur via WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app of kopieer link</button></div>`;
+  if (compact) return `<div class="vr-kaart compact"><div class="vr-kop"><div><small>Jouw rang</small><b>${rang}</b></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'}</small></div></div><p class="vr-doel">${doel}</p>${knoppen}</div>`;
+  return `<div class="vr-kaart"><div class="vr-kop"><div><small>Jouw rang</small><b>${rang}</b></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'} via jouw link</small></div></div>
+    <h3>Nodig je maten uit</h3>
+    <div class="vr-geef"><div><small>Jouw maat krijgt</small><b>50% korting</b><span>eerste maand &euro;${APP_PRIJS.half}, of een jaar voor &euro;${APP_PRIJS.jaarMaat}</span></div><div><small>Jij krijgt</small><b>${zelf ? '2 weken' : coaching ? 'Een rang' : 'Analyse'}</b><span>${zelf ? 'extra per maat, plus de mijlpalen hieronder' : coaching ? 'van Gangmaker tot Ploegleider' : 'gratis bij 3 maten, plus je rang'}</span></div></div>
+    ${ladder}<p class="vr-doel">${doel}</p>
+    ${l.vriendAnalyse ? `<a class="knop" href="${esc(l.vriendAnalyse)}" target="_blank" rel="noopener" style="margin-bottom:10px">Claim je gratis analyse</a>` : ''}
+    ${knoppen}
+    ${!zelf ? `<p class="klein" style="margin-top:10px">De app zit bij ${coaching ? 'je coaching' : 'je schema'} inbegrepen, dus extra weken of maanden krijg je niet. Je maat krijgt wel de volle korting.</p>` : ''}</div>`;
+}
 function lidExtraHtml(l) {
   if (!l) return '';
-  const inbegrepen = l.vriendBeloning === false || ['coaching', 'schema', 'cadeau'].includes(l.bron);
-  const wat = l.bron === 'coaching' ? 'je coaching' : 'je schema';
-  const jij = inbegrepen ? 'Omdat de app bij ' + wat + ' inbegrepen is, krijg je er zelf geen korting voor. Je maat wel, en je krijgt een berichtje zodra die lid is.' : 'En jij krijgt 2 weken extra zodra die lid is' + (l.status === 'actief' && !l.handmatig ? ': je volgende betaling schuift dan 2 weken op.' : '.');
-  const n = l.vriendAantal || 0, wk = Math.round((l.vriendDagen || 0) / 7);
-  const teller = '<div class="vr-teller">' + (n ? '<div><b>' + n + '</b><span>' + (n === 1 ? 'maat' : 'maten') + ' via jouw link</span></div>' + (!inbegrepen && wk ? '<div><b>' + wk + '</b><span>' + (wk === 1 ? 'week' : 'weken') + ' extra verdiend</span></div>' : '') : '<p>Nog niemand via jouw link. ' + (inbegrepen ? 'Je eerste maat krijgt meteen zijn korting.' : 'Je eerste maat levert je 2 weken extra op.') + '</p>') + '</div>';
-  return `<div class="lid-extra">
-    ${l.vriendKan ? '<div class="vriend"><b>Nodig een vriend uit: die krijgt 50% korting</b><p>Je vriend of vriendin betaalt de eerste maand de helft, of krijgt &euro;5 korting op een jaar. ' + jij + '</p><div class="rij2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app</button></div>' + teller + '</div>' : ''}
+  return `<div class="lid-extra">${l.vriendKan ? vriendKaartHtml(l) : ''}
     ${l.facturen ? '<button type="button" class="lid-link" data-lx="facturen">Mijn facturen</button>' : ''}</div>`;
 }
 document.addEventListener('click', async (e) => {
@@ -3549,7 +3596,7 @@ function grHtml() {
     ${voorbij ? '' : `<button type="button" class="knop ${GR.data.ikMee ? '' : 'leeg'}" data-gr="mee" style="margin-top:14px">${GR.data.ikMee ? '&#10003; Je rijdt mee' : 'Ik rijd mee'}</button>`}
     <div class="gr-kijk">${[GR.data.mee ? `${GR.data.mee} ${GR.data.mee === 1 ? 'rijdt' : 'rijden'} mee` : '', kijkers >= 2 ? `${kijkers} keken al` : ''].filter(Boolean).join(' &middot; ')}</div>
     ${voorbij ? '' : '<button type="button" class="knop" data-gr="deel" style="margin-top:14px">Deel deze rit</button>'}
-    ${!voorbij && D && !D.gast && D.lid && D.lid.vriendKan ? `<div class="gr-vriend"><b>Rijden je maten nog zonder de app?</b><p>Met jouw link krijgen ze 50% korting op hun eerste maand${D.lid.vriendBeloning === false ? '' : ', en jij 2 weken extra'}.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app</button></div></div>` : ''}
+    ${!voorbij && D && !D.gast && D.lid && D.lid.vriendKan ? `<div class="gr-vriend"><b>Rijden je maten nog zonder de app?</b><p>Met jouw link krijgen ze 50% korting${D.lid.vriendBeloning === false ? '' : ', en jij 2 weken extra per maat'}.</p>${vriendKaartHtml(D.lid, true)}</div>` : ''}
     <details class="klap" data-klap="grfoto" ${klapOpen('grfoto', voorbij) ? 'open' : ''}><summary><b>Maak een foto-story</b><span>jouw foto, met de rit erover</span></summary><div class="klap-in">
       <p class="klein" style="margin-top:0">Kies een foto van de groep, de koffiestop of het uitzicht. De app zet de naam van de rit, de datum en het weer eroverheen, klaar voor je Instagram-story of Strava.</p>
       <input id="grFotoTekst" type="text" maxlength="60" placeholder="Jouw tekst, bijv. Zondagsrondje met de mannen" style="width:100%;margin-bottom:10px">
