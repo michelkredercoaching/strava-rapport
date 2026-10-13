@@ -158,7 +158,7 @@ async function leesBody(req) {
 // ---- Na lid worden (09-10-2026): welkom, win-back, weekoverzicht, back-up ----
 const knopHtml = (url, tekst) => `<p style="margin:22px 0 26px"><a href="${url}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">${tekst}</a></p>`;
 // WhatsApp-link met een kant-en-klaar berichtje en de persoonlijke link erin.
-const waLink = (code) => 'https://wa.me/?text=' + encodeURIComponent(`Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding en voeding voor elke rit, core-oefeningen en een eigen coach. Via mijn link krijg je 50% korting op je eerste maand: ${APP_URL}?vriend=${code}`);
+const waLink = (code) => 'https://wa.me/?text=' + encodeURIComponent(`Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding en voeding voor elke rit, core-oefeningen en een eigen coach. Via mijn link krijg je 50% korting op je eerste maand, of €5 korting op een jaar: ${APP_URL}?vriend=${code}`);
 async function welkomMail(email, lid, naar) {
   const voornaam = String(lid.naam || '').split(' ')[0];
   const code = vriendCode(email);
@@ -170,7 +170,7 @@ async function welkomMail(email, lid, naar) {
     <p><b>Vul je fietsen en gewicht in</b> bij Vandaag rijden. Dan zie je voor elke rit wat je pompt, wat je aantrekt en wat je meeneemt.</p>
     <p><b>Start de Core-app.</b> Korte sessies van een kwartier, een paar keer per week. Je merkt het het eerst op lange ritten, in je onderrug en je nek.</p>
     ${knopHtml(APP_URL, 'Open de app')}
-    <p>Fiets je samen met anderen? Nodig een vriend of vriendin uit: die krijgt 50% korting op de eerste maand. En jij krijgt er ook iets voor terug zodra die lid is.</p>
+    <p>Fiets je samen met anderen? Nodig een vriend of vriendin uit: die krijgt 50% korting op de eerste maand, of €5 korting op een jaar. En jij krijgt 2 weken extra zodra die lid is.</p>
     <p><a href="${waLink(code)}" style="display:inline-block;background:#25D366;color:#fff;padding:12px 22px;border-radius:4px;text-decoration:none;font-weight:700">Nodig uit via WhatsApp</a></p>
     <p>Loop je ergens tegenaan of heb je een vraag? Stel hem aan de coach in de app, of mail me gewoon terug.</p>`));
 }
@@ -280,6 +280,11 @@ async function routeBackup(req, res) {
 // ---- Leden extra (09-10-2026): pauze, verwijderen, facturen, maat uitnodigen ----
 export const OPZEG_REDENEN = ['te-duur', 'te-weinig', 'winterstop', 'mist-iets', 'anders'];
 const VRIEND_MAX = 12;
+// Via een maat (13-10-2026): eerste maand de helft, of een jaar met €5 korting.
+// Wie uitnodigt en zelf betaalt, krijgt 2 weken extra.
+const VRIEND_JAAR_KORTING = 5;
+const VRIEND_DAGEN = 14;
+const vriendBedrag = (plan) => plan === 'jaar' ? (Number(PLANNEN.jaar.bedrag) - VRIEND_JAAR_KORTING).toFixed(2) : halve(PLANNEN.maand.bedrag);
 function vriendCode(email) { return crypto.createHmac('sha256', SECRET || 'mkc').update('vriend|' + email).digest('hex').slice(0, 8); }
 async function lidUitToken(req, res, t) {
   const email = leesAppToken(String(t || ''));
@@ -358,24 +363,24 @@ async function beloonVriend(code, maatEmail, maatNaam) {
   // Beide 50% (besluit Michel 09-10-2026): maandlid betaalt zijn volgende maand
   // de halve prijs (abonnement tijdelijk omlaag, na die incasso weer de gewone prijs). Jaarlid of
   // zonder abonnement: 15 dagen erbij, dezelfde waarde.
+  // 2 weken extra (13-10-2026). Met een lopend abonnement schuift de volgende
+  // incasso 2 weken op (zelfde aanpak als pauzeren), anders gaat de einddatum 2 weken verder.
   let tekstBeloning;
-  if (lid.subscriptionId && lid.status === 'actief' && planVan(lid.plan) === 'maand') {
-    lid.kortingTegoed = (lid.kortingTegoed || 0) + 1;
-    if (!lid.kortingActief) {
-      const s = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'PATCH', body: JSON.stringify({ amount: { currency: 'EUR', value: halve(prijzenVan(lid).maand) } }) });
-      if (!s.ok) { await meldIntern(`MAAT-BELONING MISLUKT - ${email}`, `50% voor ${email} (maat ${maatEmail}) lukte niet in Mollie: ${JSON.stringify(s.j).slice(0, 300)}. Zet de volgende incasso met de hand op ${euro(halve(prijzenVan(lid).maand))}.`); return; }
-      lid.kortingActief = true;
-    }
-    tekstBeloning = `Je volgende maand kost de helft: ${euro(halve(prijzenVan(lid).maand))}.`;
+  if (lid.subscriptionId && lid.status === 'actief' && incassoOp(lid)) {
+    const nieuw = plusDagen(new Date(incassoOp(lid)), VRIEND_DAGEN);
+    const s = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'PATCH', body: JSON.stringify({ startDate: dag(nieuw) }) });
+    if (!s.ok) { await meldIntern(`MAAT-BELONING MISLUKT - ${email}`, `2 weken extra voor ${email} (maat ${maatEmail}) lukte niet in Mollie: ${JSON.stringify(s.j).slice(0, 300)}. Schuif de volgende incasso van abonnement ${lid.subscriptionId} met de hand 2 weken op.`); return; }
+    lid.tot = plusDagen(nieuw, SPELING_DAGEN).toISOString();
+    tekstBeloning = `Je krijgt 2 weken extra: je volgende betaling schuift op naar ${new Date(nieuw).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' })}.`;
   } else if (lid.tot && Date.parse(lid.tot) > Date.now()) {
-    lid.tot = plusDagen(lid.tot, 15).toISOString();
-    tekstBeloning = 'Je krijgt er een halve maand bij.';
+    lid.tot = plusDagen(lid.tot, VRIEND_DAGEN).toISOString();
+    tekstBeloning = `Je krijgt 2 weken extra: je app loopt nu tot ${new Date(lid.tot).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' })}.`;
   } else return;
   lid.vriendBeloningen = (lid.vriendBeloningen || 0) + 1;
   await bewaarLid(email, lid);
   await zetLidmaatschap({ email, naam: lid.naam, tot: lid.tot, stil: true });
   const vn = String(maatNaam || '').split(' ')[0] || 'Je maat';
-  await appMelding(email, { soort: 'vriend', titel: '50% korting voor jou', tekst: `${vn} is lid geworden via jouw link. ${tekstBeloning}`, link: '/app#lid' });
+  await appMelding(email, { soort: 'vriend', titel: '2 weken extra voor jou', tekst: `${vn} is lid geworden via jouw link. ${tekstBeloning}`, link: '/app#lid' });
 }
 
 // ---- Jaarlid: na een jaar zelf kiezen (09-10-2026) -----------------------------
@@ -544,7 +549,7 @@ async function routeStart(req, res) {
   // alleen voor wie nog nooit betaald lid was.
   let vriendVan = null;
   const vc = String(body.vriend || '').replace(/[^a-z0-9]/gi, '').slice(0, 12);
-  if (vc && !herstel && planVan(body.plan) === 'maand' && !lid.betaaldOoit && lid.bron !== 'betaald') {
+  if (vc && !herstel && !lid.betaaldOoit && lid.bron !== 'betaald') {
     const v = await redis(['GET', `lid:vriend:${vc}`]);
     if (v.ok && v.result && v.result !== email) vriendVan = vc;
   }
@@ -567,8 +572,8 @@ async function routeStart(req, res) {
   const p = await mollie('/payments', {
     method: 'POST',
     body: JSON.stringify({
-      amount: { currency: 'EUR', value: vriendVan || terug ? halve(herstel ? prijzenVan(lid).maand : PLANNEN.maand.bedrag) : (herstel ? prijzenVan(lid)[plan] : PLANNEN[plan].bedrag) },
-      description: herstel ? `${OMSCHRIJVING}, betaling bijwerken` : vriendVan ? `${OMSCHRIJVING}, eerste maand (via een maat)` : automatisch
+      amount: { currency: 'EUR', value: vriendVan ? vriendBedrag(plan) : terug ? halve(herstel ? prijzenVan(lid).maand : PLANNEN.maand.bedrag) : (herstel ? prijzenVan(lid)[plan] : PLANNEN[plan].bedrag) },
+      description: herstel ? `${OMSCHRIJVING}, betaling bijwerken` : vriendVan ? (plan === 'jaar' ? `${OMSCHRIJVING}, eerste jaar (via een maat, ${euro(VRIEND_JAAR_KORTING)} korting)` : `${OMSCHRIJVING}, eerste maand (via een maat, 50% korting)`) : automatisch
         ? (plan === 'jaar' ? `${OMSCHRIJVING}, eerste jaar` : `${OMSCHRIJVING}, eerste maand`)
         : (plan === 'jaar' ? `${OMSCHRIJVING}, 1 jaar` : `${OMSCHRIJVING}, 1 maand`),
       customerId: lid.customerId,
@@ -686,7 +691,7 @@ async function routeWebhook(req, res) {
       try {
         const maand = new Date(betaaldOp).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
         const periode = planVan(lid.plan) === 'jaar' ? `jaar vanaf ${new Date(betaaldOp).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}` : maand;
-        const f = await maakMollieFactuur({ naam: (lid.factuur && lid.factuur.naam) || lid.naam || lidEmail.split('@')[0], postcode: lid.factuur && lid.factuur.postcode, huisnummer: lid.factuur && lid.factuur.huisnummer, land: lid.factuur && lid.factuur.land, straat: lid.factuur && lid.factuur.straat, plaats: lid.factuur && lid.factuur.plaats, email: lidEmail, bedrag: (p.amount && p.amount.value) || PLANNEN[planVan(lid.plan)].bedrag, betaalId: id, omschrijving: `${OMSCHRIJVING}, ${periode}` });
+        const f = await maakMollieFactuur({ naam: (lid.factuur && lid.factuur.naam) || lid.naam || lidEmail.split('@')[0], postcode: lid.factuur && lid.factuur.postcode, huisnummer: lid.factuur && lid.factuur.huisnummer, land: lid.factuur && lid.factuur.land, straat: lid.factuur && lid.factuur.straat, plaats: lid.factuur && lid.factuur.plaats, email: lidEmail, bedrag: (p.amount && p.amount.value) || PLANNEN[planVan(lid.plan)].bedrag, betaalId: id, omschrijving: `${OMSCHRIJVING}, ${periode}${p.metadata && p.metadata.vriend ? (planVan(lid.plan) === 'jaar' ? ', via een maat (' + euro(VRIEND_JAAR_KORTING) + ' korting)' : ', via een maat (50% korting)') : ''}` });
         if (f.ok && f.id) { lid.facturen = [{ id: f.id, nr: f.nummer || '', bedrag: (p.amount && p.amount.value) || '', op: betaaldOp.slice(0, 10), omschrijving: periode }, ...(lid.facturen || [])].slice(0, 60); await bewaarLid(lidEmail, lid); }
         if (!f.ok) { console.error('Factuur lidmaatschap mislukt:', lidEmail, id, f.fout); await meldIntern(`FACTUUR MISLUKT - lidmaatschap - ${lidEmail}`, `Automatische factuur voor ${id} (${lidEmail}) mislukte: ${f.fout || 'onbekende fout'}. De toegang staat wel open. Maak de factuur even handmatig aan in Mollie.`); }
       } catch (e) { console.error('Factuur lidmaatschap fout:', e); }

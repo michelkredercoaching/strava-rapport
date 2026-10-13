@@ -1810,7 +1810,7 @@ document.addEventListener('click', (e) => {
 });
 
 // ---- Lidmaatschap MKC-app: €9,99 per maand of €89 per jaar via Mollie (sinds 09-10-2026, was €19/€149) ----
-const APP_PRIJS = { maand: '9,99', jaar: '89', jaarPerMaand: '7,42', half: '5' };
+const APP_PRIJS = { maand: '9,99', jaar: '89', jaarPerMaand: '7,42', half: '5', jaarMaat: '84' };
 const LID_LIJST = ['De Core-app (core stability voor wielrenners) die met je meebeweegt: gaat het makkelijk, dan ga je sneller', 'Slimme bandenspanning: je fietsen, het weer van vandaag en een geheugen', 'Kledingadvies voor je rit, plus een ochtendbericht met weer, spanning en kleding', 'Onbeperkt vragen aan je eigen coach, met Michels kennis uit 9 jaar prof en zijn coachervaring', 'Ledenprijzen: je Strava-analyse en straks het pacingplan voor &euro;19 in plaats van &euro;29, en &euro;20 korting op het Afvalprogramma', 'Per maand, altijd opzegbaar, of voordelig per jaar'];
 // ---- Verkopen zonder proef (12-10-2026) ----
 // De lidpagina laat zien wat je krijgt, op jou afgestemd: je doel, wat je al
@@ -1954,7 +1954,8 @@ let LV = { plan: null };
 function lidStap2Html() {
   if (!LV.plan) return '';
   const jaar = LV.plan === 'jaar';
-  return `<div class="lid-stap2"><b>Bijna klaar: ${jaar ? 'per jaar, &euro;' + APP_PRIJS.jaar : 'per maand, &euro;' + APP_PRIJS.maand}</b>
+  const maat = !!vriendCodeLs();
+  return `<div class="lid-stap2"><b>Bijna klaar: ${jaar ? 'per jaar, &euro;' + (maat ? APP_PRIJS.jaarMaat + ' het eerste jaar (via je maat), daarna &euro;' + APP_PRIJS.jaar : APP_PRIJS.jaar) : 'per maand, &euro;' + (maat ? APP_PRIJS.half + ' de eerste maand (via je maat), daarna &euro;' + APP_PRIJS.maand : APP_PRIJS.maand)}</b>
     ${lidFactuurHtml()}
     <label class="lid-akkoord"><input type="checkbox" id="lidAkkoord"> <span>Ik wil direct toegang en weet dat ik daarmee afzie van mijn bedenktijd van 14 dagen. Ik ga akkoord met de <a href="/voorwaarden" target="_blank" rel="noopener">voorwaarden</a> en de <a href="/privacy#app" target="_blank" rel="noopener">privacyverklaring</a>.</span></label>
     <button class="knop" data-actie="wordlid" data-plan="${LV.plan}">Naar betalen</button>
@@ -1963,7 +1964,7 @@ function lidStap2Html() {
 document.addEventListener('click', (e) => { const k = e.target.closest('[data-lidplan="terug"]'); if (!k) return; LV.plan = null; const s2 = document.getElementById('lidStap2'); if (s2) s2.innerHTML = ''; document.querySelector('.plannen')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
 function vriendUitnodigHtml() {
   if (!vriendCodeLs()) return '';
-  return `<div class="vr-uitnodig"><b>Je bent uitgenodigd door een maat</b><span>Je krijgt 50% korting op je eerste maand: &euro;${APP_PRIJS.half} in plaats van &euro;${APP_PRIJS.maand}. Kies hieronder per maand.</span></div>`;
+  return `<div class="vr-uitnodig"><b>Je bent uitgenodigd door een maat</b><span>Je eerste maand voor &euro;${APP_PRIJS.half} in plaats van &euro;${APP_PRIJS.maand} (50% korting), of een jaar voor &euro;${APP_PRIJS.jaarMaat} in plaats van &euro;${APP_PRIJS.jaar}.</span></div>`;
 }
 function binnenkortPitchHtml() {
   // Vóór de lancering: prijzen al zichtbaar, knoppen nog dicht (09-10-2026).
@@ -1982,7 +1983,7 @@ function plannenHtml(dicht) {
       <div class="plan jaar"><span class="plan-badge">Beste keuze &middot; ruim 3 maanden gratis</span>
         <div class="plan-naam">Per jaar</div>
         <div class="prijs">&euro;${APP_PRIJS.jaarPerMaand}<small>per maand</small></div>
-        <div class="plan-sub">&euro;${APP_PRIJS.jaar} per jaar in &eacute;&eacute;n keer</div>
+        <div class="plan-sub">${vriendCodeLs() ? '<b style="color:var(--accent)">&euro;5 korting via je maat:</b> &euro;' + APP_PRIJS.jaarMaat + ' in plaats van &euro;' + APP_PRIJS.jaar : '&euro;' + APP_PRIJS.jaar + ' per jaar in &eacute;&eacute;n keer'}</div>
         ${knop('jaar', 'Kies per jaar')}</div>
       <div class="plan">
         <div class="plan-naam">Per maand</div>
@@ -2673,7 +2674,7 @@ function teken() {
     ${beheerHtml(d)}${d.beheer ? `<details class="bh-groep" data-klap="beheer" ${klapOpen('beheer', true) ? 'open' : ''}><summary><b>Beheer</b><span>leden, gebruik, doelen, schema's, Core, nakijken</span></summary>${aankondigHtml()}${pushOpnieuwHtml()}${ledenHtml()}${gebruikHtml()}${doelenBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}${opvolgHtml()}${nakijkHtml()}</details>` : ''}
     <div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
     ${welkomNu() ? '<p class="welkom-michel">Begin hieronder met je eerste week. Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
-    ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${vriendCodeLs() ? '<a href="#" data-actie="naarlid">je maat gaf je 50% korting op je eerste maand</a>' : kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
+    ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${vriendCodeLs() ? '<a href="#" data-actie="naarlid">je maat gaf je korting op je lidmaatschap</a>' : kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
     <div id="groepsrit">${grHtml()}</div>
     ${reviewHtml(d)}
     ${meldingenHtml(d)}<div id="meldvraag">${startlijstHtml(d) || eersteWeekHtml(d) ? '' : meldVraagHtml()}</div>
@@ -2808,9 +2809,9 @@ function lidExtraHtml(l) {
   if (!l) return '';
   const inbegrepen = l.vriendBeloning === false || ['coaching', 'schema', 'cadeau'].includes(l.bron);
   const wat = l.bron === 'coaching' ? 'je coaching' : 'je schema';
-  const jij = inbegrepen ? 'Omdat de app bij ' + wat + ' inbegrepen is, krijg je er zelf geen korting voor. Je maat wel, en je krijgt een berichtje zodra die lid is.' : 'En jij krijgt er ook iets voor terug: ' + (l.plan === 'jaar' || l.handmatig || l.status !== 'actief' ? 'een halve maand gratis erbij' : '50% korting op je volgende maand') + ', zodra die lid is.';
+  const jij = inbegrepen ? 'Omdat de app bij ' + wat + ' inbegrepen is, krijg je er zelf geen korting voor. Je maat wel, en je krijgt een berichtje zodra die lid is.' : 'En jij krijgt 2 weken extra zodra die lid is' + (l.status === 'actief' && !l.handmatig ? ': je volgende betaling schuift dan 2 weken op.' : '.');
   return `<div class="lid-extra">
-    ${l.vriendKan ? '<div class="vriend"><b>Nodig een vriend uit: die krijgt 50% korting</b><p>Je vriend of vriendin betaalt de eerste maand de helft. ' + jij + '</p><div class="rij2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app</button></div></div>' : ''}
+    ${l.vriendKan ? '<div class="vriend"><b>Nodig een vriend uit: die krijgt 50% korting</b><p>Je vriend of vriendin betaalt de eerste maand de helft, of krijgt &euro;5 korting op een jaar. ' + jij + '</p><div class="rij2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app</button></div></div>' : ''}
     ${l.facturen ? '<button type="button" class="lid-link" data-lx="facturen">Mijn facturen</button>' : ''}</div>`;
 }
 document.addEventListener('click', async (e) => {
@@ -2844,7 +2845,7 @@ document.addEventListener('click', async (e) => {
   if (a === 'vriend') {
     try { const j = await (await fetch('/api/lid?actie=vriend&t=' + encodeURIComponent(leesToken()))).json();
       if (!j.ok) return alert(j.fout || 'Dat lukte niet.');
-      const tekst = 'Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding, voeding, core en een eigen coach. Via mijn link krijg je 50% korting op je eerste maand.';
+      const tekst = 'Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding, voeding, core en een eigen coach. Via mijn link krijg je 50% korting op je eerste maand, of 5 euro korting op een jaar.';
       if (navigator.share) { try { await navigator.share({ title: 'MKC-app', text: tekst, url: j.url }); return; } catch (er) { if (er && er.name === 'AbortError') return; } }
       try { await navigator.clipboard.writeText(j.url); alert('Link gekopieerd: ' + j.url); } catch (er) { prompt('Kopieer je link:', j.url); }
     } catch (er) { alert('Verbinding mislukt.'); }
