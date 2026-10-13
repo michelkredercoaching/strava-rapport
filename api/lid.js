@@ -356,13 +356,11 @@ async function beloonVriend(code, maatEmail, maatNaam) {
   const email = v.ok && v.result; if (!email || email === maatEmail) return;
   const lid = await haalLid(email); if (!lid) return;
   const vnMaat = String(maatNaam || '').split(' ')[0] || 'Je maat';
-  if (inbegrepen(lid)) return appMelding(email, { soort: 'vriend', titel: vnMaat + ' is lid geworden', tekst: `${vnMaat} is lid geworden via jouw link en kreeg 50% korting op de eerste maand. Bedankt voor het delen!`, link: '/app#lid' });
+  lid.vriendAantal = (lid.vriendAantal || 0) + 1;
+  if (inbegrepen(lid)) { await bewaarLid(email, lid); return appMelding(email, { soort: 'vriend', titel: vnMaat + ' is lid geworden', tekst: `${vnMaat} is lid geworden via jouw link en kreeg korting op het lidmaatschap. Bedankt voor het delen!`, link: '/app#lid' }); }
   const jaar = new Date().getFullYear();
   if (lid.vriendJaar !== jaar) { lid.vriendJaar = jaar; lid.vriendBeloningen = 0; }
-  if ((lid.vriendBeloningen || 0) >= VRIEND_MAX) return;
-  // Beide 50% (besluit Michel 09-10-2026): maandlid betaalt zijn volgende maand
-  // de halve prijs (abonnement tijdelijk omlaag, na die incasso weer de gewone prijs). Jaarlid of
-  // zonder abonnement: 15 dagen erbij, dezelfde waarde.
+  if ((lid.vriendBeloningen || 0) >= VRIEND_MAX) { await bewaarLid(email, lid); return; }
   // 2 weken extra (13-10-2026). Met een lopend abonnement schuift de volgende
   // incasso 2 weken op (zelfde aanpak als pauzeren), anders gaat de einddatum 2 weken verder.
   let tekstBeloning;
@@ -377,6 +375,7 @@ async function beloonVriend(code, maatEmail, maatNaam) {
     tekstBeloning = `Je krijgt 2 weken extra: je app loopt nu tot ${new Date(lid.tot).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' })}.`;
   } else return;
   lid.vriendBeloningen = (lid.vriendBeloningen || 0) + 1;
+  lid.vriendDagen = (lid.vriendDagen || 0) + VRIEND_DAGEN;
   await bewaarLid(email, lid);
   await zetLidmaatschap({ email, naam: lid.naam, tot: lid.tot, stil: true });
   const vn = String(maatNaam || '').split(' ')[0] || 'Je maat';
@@ -462,7 +461,7 @@ function lidBeeld(lid) {
   if (!lid) return { status: 'geen' };
   const open = lid.tot && Date.now() < Date.parse(lid.tot);
   const plan = planVan(lid.plan);
-  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: prijzenVan(lid)[plan], prijs: prijzenVan(lid), handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, terugAanbod: !!(lid.winbackTot && Date.parse(lid.winbackTot) > Date.now()), vriendKan: (!!open || lid.bron === 'coaching') && ['actief', 'opgezegd'].includes(lid.status), vriendBeloning: !inbegrepen(lid), bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
+  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: prijzenVan(lid)[plan], prijs: prijzenVan(lid), handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, terugAanbod: !!(lid.winbackTot && Date.parse(lid.winbackTot) > Date.now()), vriendKan: (!!open || lid.bron === 'coaching') && ['actief', 'opgezegd'].includes(lid.status), vriendBeloning: !inbegrepen(lid), vriendAantal: lid.vriendAantal || 0, vriendDagen: lid.vriendDagen || 0, bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
 }
 
 // Kan Mollie al maandelijks incasseren? Zolang SEPA-incasso niet is goedgekeurd

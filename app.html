@@ -184,6 +184,14 @@
   .vr-uitnodig { background:var(--accent); color:#0a0a0a; border-radius:8px; padding:12px 14px; margin-bottom:14px; }
   .vr-uitnodig b { display:block; font-size:15px; }
   .vr-uitnodig span { display:block; font-size:13.5px; margin-top:2px; }
+  .vr-teller { display:flex; gap:8px; margin-top:12px; }
+  .vr-teller > div { flex:1; background:rgba(0,0,0,.3); border:1px solid rgba(255,107,26,.35); border-radius:8px; padding:10px 12px; }
+  .vr-teller b { display:block; font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1; color:var(--accent); }
+  .vr-teller span { font-size:12.5px; color:var(--muted); }
+  .vr-teller p { margin:0; font-size:13px; color:var(--muted); }
+  .gr-vriend { margin-top:14px; border:1px solid rgba(255,107,26,.45); background:rgba(255,107,26,.07); border-radius:8px; padding:12px 14px; }
+  .gr-vriend b { display:block; font-size:14.5px; }
+  .gr-vriend p { font-size:13px; color:var(--muted); margin:3px 0 10px; }
   .lid-sub { color:rgba(245,243,239,.82); font-size:15px; line-height:1.5; margin:4px 0 14px; }
   .lid-stapel { margin:14px 0 16px; display:grid; gap:8px; }
   details.ls-rij { border:1px solid rgba(255,255,255,.12); border-radius:8px; background:rgba(0,0,0,.25); }
@@ -2810,8 +2818,10 @@ function lidExtraHtml(l) {
   const inbegrepen = l.vriendBeloning === false || ['coaching', 'schema', 'cadeau'].includes(l.bron);
   const wat = l.bron === 'coaching' ? 'je coaching' : 'je schema';
   const jij = inbegrepen ? 'Omdat de app bij ' + wat + ' inbegrepen is, krijg je er zelf geen korting voor. Je maat wel, en je krijgt een berichtje zodra die lid is.' : 'En jij krijgt 2 weken extra zodra die lid is' + (l.status === 'actief' && !l.handmatig ? ': je volgende betaling schuift dan 2 weken op.' : '.');
+  const n = l.vriendAantal || 0, wk = Math.round((l.vriendDagen || 0) / 7);
+  const teller = '<div class="vr-teller">' + (n ? '<div><b>' + n + '</b><span>' + (n === 1 ? 'maat' : 'maten') + ' via jouw link</span></div>' + (!inbegrepen && wk ? '<div><b>' + wk + '</b><span>' + (wk === 1 ? 'week' : 'weken') + ' extra verdiend</span></div>' : '') : '<p>Nog niemand via jouw link. ' + (inbegrepen ? 'Je eerste maat krijgt meteen zijn korting.' : 'Je eerste maat levert je 2 weken extra op.') + '</p>') + '</div>';
   return `<div class="lid-extra">
-    ${l.vriendKan ? '<div class="vriend"><b>Nodig een vriend uit: die krijgt 50% korting</b><p>Je vriend of vriendin betaalt de eerste maand de helft, of krijgt &euro;5 korting op een jaar. ' + jij + '</p><div class="rij2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app</button></div></div>' : ''}
+    ${l.vriendKan ? '<div class="vriend"><b>Nodig een vriend uit: die krijgt 50% korting</b><p>Je vriend of vriendin betaalt de eerste maand de helft, of krijgt &euro;5 korting op een jaar. ' + jij + '</p><div class="rij2" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app</button></div>' + teller + '</div>' : ''}
     ${l.facturen ? '<button type="button" class="lid-link" data-lx="facturen">Mijn facturen</button>' : ''}</div>`;
 }
 document.addEventListener('click', async (e) => {
@@ -3539,6 +3549,7 @@ function grHtml() {
     ${voorbij ? '' : `<button type="button" class="knop ${GR.data.ikMee ? '' : 'leeg'}" data-gr="mee" style="margin-top:14px">${GR.data.ikMee ? '&#10003; Je rijdt mee' : 'Ik rijd mee'}</button>`}
     <div class="gr-kijk">${[GR.data.mee ? `${GR.data.mee} ${GR.data.mee === 1 ? 'rijdt' : 'rijden'} mee` : '', kijkers >= 2 ? `${kijkers} keken al` : ''].filter(Boolean).join(' &middot; ')}</div>
     ${voorbij ? '' : '<button type="button" class="knop" data-gr="deel" style="margin-top:14px">Deel deze rit</button>'}
+    ${!voorbij && D && !D.gast && D.lid && D.lid.vriendKan ? `<div class="gr-vriend"><b>Rijden je maten nog zonder de app?</b><p>Met jouw link krijgen ze 50% korting op hun eerste maand${D.lid.vriendBeloning === false ? '' : ', en jij 2 weken extra'}.</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app</button></div></div>` : ''}
     <details class="klap" data-klap="grfoto" ${klapOpen('grfoto', voorbij) ? 'open' : ''}><summary><b>Maak een foto-story</b><span>jouw foto, met de rit erover</span></summary><div class="klap-in">
       <p class="klein" style="margin-top:0">Kies een foto van de groep, de koffiestop of het uitzicht. De app zet de naam van de rit, de datum en het weer eroverheen, klaar voor je Instagram-story of Strava.</p>
       <input id="grFotoTekst" type="text" maxlength="60" placeholder="Jouw tekst, bijv. Zondagsrondje met de mannen" style="width:100%;margin-bottom:10px">
