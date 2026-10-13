@@ -280,16 +280,13 @@ function beheerEmail(req, t) { const e = leesAppToken(String(t || '')); return e
 // (ritten, coach) worden afgekapt, de tellers niet.
 async function telOp(email, veld, n = 1) { if (email) await redis(['HINCRBY', `app:teller:${email}`, veld, String(n)]); }
 const amsUur = (iso) => Number(new Date(iso).toLocaleString('en-GB', { timeZone: 'Europe/Amsterdam', hour: '2-digit', hour12: false })) % 24;
-// Michel-sessie (beloning bij 5 medailles): 6 oefeningen, 40 s werk en 20 s rust, 2 rondes.
-const MICHEL_SESSIE = { titel: 'Michel-sessie: klaar voor een lange rit', uitleg: 'Mijn eigen routine voor de dag voor een lange rit of tocht. 6 oefeningen, 40 seconden werk en 20 seconden rust, 2 rondes. Ongeveer 12 minuten.',
-  oefeningen: ['birddog', 'deadbug-gebogen', 'zijplank-knieen', 'bridge-mars', 'fietshouding', 'plank'] };
-// €10 schemakorting: hetzelfde kh10-token dat het WordPress-snippet al accepteert (zie keuzehulp-inschrijving.js).
-function schemaKortingLink(email) {
-  const geheim = process.env.PP_TOKEN_SECRET || ''; if (!geheim) return null;
-  const exp = Date.now() + 90 * 864e5, payload = `kh10|${String(email).toLowerCase()}|${exp}`;
-  const sig = crypto.createHmac('sha256', geheim).update(payload).digest('hex').slice(0, 16);
-  return 'https://michelkredercoaching.nl/trainingsschemas/?kh=' + Buffer.from(`${payload}|${sig}`).toString('base64url');
-}
+// Sessies van Michel als beloning (5 en 10 medailles), met oefeningen uit de Core-bibliotheek.
+const BELONING_SESSIES = {
+  m5: { titel: 'Michel-sessie: klaar voor een lange rit', uitleg: 'Mijn eigen routine voor de dag voor een lange rit of tocht. 6 oefeningen, 40 seconden werk en 20 seconden rust, 2 rondes. Ongeveer 12 minuten.',
+    oefeningen: ['birddog', 'deadbug-gebogen', 'zijplank-knieen', 'bridge-mars', 'fietshouding', 'plank'] },
+  m10: { titel: 'Herstelsessie van Michel', uitleg: 'Wat ik zelf doe na een lange of zware rit: rustig losmaken, je rug en heupen weer soepel. 6 oefeningen, elk 60 seconden, rustig ademen. Ongeveer 8 minuten.',
+    oefeningen: ['kat-koe', 'draai-bovenrug', 'knie-borst', 'couch-stretch', 'bridge', 'kin-intrekken'] }
+};
 async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], doel, lidmaatschap, analyse }) {
   const t = await redis(['HGETALL', `app:teller:${email}`]);
   const teller = {};
@@ -303,6 +300,13 @@ async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], 
     for (const [k, v] of Object.entries(zaai)) { teller[k] = Math.max(teller[k] || 0, v); velden.push(k, String(teller[k])); }
     teller.gezaaid = 2; velden.push('gezaaid', '2');
     await redis(['HSET', `app:teller:${email}`, ...velden]);
+  }
+  // Reeks: elke dag de app open (Amsterdamse dagen). openMax = beste reeks ooit.
+  const vandaag = Math.floor(Date.parse(new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }) + 'T00:00:00Z') / 864e5);
+  if (teller.openDag !== vandaag) {
+    teller.openReeks = teller.openDag === vandaag - 1 ? (teller.openReeks || 0) + 1 : 1;
+    teller.openMax = Math.max(teller.openMax || 0, teller.openReeks); teller.openDag = vandaag;
+    await redis(['HSET', `app:teller:${email}`, 'openDag', String(vandaag), 'openReeks', String(teller.openReeks), 'openMax', String(teller.openMax)]);
   }
   const stand = {
     ...teller,
@@ -330,7 +334,7 @@ async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], 
     if (totaal < r.n || bel[r.id]) continue;
     const x = { op: nu };
     if (r.id === 'm5' && !lid && !coaching) { const k = `app:gratisvragen:${email}:${weekSleutel()}`; await redis(['INCRBY', k, '-2']); await redis(['EXPIRE', k, String(8 * 86400)]); x.vragen = 2; }
-    if (r.id === 'm10') { x.link = schemaKortingLink(email); if (!lid && !coaching) { await redis(['SET', `app:badgekorting:${email}`, '5']); x.lidKorting = 5; } }
+    if (r.id === 'm10') { if (!lid && !coaching) { await redis(['SET', `app:badgekorting:${email}`, '5']); x.lidKorting = 5; } }
     if (r.id === 'm15') { if (coaching) x.coaching = true; else { const tk = maakKortingToken(0, 365); x.link = tk ? `https://rapport.michelkredercoaching.nl/?korting=${tk}` : null; } }
     bel[r.id] = x; nieuweBel.push(r.id);
   }
@@ -340,9 +344,9 @@ async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], 
     await redis(['SADD', 'app:badges:alle', email]);
   }
   const beloningen = BELONINGEN.map((r) => ({ ...r, behaald: !!bel[r.id], ...(bel[r.id] || {}),
-    ...(r.id === 'm5' && bel[r.id] ? { sessie: { ...MICHEL_SESSIE, oefeningen: MICHEL_SESSIE.oefeningen.map((id) => ({ naam: (OEFENINGEN[id] || {}).naam || id, cue: (OEFENINGEN[id] || {}).cue || '' })) } } : {}) }));
+    ...(BELONING_SESSIES[r.id] && bel[r.id] ? { link: null, sessie: { ...BELONING_SESSIES[r.id], oefeningen: BELONING_SESSIES[r.id].oefeningen.map((id) => ({ naam: (OEFENINGEN[id] || {}).naam || id, cue: (OEFENINGEN[id] || {}).cue || '' })) } } : {}) }));
   // Bij de allereerste keer geen feestje voor alles wat er al lag.
-  return { badges: lijst, medailles: totaal, beloningen, nieuweBadges: eerste ? [] : nieuw, nieuweBeloningen: eerste ? [] : nieuweBel };
+  return { badges: lijst, medailles: totaal, appReeks: teller.openReeks || 1, beloningen, nieuweBadges: eerste ? [] : nieuw, nieuweBeloningen: eerste ? [] : nieuweBel };
 }
 // Beheer: hoe vaak elk niveau is gehaald, wie de meeste medailles heeft, en per
 // persoon de onderbouwing (tellers, datums en beloningen), om alles na te kijken.
@@ -989,7 +993,7 @@ async function routeOverzicht(req, res) {
   const ledenAnalyse = lb.open && lb.bron !== 'coaching' && !lb.coaching ? (() => { const t = maakKortingToken(LEDEN_ANALYSE, 30); return t ? `https://rapport.michelkredercoaching.nl/?korting=${t}` : null; })() : null;
   const palmares = await badgesBijwerken(email, { core, ritten, coachBerichten, doel, lidmaatschap, analyse }).catch((e) => { console.error('badges', email, e && e.message); return { badges: [], medailles: 0, beloningen: [], nieuweBadges: [], nieuweBeloningen: [] }; });
   const badgeKorting = await redis(['GET', `app:badgekorting:${email}`]);
-  return res.status(200).json({ doel, ledenAnalyse, badges: palmares.badges, medailles: palmares.medailles, beloningen: palmares.beloningen, nieuweBadges: palmares.nieuweBadges, nieuweBeloningen: palmares.nieuweBeloningen, badgeKorting: Number(badgeKorting.ok && badgeKorting.result) || 0, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1) }, 
+  return res.status(200).json({ doel, ledenAnalyse, badges: palmares.badges, medailles: palmares.medailles, appReeks: palmares.appReeks, beloningen: palmares.beloningen, nieuweBadges: palmares.nieuweBadges, nieuweBeloningen: palmares.nieuweBeloningen, badgeKorting: Number(badgeKorting.ok && badgeKorting.result) || 0, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1) }, 
     ok: true,
     email,
     beheer: BEHEER.includes(email),

@@ -213,6 +213,8 @@
   .pm-t { display:flex; align-items:center; justify-content:center; gap:6px; background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:6px 4px; min-width:0; }
   .pm-t > div { display:flex; flex-direction:column; line-height:1; }
   .pm-t b { font-family:'Bebas Neue',sans-serif; font-size:26px; line-height:1; } .pm-t small { font-size:11px; color:var(--muted); }
+  .pm-reeks { display:flex; align-items:center; gap:10px; margin-top:12px; background:rgba(255,107,26,.1); border:1px solid rgba(255,107,26,.35); border-radius:10px; padding:8px 12px; }
+  .pm-reeks b { font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1; color:var(--accent); } .pm-reeks span { font-size:12.5px; color:var(--muted); }
   .pm-goud { display:inline-block; margin-left:6px; background:linear-gradient(90deg,#fff1a8,#f3c22c); color:#3d2700; font-size:10px; font-weight:800; letter-spacing:.08em; padding:2px 8px; border-radius:20px; }
   .md-raster { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
   .md-raster.goudrand { padding:6px; border-radius:14px; background:linear-gradient(135deg,#fff1a8,#f3c22c 40%,#a26c06); }
@@ -2381,9 +2383,9 @@ function tegelsHtml(d) {
   if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
   else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Core stability voor wielrenners, op de timer', tag: binnenkortNu() ? 'Binnenkort' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Tijd voor een nieuwe' : 'Jouw uitslag') : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' }));
-  if (!d.gast) { const pb = palmaresStand(d); t.push(tegel({ v: 'palmares', ic: 'palmares', nm: 'Je palmares', sub: !pb.l.length ? 'Medailles verdienen met wat je doet' : pb.m + ' van ' + pb.max + ' medailles' + (pb.volgendeBel ? ' &middot; beloning bij ' + pb.volgendeBel.n : ''), tag: pb.m ? String(pb.m) : '', tagKlas: 'or', breed: true })); }
   t.push(tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? 'Lid' : '3 gratis', tagKlas: 'or' }));
   if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true }));
+  if (!d.gast) { const pb = palmaresStand(d); t.push(tegel({ v: 'palmares', ic: 'palmares', nm: 'Je palmares', sub: !pb.l.length ? 'Medailles verdienen met wat je doet' : pb.m + ' van ' + pb.max + ' medailles' + (pb.volgendeBel ? ' &middot; beloning bij ' + pb.volgendeBel.n : ''), tag: pb.m ? String(pb.m) : '', tagKlas: 'or', breed: true })); }
   const bk = `<div class="bk-rij"><span>Binnenkort</span><button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
   return `<div class="tegels">${t.join('')}</div>${bk}`;
 }
@@ -3004,7 +3006,8 @@ const MD_IC = {
   maten: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M18 8v6M15 11h6"/>',
   vraag: '<path d="M4 5h16v11H9l-5 4z"/><path d="M10 8.5a2 2 0 1 1 2.5 2c-.5.2-.5.7-.5 1.2M12 14h.01"/>',
   meten: '<path d="M3 20h18M6 16l4-5 3 3 5-7"/><circle cx="18" cy="7" r="1.6"/>',
-  pacing: '<circle cx="12" cy="13" r="8"/><path d="M12 13l4-3M10 2h4M12 2v3"/>'
+  pacing: '<circle cx="12" cy="13" r="8"/><path d="M12 13l4-3M10 2h4M12 2v3"/>',
+  kalender: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/><path d="M8.5 14.5l2.2 2.2 4.8-4.8"/>'
 };
 let MD_ID = 0;
 // Eén medaille als SVG: lint, metalen schijf, icoon, sterren; op slot met slotje en voortgangsring.
@@ -3045,13 +3048,14 @@ function palmaresHtml(d) {
   const belKaart = (r) => {
     const nog = Math.max(0, r.n - m);
     const kort = lidNu ? String(r.kort).replace(/, plus .*$/, '.') : r.kort;
-    const knop = !r.behaald ? '' : r.id === 'm5' ? '<button type="button" class="knop" data-beloning="m5">Bekijk de sessie</button>' : r.coaching ? '<p class="klein" style="margin:6px 0 0">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">${r.id === 'm10' ? 'Kies je schema' : 'Start je analyse'}</a>` : '';
+    const knop = !r.behaald ? '' : r.sessie ? `<button type="button" class="knop" data-beloning="${r.id}">Bekijk de sessie</button>` : r.coaching ? '<p class="klein" style="margin:6px 0 0">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">Start je analyse</a>` : '';
     return `<div class="bel${r.behaald ? ' aan' : ''}"><div class="bel-n"><b>${r.n}</b><small>medailles</small></div><div class="bel-tekst"><b>${r.behaald ? '&#10003; ' : ''}${esc(r.titel)}</b><span>${esc(kort)}</span>${r.behaald ? (r.lidKorting ? '<span class="bel-extra">Je €' + r.lidKorting + ' lidmaatschapskorting staat klaar bij Mijn lidmaatschap.</span>' : '') + (r.vragen ? '<span class="bel-extra">Je 2 extra coachvragen staan klaar.</span>' : '') : `<span class="bel-nog">Nog ${nog} ${nog === 1 ? 'medaille' : 'medailles'}</span>`}${knop}</div>${r.behaald ? '' : '<div class="bel-slot">' + medailleSlot() + '</div>'}</div>`;
   };
   const allesGoud = (g) => l.filter((b) => b.groep === g && !b.binnenkort).every((b) => b.niveau === 3);
   const bijna = open.filter((b) => b.waarde > 0).slice(0, 3);
   return `<div class="kaart actief palmares"><div class="kaart-in">
     <div class="pm-kop"><div><div class="label">Je palmares</div><h2>${m} van ${max} medailles</h2><p class="klein" style="margin:4px 0 0">Elke badge heeft drie medailles: brons, zilver en goud. Verdiend met wat je echt doet.</p></div></div>
+    ${d.appReeks ? `<div class="pm-reeks"><b>${d.appReeks}</b><span>${d.appReeks === 1 ? 'dag' : 'dagen'} op rij de app geopend${d.appReeks < 7 ? ' &middot; bij 7 dagen je eerste medaille' : ''}</span></div>` : ''}
     <div class="pm-tel">${[0, 1, 2].map((i) => `<div class="pm-t">${medailleSvg({ icoon: 'vink', niveau: i + 1 }, 30)}<div><b>${tel[i]}</b><small>${MD_NAAM[i]}</small></div></div>`).join('')}</div>
     <div class="pm-balk"><i style="width:${Math.round(m / max * 100)}%"></i></div>
     <div class="rv-sub">Beloningen</div><div class="bel-lijst">${bel.map(belKaart).join('')}</div>
@@ -3074,9 +3078,9 @@ function badgeModal(id, nieuwNiveau) {
 function beloningModal(id, nieuw) {
   const r = ((zicht() || {}).beloningen || []).find((x) => x.id === id); if (!r) return;
   const sessie = r.sessie ? `<ol class="ms-lijst">${r.sessie.oefeningen.map((o) => `<li><b>${esc(o.naam)}</b><span>${esc(o.cue)}</span></li>`).join('')}</ol>` : '';
-  const actie = r.id === 'm5' ? '' : r.coaching ? '<p class="klein">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">${r.id === 'm10' ? 'Kies je schema met €10 korting' : 'Start je gratis analyse'}</a>` : '';
-  modal(`<div class="md-modal">${nieuw ? '<div class="md-unlock">Beloning ontgrendeld!</div>' : ''}<div class="bel-groot"><b>${r.n}</b><small>medailles</small></div><h3>${esc(r.id === 'm5' && r.sessie ? r.sessie.titel : r.titel)}</h3>
-    <p>${esc(r.id === 'm5' && r.sessie ? r.sessie.uitleg : r.kort)}</p>${sessie}${r.vragen ? '<p class="klein">Plus: 2 extra gratis coachvragen deze week.</p>' : ''}${r.lidKorting ? `<p class="klein">Plus: €${r.lidKorting} korting op je eerste lidmaatschap, die zie je bij het betalen.</p>` : ''}${actie}
+  const actie = r.sessie ? '' : r.coaching ? '<p class="klein">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">Start je gratis analyse</a>` : '';
+  modal(`<div class="md-modal">${nieuw ? '<div class="md-unlock">Beloning ontgrendeld!</div>' : ''}<div class="bel-groot"><b>${r.n}</b><small>medailles</small></div><h3>${esc(r.sessie ? r.sessie.titel : r.titel)}</h3>
+    <p>${esc(r.sessie ? r.sessie.uitleg : r.kort)}</p>${sessie}${r.vragen ? '<p class="klein">Plus: 2 extra gratis coachvragen deze week.</p>' : ''}${r.lidKorting ? `<p class="klein">Plus: €${r.lidKorting} korting op je eerste lidmaatschap, die zie je bij het betalen.</p>` : ''}${actie}
     <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">Sluiten</button></div>`);
 }
 // Story-plaatje van een medaille, met je eigen uitnodiglink (50% voor je maten).
