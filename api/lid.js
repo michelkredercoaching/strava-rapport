@@ -553,8 +553,9 @@ async function beloonVriend(code, maatEmail, maatNaam, meteenBevestigd = false) 
 // maand (maandelijks opzegbaar). De incassodatum blijft hetzelfde.
 const KEUZE_VANAF = 30, KEUZE_STANDAARD = 7;
 const incassoOp = (lid) => lid.tot ? Date.parse(lid.tot) - SPELING_DAGEN * 86400000 : null;
+const jaarNogNietGestart = (lid) => !!(lid.jaarVanaf && incassoOp(lid) < Date.parse(lid.jaarVanaf) + 7 * 86400000);
 function jaarKeuzeBeeld(lid) {
-  if (planVan(lid.plan) !== 'jaar' || !lid.subscriptionId || lid.status !== 'actief') return {};
+  if (planVan(lid.plan) !== 'jaar' || !lid.subscriptionId || lid.status !== 'actief' || jaarNogNietGestart(lid)) return {};
   const dagen = (incassoOp(lid) - Date.now()) / 86400000;
   if (!(dagen <= KEUZE_VANAF && dagen > 0)) return {};
   return { jaarKeuze: { open: true, gekozen: lid.jaarKeuze === lid.tot ? 'jaar' : null, op: dag(incassoOp(lid)) } };
@@ -566,6 +567,23 @@ async function naarMaand(lid, email) {
   if (!s.ok) { await meldIntern(`JAARLID OMZETTEN MISLUKT - ${email}`, `Het jaarabonnement ${lid.subscriptionId} van ${email} kon niet naar per maand: ${JSON.stringify(s.j).slice(0, 300)}. Zet het handmatig om in Mollie (${euro(prijzenVan(lid).maand)}, 1 month).`); return false; }
   lid.plan = 'maand'; lid.jaarKeuze = null;
   return true;
+}
+const naarJaarKan = (lid) => planVan(lid.plan) === 'maand' && !!lid.subscriptionId && !!lid.customerId && lid.status === 'actief' && !!lid.tot && !lid.kortingActief && incassoOp(lid) > Date.now() + 86400000;
+async function routeNaarJaar(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = await lidUitToken(req, res, body.t); if (!email) return;
+  const lid = await haalLid(email);
+  if (!lid || !naarJaarKan(lid)) return res.status(400).json({ ok: false, fout: 'Overstappen kan nu niet. Mail me even, dan regel ik het.' });
+  const start = dag(incassoOp(lid));
+  const s = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'PATCH', body: JSON.stringify({
+    amount: { currency: 'EUR', value: prijzenVan(lid).jaar }, interval: PLANNEN.jaar.interval, description: OMSCHRIJVING,
+    startDate: start, metadata: { email, plan: 'jaar' } }) });
+  if (!s.ok) { await meldIntern(`NAAR JAAR MISLUKT - ${email}`, `Het maandabonnement ${lid.subscriptionId} van ${email} kon niet naar per jaar: ${JSON.stringify(s.j).slice(0, 300)}. Zet het handmatig om in Mollie (${euro(prijzenVan(lid).jaar)}, 12 months, start ${start}).`); return res.status(502).json({ ok: false, fout: 'Overstappen lukte niet. Ik kijk ernaar en laat het je weten.' }); }
+  lid.plan = 'jaar'; lid.jaarVanaf = new Date(incassoOp(lid)).toISOString(); lid.naarJaarOp = new Date().toISOString();
+  await bewaarLid(email, lid);
+  await redis(['HINCRBY', 'lid:opzegredenen', 'naar-jaar', 1]);
+  return res.status(200).json({ ok: true, lid: lidBeeld(lid) });
 }
 async function jaarMail(email, onderwerp, html) {
   const key = process.env.RESEND_API_KEY; if (!key) return false;
@@ -581,7 +599,7 @@ async function jaarKeuzeRonde() {
   let gevraagd = 0, omgezet = 0;
   for (const email of (l.ok && l.result) || []) {
     const lid = await haalLid(email);
-    if (!lid || planVan(lid.plan) !== 'jaar' || !lid.subscriptionId || lid.status !== 'actief' || !lid.tot) continue;
+    if (!lid || planVan(lid.plan) !== 'jaar' || !lid.subscriptionId || lid.status !== 'actief' || !lid.tot || jaarNogNietGestart(lid)) continue;
     const dagen = (incassoOp(lid) - Date.now()) / 86400000;
     if (dagen <= 0 || dagen > KEUZE_VANAF) continue;
     const voornaam = String(lid.naam || '').split(' ')[0], datum = new Date(incassoOp(lid)).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
@@ -625,7 +643,7 @@ function lidBeeld(lid) {
   if (!lid) return { status: 'geen' };
   const open = lid.tot && Date.now() < Date.parse(lid.tot);
   const plan = planVan(lid.plan);
-  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: prijzenVan(lid)[plan], prijs: prijzenVan(lid), handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, terugAanbod: !!(lid.winbackTot && Date.parse(lid.winbackTot) > Date.now()), vriendKan: (!!open || lid.bron === 'coaching') && ['actief', 'opgezegd'].includes(lid.status), vriendBeloning: !inbegrepen(lid), vriendAantal: lid.vriendAantal || 0, vriendDagen: lid.vriendDagen || 0, vriendAnalyse: lid.vriendAnalyse || null, vriendCadeau: !!lid.vriendCadeau, vriendBevestigd: lid.vriendBevestigd || 0, bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
+  return { status: lid.status, tot: lid.tot ? dag(lid.tot) : null, open: !!open, sinds: lid.sinds ? dag(lid.sinds) : null, plan, bedrag: prijzenVan(lid)[plan], prijs: prijzenVan(lid), handmatig: !!lid.handmatig && !lid.subscriptionId, ...jaarKeuzeBeeld(lid), naarJaarKan: naarJaarKan(lid), jaarVanaf: lid.jaarVanaf && jaarNogNietGestart(lid) ? dag(lid.jaarVanaf) : null, pauzeKan: planVan(lid.plan) === 'maand' && !!lid.subscriptionId && lid.status === 'actief' && !lid.pauzeGehad, facturen: (lid.facturen || []).length, terugAanbod: !!(lid.winbackTot && Date.parse(lid.winbackTot) > Date.now()), vriendKan: (!!open || lid.bron === 'coaching') && ['actief', 'opgezegd'].includes(lid.status), vriendBeloning: !inbegrepen(lid), vriendAantal: lid.vriendAantal || 0, vriendDagen: lid.vriendDagen || 0, vriendAnalyse: lid.vriendAnalyse || null, vriendCadeau: !!lid.vriendCadeau, vriendBevestigd: lid.vriendBevestigd || 0, bron: lid.bron === 'coaching' && !lid.subscriptionId ? 'coaching' : lid.bron === 'schema' && !lid.subscriptionId && !lid.handmatig ? (lid.cadeauMaand ? 'cadeau' : 'schema') : 'betaald', coaching: lid.coaching || null };
 }
 
 // Kan Mollie al maandelijks incasseren? Zolang SEPA-incasso niet is goedgekeurd
@@ -661,6 +679,7 @@ export default async function handler(req, res) {
     if (actie === 'status') return await routeStatus(req, res);
     if (actie === 'opzeggen') return await routeOpzeggen(req, res);
     if (actie === 'jaarkeuze') return await routeJaarKeuze(req, res);
+    if (actie === 'naarjaar') return await routeNaarJaar(req, res);
     if (actie === 'pauze') return await routePauze(req, res);
     if (actie === 'weekoverzicht') return await routeWeekoverzicht(req, res);
     if (actie === 'voorbeeld') return await routeVoorbeeld(req, res);
@@ -870,6 +889,7 @@ async function verwerkBetaald(req, res, p, id, lidEmail) {
       lid.tot = plusDagen(plusMaanden(basis, PLANNEN[planVan(lid.plan)].maanden), SPELING_DAGEN).toISOString();
       if (lid.status !== 'opgezegd') lid.status = 'actief';
       lid.jaarVraagVoor = null;
+      if (lid.jaarVanaf && planVan(lid.plan) === 'jaar') lid.jaarVanaf = null; // eerste jaarbetaling na de overstap is binnen
       if (lid.vriendVan && !lid.vriendKlaar) { lid.vriendKlaar = true; const vc = lid.vriendVan; naBewaren.push(() => bevestigVriend(vc)); }
       if (lid.kortingActief && p.amount && p.amount.value === halve(prijzenVan(lid).maand)) {
         lid.kortingTegoed = Math.max(0, (lid.kortingTegoed || 1) - 1);

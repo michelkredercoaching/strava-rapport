@@ -309,6 +309,9 @@
   .md-rijen li { display:grid; grid-template-columns:30px 1fr auto; gap:10px; align-items:center; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:6px 10px; }
   .md-rijen li.aan { border-color:rgba(255,107,26,.4); } .md-rijen b { display:block; font-size:13.5px; } .md-rijen span { font-size:12px; color:var(--muted); } .md-rijen small { font-size:11.5px; color:var(--muted); white-space:nowrap; }
   .ms-lijst { text-align:left; margin:8px 0 12px; padding-left:20px; display:grid; gap:8px; } .ms-lijst b { display:block; font-size:14px; } .ms-lijst span { font-size:12.5px; color:var(--muted); }
+  .naarjaar { border:1px solid rgba(255,107,26,.45); background:rgba(255,107,26,.06); border-radius:12px; padding:14px; margin:12px 0; }
+  .naarjaar b { display:block; font-size:15px; }
+  .naarjaar p { font-size:13px; color:var(--muted); margin:4px 0 10px; }
   .bhd { margin:8px 0 6px; }
   .bhd-rij { display:grid; grid-template-columns:repeat(4, 1fr); gap:6px; margin-bottom:6px; }
   .bhd-cel { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:10px 8px; min-width:0; }
@@ -2260,6 +2263,7 @@ function lidStatusHtml(l) {
   if (l.status === 'actief' && l.handmatig) return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid" data-plan="${l.plan === 'jaar' ? 'jaar' : 'maand'}">Verlengen</button></div>`;
   if (l.status === 'actief' && l.jaarKeuze && !l.jaarKeuze.gekozen) return `<div class="lidkeuze" id="lid"><b>Je jaar zit er op ${esc(datumNl(l.jaarKeuze.op))} op</b><p>Hoe wil je verder? Kies je niets, dan ga je per maand verder.</p>
       <div class="rij"><button type="button" class="knop" data-jaarkeuze="jaar">Nog een jaar &middot; &euro;${esc(String(((l.prijs || {}).jaar) || '89').replace('.00', '').replace('.', ','))}</button><button type="button" class="knop leeg" data-jaarkeuze="maand">Per maand &middot; &euro;${esc(String(((l.prijs || {}).maand) || '9.99').replace('.00', '').replace('.', ','))}</button></div></div>`;
+  if (l.status === 'actief' && l.jaarVanaf) return `<div class="lidrij" id="lid"><span><b>Lid</b> &middot; je jaar voor &euro;${esc(String((l.prijs || {}).jaar || '89').replace('.00', '').replace('.', ','))} start rond ${esc(datumNl(l.jaarVanaf))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
   if (l.status === 'actief' && l.jaarKeuze && l.jaarKeuze.gekozen) return `<div class="lidrij" id="lid"><span><b>Jaarlid</b> &middot; nog een jaar, verlengt rond ${esc(datumNl(l.jaarKeuze.op))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
   if (l.status === 'actief') return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; ${l.plan === 'jaar' ? 'verlengt automatisch rond' : 'volgende afschrijving rond'} ${esc(datumNl(l.tot, -5))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
   if (l.status === 'achterstand') return `<div class="lidrij waarschuw" id="lid"><span><b>Betaling mislukt</b> &middot; je app blijft open tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid" data-plan="${l.plan === 'jaar' ? 'jaar' : 'maand'}">Betaling bijwerken</button></div>`;
@@ -3053,7 +3057,7 @@ function zegOp() {
     <button type="button" class="sb-link" data-lx="dicht">Toch niet</button>`);
   document.querySelectorAll('input[name="lxReden"]').forEach((r) => r.addEventListener('change', () => {
     const el = document.getElementById('lxPauze'); if (!el) return;
-    el.innerHTML = l.pauzeKan && ['winterstop', 'te-weinig', 'te-duur'].includes(r.value) ? '<div class="pauze"><b>Liever even pauzeren?</b><p style="margin-top:4px">Je krijgt een maand gratis: je volgende afschrijving schuift een maand op en alles blijft staan. Daarna loopt het gewoon door, en opzeggen kan altijd nog.</p><button type="button" class="knop" data-lx="pauze">Pauzeer een maand gratis</button></div>' : '';
+    el.innerHTML = (r.value === 'te-duur' && l.naarJaarKan ? '<div class="pauze"><b>Per jaar is het &euro;' + (Number((l.prijs || {}).jaar || 89) / 12).toFixed(2).replace('.', ',') + ' per maand</b><p style="margin-top:4px">Stap over op een jaar en bespaar &euro;' + jaarBesparing(l) + '. Je huidige maand loopt gewoon door.</p><button type="button" class="knop" data-lx="naarjaar" style="margin-top:8px">Bekijk de overstap</button></div>' : '') + (l.pauzeKan && ['winterstop', 'te-weinig', 'te-duur'].includes(r.value) ? '<div class="pauze"><b>Liever even pauzeren?</b><p style="margin-top:4px">Je krijgt een maand gratis: je volgende afschrijving schuift een maand op en alles blijft staan. Daarna loopt het gewoon door, en opzeggen kan altijd nog.</p><button type="button" class="knop" data-lx="pauze">Pauzeer een maand gratis</button></div>' : '');
   }));
 }
 async function zegOpNu(knop) {
@@ -3559,9 +3563,16 @@ function rangChipHtml(d) {
   const n = l.vriendAantal || 0, rang = VR_RANG.find(([m]) => n >= m)[1];
   return `<a href="#" class="rang-chip" data-actie="naarmaten"><span>${rang}</span>${n ? n + (n === 1 ? ' maat' : ' maten') : 'Nodig je maten uit'} <i>&rsaquo;</i></a>`;
 }
+// Overstappen naar een jaar (13-10-2026)
+function jaarBesparing(l) { const p = l.prijs || {}; return Math.floor(Number(p.maand || 9.99) * 12 - Number(p.jaar || 89)); }
+function naarJaarHtml(l) {
+  if (!l || !l.naarJaarKan) return '';
+  const p = l.prijs || {}, jaar = String(p.jaar || '89').replace('.00', '').replace('.', ',');
+  return `<div class="naarjaar"><b>Stap over op een jaar en bespaar &euro;${jaarBesparing(l)}</b><p>&euro;${jaar} per jaar, dat is &euro;${(Number(p.jaar || 89) / 12).toFixed(2).replace('.', ',')} per maand. Je huidige maand loopt gewoon door.</p><button type="button" class="knop leeg" data-lx="naarjaar">Bekijk de overstap</button></div>`;
+}
 function lidExtraHtml(l) {
   if (!l) return '';
-  return `<div class="lid-extra">${l.vriendKan && (!binnenkortNu() || (D && D.beheer)) ? vriendKaartHtml(l) : ''}
+  return `<div class="lid-extra">${naarJaarHtml(l)}${l.vriendKan && (!binnenkortNu() || (D && D.beheer)) ? vriendKaartHtml(l) : ''}
     ${l.facturen ? '<button type="button" class="lid-link" data-lx="facturen">Mijn facturen</button>' : ''}</div>`;
 }
 document.addEventListener('click', async (e) => {
@@ -3570,6 +3581,17 @@ document.addEventListener('click', async (e) => {
   const a = k.dataset.lx;
   if (a === 'dicht') return lxDicht();
   if (a === 'opzeg') return zegOpNu(k);
+  if (a === 'naarjaar') {
+    const l = (zicht() || {}).lid || {}, p = l.prijs || {}, jaar = String(p.jaar || '89').replace('.00', '').replace('.', ',');
+    return modal(`<h3>Overstappen op een jaar</h3><p>Je maand loopt gewoon door tot ${esc(datumNl(l.tot, -5))}. Op die dag betaal je <b>&euro;${jaar} voor een heel jaar</b>, in plaats van &euro;${String(p.maand || '9.99').replace('.', ',')} per maand. Zo bespaar je &euro;${jaarBesparing(l)}.</p><p class="klein">Je betaalt automatisch op dezelfde manier als nu. Je krijgt een factuur, en alles wat je deed blijft staan.</p><button type="button" class="knop" data-lx="naarjaarnu">Ja, stap over</button><button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:8px auto 0">Toch niet</button>`);
+  }
+  if (a === 'naarjaarnu') {
+    k.disabled = true; k.textContent = 'Even omzetten...';
+    try { const j = await (await fetch('/api/lid?actie=naarjaar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken() }) })).json();
+      if (j.ok) { await laadOverzicht(); return modal('<h3>Je bent overgestapt</h3><p>Je jaar start rond ' + esc(datumNl(j.lid.jaarVanaf || j.lid.tot)) + '. Tot die tijd loopt je maand gewoon door.</p><button type="button" class="knop" data-lx="dicht">Top</button>'); }
+      alert(j.fout || 'Dat lukte niet.'); } catch (er) { alert('Verbinding mislukt.'); }
+    k.disabled = false; k.textContent = 'Ja, stap over'; return;
+  }
   if (a === 'pauze') {
     k.disabled = true;
     try { const j = await (await fetch('/api/lid?actie=pauze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken() }) })).json();
