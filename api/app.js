@@ -953,7 +953,7 @@ async function routeOverzicht(req, res) {
   let uitnodigingen = []; try { uitnodigingen = ((uitn.ok && uitn.result && JSON.parse(uitn.result)) || []).slice(0, 30); } catch (e) {}
   let uitgenodigd = null; try { const u = uitg.ok && uitg.result ? JSON.parse(uitg.result) : null; if (u && !(lidmaatschap && lidmaatschap.betaaldOoit)) uitgenodigd = { naam: u.naam || '' }; } catch (e) {}
   const ledenAnalyse = lb.open && lb.bron !== 'coaching' && !lb.coaching ? (() => { const t = maakKortingToken(LEDEN_ANALYSE, 30); return t ? `https://rapport.michelkredercoaching.nl/?korting=${t}` : null; })() : null;
-  const palmares = await badgesBijwerken(email, { core, ritten, coachBerichten, doel, lidmaatschap, analyse }).catch(() => ({ badges: [], nieuweBadges: [] }));
+  const palmares = await badgesBijwerken(email, { core, ritten, coachBerichten, doel, lidmaatschap, analyse }).catch((e) => { console.error('badges', email, e && e.message); return { badges: [], nieuweBadges: [] }; });
   return res.status(200).json({ doel, ledenAnalyse, badges: palmares.badges, nieuweBadges: palmares.nieuweBadges, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1) }, 
     ok: true,
     email,

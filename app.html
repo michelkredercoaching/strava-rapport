@@ -234,7 +234,7 @@
   .vr-st { font-size:11.5px; font-weight:700; padding:3px 8px; border-radius:20px; background:rgba(255,255,255,.08); color:var(--muted); white-space:nowrap; }
   .vr-st.half { background:rgba(255,107,26,.15); color:var(--accent); } .vr-st.aan { background:var(--accent); color:#0a0a0a; }
   .vr-nog { grid-column:1 / -1; justify-self:start; background:none; border:0; color:var(--accent); font-size:12.5px; padding:0; cursor:pointer; text-decoration:underline; }
-  .rang-plek { margin:14px 0 4px; }
+  .rang-plek { margin:14px 0 4px; display:flex; flex-wrap:wrap; gap:8px; }
   .rang-chip { display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted); text-decoration:none; border:1px solid rgba(255,107,26,.4); border-radius:20px; padding:4px 12px 4px 4px; }
   .rang-chip span { background:var(--accent); color:#0a0a0a; font-weight:800; font-size:11px; letter-spacing:.06em; text-transform:uppercase; padding:3px 9px; border-radius:20px; }
   .rang-chip i { font-style:normal; color:var(--accent); }
@@ -2350,7 +2350,7 @@ function tegelsHtml(d) {
   if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
   else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Core stability voor wielrenners, op de timer', tag: binnenkortNu() ? 'Binnenkort' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Tijd voor een nieuwe' : 'Jouw uitslag') : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' }));
-  if ((d.badges || []).length) { const pb = palmaresStand(d); t.push(tegel({ v: 'palmares', ic: 'palmares', nm: 'Je palmares', sub: pb.n + ' van ' + pb.tot + ' badges' + (pb.dichtst ? ' &middot; bijna: ' + pb.dichtst.naam : ''), tag: pb.n ? String(pb.n) : '', tagKlas: 'or', breed: true })); }
+  if (!d.gast) { const pb = palmaresStand(d); t.push(tegel({ v: 'palmares', ic: 'palmares', nm: 'Je palmares', sub: !pb.tot ? 'Badges verdienen met wat je doet' : pb.n + ' van ' + pb.tot + ' badges' + (pb.dichtst ? ' &middot; bijna: ' + pb.dichtst.naam : ''), tag: pb.n ? String(pb.n) : '', tagKlas: 'or', breed: true })); }
   t.push(tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? 'Lid' : '3 gratis', tagKlas: 'or' }));
   if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true }));
   const bk = `<div class="bk-rij"><span>Binnenkort</span><button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
@@ -2767,7 +2767,7 @@ function teken() {
     ${beheerHtml(d)}${d.beheer ? `<details class="bh-groep" data-klap="beheer" ${klapOpen('beheer', true) ? 'open' : ''}><summary><b>Beheer</b><span>leden, gebruik, doelen, schema's, Core, nakijken</span></summary>${aankondigHtml()}${pushOpnieuwHtml()}${ledenHtml()}${gebruikHtml()}${doelenBeheerHtml()}${badgeBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}${opvolgHtml()}${nakijkHtml()}</details>` : ''}
     <div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
     ${welkomNu() ? '<p class="welkom-michel">Begin hieronder met je eerste week. Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
-    ${rangChipHtml(d) ? '<div class="rang-plek">' + rangChipHtml(d) + '</div>' : ''}
+    ${!d.gast ? '<div class="rang-plek">' + palmaresChipHtml(d) + rangChipHtml(d) + '</div>' : ''}
     ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${vriendActief() ? '<a href="#" data-actie="naarlid">' + (vriendDoor() ? esc(vriendDoor()) + ' gaf je' : 'je maat gaf je') + ' korting op je lidmaatschap</a>' : kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
     <div id="groepsrit">${grHtml()}</div>
     ${reviewHtml(d)}
@@ -2963,7 +2963,7 @@ function palmaresStand(d) {
 function medaille(b, groot) { return `<span class="md${b.behaald ? ' aan' : ''}${groot ? ' groot' : ''}"><i>${b.kort}</i></span>`; }
 function palmaresHtml(d) {
   const { l, n, tot, open } = palmaresStand(d);
-  if (!l.length) return '<div class="kaart actief"><div class="kaart-in"><p class="klein">Je palmares laden...</p></div></div>';
+  if (!l.length) return '<div class="kaart actief"><div class="kaart-in"><p class="klein">Je badges worden nog opgehaald. Ververs de app over een paar seconden.</p></div></div>';
   const groepen = [...new Set(l.map((b) => b.groep))];
   const dag = (x) => new Date(x).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
   const tegeltje = (b) => `<button type="button" class="md-tegel${b.behaald ? ' aan' : ''}" data-badge="${b.id}">${medaille(b)}<b>${b.naam}</b><small>${b.behaald ? (b.op ? dag(b.op) : 'verdiend') : b.nodig > 1 ? b.nu + ' / ' + b.nodig : 'nog niet'}</small>${!b.behaald && b.nodig > 1 ? `<span class="md-balk"><i style="width:${Math.round(b.nu / b.nodig * 100)}%"></i></span>` : ''}</button>`;
@@ -3030,6 +3030,10 @@ function badgeFeest() {
   setTimeout(() => badgeModal(ids[0], true), 600);
 }
 // Je rang, op meer plekken, met een tik naar je ladder.
+function palmaresChipHtml(d) {
+  const l = (d && d.badges) || [], n = l.filter((b) => b.behaald).length;
+  return `<a href="#" class="rang-chip" data-view="palmares"><span>Palmares</span>${l.length ? n + ' van ' + l.length + ' badges' : 'Je badges'} <i>&rsaquo;</i></a>`;
+}
 function rangChipHtml(d) {
   const l = vriendLid(d); if (!l) return '';
   const n = l.vriendAantal || 0, rang = VR_RANG.find(([m]) => n >= m)[1];
