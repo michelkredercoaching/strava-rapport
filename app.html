@@ -2870,7 +2870,7 @@ function teken() {
   $('#app').innerHTML = `${appBalkHtml()}
     ${beheerHtml(d)}${d.beheer ? `<details class="bh-groep" data-klap="beheer" ${klapOpen('beheer', true) ? 'open' : ''}><summary><b>Beheer</b><span>leden, gebruik, doelen, schema's, Core, nakijken</span></summary>${aankondigHtml()}${pushOpnieuwHtml()}${ledenHtml()}${gebruikHtml()}${doelenBeheerHtml()}${badgeBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}${opvolgHtml()}${nakijkHtml()}</details>` : ''}
     <div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
-    ${welkomNu() ? '<p class="welkom-michel">Begin hieronder met je eerste week. Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
+    ${welkomNu() ? '<p class="welkom-michel">' + (eersteWeekHtml(d) ? 'Begin hieronder met je eerste week.' : startlijstHtml(d) ? 'Begin hieronder met je startlijst, dan staat de app helemaal goed.' : 'Fijn dat je er bent.') + ' Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
     ${!d.gast ? '<div class="rang-plek">' + palmaresChipHtml(d) + rangChipHtml(d) + '</div>' : ''}
     ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${vriendActief() ? '<a href="#" data-actie="naarlid">' + (vriendDoor() ? esc(vriendDoor()) + ' gaf je' : 'je maat gaf je') + ' korting op je lidmaatschap</a>' : kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
     <div id="groepsrit">${grHtml()}</div>
