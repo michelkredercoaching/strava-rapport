@@ -206,12 +206,32 @@
   .vr-paal small { display:block; font-size:10.5px; color:var(--muted); }
   .vr-doel { font-size:14px; margin:8px 0 12px; text-align:center; }
   .vr-doel b { color:var(--accent); }
+  .vr-label { display:block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:4px 0 5px; }
+  .vr-naam { width:100%; height:46px; background:#000; border:1px solid rgba(255,255,255,.18); border-radius:6px; color:var(--white); padding:0 12px; font-size:15px; margin-bottom:8px; }
+  details.vr-lijst { margin-top:14px; border-top:1px solid rgba(255,255,255,.1); padding-top:10px; }
+  details.vr-lijst > summary { list-style:none; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  details.vr-lijst > summary::-webkit-details-marker { display:none; }
+  details.vr-lijst > summary span { font-size:12.5px; color:var(--muted); }
+  details.vr-lijst > summary span::after { content:' \25BE'; color:var(--accent); }
+  details.vr-lijst ul { list-style:none; margin:10px 0 0; padding:0; display:grid; gap:6px; }
+  details.vr-lijst li { display:grid; grid-template-columns:1fr auto; gap:4px 8px; align-items:center; background:rgba(0,0,0,.28); border:1px solid rgba(255,255,255,.08); border-radius:8px; padding:9px 12px; }
+  details.vr-lijst li b { font-size:14.5px; display:block; } details.vr-lijst li small { font-size:11.5px; color:var(--muted); }
+  .vr-st { font-size:11.5px; font-weight:700; padding:3px 8px; border-radius:20px; background:rgba(255,255,255,.08); color:var(--muted); white-space:nowrap; }
+  .vr-st.half { background:rgba(255,107,26,.15); color:var(--accent); } .vr-st.aan { background:var(--accent); color:#0a0a0a; }
+  .vr-nog { grid-column:1 / -1; justify-self:start; background:none; border:0; color:var(--accent); font-size:12.5px; padding:0; cursor:pointer; text-decoration:underline; }
+  .rang-plek { margin:4px 0 -6px; }
+  .rang-chip { display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted); text-decoration:none; border:1px solid rgba(255,107,26,.4); border-radius:20px; padding:4px 12px 4px 4px; }
+  .rang-chip span { background:var(--accent); color:#0a0a0a; font-weight:800; font-size:11px; letter-spacing:.06em; text-transform:uppercase; padding:3px 9px; border-radius:20px; }
+  .rang-chip i { font-style:normal; color:var(--accent); }
+  .vr-rang-link { text-decoration:none; color:inherit; } .vr-rang-link span { font-size:11.5px; color:var(--accent); margin-left:6px; }
   .vr-uitleg { display:block; font-size:12px; color:var(--muted); margin-top:6px; line-height:1.4; }
   .vr-knoppen { display:grid; gap:8px; }
   .vr-kaart.compact { margin:10px 0 0; padding:12px; }
   .vr-kaart.compact .vr-n b { font-size:34px; }
   .vr-kaart.compact .vr-doel { text-align:left; margin:8px 0 10px; }
   .gr-vriend .vr-kaart.compact { background:rgba(0,0,0,.25); }
+  .gr-vriend .vr-kaart b { display:inline-block; } .gr-vriend .vr-doel b { display:inline; font-size:inherit; } .gr-vriend .vr-n b { display:block; }
+  .vr-rang-link span { display:block; margin:4px 0 0 2px !important; }
   .of-gratis { text-align:center; margin:18px 0 12px; position:relative; }
   .of-gratis::before { content:''; position:absolute; left:0; right:0; top:50%; border-top:1px solid rgba(255,255,255,.15); }
   .of-gratis span { position:relative; background:#1a1310; padding:0 12px; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
@@ -1254,7 +1274,7 @@ function bandenKaart(d) {
   const vtabs = `<div class="vr-tabs"><button type="button" data-kl="vrijtab" data-w="banden" class="${vtab === 'banden' ? 'aan' : ''}">Banden</button><button type="button" data-kl="vrijtab" data-w="kleding" class="${vtab === 'kleding' ? 'aan' : ''}">Kleding ${SLOT.replace('<svg', '<svg class="tab-slot"')}</button><button type="button" data-kl="vrijtab" data-w="voeding" class="${vtab === 'voeding' ? 'aan' : ''}">Voeding ${SLOT.replace('<svg', '<svg class="tab-slot"')}</button><button type="button" data-kl="vrijtab" data-w="groep" class="${vtab === 'groep' ? 'aan' : ''}">Groepsrit</button></div>`;
   if (vtab === 'groep') { if (!d.gast) grZorg(); return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag open">Gratis</span>
     <div class="label">Vandaag rijden</div><h2>Rij je samen?</h2>${vtabs}
-    ${d.gast ? '<p>Plan een rit en deel de link in je groepsapp. Iedereen ziet het weer, de wind en zijn eigen bandenspanning voor jullie rit.</p><button type="button" class="knop" data-actie="gastlogin" style="margin-top:12px">Maak je gratis account</button>' : '<div id="grmaak">' + grMaakHtml() + '</div>'}</div></div>`; }
+    ${d.gast ? '<p>Plan een rit en deel de link in je groepsapp. Iedereen ziet het weer, de wind en zijn eigen bandenspanning voor jullie rit.</p><button type="button" class="knop" data-actie="gastlogin" style="margin-top:12px">Maak je gratis account</button>' : '<div id="grmaak">' + grMaakHtml() + '</div>' + grVriendHtml(d)}</div></div>`; }
   if (vtab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag oranje">Lid</span>
     <div class="label">Vandaag rijden</div><h2>Wat neem je mee?</h2>${vtabs}
     ${vrijWeerRegel()}<div class="bt-slot"><div class="achter">
@@ -1471,6 +1491,7 @@ function slimBandenKaart() {
   if (tab === 'groep') { grZorg(); return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${tabs}
     <div id="grmaak">${grMaakHtml()}</div>
+    ${grVriendHtml(zicht())}
     <button type="button" class="sb-link" data-sb="bewerk" style="margin-top:14px">Mijn fietsen en gewicht</button></div></div>`; }
   if (tab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${sbWeerHtml()}
@@ -2670,7 +2691,7 @@ function naAnalyseHtml(d) {
   </div>`;
 }
 function vriendMomentHtml(d) {
-  const l = vriendLid(d); if (!l || ![5, 6, 0].includes(new Date().getDay())) return '';
+  const l = vriendLid(d); if (!l || (![5, 6, 0].includes(new Date().getDay()) && !d.beheer)) return '';
   const wk = Math.floor((Date.now() / 864e5 + 3) / 7);
   try { if (Number(localStorage.getItem('mkcVrWeg')) === wk) return ''; } catch (e) {}
   const n = l.vriendAantal || 0, rang = VR_RANG.find(([m]) => n >= m)[1];
@@ -2724,7 +2745,7 @@ function teken() {
   const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `${appBalkHtml()}
     ${beheerHtml(d)}${d.beheer ? `<details class="bh-groep" data-klap="beheer" ${klapOpen('beheer', true) ? 'open' : ''}><summary><b>Beheer</b><span>leden, gebruik, doelen, schema's, Core, nakijken</span></summary>${aankondigHtml()}${pushOpnieuwHtml()}${ledenHtml()}${gebruikHtml()}${doelenBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}${opvolgHtml()}${nakijkHtml()}</details>` : ''}
-    <div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
+    ${rangChipHtml(d) ? '<div class="rang-plek">' + rangChipHtml(d) + '</div>' : ''}<div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
     ${welkomNu() ? '<p class="welkom-michel">Begin hieronder met je eerste week. Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
     ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${vriendActief() ? '<a href="#" data-actie="naarlid">' + (vriendDoor() ? esc(vriendDoor()) + ' gaf je' : 'je maat gaf je') + ' korting op je lidmaatschap</a>' : kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
     <div id="groepsrit">${grHtml()}</div>
@@ -2777,6 +2798,12 @@ document.addEventListener('click', (e) => {
   if (actie === 'startcore') startCore(k);
   if (actie === 'naargast') { e.preventDefault(); return toonGast(); }
   if (actie === 'gastlogin' || (actie === 'naarlid' && D && D.gast)) { e.preventDefault(); const m = gastMail(); return toonLogin(); }
+  if (actie === 'naarmaten') {
+    e.preventDefault();
+    if (VIEW !== 'lid') naar('lid');
+    setTimeout(() => { const b = document.querySelector('.lid-extra .vr-kaart') || document.querySelector('.vr-kaart'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 250);
+    return;
+  }
   if (actie === 'naarlid') {
     e.preventDefault();
     const pan = document.getElementById('ccPaneel'); if (pan && pan.classList.contains('open')) coachOpen(false);
@@ -2886,15 +2913,31 @@ function vriendKaartHtml(l, compact) {
   const doel = (volgende ? `Nog <b>${nog} ${nog === 1 ? 'maat' : 'maten'}</b> tot ${naam(volgende)}` : 'Alle mijlpalen gehaald. Jij bent de motor van de groep.')
     + (volgende && tel < n ? `<small class="vr-uitleg">Voor de maand en het jaar telt een maat zodra die een tweede keer betaalt, of meteen bij een jaar. Nu ${nb} van je ${n}.</small>` : '')
     + (wacht > n ? `<small class="vr-uitleg">${wacht - n} ${wacht - n === 1 ? 'maat heeft' : 'maten hebben'} al een gratis account via jou, maar ${wacht - n === 1 ? 'is' : 'zijn'} nog geen lid. Een berichtje helpt.</small>` : '');
-  const knoppen = `<div class="vr-knoppen"><button type="button" class="knop wa-knop" data-lx="whatsapp">Stuur via WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app of kopieer link</button></div>`;
-  if (compact) return `<div class="vr-kaart compact"><div class="vr-kop"><div><small>Jouw rang</small><b>${rang}</b></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'}</small></div></div><p class="vr-doel">${doel}</p>${knoppen}</div>`;
+  const knoppen = `<label class="vr-label">Wie nodig je uit?</label><input class="vr-naam" type="text" maxlength="40" placeholder="Naam van je maat, bijv. Jan" autocomplete="off"><div class="vr-knoppen"><button type="button" class="knop wa-knop" data-lx="whatsapp">Stuur via WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app of kopieer</button></div>`;
+  if (compact) return `<div class="vr-kaart compact"><div class="vr-kop"><div><small>Jouw rang</small><a href="#" data-actie="naarmaten" class="vr-rang-link"><b>${rang}</b> <span>bekijk je ladder &rsaquo;</span></a></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'}</small></div></div><p class="vr-doel">${doel}</p>${knoppen}</div>`;
   return `<div class="vr-kaart"><div class="vr-kop"><div><small>Jouw rang</small><b>${rang}</b></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'} via jouw link</small></div></div>
     <h3>${l.gratis ? 'Word gratis lid via je maten' : 'Nodig je maten uit'}</h3>
     <div class="vr-geef"><div><small>Jouw maat krijgt</small><b>50% korting</b><span>eerste maand &euro;${APP_PRIJS.half}, of een jaar voor &euro;${APP_PRIJS.jaarMaat}</span></div><div><small>Jij krijgt</small><b>${zelf ? '2 weken' : coaching ? 'Een rang' : 'Analyse'}</b><span>${zelf ? (gratisLid ? 'gratis lid per maat, plus de mijlpalen hieronder' : 'extra per maat, plus de mijlpalen hieronder') : coaching ? 'van Gangmaker tot Ploegleider' : 'gratis bij 3 maten, plus je rang'}</span></div></div>
     ${ladder}<p class="vr-doel">${doel}</p>
     ${l.vriendAnalyse ? `<a class="knop" href="${esc(l.vriendAnalyse)}" target="_blank" rel="noopener" style="margin-bottom:10px">Claim je gratis analyse</a>` : ''}
     ${knoppen}
+    ${vriendLijstHtml()}
     ${!zelf ? `<p class="klein" style="margin-top:10px">De app zit bij ${coaching ? 'je coaching' : 'je schema'} inbegrepen, dus extra weken of maanden krijg je niet. Je maat krijgt wel de volle korting.</p>` : ''}</div>`;
+}
+// Mijn uitnodigingen: wie, wanneer, en hoe ver. Niet-leden kun je nog eens een berichtje sturen.
+function vriendLijstHtml() {
+  const l = (D && D.uitnodigingen) || []; if (!l.length) return '';
+  const st = { verstuurd: ['Uitgenodigd', ''], account: ['Heeft een account', 'half'], lid: ['Lid', 'aan'] };
+  const dag = (x) => new Date(x).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
+  const rij = (x) => { const [t, c] = st[x.status] || st.verstuurd; return `<li><div><b>${esc(x.naam)}</b><small>${x.zelf ? 'via je link' : 'uitgenodigd'} ${dag(x.op)}${x.lidOp ? ' &middot; lid sinds ' + dag(x.lidOp) : ''}</small></div><span class="vr-st ${c}">${x.status === 'lid' ? '&#10003; ' : ''}${t}</span>${x.status !== 'lid' && !x.zelf ? `<button type="button" class="vr-nog" data-lx="whatsapp" data-u="${esc(x.id)}" data-naam="${esc(x.naam)}">Stuur nog eens</button>` : ''}</li>`; };
+  const lid = l.filter((x) => x.status === 'lid').length;
+  return `<details class="vr-lijst" data-klap="vrlijst"${klapOpen('vrlijst', l.length <= 4) ? ' open' : ''}><summary><b>Jouw uitnodigingen</b><span>${l.length} uitgenodigd &middot; ${lid} lid</span></summary><ul>${l.map(rij).join('')}</ul></details>`;
+}
+// Je rang, op meer plekken, met een tik naar je ladder.
+function rangChipHtml(d) {
+  const l = vriendLid(d); if (!l) return '';
+  const n = l.vriendAantal || 0, rang = VR_RANG.find(([m]) => n >= m)[1];
+  return `<a href="#" class="rang-chip" data-actie="naarmaten"><span>${rang}</span>${n ? n + (n === 1 ? ' maat' : ' maten') : 'Nodig je maten uit'} <i>&rsaquo;</i></a>`;
 }
 function lidExtraHtml(l) {
   if (!l) return '';
@@ -2921,21 +2964,20 @@ document.addEventListener('click', async (e) => {
     } catch (er) { alert('Verbinding mislukt.'); }
     return;
   }
-  if (a === 'whatsapp') {
-    const w = window.open('', '_blank');
-    try { const j = await (await fetch('/api/lid?actie=vriend&t=' + encodeURIComponent(leesToken()) + '&naam=' + encodeURIComponent(String((D && D.naam) || '').split(' ')[0]))).json();
+  if (a === 'whatsapp' || a === 'vriend') {
+    // Naam uit het invulveld van deze kaart, of een bestaande uitnodiging (opnieuw sturen).
+    const kaart = k.closest('.vr-kaart, .vr-moment, .gr-vriend'), veld = kaart && kaart.querySelector('.vr-naam');
+    const naam = k.dataset.naam || (veld ? veld.value.trim() : ''), u = k.dataset.u || '';
+    const w = a === 'whatsapp' ? window.open('', '_blank') : null;
+    try {
+      const j = await (await fetch('/api/lid?actie=uitnodig', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam, u, mijnNaam: String((D && D.naam) || '').split(' ')[0] }) })).json();
       if (!j.ok) { if (w) w.close(); return alert(j.fout || 'Dat lukte niet.'); }
-      if (w) w.location.href = j.whatsapp; else location.href = j.whatsapp;
+      if (D) D.uitnodigingen = j.lijst || D.uitnodigingen;
+      if (a === 'whatsapp') { if (w) w.location.href = j.whatsapp; else location.href = j.whatsapp; }
+      else if (navigator.share) { try { await navigator.share({ title: 'MKC-app', text: j.tekst }); } catch (er) { if (er && er.name !== 'AbortError') { try { await navigator.clipboard.writeText(j.tekst); alert('Bericht met link gekopieerd. Plak het in je app.'); } catch (e2) { prompt('Kopieer je bericht:', j.tekst); } } } }
+      else { try { await navigator.clipboard.writeText(j.tekst); alert('Bericht met link gekopieerd. Plak het in je app.'); } catch (er) { prompt('Kopieer je bericht:', j.tekst); } }
+      if (naam && (VIEW === 'lid' || VIEW === 'rijden' || VIEW === 'home')) teken();
     } catch (er) { if (w) w.close(); alert('Verbinding mislukt.'); }
-    return;
-  }
-  if (a === 'vriend') {
-    try { const j = await (await fetch('/api/lid?actie=vriend&t=' + encodeURIComponent(leesToken()) + '&naam=' + encodeURIComponent(String((D && D.naam) || '').split(' ')[0]))).json();
-      if (!j.ok) return alert(j.fout || 'Dat lukte niet.');
-      const tekst = 'Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding, voeding, core en een eigen coach. Via mijn link krijg je 50% korting op je eerste maand, of 5 euro korting op een jaar.';
-      if (navigator.share) { try { await navigator.share({ title: 'MKC-app', text: tekst, url: j.url }); return; } catch (er) { if (er && er.name === 'AbortError') return; } }
-      try { await navigator.clipboard.writeText(j.url); alert('Link gekopieerd: ' + j.url); } catch (er) { prompt('Kopieer je link:', j.url); }
-    } catch (er) { alert('Verbinding mislukt.'); }
     return;
   }
   if (a === 'verwijder') {
@@ -3518,7 +3560,7 @@ document.addEventListener('click', (e) => {
 });
 
 // Uitnodiging van een maat (?vriend=code) bewaren voor bij lid worden.
-try { const vr = new URLSearchParams(location.search).get('vriend'); if (vr) localStorage.setItem('mkcVriend', vr.replace(/[^a-z0-9]/gi, '').slice(0, 12)); } catch (e) {}
+try { const q = new URLSearchParams(location.search), vr = q.get('vriend'); if (vr) { localStorage.setItem('mkcVriend', vr.replace(/[^a-z0-9]/gi, '').slice(0, 12)); localStorage.setItem('mkcVriendU', String(q.get('u') || '').replace(/[^a-f0-9]/g, '').slice(0, 8)); } } catch (e) {}
 function vriendCodeLs() { try { return localStorage.getItem('mkcVriend') || ''; } catch (e) { return ''; } }
 // Uitgenodigd? Uit het account (werkt op elk toestel) of uit deze browser.
 function vriendActief() { return !!((D && D.uitgenodigd) || vriendCodeLs()); }
@@ -3528,7 +3570,7 @@ async function vriendKoppel() {
   const code = vriendCodeLs(); if (!code || !D || D.gast || isLid(D)) return;
   try { if (localStorage.getItem('mkcVriendGekoppeld') === code) return; } catch (e) {}
   try {
-    const j = await (await fetch('/api/lid?actie=vriendkoppel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), code }) })).json();
+    const j = await (await fetch('/api/lid?actie=vriendkoppel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), code, u: (() => { try { return localStorage.getItem('mkcVriendU') || ''; } catch (e) { return ''; } })(), naam: String(D.naam || '').split(' ')[0] }) })).json();
     try { localStorage.setItem('mkcVriendGekoppeld', code); if (j.naam) localStorage.setItem('mkcVriendNaam', j.naam); } catch (e) {}
     if (j.ok && j.naam && !(D.uitgenodigd && D.uitgenodigd.naam)) { D.uitgenodigd = { naam: j.naam }; teken(); }
   } catch (e) {}
@@ -3639,7 +3681,7 @@ function grHtml() {
     ${voorbij ? '' : `<button type="button" class="knop ${GR.data.ikMee ? '' : 'leeg'}" data-gr="mee" style="margin-top:14px">${GR.data.ikMee ? '&#10003; Je rijdt mee' : 'Ik rijd mee'}</button>`}
     <div class="gr-kijk">${[GR.data.mee ? `${GR.data.mee} ${GR.data.mee === 1 ? 'rijdt' : 'rijden'} mee` : '', kijkers >= 2 ? `${kijkers} keken al` : ''].filter(Boolean).join(' &middot; ')}</div>
     ${voorbij ? '' : '<button type="button" class="knop" data-gr="deel" style="margin-top:14px">Deel deze rit</button>'}
-    ${!voorbij && vriendLid(d) ? `<div class="gr-vriend"><b>Rijden je maten nog zonder de app?</b><p>Met jouw link krijgen ze 50% korting${vriendLid(d).vriendBeloning === false ? '' : vriendLid(d).gratis || vriendLid(d).vriendCadeau ? ', en jij 2 weken gratis lid per maat' : ', en jij 2 weken extra per maat'}.</p>${vriendKaartHtml(vriendLid(d), true)}</div>` : ''}
+    ${!voorbij ? grVriendHtml(d) : ''}
     <details class="klap" data-klap="grfoto" ${klapOpen('grfoto', voorbij) ? 'open' : ''}><summary><b>Maak een foto-story</b><span>jouw foto, met de rit erover</span></summary><div class="klap-in">
       <p class="klein" style="margin-top:0">Kies een foto van de groep, de koffiestop of het uitzicht. De app zet de naam van de rit, de datum en het weer eroverheen, klaar voor je Instagram-story of Strava.</p>
       <input id="grFotoTekst" type="text" maxlength="60" placeholder="Jouw tekst, bijv. Zondagsrondje met de mannen" style="width:100%;margin-bottom:10px">
@@ -3704,6 +3746,10 @@ document.addEventListener('change', async (e) => {
 // Plannen: iedereen met een (gratis) account.
 function grDagOpties() { const l = []; for (let i = 0; i < 14; i++) { const t = new Date(Date.now() + i * 864e5); const w = t.toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }); l.push([w, i === 0 ? 'Vandaag' : i === 1 ? 'Morgen' : t.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'Europe/Amsterdam' })]); } return l; }
 function grZorg() { if (GR.maak) return; const vn = String((D && D.naam) || '').trim().split(' ')[0]; GR.maak = { door: vn, datum: new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }), tijd: '09:00', duur: 3, tempo: 'rustig', plaats: (SB.profiel && SB.profiel.plaats) || WK.plaats || null }; }
+function grVriendHtml(d) {
+  const l = vriendLid(d); if (!l) return '';
+  return `<div class="gr-vriend"><b>Rijden je maten nog zonder de app?</b><p>Met jouw link krijgen ze 50% korting${l.vriendBeloning === false ? '' : l.gratis || l.vriendCadeau ? ', en jij 2 weken gratis lid per maat' : ', en jij 2 weken extra per maat'}.</p>${vriendKaartHtml(l, true)}</div>`;
+}
 function grPlanKnop() { return '<button type="button" class="gr-plan-knop" data-gr="open">Rij je samen? <b>Plan een groepsrit en deel de link</b></button>'; }
 function grMaakHtml() {
   const m = GR.maak; if (!m) return '';

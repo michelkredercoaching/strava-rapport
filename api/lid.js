@@ -344,6 +344,44 @@ async function routeFactuurPdf(req, res) {
 }
 // Maat uitnodigen: persoonlijke link. De maat betaalt de eerste maand de helft,
 // het lid krijgt een maand gratis zodra die maat betaald heeft (max 12 per jaar).
+// Uitnodigen met naam (13-10-2026): elke uitnodiging krijgt een eigen link (&u=id),
+// zodat de uitnodiger later terugziet wie hij uitnodigde en hoe ver die is:
+// verstuurd -> heeft een account -> lid. Lijst in lid:uitnodigingen:<email>.
+const UITN_STAP = { verstuurd: 0, account: 1, lid: 2 };
+const schoonNaam = (x, n = 40) => String(x || '').replace(/[<>"]/g, '').replace(/\s+/g, ' ').trim().slice(0, n);
+async function uitnLijst(email) { const r = await redis(['GET', `lid:uitnodigingen:${email}`]); try { return (r.ok && r.result && JSON.parse(r.result)) || []; } catch (e) { return []; } }
+async function uitnStatus(email, { u, naam, status }) {
+  const l = await uitnLijst(email);
+  let x = u ? l.find((y) => y.id === u) : null;
+  if (!x) { x = { id: crypto.randomBytes(4).toString('hex'), naam: schoonNaam(naam) || 'Een maat', op: new Date().toISOString(), status: 'verstuurd', zelf: true }; l.unshift(x); }
+  if (UITN_STAP[status] > UITN_STAP[x.status || 'verstuurd']) { x.status = status; x[status + 'Op'] = new Date().toISOString(); }
+  await redis(['SET', `lid:uitnodigingen:${email}`, JSON.stringify(l.slice(0, 60))]);
+}
+const waTekst = (naam, url) => `${naam ? 'Hoi ' + naam + '! ' : ''}Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding en voeding voor elke rit, core-oefeningen en een eigen coach. Via mijn link krijg je 50% korting op je eerste maand, of €5 korting op een jaar: ${url}`;
+async function routeUitnodig(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email) return res.status(401).json({ ok: false, fout: 'Log eerst opnieuw in.' });
+  const lid = await haalLid(email);
+  if (lid && lid.status === 'verwijderd') return res.status(400).json({ ok: false, fout: 'Uitnodigen kan nu niet.' });
+  const code = vriendCode(email);
+  await redis(['SET', `lid:vriend:${code}`, email]);
+  const mijn = schoonNaam(String(body.mijnNaam || (lid && lid.naam) || '').split(' ')[0], 30);
+  if (mijn) await redis(['SET', `lid:vriendnaam:${code}`, mijn]);
+  const l = await uitnLijst(email);
+  let x = body.u ? l.find((y) => y.id === String(body.u)) : null;
+  const naam = x ? x.naam : schoonNaam(body.naam);
+  if (!x && naam) {
+    x = l.find((y) => y.naam.toLowerCase() === naam.toLowerCase() && y.status === 'verstuurd');
+    if (!x) { x = { id: crypto.randomBytes(4).toString('hex'), naam, op: new Date().toISOString(), status: 'verstuurd' }; l.unshift(x); }
+    else x.op = new Date().toISOString();
+    await redis(['SET', `lid:uitnodigingen:${email}`, JSON.stringify(l.slice(0, 60))]);
+  }
+  const url = `${APP_URL}?vriend=${code}${x ? '&u=' + x.id : ''}`;
+  const tekst = waTekst(x ? x.naam.split(' ')[0] : '', url);
+  return res.status(200).json({ ok: true, url, tekst, whatsapp: 'https://wa.me/?text=' + encodeURIComponent(tekst), lijst: l.slice(0, 30) });
+}
 // Uitnodiging vastleggen bij het account van de maat (13-10-2026). Dan telt hij ook
 // als die later of op een ander toestel lid wordt. Eerste uitnodiger telt.
 async function routeVriendKoppel(req, res) {
@@ -359,11 +397,12 @@ async function routeVriendKoppel(req, res) {
   if (lid.betaaldOoit || lid.bron === 'betaald') return res.status(200).json({ ok: false, alLid: true });
   const nm = await redis(['GET', `lid:vriendnaam:${code}`]);
   const naam = (nm.ok && nm.result) || '';
-  const nieuw = await redis(['SET', `lid:uitgenodigd:${email}`, JSON.stringify({ code, naam, op: new Date().toISOString() }), 'NX', 'EX', String(400 * 86400)]);
-  if (nieuw.ok && nieuw.result === 'OK') await redis(['INCR', `lid:vriendaccounts:${door}`]);
+  const u = String(body.u || '').replace(/[^a-f0-9]/g, '').slice(0, 8);
+  const nieuw = await redis(['SET', `lid:uitgenodigd:${email}`, JSON.stringify({ code, naam, u, op: new Date().toISOString() }), 'NX', 'EX', String(400 * 86400)]);
+  if (nieuw.ok && nieuw.result === 'OK') { await redis(['INCR', `lid:vriendaccounts:${door}`]); await uitnStatus(door, { u, naam: schoonNaam(body.naam, 30), status: 'account' }); }
   const nu = await redis(['GET', `lid:uitgenodigd:${email}`]);
-  let u = null; try { u = JSON.parse(nu.result); } catch (e) {}
-  return res.status(200).json({ ok: true, naam: (u && u.naam) || '' });
+  let ud = null; try { ud = JSON.parse(nu.result); } catch (e) {}
+  return res.status(200).json({ ok: true, naam: (ud && ud.naam) || '' });
 }
 async function routeVriend(req, res) {
   const email = await lidUitToken(req, res, req.query?.t); if (!email) return;
@@ -466,6 +505,7 @@ async function beloonVriend(code, maatEmail, maatNaam, meteenBevestigd = false) 
   if (!meldingen.length) meldingen.push({ titel: vn + ' is lid geworden', tekst: `${vn} is lid geworden via jouw link en kreeg korting op het lidmaatschap. Bedankt voor het delen!` });
   await vriendMijlpalen(lid, email, meldingen);
   await bewaarLid(email, lid);
+  { const ug = await redis(['GET', `lid:uitgenodigd:${maatEmail}`]); let u = ''; try { u = (ug.ok && ug.result && JSON.parse(ug.result).u) || ''; } catch (e) {} await uitnStatus(email, { u, naam: vn, status: 'lid' }); }
   if (zelf) await zetLidmaatschap({ email, naam: lid.naam, tot: lid.tot, stil: true });
   for (const m of meldingen) await appMelding(email, { soort: 'vriend', titel: m.titel, tekst: m.tekst, link: '/app#lid' });
 }
@@ -594,6 +634,7 @@ export default async function handler(req, res) {
     if (actie === 'factuur') return await routeFactuurPdf(req, res);
     if (actie === 'vriend') return await routeVriend(req, res);
     if (actie === 'vriendkoppel') return await routeVriendKoppel(req, res);
+    if (actie === 'uitnodig') return await routeUitnodig(req, res);
     if (actie === 'herinner') return await routeHerinner(req, res);
     if (actie === 'schema') return await routeSchema(req, res);
     if (actie === 'cadeaumail') return await routeCadeauMail(req, res);
