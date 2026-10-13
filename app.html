@@ -4722,7 +4722,9 @@ document.addEventListener('change', async (e) => {
 
 async function laadOverzicht() {
   const t = leesToken();
-  if (!t) { const p = new URLSearchParams(location.search); return (p.get('mail') || p.get('login')) ? toonLogin() : toonGast(); }
+  // Zonder inlog (13-10-2026): /app is de ingang voor nieuwe mensen (inloggen of gratis account maken).
+  // De bandencheck zonder account staat op /banden, een groepsrit op /rit/..., en ?banden blijft werken.
+  if (!t) { const p = new URLSearchParams(location.search); return (location.pathname.startsWith('/banden') || GR_PAD || p.has('banden')) ? toonGast() : toonLogin(); }
   zetLoginInApp(t);
   try {
     const r = await fetch(API + '?actie=overzicht&t=' + encodeURIComponent(t));
