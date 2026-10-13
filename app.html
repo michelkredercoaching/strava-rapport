@@ -234,6 +234,12 @@
   .rl-fout { color:#ff8a5c; margin-top:6px; }
   .bel-n em { display:block; font-style:normal; font-size:9.5px; font-weight:800; margin-top:2px; color:#f3c22c; } .bel.aan .bel-n em { color:#3d2700; }
   .pm-gratis { margin-top:12px; border:1px dashed rgba(255,107,26,.5); border-radius:10px; padding:10px 12px; } .pm-gratis b { display:block; font-size:14px; } .pm-gratis span { display:block; font-size:12.5px; color:var(--muted); margin-top:2px; line-height:1.4; }
+  .maand { display:grid; grid-template-columns:78px 1fr; gap:12px; align-items:center; margin-top:14px; padding:12px; border-radius:12px; background:linear-gradient(135deg, rgba(255,107,26,.22), rgba(0,0,0,.25)); border:1px solid rgba(255,107,26,.6); cursor:pointer; }
+  .maand.aan { background:linear-gradient(135deg, rgba(255,107,26,.35), rgba(255,107,26,.08)); }
+  .maand-tekst small { display:block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); } .maand-tekst b { display:block; font-family:'Bebas Neue',sans-serif; font-size:26px; line-height:1; margin:2px 0; }
+  .maand-tekst > span { display:block; font-size:12.5px; color:var(--muted); line-height:1.35; } .maand-tekst .md-balk { width:100%; margin-top:8px; } .maand-nog { margin-top:4px; font-size:12px !important; color:var(--white) !important; }
+  .maand-klaar { margin-top:6px; color:var(--accent) !important; font-weight:700; } .maand-klaar.slot { color:var(--muted) !important; font-weight:400; }
+  .maand-col { display:flex; gap:8px; margin-top:8px; overflow-x:auto; } .maand-col div { text-align:center; } .maand-col small { display:block; font-size:9.5px; color:var(--muted); }
   .pm-reeks { display:flex; align-items:center; gap:10px; margin-top:12px; background:rgba(255,107,26,.1); border:1px solid rgba(255,107,26,.35); border-radius:10px; padding:8px 12px; }
   .pm-reeks b { font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1; color:var(--accent); } .pm-reeks span { font-size:12.5px; color:var(--muted); }
   .pm-goud { display:inline-block; margin-left:6px; background:linear-gradient(90deg,#fff1a8,#f3c22c); color:#3d2700; font-size:10px; font-weight:800; letter-spacing:.08em; padding:2px 8px; border-radius:20px; }
@@ -3011,7 +3017,7 @@ function vriendLijstHtml() {
 }
 // ---- Palmares (13-10-2026): medailles in brons, zilver en goud, uitgerekend door de server (lib/badges.js) ----
 const MD_NIV = ['brons', 'zilver', 'goud'], MD_NAAM = ['Brons', 'Zilver', 'Goud'];
-const MD_KLEUR = { 0: ['#4a4a4a', '#2c2c2c', '#171717', '#7a7a7a'], 1: ['#ffd3a3', '#cd7f32', '#6e3b0f', '#3b1d05'], 2: ['#ffffff', '#c8cdd5', '#6c7480', '#262b33'], 3: ['#fff4b8', '#f3c22c', '#a26c06', '#3d2700'] };
+const MD_KLEUR = { 4: ['#ffe2c7', '#FF6B1A', '#a0400a', '#3a1400'], 0: ['#4a4a4a', '#2c2c2c', '#171717', '#7a7a7a'], 1: ['#ffd3a3', '#cd7f32', '#6e3b0f', '#3b1d05'], 2: ['#ffffff', '#c8cdd5', '#6c7480', '#262b33'], 3: ['#fff4b8', '#f3c22c', '#a26c06', '#3d2700'] };
 const MD_IC = {
   core: '<rect x="5" y="6" width="3.5" height="12" rx="1.2"/><rect x="15.5" y="6" width="3.5" height="12" rx="1.2"/><path d="M8.5 12h7M2.5 9.5v5M21.5 9.5v5"/>',
   omhoog: '<path d="M6 14l6-6 6 6M6 20l6-6 6 6"/>',
@@ -3047,8 +3053,8 @@ function medailleSvg(b, maat, opts = {}) {
     <circle cx="60" cy="88" r="33" fill="none" stroke="${k[3]}" stroke-opacity=".45" stroke-width="2.2" stroke-dasharray="2 3.2"/>
     <circle cx="60" cy="88" r="29" fill="url(#${id}g)" stroke="${k[3]}" stroke-opacity=".35"/>
     ${slot ? '' : '<ellipse cx="46" cy="70" rx="17" ry="9" fill="#fff" opacity=".28" transform="rotate(-25 46 70)"/>'}
-    <g transform="translate(44.4 72.4) scale(1.3)" fill="none" stroke="${slot ? '#8a8a8a' : k[3]}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${MD_IC[b.icoon] || MD_IC.vink}</g>
-    ${slot ? `<g transform="translate(84 106)"><circle r="13" fill="#0b0b0b" stroke="#FF6B1A" stroke-width="2"/><rect x="-5.5" y="-2" width="11" height="9" rx="2" fill="#FF6B1A"/><path d="M-3.4-2v-3a3.4 3.4 0 0 1 6.8 0v3" fill="none" stroke="#FF6B1A" stroke-width="2"/></g>` : [1, 2, 3].slice(0, niv).map((n, i) => ster(60 + (i - (niv - 1) / 2) * 15)).join('')}
+    ${b.tekst ? `<text x="60" y="97" text-anchor="middle" font-family="Bebas Neue, Impact, sans-serif" font-size="27" letter-spacing="1" fill="${slot ? '#8a8a8a' : k[3]}">${b.tekst}</text>` : `<g transform="translate(44.4 72.4) scale(1.3)" fill="none" stroke="${slot ? '#8a8a8a' : k[3]}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${MD_IC[b.icoon] || MD_IC.vink}</g>`}
+    ${niv === 4 ? '<path d="M38 128h44l-4 8H42z" fill="#0b0b0b"/><text x="60" y="134.5" text-anchor="middle" font-family="DM Sans, Arial, sans-serif" font-size="6.5" font-weight="800" letter-spacing="1" fill="#FF6B1A">LIMITED</text>' : slot ? `<g transform="translate(84 106)"><circle r="13" fill="#0b0b0b" stroke="#FF6B1A" stroke-width="2"/><rect x="-5.5" y="-2" width="11" height="9" rx="2" fill="#FF6B1A"/><path d="M-3.4-2v-3a3.4 3.4 0 0 1 6.8 0v3" fill="none" stroke="#FF6B1A" stroke-width="2"/></g>` : [1, 2, 3].slice(0, niv).map((n, i) => ster(60 + (i - (niv - 1) / 2) * 15)).join('')}
   </svg>`;
 }
 function palmaresStand(d) {
@@ -3080,6 +3086,7 @@ function palmaresHtml(d) {
   return `${ranglijstHtml(d)}<div class="kaart actief palmares"><div class="kaart-in">
     <div class="pm-kop"><div><div class="label">Je palmares</div><h2>${m} van ${max} medailles</h2><p class="klein" style="margin:4px 0 0">Elke badge heeft drie medailles: brons, zilver en goud. Verdiend met wat je echt doet.</p></div></div>
     ${d.appReeks ? `<div class="pm-reeks"><b>${d.appReeks}</b><span>${d.appReeks === 1 ? 'dag' : 'dagen'} op rij de app geopend${d.appReeks < 7 ? ' &middot; bij 7 dagen je eerste medaille' : ''}</span></div>` : ''}
+    ${maandHtml(d)}
     <div class="pm-tel">${[0, 1, 2].map((i) => `<div class="pm-t">${medailleSvg({ icoon: 'vink', niveau: i + 1 }, 30)}<div><b>${tel[i]}</b><small>${MD_NAAM[i]}</small></div></div>`).join('')}</div>
     <div class="pm-balk"><i style="width:${Math.round(m / max * 100)}%"></i></div>
     <div class="rv-sub">Beloningen</div><div class="bel-lijst">${bel.map(belKaart).join('')}</div>
@@ -3151,6 +3158,22 @@ document.addEventListener('click', async (e) => {
   }
 });
 document.addEventListener('input', (e) => { if (e.target.id === 'rlNaam' && RL.keuze) { RL.keuze.naam = e.target.value; const b = document.querySelector('.rl-voorbeeld b'); if (b) b.textContent = e.target.value || 'Jouw bijnaam'; } });
+// ---- Maanduitdaging: limited-edition medaille, alleen deze maand ----
+function maandMedaille(u, behaald, maat) { return medailleSvg({ tekst: u.kort, niveau: behaald ? 4 : 0, waarde: u.waarde || 0, drempels: [u.doel || 1] }, maat, { niveau: behaald ? 4 : 0 }); }
+function maandHtml(d) {
+  const u = d && d.maand; if (!u) return '';
+  const p = Math.round((u.waarde / u.doel) * 100), col = (d.maandCollectie || []).filter((c) => c.sleutel !== u.sleutel);
+  return `<div class="maand${u.behaald ? ' aan' : ''}" data-maand="1"><div class="maand-md">${maandMedaille(u, u.behaald, 78)}</div><div class="maand-tekst"><small>Maanduitdaging &middot; limited edition</small><b>${esc(u.naam)}</b><span>${esc(u.uitleg)}</span>
+    ${u.behaald ? '<span class="maand-klaar">&#10003; Binnen! Deze medaille is van jou.</span>' : u.opSlot ? '<span class="maand-klaar slot">Deze maand voor leden. Volgende maand weer voor iedereen.</span>' : `<span class="md-balk"><i style="width:${p}%"></i></span><span class="maand-nog">${u.waarde} / ${u.doel} &middot; nog ${u.dagenOver} ${u.dagenOver === 1 ? 'dag' : 'dagen'}</span>`}</div></div>
+    ${col.length ? `<div class="maand-col">${col.map((c) => `<div title="${esc(c.naam)}">${maandMedaille(c, true, 36)}<small>${c.kort}</small></div>`).join('')}</div>` : ''}`;
+}
+function maandModal(nieuw) {
+  const u = (zicht() || {}).maand; if (!u) return;
+  modal(`<div class="md-modal${nieuw ? ' nieuw' : ''}">${nieuw ? '<div class="md-unlock">Ontgrendeld!</div>' : ''}<div class="md-groot">${maandMedaille(u, u.behaald, 150)}</div><h3>${esc(u.naam)}</h3><p class="md-niv">Maanduitdaging &middot; limited edition</p><p>${esc(u.uitleg)}</p>
+    ${u.behaald ? '<p class="klein">Deze medaille kon je alleen deze maand halen. Hij telt mee voor je palmares en de ranglijst.</p>' : u.opSlot ? '<p class="klein">Deze maand is de uitdaging voor leden. Volgende maand is er weer een voor iedereen.</p>' : `<p class="klein">Je staat op ${u.waarde} van ${u.doel}. Nog ${u.dagenOver} ${u.dagenOver === 1 ? 'dag' : 'dagen'} deze maand.</p>`}
+    <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">${nieuw ? 'Top!' : 'Sluiten'}</button></div>`);
+}
+document.addEventListener('click', (e) => { if (e.target.closest('[data-maand]')) { e.preventDefault(); maandModal(); } });
 function medailleSlot() { return '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>'; }
 function badgeModal(id, nieuwNiveau) {
   const b = ((zicht() || {}).badges || []).find((x) => x.id === id); if (!b) return;
@@ -3219,6 +3242,7 @@ function badgeFeest() {
   try { if (sessionStorage.getItem(sleutel)) return; sessionStorage.setItem(sleutel, '1'); } catch (e) {}
   setTimeout(() => {
     if (nbel.length) return beloningModal(nbel[nbel.length - 1], true);
+    const m = nb.find((x) => x.maand); if (m) return maandModal(true);
     const hoogste = nb.slice().sort((a, b) => b.niveau - a.niveau)[0];
     badgeModal(hoogste.id, hoogste.niveau);
   }, 600);

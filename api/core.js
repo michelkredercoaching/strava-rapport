@@ -486,6 +486,7 @@ export async function coreVoorEmail(email) {
     gedaan: b.gedaanDezeWeek.length, frequentie: b.frequentie, afgerond: b.afgerond,
     reeks: b.reeks || 0,
     sessiesTotaal: (d.sessies || []).length,
+    sessiesMaand: (d.sessies || []).filter((x) => String(x.op || '').slice(0, 7) === new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }).slice(0, 7)).length,
     startScore: tests[0] ? tests[0].score : null,
     rompscore: tests.length ? tests[tests.length - 1].score : null,
     kracht: b.kracht, disbalans: b.disbalans, zwaarsteDag: b.zwaarsteDag,
