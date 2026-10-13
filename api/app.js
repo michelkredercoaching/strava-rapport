@@ -284,7 +284,12 @@ async function medailleMelding(email, veld, waarde) {
   for (const b of BADGES) {
     if (b.veld !== veld) continue;
     const i = b.drempels.indexOf(waarde); if (i < 0) continue;
-    await appMelding(email, { soort: 'badge', titel: `Nieuwe medaille: ${b.naam} ${NIVEAUS[i]}`, tekst: i === 2 ? 'Goud! Open je palmares en bekijk hem.' : 'Open je palmares en bekijk hem.', link: '/app#palmares' }).catch(() => {});
+    // Goud is voor leden: een gratis gebruiker hoort dat zijn goud klaarstaat. Ledenbadges alleen voor leden.
+    let lid = true;
+    if (i === 2 || b.lid) { const l = await haalLid(email).catch(() => null); lid = !!(l && ((l.tot && Date.parse(l.tot) > Date.now()) || l.bron === 'coaching')); }
+    if (b.lid && !lid) continue;
+    const goudKlaar = i === 2 && !lid;
+    await appMelding(email, { soort: 'badge', titel: goudKlaar ? `Je goud staat klaar: ${b.naam}` : `Nieuwe medaille: ${b.naam} ${NIVEAUS[i]}`, tekst: goudKlaar ? 'Word lid en hij is meteen van jou.' : i === 2 ? 'Goud! Open je palmares en bekijk hem.' : 'Open je palmares en bekijk hem.', link: goudKlaar ? '/app#lid' : '/app#palmares' }).catch(() => {});
   }
 }
 const dagNr = () => Math.floor(Date.parse(new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }) + 'T00:00:00Z') / 864e5);
@@ -367,9 +372,11 @@ async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], 
   const nieuweBel = [];
   for (const r of BELONINGEN) {
     if (totaal < r.n || goud < (r.goud || 0) || bel[r.id]) continue;
+    const claim = await redis(['SET', `app:badgebeloning:${email}:${r.id}`, '1', 'NX']);
+    if (!claim.ok || claim.result !== 'OK') continue;
     const x = { op: nu };
     if (r.id === 'm5' && !lid && !coaching) { const k = `app:gratisvragen:${email}:${weekSleutel()}`; await redis(['INCRBY', k, '-2']); await redis(['EXPIRE', k, String(8 * 86400)]); x.vragen = 2; }
-    if (r.id === 'm10') { if (!lid && !coaching) { await redis(['SET', `app:badgekorting:${email}`, '5']); x.lidKorting = 5; } }
+    if (r.id === 'm10') { if (!lid && !coaching && !(lidmaatschap && lidmaatschap.betaaldOoit)) { await redis(['SET', `app:badgekorting:${email}`, '5']); x.lidKorting = 5; } }
     if (r.id === 'm25') { x.binnenkort = true; }
     if (r.id === 'm15') { if (coaching) x.coaching = true; else { const tk = maakKortingToken(0, 365); x.link = tk ? `https://rapport.michelkredercoaching.nl/?korting=${tk}` : null; } }
     bel[r.id] = x; nieuweBel.push(r.id);
@@ -1833,7 +1840,7 @@ async function haalPush(email) {
   const r = await redis(['GET', `app:push:${email}`]);
   try { return r.ok && r.result ? JSON.parse(r.result) : null; } catch { return null; }
 }
-function pushBeeld(p) { return p && p.sub ? { aan: true, tijd: p.tijd, dagen: p.dagen, ochtend: p.ochtend !== false, core: p.core !== false, doel: p.doel !== false, tip: p.tip !== false, reeks: p.reeks !== false } : { aan: false, tijd: '07:00', dagen: [1, 2, 3, 4, 5, 6, 0], ochtend: true, core: true, doel: true, tip: true, reeks: true }; }
+function pushBeeld(p) { return p && p.sub ? { aan: true, tijd: p.tijd, dagen: p.dagen, ochtend: p.ochtend !== false, core: p.core !== false, doel: p.doel !== false, tip: p.tip !== false, reeks: p.reeks !== false, badge: p.badge !== false } : { aan: false, tijd: '07:00', dagen: [1, 2, 3, 4, 5, 6, 0], ochtend: true, core: true, doel: true, tip: true, reeks: true, badge: true }; }
 // Pushberichten mag iedereen die is ingelogd (Core-herinnering); het ochtendbericht
 // zelf gaat alleen naar leden (zie routePushCron).
 function pushEmail(res, t) { const e = leesAppToken(String(t || '')); if (!e) res.status(401).json({ ok: false, fout: 'Log opnieuw in.' }); return e; }
@@ -1860,7 +1867,8 @@ async function routePush(req, res) {
   const doel = typeof body.doel === 'boolean' ? body.doel : oud.doel !== false;
   const tip = typeof body.tip === 'boolean' ? body.tip : oud.tip !== false;
   const reeks = typeof body.reeks === 'boolean' ? body.reeks : oud.reeks !== false;
-  const p = { sub, tijd, dagen, ochtend, core, doel, tip, reeks, laatsteReeks: oud.laatsteReeks || null, laatste: oud.laatste || null, laatsteTip: oud.laatsteTip || null, sinds: oud.sinds || new Date().toISOString() };
+  const badge = typeof body.badge === 'boolean' ? body.badge : oud.badge !== false;
+  const p = { sub, tijd, dagen, ochtend, core, doel, tip, reeks, badge, laatsteReeks: oud.laatsteReeks || null, laatste: oud.laatste || null, laatsteTip: oud.laatsteTip || null, sinds: oud.sinds || new Date().toISOString() };
   await redis(['SET', `app:push:${email}`, JSON.stringify(p)]);
   await redis(['SADD', 'app:push:alle', email]);
   if (body.sub && !oud.sub) await tel(email, 'push-aan');

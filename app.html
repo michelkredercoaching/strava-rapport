@@ -3027,7 +3027,7 @@ function vriendKaartHtml(l, compact) {
   const rang = VR_RANG.find(([m]) => n >= m)[1];
   const paal = zelf ? [{ n: 1, t: '2 weken', sub: 'per maat' }, { n: 3, t: 'Analyse', sub: 'gratis' }, { n: 5, t: 'Maand', sub: 'gratis' }, { n: 10, t: 'Jaar', sub: 'gratis' }]
     : [{ n: 1, t: 'Gangmaker', sub: 'rang' }, coaching ? { n: 3, t: 'Wegkapitein', sub: 'rang' } : { n: 3, t: 'Analyse', sub: 'gratis' }, { n: 5, t: 'Kopman', sub: 'rang' }, { n: 10, t: 'Ploegleider', sub: 'rang' }];
-  const telt = (p) => (zelf && p.n >= 5 ? nb : n) >= p.n;
+  const telt = (p) => (zelf && p.n >= 3 ? nb : n) >= p.n;
   const volgende = paal.find((p) => !telt(p));
   const naam = (p) => p.sub === 'rang' ? 'de rang ' + p.t : p.n === 1 ? (gratisLid ? '2 weken gratis lid' : '2 weken extra') : p.n === 3 ? 'je gratis Strava-analyse' : p.n === 5 ? 'een gratis maand' : 'een gratis jaar';
   // Gelijke afstanden; de balk loopt per stuk tussen twee mijlpalen.
@@ -3035,9 +3035,9 @@ function vriendKaartHtml(l, compact) {
   const i2 = paal.findIndex((p) => !telt(p));
   const pct = i2 === -1 ? 100 : i2 === 0 ? Math.round(n / paal[0].n * pos(0)) : Math.round(pos(i2 - 1) + (n - paal[i2 - 1].n) / (paal[i2].n - paal[i2 - 1].n) * (pos(i2) - pos(i2 - 1)));
   const ladder = `<div class="vr-ladder"><div class="vr-lijn"><i style="width:${pct}%"></i></div>${paal.map((p, i) => `<div class="vr-paal${telt(p) ? ' aan' : ''}" style="left:${pos(i)}%"><span>${telt(p) ? '&#10003;' : p.n}</span><b>${p.t}</b><small>${p.sub}</small></div>`).join('')}</div>`;
-  const tel = volgende && zelf && volgende.n >= 5 ? nb : n, nog = volgende ? volgende.n - tel : 0;
+  const tel = volgende && zelf && volgende.n >= 3 ? nb : n, nog = volgende ? volgende.n - tel : 0;
   const doel = (volgende ? `Nog <b>${nog} ${nog === 1 ? 'maat' : 'maten'}</b> tot ${naam(volgende)}` : 'Alle mijlpalen gehaald. Jij bent de motor van de groep.')
-    + (volgende && tel < n ? `<small class="vr-uitleg">Voor de maand en het jaar telt een maat zodra die een tweede keer betaalt, of meteen bij een jaar. Nu ${nb} van je ${n}.</small>` : '')
+    + (volgende && tel < n ? `<small class="vr-uitleg">Voor de analyse, de maand en het jaar telt een maat zodra die een tweede keer betaalt, of meteen bij een jaar. Nu ${nb} van je ${n}.</small>` : '')
     + (wacht > n ? `<small class="vr-uitleg">${wacht - n} ${wacht - n === 1 ? 'maat heeft' : 'maten hebben'} al een gratis account via jou, maar ${wacht - n === 1 ? 'is' : 'zijn'} nog geen lid. Een berichtje helpt.</small>` : '');
   const knoppen = `<label class="vr-label">Wie nodig je uit?</label><input class="vr-naam" type="text" maxlength="40" placeholder="Naam van je maat, bijv. Jan" autocomplete="off"><div class="vr-knoppen"><button type="button" class="knop wa-knop" data-lx="whatsapp">Stuur via WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app of kopieer</button></div>`;
   if (compact) return `<div class="vr-kaart compact"><div class="vr-kop"><div><small>Jouw rang</small><a href="#" data-actie="naarmaten" class="vr-rang-link"><b>${rang}</b> <span>bekijk je beloningen &rsaquo;</span></a></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'}</small></div></div><p class="vr-doel">${doel}</p>${knoppen}</div>`;
@@ -4763,6 +4763,7 @@ function meldInstHtml() {
     <label><input type="checkbox" data-pushsoort="core" ${i.core ? 'checked' : ''}> Core-herinnering</label>
     ${zicht() && !isLid(zicht()) ? `<label><input type="checkbox" data-pushsoort="tip" ${i.tip !== false ? 'checked' : ''}> Elke ochtend een tip van Michel</label>` : ''}
     <label><input type="checkbox" data-pushsoort="doel" ${i.doel !== false ? 'checked' : ''}> Tips en herinneringen voor je doel</label>
+    <label><input type="checkbox" data-pushsoort="badge" ${i.badge !== false ? 'checked' : ''}> Nieuwe medailles</label>
     <label><input type="checkbox" data-pushsoort="reeks" ${i.reeks !== false ? 'checked' : ''}> Seintje als je reeks dreigt te stoppen (19:00)</label>
     ${zicht() && isLid(zicht()) ? `<label><input type="checkbox" data-pushsoort="ochtend" ${i.ochtend ? 'checked' : ''}> Ochtendbericht (weer, banden en kleding)</label>` : ''}
     <p class="klein" style="margin-top:8px">Staat iets uit, dan zie je het gewoon hier in de app zodra je hem opent.</p></div></div></details>`;

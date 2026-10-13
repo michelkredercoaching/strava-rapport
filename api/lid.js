@@ -101,9 +101,12 @@ async function redis(cmd) {
     return { ok: true, result: (await r.json()).result };
   } catch { return { ok: false }; }
 }
+// Databasefout = gooien (niet doen alsof er geen lid is), anders zou een leeg record
+// klant- en abonnementsgegevens overschrijven (13-10-2026).
 async function haalLid(email) {
   const r = await redis(['GET', `lid:${email}`]);
-  if (!r.ok || !r.result) return null;
+  if (!r.ok) throw new Error('redis onbereikbaar bij lid ' + email);
+  if (!r.result) return null;
   try { return JSON.parse(r.result); } catch { return null; }
 }
 async function bewaarLid(email, lid) {
@@ -418,7 +421,7 @@ async function routeVriend(req, res) {
 // Mijlpalen (13-10-2026, besluit Michel): bovenop de 2 weken per maat.
 // 3 maten: gratis Strava-analyse (ook bij schema; niet bij coaching, dat regelt Michel).
 // 5 maten: een maand extra. 10 maten: een jaar extra. Alleen voor wie zelf betaalt.
-// Geteld over alle jaren; elke mijlpaal één keer. De analyse telt alle betaalde maten;
+// Geteld over alle jaren; elke mijlpaal één keer. Alle mijlpalen tellen alleen
 // de maand en het jaar alleen BEVESTIGDE maten: die betaalden een tweede keer, of namen
 // meteen een jaar (tegen misbruik met goedkope eerste maanden, 13-10-2026).
 const VRIEND_MIJLPALEN = [
@@ -435,7 +438,10 @@ async function vriendTijdErbij(lid, email, { dagen = 0, maanden = 0 }, wat) {
     const nieuw = verder(incassoOp(lid));
     const s = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'PATCH', body: JSON.stringify({ startDate: dag(nieuw) }) });
     if (!s.ok) { await meldIntern(`MAAT-BELONING MISLUKT - ${email}`, `${wat} voor ${email} lukte niet in Mollie: ${JSON.stringify(s.j).slice(0, 300)}. Schuif de volgende incasso van abonnement ${lid.subscriptionId} met de hand op naar ${dag(nieuw)}.`); return null; }
+    const oudTot = lid.tot;
     lid.tot = plusDagen(nieuw, SPELING_DAGEN).toISOString();
+    if (lid.jaarKeuze && lid.jaarKeuze === oudTot) lid.jaarKeuze = lid.tot;
+    if (lid.jaarVraagVoor && lid.jaarVraagVoor === oudTot) lid.jaarVraagVoor = lid.tot;
     return `je volgende betaling schuift op naar ${datumKort(nieuw)}`;
   }
   lid.tot = verder(new Date(Math.max(Date.now(), Date.parse(lid.tot || 0) || 0))).toISOString();
@@ -445,7 +451,7 @@ async function vriendMijlpalen(lid, email, meldingen) {
   const n = lid.vriendAantal || 0, nb = lid.vriendBevestigd || 0, zelf = !inbegrepen(lid), coaching = lid.bron === 'coaching' && !lid.subscriptionId;
   lid.vriendMijlpalen = lid.vriendMijlpalen || [];
   for (const m of VRIEND_MIJLPALEN) {
-    if (lid.vriendMijlpalen.includes(m.n) || (m.soort === 'analyse' ? n : nb) < m.n) continue;
+    if (lid.vriendMijlpalen.includes(m.n) || nb < m.n) continue;
     if (m.soort === 'analyse') {
       if (coaching) { lid.vriendMijlpalen.push(m.n); continue; }
       const t = maakKortingToken(0, 365);
@@ -673,6 +679,7 @@ async function routeStart(req, res) {
   const automatisch = await incassoKlaar();
   // Mislukte incasso bijwerken (09-10-2026): nieuwe machtiging, en in de webhook
   // stopt het oude abonnement en loopt het nieuwe door op de oude datum.
+  if (lid.status === 'achterstand' && lid.subscriptionId && !automatisch) return res.status(503).json({ ok: false, fout: 'Betalen lukt nu even niet. Probeer het over een paar minuten nog eens.' });
   const herstel = lid.status === 'achterstand' && !!lid.subscriptionId && automatisch;
   // Via een maat (09-10-2026): eerste maand voor de helft, alleen per maand en
   // alleen voor wie nog nooit betaald lid was.
@@ -739,15 +746,39 @@ async function routeWebhook(req, res) {
   // via de klant-id die we bij de start bewaarden.
   const lidEmail = email || await emailVoorKlant(p.customerId);
   if (!lidEmail) { console.error('Webhook zonder te herleiden lid:', id); return res.status(200).send('ok'); }
-  const lid = await haalLid(lidEmail) || {};
-
+  // Terugbetaald of teruggeboekt (13-10-2026): Mollie belt dan ook, met status 'paid'.
+  // Niet automatisch toegang intrekken; Michel krijgt één keer bericht om het te regelen.
+  const terug = parseFloat((p.amountRefunded && p.amountRefunded.value) || '0'), storno = parseFloat((p.amountChargedBack && p.amountChargedBack.value) || '0');
+  if (p.status === 'paid' && (terug > 0 || storno > 0)) {
+    const eerst = await redis(['SET', `lid:terugbetaald:${id}`, '1', 'NX', 'EX', String(400 * 86400)]);
+    const lr = await haalLid(lidEmail).catch(() => null), totTekst = lr && lr.tot ? datumKort(lr.tot) : 'onbekend';
+    if (eerst.ok && eerst.result === 'OK') await meldIntern(`${storno > 0 ? 'STORNO' : 'TERUGBETAALD'} - lidmaatschap - ${lidEmail}`, `Betaling ${id} van ${lidEmail} is ${storno > 0 ? 'teruggeboekt (' + euro(storno) + ')' : 'terugbetaald (' + euro(terug) + ')'}. De app-toegang loopt nog tot ${totTekst}. Zet de einddatum of het abonnement zo nodig met de hand goed${p.metadata && p.metadata.vriend ? '; deze betaling kwam via maat-code ' + p.metadata.vriend + ', de beloning van de uitnodiger is nog niet teruggedraaid' : ''}.`);
+    return res.status(200).send('terugbetaald gemeld');
+  }
   if (p.status === 'paid') {
-    const nieuw = await redis(['SET', `lid:betaling:${id}`, '1', 'NX', 'EX', String(60 * 60 * 24 * 400)]);
-    if (nieuw.ok && nieuw.result !== 'OK') return res.status(200).send('al verwerkt');
+    // Slot tegen dubbele gelijktijdige verwerking; "verwerkt" pas na het opslaan.
+    const klaar = await redis(['GET', `lid:betaling:${id}`]);
+    if (!klaar.ok) return res.status(503).send('database even weg');
+    if (klaar.result) return res.status(200).send('al verwerkt');
+    const slot = await redis(['SET', `lid:bezig:${id}`, '1', 'NX', 'EX', '120']);
+    if (!slot.ok || slot.result !== 'OK') return res.status(503).send('bezig');
+    try { return await verwerkBetaald(req, res, p, id, lidEmail); }
+    catch (e) { console.error('Webhook lid fout, Mollie probeert opnieuw:', id, e && e.message); return res.status(500).send('fout'); }
+    finally { await redis(['DEL', `lid:bezig:${id}`]); }
+  }
+  const lid = await haalLid(lidEmail) || {};
+  return verwerkMislukt(res, p, id, lidEmail, lid);
+}
+async function verwerkBetaald(req, res, p, id, lidEmail) {
+  const lid = await haalLid(lidEmail) || {};
+  const naBewaren = [];   // maat-beloningen pas na het opslaan van dit lid
+  let periodeVanaf = null;
+  {
     const betaaldOp = p.paidAt || new Date().toISOString();
     const soort = (p.metadata && p.metadata.soort) || '';
     lid.betaaldOoit = true;
     if (p.metadata && p.metadata.badgeKorting) await redis(['DEL', `app:badgekorting:${lidEmail}`]);
+    if (p.metadata && p.metadata.terug) lid.winbackTot = null;   // terugkomkorting is nu gebruikt
 
     if (p.sequenceType === 'first') {
       // Eerste periode binnen: abonnement aanmaken, eerste incasso na een maand of een jaar.
@@ -755,11 +786,20 @@ async function routeWebhook(req, res) {
       lid.plan = plan;
       // Herstel na mislukte incasso: oude abonnement stoppen, de betaalde periode
       // begint op de datum van de mislukte incasso (zelfde ritme als voorheen).
-      if (soort === 'lid-herstel' && lid.subscriptionId) await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'DELETE' });
+      // Ook bij een tweede eerste betaling (twee tabbladen, opnieuw lid): het oude abonnement stoppen,
+      // anders blijft Mollie dat ernaast incasseren.
+      if (lid.subscriptionId && lid.customerId) {
+        const del = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'DELETE' });
+        if (!del.ok && del.status !== 404 && del.status !== 422) await meldIntern(`OUD ABONNEMENT NIET GESTOPT - ${lidEmail}`, `Bij betaling ${id} kon abonnement ${lid.subscriptionId} van ${lidEmail} niet gestopt worden (${del.status}). Zet het in Mollie met de hand stop, anders wordt er dubbel afgeschreven.`);
+      }
       // Nog app via een schema? Dan begint de betaalde periode pas daarna.
-      const vanaf = soort === 'lid-herstel' && lid.mislukt && lid.mislukt.periodeStart ? new Date(lid.mislukt.periodeStart) : lid.bron === 'schema' && lid.tot && Date.parse(lid.tot) > Date.now() ? new Date(lid.tot) : new Date(betaaldOp);
+      // Loopt er nog een betaalde of cadeauperiode, dan begint de nieuwe pas daarna (13-10-2026).
+      // Met een abonnement zit er speling in tot, zonder (schema, iDEAL, cadeau) niet.
+      const nogTot = lid.tot && Date.parse(lid.tot) > Date.now() ? Date.parse(lid.tot) - (lid.subscriptionId ? SPELING_DAGEN * 864e5 : 0) : 0;
+      const vanaf = soort === 'lid-herstel' && lid.mislukt && lid.mislukt.periodeStart ? new Date(lid.mislukt.periodeStart) : nogTot > Date.parse(betaaldOp) ? new Date(nogTot) : new Date(betaaldOp);
+      periodeVanaf = vanaf;
       lid.mislukt = null;
-      if (p.metadata && p.metadata.vriend && !lid.vriendVan) { lid.vriendVan = p.metadata.vriend; lid.vriendKlaar = plan === 'jaar'; await beloonVriend(p.metadata.vriend, lidEmail, lid.naam, plan === 'jaar'); }
+      if (p.metadata && p.metadata.vriend && !lid.vriendVan) { lid.vriendVan = p.metadata.vriend; lid.vriendKlaar = plan === 'jaar'; naBewaren.push(() => beloonVriend(p.metadata.vriend, lidEmail, lid.naam, plan === 'jaar')); }
       lid.bron = 'betaald'; lid.vriendCadeau = false; lid.cadeauMaand = false;
       if (soort !== 'lid-herstel' || !lid.prijs) lid.prijs = { maand: PLANNEN.maand.bedrag, jaar: PLANNEN.jaar.bedrag };
       const start = plusMaanden(vanaf, PLANNEN[plan].maanden);
@@ -780,24 +820,26 @@ async function routeWebhook(req, res) {
       lid.tot = plusDagen(start, SPELING_DAGEN).toISOString();
       await redis(['SET', `lid:klant:${p.customerId}`, lidEmail]);
     } else if (p.metadata && p.metadata.soort === 'lid-periode') {
-      if (lid.bron === 'schema') lid.bron = 'betaald';
+      lid.bron = 'betaald'; lid.vriendCadeau = false; lid.cadeauMaand = false;
       // Eenmalige iDEAL-betaling (zonder incasso): een maand of jaar erbij,
       // vanaf de huidige einddatum als die nog loopt. Geen abonnement.
       const plan = planVan(p.metadata.plan);
-      if (p.metadata.vriend && !lid.vriendVan) { lid.vriendVan = p.metadata.vriend; lid.vriendKlaar = plan === 'jaar'; await beloonVriend(p.metadata.vriend, lidEmail, lid.naam, plan === 'jaar'); }
-      else if (lid.vriendVan && !lid.vriendKlaar) { lid.vriendKlaar = true; await bevestigVriend(lid.vriendVan); }
+      if (p.metadata.vriend && !lid.vriendVan) { lid.vriendVan = p.metadata.vriend; lid.vriendKlaar = plan === 'jaar'; naBewaren.push(() => beloonVriend(p.metadata.vriend, lidEmail, lid.naam, plan === 'jaar')); }
+      else if (lid.vriendVan && !lid.vriendKlaar) { lid.vriendKlaar = true; const vc = lid.vriendVan; naBewaren.push(() => bevestigVriend(vc)); }
       lid.plan = plan; lid.handmatig = true; lid.customerId = p.customerId || lid.customerId;
       const basis = lid.tot && Date.parse(lid.tot) > Date.now() ? new Date(lid.tot) : new Date(betaaldOp);
+      periodeVanaf = basis;
       lid.tot = plusMaanden(basis, PLANNEN[plan].maanden).toISOString();
       lid.status = 'actief'; lid.sinds = lid.sinds || betaaldOp; lid.herinnerd = null;
       await redis(['SADD', 'lid:handmatig', lidEmail]);
     } else {
       // Incasso binnen: een maand of een jaar verlengen vanaf de huidige einddatum.
       const basis = lid.tot && Date.parse(lid.tot) > Date.now() ? plusDagen(lid.tot, -SPELING_DAGEN) : new Date(betaaldOp);
+      periodeVanaf = basis;
       lid.tot = plusDagen(plusMaanden(basis, PLANNEN[planVan(lid.plan)].maanden), SPELING_DAGEN).toISOString();
       if (lid.status !== 'opgezegd') lid.status = 'actief';
       lid.jaarVraagVoor = null;
-      if (lid.vriendVan && !lid.vriendKlaar) { lid.vriendKlaar = true; await bevestigVriend(lid.vriendVan); }
+      if (lid.vriendVan && !lid.vriendKlaar) { lid.vriendKlaar = true; const vc = lid.vriendVan; naBewaren.push(() => bevestigVriend(vc)); }
       if (lid.kortingActief && p.amount && p.amount.value === halve(prijzenVan(lid).maand)) {
         lid.kortingTegoed = Math.max(0, (lid.kortingTegoed || 1) - 1);
         if (!lid.kortingTegoed && lid.subscriptionId) {
@@ -806,7 +848,11 @@ async function routeWebhook(req, res) {
         }
       }
     }
-    await bewaarLid(lidEmail, lid);
+    const opgeslagen = await bewaarLid(lidEmail, lid);
+    if (!opgeslagen || !opgeslagen.ok) throw new Error('lid opslaan mislukt');
+    // Vanaf hier is de betaling verwerkt: een herhaalde webhook doet niets dubbel.
+    await redis(['SET', `lid:betaling:${id}`, '1', 'EX', String(60 * 60 * 24 * 400)]);
+    for (const f of naBewaren) { try { await f(); } catch (e) { console.error('Maat-beloning mislukt:', id, e && e.message); await meldIntern(`MAAT-BELONING MISLUKT - ${lidEmail}`, `Na betaling ${id} lukte de maat-beloning niet: ${e && e.message}. Kijk het even na.`); } }
     await zetLidmaatschap({ email: lidEmail, naam: lid.naam, tot: lid.tot });
     await mcTag(lidEmail, 'mkc-lid');
     // Welkomstmail van Michel (09-10-2026), één keer per lid.
@@ -825,17 +871,21 @@ async function routeWebhook(req, res) {
     // lib/mollie-factuur.js, prima voor een vereenvoudigde factuur onder €100.
     if ((process.env.MOLLIE_FACTUUR || '').toLowerCase() === 'aan') {
       try {
-        const maand = new Date(betaaldOp).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
-        const periode = planVan(lid.plan) === 'jaar' ? `jaar vanaf ${new Date(betaaldOp).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}` : maand;
-        const f = await maakMollieFactuur({ naam: (lid.factuur && lid.factuur.naam) || lid.naam || lidEmail.split('@')[0], postcode: lid.factuur && lid.factuur.postcode, huisnummer: lid.factuur && lid.factuur.huisnummer, land: lid.factuur && lid.factuur.land, straat: lid.factuur && lid.factuur.straat, plaats: lid.factuur && lid.factuur.plaats, email: lidEmail, bedrag: (p.amount && p.amount.value) || PLANNEN[planVan(lid.plan)].bedrag, betaalId: id, omschrijving: `${OMSCHRIJVING}, ${periode}${p.metadata && p.metadata.vriend ? (planVan(lid.plan) === 'jaar' ? ', via een maat (' + euro(VRIEND_JAAR_KORTING) + ' korting)' : ', via een maat (50% korting)') : ''}` });
+        const pv = periodeVanaf || new Date(betaaldOp);
+        const maand = new Date(pv).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
+        const periode = planVan(lid.plan) === 'jaar' ? `jaar vanaf ${new Date(pv).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}` : maand;
+        const f = await maakMollieFactuur({ naam: (lid.factuur && lid.factuur.naam) || lid.naam || lidEmail.split('@')[0], postcode: lid.factuur && lid.factuur.postcode, huisnummer: lid.factuur && lid.factuur.huisnummer, land: lid.factuur && lid.factuur.land, straat: lid.factuur && lid.factuur.straat, plaats: lid.factuur && lid.factuur.plaats, email: lidEmail, bedrag: (p.amount && p.amount.value) || PLANNEN[planVan(lid.plan)].bedrag, betaalId: id, omschrijving: `${OMSCHRIJVING}, ${periode}${p.metadata && p.metadata.vriend ? (planVan(lid.plan) === 'jaar' ? ', via een maat (' + euro(VRIEND_JAAR_KORTING) + ' korting)' : ', via een maat (50% korting)') : p.metadata && p.metadata.badgeKorting ? ', badgekorting ' + euro(p.metadata.badgeKorting) : p.metadata && p.metadata.terug ? ', welkom terug (50% korting)' : ''}` });
         if (f.ok && f.id) { lid.facturen = [{ id: f.id, nr: f.nummer || '', bedrag: (p.amount && p.amount.value) || '', op: betaaldOp.slice(0, 10), omschrijving: periode }, ...(lid.facturen || [])].slice(0, 60); await bewaarLid(lidEmail, lid); }
         if (!f.ok) { console.error('Factuur lidmaatschap mislukt:', lidEmail, id, f.fout); await meldIntern(`FACTUUR MISLUKT - lidmaatschap - ${lidEmail}`, `Automatische factuur voor ${id} (${lidEmail}) mislukte: ${f.fout || 'onbekende fout'}. De toegang staat wel open. Maak de factuur even handmatig aan in Mollie.`); }
       } catch (e) { console.error('Factuur lidmaatschap fout:', e); }
     }
     return res.status(200).send('ok');
   }
-
+}
+async function verwerkMislukt(res, p, id, lidEmail, lid) {
   if (['failed', 'expired', 'canceled'].includes(p.status) && p.sequenceType === 'recurring') {
+    // Geen lopend abonnement (opgezegd of al vervangen)? Dan geen achterstand en geen mail.
+    if (!lid.subscriptionId || lid.status === 'opgezegd') return res.status(200).send('ok');
     // Incasso mislukt: lid blijft tot de einddatum (met speling) toegang houden.
     // Eén bericht per mislukte betaling, met een knop om bij te werken.
     lid.status = 'achterstand';
@@ -1232,8 +1282,8 @@ export async function ledenOverzicht() {
   let nieuwVandaag = 0, mrr = 0;
   for (const { lid } of leden) {
     const k = soortVan(lid); tel[k] = (tel[k] || 0) + 1;
-    if (k === 'betaald-maand') mrr += 19;
-    if (k === 'betaald-jaar') mrr += 149 / 12;
+    if (k === 'betaald-maand') mrr += Number(prijzenVan(lid).maand) || 0;
+    if (k === 'betaald-jaar') mrr += (Number(prijzenVan(lid).jaar) || 0) / 12;
     if ((k === 'betaald-maand' || k === 'betaald-jaar') && lid.sinds && nlDatum(new Date(lid.sinds)) === vandaag) nieuwVandaag++;
   }
   const recent = leden.filter(({ lid }) => lid.sinds).sort((a, b) => String(b.lid.sinds).localeCompare(String(a.lid.sinds))).slice(0, 12)
