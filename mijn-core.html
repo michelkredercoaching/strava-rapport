@@ -407,7 +407,8 @@ function teken() {
     h += appHtml();
     const testEerst = d.testNodig === 0 && (d.gedaanDezeWeek.length > 0 || d.afgerond > 0);
     if (testEerst) h += testHtml(d, true);
-    if (d.meterNodig != null) h += meterHtml(d);
+    const meterLater = d.meterNodig != null && !d.afgerond && d.sessies.length;
+    if (d.meterNodig != null && !meterLater) h += meterHtml(d);
     if (d.testNodig != null && d.testNodig !== 0) h += testHtml(d, false);
     if (!d.betaald && !d.opSlot) h += `<div class="proefbalk"><span><b>Niveau 1 is gratis.</b> Doe je sessies en je starttest, dan zie je meteen wat het programma met je doet.</span></div>`;
     if (d.opSlot) h += muurHtml(d);
@@ -418,6 +419,7 @@ function teken() {
       h += rustDagHtml(d);
       h += hervatHtml(d);
       if (d.sessies.length) h += sessiesHtml(d);
+      if (meterLater) h += meterHtml(d);
       if (d.testNodig === 0 && !testEerst) h += testHtml(d, true);
       h += fietstipHtml(d);
       h += klap('tips', 'Tip bij dit niveau', '', tipsHtml(d), d.week === 1);

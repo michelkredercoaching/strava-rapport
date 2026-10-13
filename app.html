@@ -1195,13 +1195,16 @@ function toonLogin(melding, soort) {
 // ---- Kaarten ----
 function coreKaart(c) {
   if (!c) {
-    return `<div class="kaart"><div class="kaart-in"><span class="tag oranje">Gratis week</span>
+    const inb = isLid(zicht() || {});
+    const startKnop = binnenkortNu() ? BINNENKORT : `<button class="knop" data-actie="startcore">${inb ? 'Start je Core-app' : 'Start je gratis week'}</button><p class="klein">Eerst een intake van een minuut, dan staat je eerste sessie klaar. Je account staat al klaar.</p>`;
+    return `<div class="kaart"><div class="kaart-in"><span class="tag oranje">${inb ? 'Inbegrepen' : 'Gratis week'}</span>
       <div class="label">Core-app</div><h2>Sterk tot de laatste km</h2>
-      <p>Core op maat die met je meebeweegt, thuis zonder gewichten. Train mee op de timer en zie je Rompscore stijgen.</p>
+      <p>Core op maat die met je meebeweegt, thuis zonder gewichten. 10 tot 20 minuten, je traint mee op de timer en ziet je Rompscore stijgen.</p>
+      ${startKnop}
+      <details class="core-uitleg" style="margin-top:14px"><summary class="klein" style="cursor:pointer;color:var(--accent);font-weight:700">Hoe werkt het?</summary>
       ${coreMeeHtml(zicht())}
       <div class="wazig" style="margin-top:14px"><div class="achter"><div class="cijfers"><div class="cijfer"><span>Niveau</span><b>3</b></div><div class="cijfer"><span>Rompscore</span><b>66</b></div><div class="cijfer"><span>Sessies</span><b>2/3</b></div></div></div>
-        <div class="slotje">${SLOT}<b>${binnenkortNu() ? 'Binnenkort' : 'Week 1 is gratis'}</b></div></div>
-      ${binnenkortNu() ? BINNENKORT : '<button class="knop" data-actie="startcore">Start je gratis week</button><p class="klein">Met je account, je hoeft niets meer in te vullen.</p>'}</div></div>`;
+        <div class="slotje">${SLOT}<b>${binnenkortNu() ? 'Binnenkort' : inb ? 'Zo ziet je voortgang eruit' : 'Week 1 is gratis'}</b></div></div></details></div></div>`;
   }
   const K = window.CoreSpierkaart;
   if (c.intakeNodig) {
@@ -1231,7 +1234,7 @@ function coreKaart(c) {
       <div class="cijfer"><span>Niveau</span><b>${c.week}</b></div><div class="cijfer"><span>Gedaan</span><b>${c.afgerond}</b></div></div>
     <div class="balk"><i style="width:${c.klaar ? 100 : pct}%"></i></div>
     ${c.klaar ? '' : kaartje}
-    <a class="knop" href="${esc(c.link)}">${c.klaar ? 'Open je Core-app' : v ? `Verder met sessie ${'ABCD'.indexOf(v.letter) + 1}` : 'Open je Core-app'}</a></div></div>`;
+    <a class="knop" href="${esc(c.link)}">${c.klaar ? 'Open je Core-app' : v ? `${c.afgerond ? 'Verder met' : 'Start'} sessie ${'ABCD'.indexOf(v.letter) + 1}` : 'Open je Core-app'}</a></div></div>`;
 }
 
 function nepGrafiek() {
@@ -2510,7 +2513,7 @@ function tegelsHtml(d) {
   t.push(tegel({ v: 'rijden', ic: 'rijden', nm: 'Vandaag rijden', sub: slim ? 'Je bandenspanning, kleding, voeding en wind voor je rit' : mijnSp ? 'Jouw spanning: ' + mijnSp + ' &middot; plus wind en groepsrit' : 'Je bandenspanning en windadvies, en plan een groepsrit', tag: slim ? 'Lid' : 'Gratis', tagKlas: slim ? 'or' : 'gr', breed: true }));
   if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: schemaTegelSub(d.schema), tag: d.schema.status === 'klaar' ? 'Afgerond' : 'Actief', tagKlas: 'gr' }));
   if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
-  else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Core stability voor wielrenners, op de timer', tag: binnenkortNu() ? 'Binnenkort' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
+  else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Core stability voor wielrenners, op de timer', tag: binnenkortNu() ? 'Binnenkort' : lid ? 'Inbegrepen' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Tijd voor een nieuwe' : 'Jouw uitslag') : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' }));
   t.push(tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? 'Lid' : '3 gratis', tagKlas: 'or' }));
   if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true }));
@@ -2788,7 +2791,7 @@ function vandaagHtml(d) {
     if (!c.volgende) rijen.push(vdRij('core', 'Core', 'Deze week klaar' + (c.rompscore ? ' &middot; Rompscore ' + c.rompscore : ''), { href: c.link + '#vandaag' }));
     else if (vandaagCore) rijen.push(vdRij('core', 'Core vandaag', esc(c.volgende.naam) + ' &middot; ' + c.volgende.minuten + ' min', { href: c.link + '#vandaag' }));
     else { const iNu = s.weekDagen.findIndex((x) => x.vandaag), nx = cd.find((x) => s.weekDagen.indexOf(x) > iNu) || cd[0]; rijen.push(vdRij('core', 'Core', 'Niet vandaag, je benen gaan voor. Volgende: ' + esc(datumKort(nx.datum)).split(' ')[0], { href: c.link + '#vandaag' })); }
-  } else if (!c && kanLidNu(d)) rijen.push(vdRij('core', 'Core', 'Start je eerste sessie, thuis op de timer', { actie: 'startcore' }));
+  } else if (!c && !binnenkortNu()) rijen.push(vdRij('core', 'Core', 'Start je eerste sessie, thuis op de timer', { actie: 'startcore' }));
   // Rit: spanning en weer (zelfde berekening als op Rijden)
   const p = SB.profiel || d.bandenProfiel;
   if (toonSlim(d)) {
@@ -3008,13 +3011,13 @@ document.addEventListener('click', (e) => {
 // Proefweek via dezelfde route als /core-gratis/ (tag core-gratis, welkomstmail,
 // journey), maar met het mailadres van je account. Daarna meteen de Core-app open.
 async function startCore(knop) {
-  knop.disabled = true; knop.textContent = 'Even klaarzetten...';
+  const oud = knop.innerHTML; knop.disabled = true; knop.textContent = 'Even klaarzetten...';
   try {
     const j = await (await fetch('/api/keuzehulp-inschrijving', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ route: 'core-gratis', email: D.email, naam: D.naam || '' }) })).json();
     if (j.ok && j.link) { location.href = j.link; return; }
     alert(j.fout || 'Dat lukte niet. Probeer het zo nog eens.');
   } catch (e) { alert('Verbinding mislukt. Probeer het zo nog eens.'); }
-  knop.disabled = false; knop.textContent = 'Start je gratis week';
+  knop.disabled = false; knop.innerHTML = oud;
 }
 async function wordLid(knop) {
   const stap2 = document.getElementById('lidStap2');
@@ -4753,7 +4756,7 @@ function startlijstStappen(d) {
     { k: 'doel', t: 'Kies waar je voor traint', klaar: !!d.doel, actie: 'doel' },
     { k: 'fiets', t: 'Zet je fiets en woonplaats erin', klaar: !!(prof.plaats && (prof.fietsen || []).length), actie: 'fiets' },
     { k: 'push', t: 'Zet meldingen aan', klaar: !!(PUSH.inst && PUSH.inst.aan), actie: 'push' },
-    { k: 'core', t: 'Doe je Core-intake en starttest', klaar: !!(d.core && !d.core.intakeNodig && d.core.rompscore != null), actie: 'core' },
+    { k: 'core', t: !d.core || d.core.intakeNodig ? 'Start je Core-app (intake van een minuut)' : 'Doe je Core-starttest', klaar: !!(d.core && !d.core.intakeNodig && d.core.rompscore != null), actie: 'core' },
     { k: 'coach', t: 'Stel je eerste vraag aan de coach', klaar: !!d.coachGesteld, actie: 'coach' }
   ];
 }
@@ -4774,7 +4777,7 @@ document.addEventListener('click', (e) => {
   if (a === 'fiets') { naar('rijden'); setTimeout(() => { const b = document.getElementById('banden'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300); }
   if (a === 'doel') { DOELV = { open: true, kies: null, fout: '', bezig: false }; teken(); setTimeout(() => document.getElementById('doelvraag')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150); }
   if (a === 'push') { const v = document.querySelector('[data-push="aan"]'); if (v) v.click(); else { const m = document.getElementById('meldinst') || document.getElementById('banden'); if (m) m.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }
-  if (a === 'core') { const c = zicht() && zicht().core; if (c && c.link) location.href = c.link; else { const s = document.querySelector('[data-actie="startcore"]'); if (s) s.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }
+  if (a === 'core') { const c = zicht() && zicht().core; if (c && c.link) location.href = c.link + (c.intakeNodig ? '' : '#vandaag'); else startCore(k); }
   if (a === 'coach') coachOpen(true);
 });
 
