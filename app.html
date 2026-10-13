@@ -580,6 +580,8 @@
   .sb-oordeel .bt-keuze button { font-size:13.5px; }
   .sb-oordeel .sb-link { margin-top:8px; }
   /* Welkom voor nieuwe gebruikers */
+  .welkom { position:relative; }
+  .welkom-x { position:absolute; top:6px; right:10px; background:none; border:0; color:var(--muted); font-size:22px; cursor:pointer; line-height:1; }
   .welkom { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px 16px; margin:4px 0 22px; }
   .welkom b { display:block; font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin-bottom:8px; }
   .welkom ol { list-style:none; display:grid; gap:8px; }
@@ -1129,6 +1131,25 @@ const BT_BREEDTES = { weg: [23, 25, 26, 28, 30, 32], gravel: [35, 38, 40, 42, 45
 const btWaarden = () => ({ type: 'weg', breedte: 28, tubeless: false, hookless: false, nat: false, ...btLees() });
 // Leden krijgen de slimme versie. Michel ziet die in "Alles open"; als klant ziet hij de gratis versie.
 const toonSlim = (d) => !!d.bandenSlim && (isLid(d) || (d.beheer && BEKIJK === 'alles'));
+// Gratis voorproefjes met het echte weer (13-10-2026): het advies wordt echt
+// uitgerekend voor een rit van 2 uur, en blijft vervaagd achter het slot.
+function vrijWeerRegel() {
+  const w = weerNu(); if (!w) return '';
+  return `<div class="sb-weer bt-echtweer"><span>Vandaag in ${esc(w.plaats || 'jouw plaats')}: <b>${w.temp}&deg;</b> &middot; ${w.nat ? '<b class="nat">nat wegdek</b>' : 'droog'}${w.wind ? ', wind ' + w.wind + ' km/u' : ''}</span></div>`;
+}
+function vrijKledingAchter() {
+  const w = weerNu();
+  if (!w || !KL_LIB) return '<div class="kl-gevoel"><b>2&deg;</b><span>voelt het onderweg</span></div><ul class="kl-lijst"><li>Thermoshirt met lange mouwen</li><li>Thermobroek</li><li>Winterjack</li><li>Winterhandschoenen</li><li>Overschoenen</li></ul>';
+  const stuk = (WK.uren || []).slice(0, 3);
+  const a = KL_LIB.kledingAdvies({ temp: Math.min(...stuk.map((u) => u.temp)), start: stuk[0].temp, wind: Math.max(...stuk.map((u) => u.wind)), regen: w.nat, intensiteit: 'rustig', kouType: 'normaal', duurUur: 2 });
+  return a ? `<div class="kl-gevoel"><b>${a.gevoel}&deg;</b><span>voelt het onderweg</span></div><ul class="kl-lijst">${a.items.map((x) => '<li>' + esc(x) + '</li>').join('')}</ul>` : '';
+}
+function vrijVoedingAchter() {
+  const w = weerNu();
+  if (!w || !RV_LIB) return '<div class="rv-kop"><div><b>70</b><span>gram per uur</span></div><div><b>3</b><span>bidons</span></div></div><ul class="kl-lijst"><li>2 bidons sportdrank</li><li>2 repen</li><li>1 gel voor het laatste uur</li><li>Onderweg 1 bidon bijvullen</li></ul>';
+  const a = RV_LIB.voedingAdvies({ duur: 2, temp: w.temp, hard: false });
+  return `<div class="rv-kop"><div><b>${a.gPerUur || 0}</b><span>gram per uur</span></div><div><b>${a.bidons}</b><span>${a.bidons === 1 ? 'bidon' : 'bidons'}</span></div><div><b>${w.temp}&deg;</b><span>onderweg</span></div></div><ul class="kl-lijst">${a.items.map((x) => '<li>' + esc(x) + '</li>').join('')}</ul>`;
+}
 function bandenKaart(d) {
   if (toonSlim(d)) return slimBandenKaart();
   const v = btWaarden();
@@ -1152,18 +1173,15 @@ function bandenKaart(d) {
     ${d.gast ? '<p>Plan een rit en deel de link in je groepsapp. Iedereen ziet het weer, de wind en zijn eigen bandenspanning voor jullie rit.</p><button type="button" class="knop" data-actie="gastlogin" style="margin-top:12px">Maak je gratis account</button>' : '<div id="grmaak">' + grMaakHtml() + '</div>'}</div></div>`; }
   if (vtab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag oranje">Lid</span>
     <div class="label">Vandaag rijden</div><h2>Wat neem je mee?</h2>${vtabs}
-    <div class="bt-slot"><div class="achter">
-      <div class="rv-kop"><div><b>70</b><span>gram per uur</span></div><div><b>3</b><span>bidons</span></div></div>
-      <ul class="kl-lijst"><li>2 bidons sportdrank</li><li>2 repen</li><li>1 gel voor het laatste uur</li><li>Onderweg 1 bidon bijvullen</li></ul></div>
-    <div class="voor">${SLOT}<b>Nooit meer de man met de hamer</b><span>Voor jouw rit precies hoeveel koolhydraten en bidons je meeneemt, afgestemd op hoe lang en hoe hard je rijdt en hoe warm het wordt. Met Michels eigen regels.</span>
+    ${vrijWeerRegel()}<div class="bt-slot"><div class="achter">
+      ${vrijVoedingAchter()}</div>
+    <div class="voor">${SLOT}<b>${weerNu() ? 'Je voeding voor een rit van 2 uur staat klaar' : 'Nooit meer de man met de hamer'}</b><span>Voor jouw rit precies hoeveel koolhydraten en bidons je meeneemt, afgestemd op hoe lang en hoe hard je rijdt en hoe warm het wordt. Met Michels eigen regels.</span>
       ${kanLidNu(d) ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met de MKC-app</button>' : BINNENKORT}</div></div></div></div>`;
   if (vtab === 'kleding') return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag oranje">Lid</span>
     <div class="label">Vandaag rijden</div><h2>Wat trek je aan?</h2>${vtabs}
-    <div class="bt-slot"><div class="achter">
-      <div class="sb-weer"><span><b>6&deg;</b> in jouw plaats &middot; wind 30 km/u</span></div>
-      <div class="kl-gevoel"><b>2&deg;</b><span>voelt het onderweg</span></div>
-      <ul class="kl-lijst"><li>Thermoshirt met lange mouwen</li><li>Thermobroek</li><li>Winterjack</li><li>Winterhandschoenen</li><li>Overschoenen</li></ul></div>
-    <div class="voor">${SLOT}<b>Wat trek je aan voor jouw rit?</b><span>Op basis van het weer tijdens je hele rit, wind en regen, hoe hard je rijdt en of je het snel koud hebt. Met Michels eigen kledingindeling uit 9 jaar prof.</span>
+    ${vrijWeerRegel()}<div class="bt-slot"><div class="achter">
+      ${vrijKledingAchter()}</div>
+    <div class="voor">${SLOT}<b>${weerNu() ? 'Je kledingadvies voor vandaag staat klaar' : 'Wat trek je aan voor jouw rit?'}</b><span>Op basis van het weer tijdens je hele rit, wind en regen, hoe hard je rijdt en of je het snel koud hebt. Met Michels eigen kledingindeling uit 9 jaar prof.</span>
       ${kanLidNu(d) ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met de MKC-app</button>' : BINNENKORT}</div></div></div></div>`;
   return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag open">Gratis</span>
     <div class="label">Vandaag rijden</div><h2>Wat pomp je vandaag?</h2>${vtabs}
@@ -1249,9 +1267,9 @@ function sbReken(f) {
   // zakt de druk. Gaslaw op absolute druk, met de laagste temperatuur van de
   // komende uren.
   let binnenV = null, binnenA = null, temp = SB.weer ? SB.weer.laagste : null;
-  if (temp != null && temp < 15) {
+  if (temp != null && temp <= 10) {
     const f2 = (g) => r1(Math.min(max, (g + ATM) * 293.15 / (273.15 + temp) - ATM));
-    if (f2(achter) - achter >= 0.1) { binnenV = f2(voor); binnenA = f2(achter); }
+    if (f2(achter) - achter >= 0.15) { binnenV = f2(voor); binnenA = f2(achter); }
   }
   const redenen = [];
   if (nat) redenen.push('nat wegdek, 0,3 bar eraf voor grip');
@@ -2228,6 +2246,7 @@ function schemaEindeHtml(d) {
 // rijdt, gewicht en band, dan meteen je spanning (het aha-moment), en als laatste
 // de vraag of je je eerste week een dagelijkse tip wilt als pushbericht.
 let ONB = null;   // { stap, doel, tocht, datum, type, gewicht, breedte, tubeless, fout }
+function welkomWeg() { if (isApp()) return true; try { return localStorage.getItem('mkcWelkomBlokWeg') === '1'; } catch (e) { return false; } }
 function welkomNu() { try { return Date.now() - Number(localStorage.getItem('mkcWelkomOp') || 0) < 2 * 864e5; } catch (e) { return false; } }
 function onbNodig(d) {
   if (!d || d.gast || isLid(d) || (d.lid && d.lid.bron === 'coaching') || (d.beheer && BEKIJK !== 'nieuw')) return false;
@@ -2579,7 +2598,7 @@ function teken() {
     if (html == null) VIEW = 'home';
     else {
       $('#app').innerHTML = html;
-      if (VIEW === 'rijden') { if (toonSlim(dd)) sbStart(); else { btReken(); if (WK.plaats && !WK.uren) wkLaad(); else if (WK.plaats) rvLaadLib().then(wkTeken); } }
+      if (VIEW === 'rijden') { if (toonSlim(dd)) sbStart(); else { btReken(); if (WK.plaats && !WK.uren) wkLaad(); else if (WK.plaats) rvLaadLib().then(wkTeken); if (['kleding', 'voeding'].includes(btLees().tab) && WK.plaats && (!KL_LIB || !RV_LIB)) Promise.all([klLaadLib(), rvLaadLib()]).then(() => { if (VIEW === 'rijden') teken(); }); } }
       coachBouw();
       return;
     }
@@ -2593,7 +2612,7 @@ function teken() {
     <div id="groepsrit">${grHtml()}</div>
     ${reviewHtml(d)}
     ${meldingenHtml(d)}<div id="meldvraag">${startlijstHtml(d) || eersteWeekHtml(d) ? '' : meldVraagHtml()}</div>
-    ${eersteWeekHtml(d) ? eersteWeekHtml(d) + '<div style="display:none">' : ''}${isNieuw(d) ? `<div class="welkom"><b>Zo werkt je app</b>
+    ${eersteWeekHtml(d) ? eersteWeekHtml(d) + '<div style="display:none">' : ''}${isNieuw(d) && !welkomWeg() ? `<div class="welkom"><button type="button" class="welkom-x" data-actie="welkomweg" aria-label="Sluiten">&times;</button><b>Zo werkt je app</b>
       <ol><li><span>1</span>Tik op Vandaag rijden en vul je gewicht en band in: je ziet meteen wat je pompt. Gratis, voor elke rit.</li>
       <li><span>2</span>${binnenkortNu() ? 'Rechtsonder zit <em>Vraag je coach</em>: stel elke week 3 vragen gratis, over training, voeding, banden of herstel.' : 'Start je gratis week in de Core-app: korte sessies thuis, op de timer.'}</li>
       <li><span>3</span>${binnenkortNu() ? 'Zet de app op je beginscherm, dan heb je je bandenspanning altijd bij de hand.' : d.lidOpen ? 'Meer nodig? Als lid krijg je je eigen coach, de slimme bandenspanning en de Core-app doorlopend, voor &euro;' + APP_PRIJS.maand + ' per maand.' : 'Rechtsonder zit <em>Vraag je coach</em>: je eigen coach die je analyse en je plan kent, straks voor leden.'}</li></ol></div>`
@@ -2648,6 +2667,7 @@ document.addEventListener('click', (e) => {
   if (actie === 'opzeggen') zegOp(k);
   if (actie === 'uitloggen') { wisToken(); D = null; CC.berichten = null; document.getElementById('ccFab')?.remove(); document.getElementById('ccPaneel')?.remove(); toonLogin('Je bent uitgelogd.'); }
   if (actie === 'appweg') { try { localStorage.setItem('mkcAppWeg', '1'); } catch (e) {} teken(); }
+  if (actie === 'welkomweg') { try { localStorage.setItem('mkcWelkomBlokWeg', '1'); } catch (e) {} teken(); }
   if (actie === 'installeer' && installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; teken(); }); }
 });
 
@@ -3026,7 +3046,7 @@ function voedingTabHtml() {
     <div class="bt-keuze"><button type="button" data-kl="hard" data-w="0" class="${!k.hard ? 'aan' : ''}">Rustige rit</button><button type="button" data-kl="hard" data-w="1" class="${k.hard ? 'aan' : ''}">Harde training</button></div>
     <div class="rv-kop"><div><b>${a.gPerUur || '0'}</b><span>gram per uur</span></div><div><b>${a.bidons}</b><span>${a.bidons === 1 ? 'bidon' : 'bidons'}</span></div><div><b>${temp}&deg;</b><span>onderweg</span></div></div>
     <ul class="kl-lijst">${a.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>
-    <div class="kl-tips">${a.tips.map((t) => `<p>${esc(t)}</p>`).join('')}</div>
+    <div class="kl-tips">${(temp <= 5 ? ['Koud weer: een thermosbidon met warme thee of sportdrank drinkt een stuk prettiger, en dan drink je ook echt genoeg.'] : []).concat(a.tips).slice(0, 5).map((t) => `<p>${esc(t)}</p>`).join('')}</div>
     ${windRegelHtml()}`;
 }
 
