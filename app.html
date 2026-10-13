@@ -213,6 +213,27 @@
   .pm-t { display:flex; align-items:center; justify-content:center; gap:6px; background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:6px 4px; min-width:0; }
   .pm-t > div { display:flex; flex-direction:column; line-height:1; }
   .pm-t b { font-family:'Bebas Neue',sans-serif; font-size:26px; line-height:1; } .pm-t small { font-size:11px; color:var(--muted); }
+  .rl-kaart { position:relative; margin-bottom:12px; }
+  .rl-slot { position:absolute; top:16px; right:16px; color:var(--accent); }
+  .rl-kop { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+  .rl-ik { text-align:center; } .rl-ik small { display:block; font-size:11px; color:var(--muted); margin-top:2px; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rl-lijst { list-style:none; margin:14px 0 8px; padding:0; display:grid; gap:6px; }
+  .rl-lijst li { display:grid; grid-template-columns:30px 34px 1fr auto; gap:10px; align-items:center; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:6px 10px; }
+  .rl-lijst li.p1 { border-color:rgba(243,194,44,.6); background:linear-gradient(90deg, rgba(243,194,44,.14), rgba(0,0,0,0)); }
+  .rl-lijst li.p2 { border-color:rgba(200,205,213,.5); } .rl-lijst li.p3 { border-color:rgba(205,127,50,.5); }
+  .rl-lijst li.ik { border-color:var(--accent); background:rgba(255,107,26,.14); }
+  .rl-lijst li.rl-gat { display:block; text-align:center; background:none; border:0; color:var(--muted); padding:0; }
+  .rl-plek { font-family:'Bebas Neue',sans-serif; font-size:22px; text-align:center; color:var(--muted); display:flex; justify-content:center; }
+  .rl-lijst b { font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .rl-lijst b em { font-style:normal; font-size:10px; background:var(--accent); color:#0a0a0a; padding:1px 6px; border-radius:10px; margin-left:4px; vertical-align:middle; }
+  .rl-score { text-align:right; line-height:1; } .rl-score strong { display:block; font-family:'Bebas Neue',sans-serif; font-size:24px; color:var(--accent); } .rl-score small { font-size:10.5px; color:var(--muted); }
+  .rl-maak { display:grid; gap:12px; } .rl-voorbeeld { display:flex; align-items:center; gap:12px; } .rl-voorbeeld b { font-size:18px; }
+  .rl-kleuren { display:flex; flex-wrap:wrap; gap:8px; } .rl-kleuren button { width:34px; height:34px; border-radius:50%; border:2px solid rgba(255,255,255,.15); cursor:pointer; }
+  .rl-kleuren button.aan { border:3px solid #fff; box-shadow:0 0 0 2px var(--accent); }
+  .rl-iconen { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; } .rl-iconen button { background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:6px 0; cursor:pointer; display:flex; justify-content:center; }
+  .rl-iconen button.aan { border-color:var(--accent); background:rgba(255,107,26,.15); }
+  .rl-fout { color:#ff8a5c; margin-top:6px; }
+  .bel-n em { display:block; font-style:normal; font-size:9.5px; font-weight:800; margin-top:2px; color:#f3c22c; } .bel.aan .bel-n em { color:#3d2700; }
+  .pm-gratis { margin-top:12px; border:1px dashed rgba(255,107,26,.5); border-radius:10px; padding:10px 12px; } .pm-gratis b { display:block; font-size:14px; } .pm-gratis span { display:block; font-size:12.5px; color:var(--muted); margin-top:2px; line-height:1.4; }
   .pm-reeks { display:flex; align-items:center; gap:10px; margin-top:12px; background:rgba(255,107,26,.1); border:1px solid rgba(255,107,26,.35); border-radius:10px; padding:8px 12px; }
   .pm-reeks b { font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1; color:var(--accent); } .pm-reeks span { font-size:12.5px; color:var(--muted); }
   .pm-goud { display:inline-block; margin-left:6px; background:linear-gradient(90deg,#fff1a8,#f3c22c); color:#3d2700; font-size:10px; font-weight:800; letter-spacing:.08em; padding:2px 8px; border-radius:20px; }
@@ -2860,6 +2881,7 @@ document.addEventListener('click', (e) => {
   }
   if (actie === 'naarlid') {
     e.preventDefault();
+    lxDicht();
     const pan = document.getElementById('ccPaneel'); if (pan && pan.classList.contains('open')) coachOpen(false);
     if (VIEW !== 'lid') naar('lid');
     setTimeout(() => { const b = document.querySelector('.plannen') || document.querySelector('.lidblok'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 250);
@@ -3040,30 +3062,95 @@ function palmaresHtml(d) {
   const { l, m, max, tel, open, bel } = palmaresStand(d);
   if (!l.length) return '<div class="kaart actief"><div class="kaart-in"><p class="klein">Je medailles worden nog opgehaald. Ververs de app over een paar seconden.</p></div></div>';
   const groepen = [...new Set(l.map((b) => b.groep))];
+  const lidNu = isLid(d) || !!(d.lid && d.lid.bron === 'coaching');
+  if (!lidNu) groepen.sort((x, y) => (l.filter((b) => b.groep === x).every((b) => b.lid) ? 1 : 0) - (l.filter((b) => b.groep === y).every((b) => b.lid) ? 1 : 0));
   const tegeltje = (b) => {
     const p = b.volgende ? Math.round(Math.min(b.waarde, b.volgende) / b.volgende * 100) : 100;
-    return `<button type="button" class="md-tegel n${b.niveau}" data-badge="${b.id}">${medailleSvg(b, 74)}<b>${b.naam}</b><small>${b.binnenkort ? 'Binnenkort' : b.niveau ? MD_NAAM[b.niveau - 1] : 'Op slot'}</small>${b.volgende && !b.binnenkort ? `<span class="md-balk"><i style="width:${p}%"></i></span><em>${Math.min(b.waarde, b.volgende)} / ${b.volgende}</em>` : !b.volgende ? '<em class="goud">Alles goud</em>' : ''}</button>`;
+    return `<button type="button" class="md-tegel n${b.niveau}" data-badge="${b.id}">${medailleSvg(b, 74)}<b>${b.naam}</b><small>${b.binnenkort ? 'Binnenkort' : b.niveau ? MD_NAAM[b.niveau - 1] : !lidNu && b.lid ? 'Met lidmaatschap' : 'Op slot'}</small>${b.volgende && !b.binnenkort ? `<span class="md-balk"><i style="width:${p}%"></i></span><em>${Math.min(b.waarde, b.volgende)} / ${b.volgende}</em>` : !b.volgende ? '<em class="goud">Alles goud</em>' : ''}</button>`;
   };
-  const lidNu = isLid(d) || (d.lid && d.lid.bron === 'coaching');
   const belKaart = (r) => {
-    const nog = Math.max(0, r.n - m);
+    const nog = Math.max(0, r.n - m), goudNog = Math.max(0, (r.goud || 0) - ((d && d.goud) || 0));
     const kort = lidNu ? String(r.kort).replace(/, plus .*$/, '.') : r.kort;
-    const knop = !r.behaald ? '' : r.sessie ? `<button type="button" class="knop" data-beloning="${r.id}">Bekijk de sessie</button>` : r.coaching ? '<p class="klein" style="margin:6px 0 0">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">Start je analyse</a>` : '';
-    return `<div class="bel${r.behaald ? ' aan' : ''}"><div class="bel-n"><b>${r.n}</b><small>medailles</small></div><div class="bel-tekst"><b>${r.behaald ? '&#10003; ' : ''}${esc(r.titel)}</b><span>${esc(kort)}</span>${r.behaald ? (r.lidKorting ? '<span class="bel-extra">Je €' + r.lidKorting + ' lidmaatschapskorting staat klaar bij Mijn lidmaatschap.</span>' : '') + (r.vragen ? '<span class="bel-extra">Je 2 extra coachvragen staan klaar.</span>' : '') : `<span class="bel-nog">Nog ${nog} ${nog === 1 ? 'medaille' : 'medailles'}</span>`}${knop}</div>${r.behaald ? '' : '<div class="bel-slot">' + medailleSlot() + '</div>'}</div>`;
+    const knop = !r.behaald ? '' : r.binnenkort ? '<p class="klein" style="margin:6px 0 0">Verdiend! Je krijgt hem zodra het pacingplan er is.</p>' : r.sessie ? `<button type="button" class="knop" data-beloning="${r.id}">Bekijk de sessie</button>` : r.coaching ? '<p class="klein" style="margin:6px 0 0">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">Start je analyse</a>` : '';
+    return `<div class="bel${r.behaald ? ' aan' : ''}"><div class="bel-n"><b>${r.n}</b><small>medailles</small>${r.goud ? '<em>+' + r.goud + ' goud</em>' : ''}</div><div class="bel-tekst"><b>${r.behaald ? '&#10003; ' : ''}${esc(r.titel)}</b><span>${esc(kort)}</span>${r.behaald ? (r.lidKorting ? '<span class="bel-extra">Je €' + r.lidKorting + ' lidmaatschapskorting staat klaar bij Mijn lidmaatschap.</span>' : '') + (r.vragen ? '<span class="bel-extra">Je 2 extra coachvragen staan klaar.</span>' : '') : `<span class="bel-nog">${nog ? 'Nog ' + nog + ' ' + (nog === 1 ? 'medaille' : 'medailles') : ''}${nog && goudNog ? ' en ' : ''}${goudNog ? (nog ? '' : 'Nog ') + goudNog + ' gouden ' + (goudNog === 1 ? 'medaille' : 'medailles') : ''}${r.binnenkort ? ' &middot; binnenkort' : ''}</span>`}${knop}</div>${r.behaald ? '' : '<div class="bel-slot">' + medailleSlot() + '</div>'}</div>`;
   };
+  const gratisHaal = l.filter((b) => !b.lid && !b.binnenkort).length;
   const allesGoud = (g) => l.filter((b) => b.groep === g && !b.binnenkort).every((b) => b.niveau === 3);
   const bijna = open.filter((b) => b.waarde > 0).slice(0, 3);
-  return `<div class="kaart actief palmares"><div class="kaart-in">
+  return `${ranglijstHtml(d)}<div class="kaart actief palmares"><div class="kaart-in">
     <div class="pm-kop"><div><div class="label">Je palmares</div><h2>${m} van ${max} medailles</h2><p class="klein" style="margin:4px 0 0">Elke badge heeft drie medailles: brons, zilver en goud. Verdiend met wat je echt doet.</p></div></div>
     ${d.appReeks ? `<div class="pm-reeks"><b>${d.appReeks}</b><span>${d.appReeks === 1 ? 'dag' : 'dagen'} op rij de app geopend${d.appReeks < 7 ? ' &middot; bij 7 dagen je eerste medaille' : ''}</span></div>` : ''}
     <div class="pm-tel">${[0, 1, 2].map((i) => `<div class="pm-t">${medailleSvg({ icoon: 'vink', niveau: i + 1 }, 30)}<div><b>${tel[i]}</b><small>${MD_NAAM[i]}</small></div></div>`).join('')}</div>
     <div class="pm-balk"><i style="width:${Math.round(m / max * 100)}%"></i></div>
     <div class="rv-sub">Beloningen</div><div class="bel-lijst">${bel.map(belKaart).join('')}</div>
+    ${!lidNu ? `<div class="pm-gratis"><b>Je doet mee met een gratis account</b><span>${gratisHaal} van de ${l.length} badges haal je nu al: elke dag de app openen, groepsritten, coachvragen, je analyse, maten en je tocht. De Core- en rit-badges verdien je met het lidmaatschap.</span>${typeof kanLidNu === 'function' && kanLidNu(d) ? '<button type="button" class="sb-link" data-actie="naarlid" style="margin:6px 0 0">Bekijk het lidmaatschap</button>' : ''}</div>` : ''}
     ${bijna.length ? `<div class="rv-sub">Bijna binnen</div><div class="md-raster">${bijna.map(tegeltje).join('')}</div>` : ''}
     ${groepen.map((g) => `<div class="rv-sub">${g}${allesGoud(g) ? ' <span class="pm-goud">Alles goud</span>' : ''}</div><div class="md-raster${allesGoud(g) ? ' goudrand' : ''}">${l.filter((b) => b.groep === g).map(tegeltje).join('')}</div>`).join('')}
     <p class="klein" style="margin-top:14px">De app rekent je medailles zelf uit met wat er echt gebeurt: je Core-sessies, je ritten met het weer van dat moment, je groepsritten, je analyses en maten die lid werden. Tik op een medaille voor de details of om hem te delen.</p>
   </div></div>`;
 }
+// ---- Ranglijst (13-10-2026): eigen renner met bijnaam en avatar ----
+let RL = { data: null, laden: false, maak: false, keuze: null };
+const RL_IC = {
+  fiets: MD_IC.fiets, berg: '<path d="M2 20l7-12 4 6 3-4 6 10z"/><path d="M7.5 10.5l1.5 1.5 1.5-1.5"/>', bliksem: '<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',
+  wiel: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M12 3v7M12 14v7M3 12h7M14 12h7M5.6 5.6l5 5M13.4 13.4l5 5M18.4 5.6l-5 5M10.6 13.4l-5 5"/>',
+  vlag: MD_IC.vlag, ster: '<path d="M12 3l2.7 5.6 6.1.8-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1-4.4-4.3 6.1-.8z"/>', vlam: MD_IC.vlam, kroon: '<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>'
+};
+function avatarSvg(p, maat) {
+  const k = (p && p.kleur) || '#FF6B1A', ic = RL_IC[(p && p.icoon) || 'fiets'] || RL_IC.fiets, donker = ['#FDD835', '#F5F3EF'].includes(k);
+  return `<svg class="rl-av" viewBox="0 0 48 48" width="${maat}" height="${maat}" aria-hidden="true"><defs><linearGradient id="av${++MD_ID}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient></defs>
+    <path d="M24 3l18 10v22L24 45 6 35V13z" fill="${k}"/><path d="M24 3l18 10v22L24 45 6 35V13z" fill="url(#av${MD_ID})"/>
+    <g transform="translate(12 12)" fill="none" stroke="${donker ? '#1a1a1a' : '#fff'}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ic}</g></svg>`;
+}
+async function rlLaad() {
+  if (RL.laden) return; RL.laden = true;
+  try { const j = await (await fetch(API + '?actie=ranglijst&t=' + encodeURIComponent(leesToken()))).json(); if (j.ok) RL.data = j; } catch (e) {}
+  RL.laden = false; if (VIEW === 'palmares') rlTeken();
+}
+function rlTeken() { const el = document.getElementById('ranglijst'); if (el) el.outerHTML = ranglijstHtml(zicht()); }
+function ranglijstHtml(d) {
+  const m = (d && d.medailles) || 0, open = d && d.ranglijstOpen;
+  if (!open) return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in"><div class="rl-slot">${medailleSlot()}</div><div class="label">Ranglijst</div><h2>Op slot</h2><p class="klein" style="margin:4px 0 0">Haal ${Math.max(0, 3 - m)} ${3 - m === 1 ? 'medaille' : 'medailles'} en ontgrendel de ranglijst. Dan maak je je eigen renner en zie je waar je staat.</p></div></div>`;
+  if (!RL.data) { rlLaad(); return '<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in"><div class="label">Ranglijst</div><p class="klein">Even laden...</p></div></div>'; }
+  const x = RL.data;
+  if (!x.profiel || RL.maak) {
+    const k = RL.keuze || { naam: (x.profiel && x.profiel.naam) || '', kleur: (x.profiel && x.profiel.kleur) || x.kleuren[0], icoon: (x.profiel && x.profiel.icoon) || x.iconen[0] };
+    RL.keuze = k;
+    return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in"><div class="md-unlock" style="animation:none">Ranglijst ontgrendeld</div><h2 style="margin-top:6px">Maak je renner</h2>
+      <p class="klein" style="margin:4px 0 12px">Je staat op de ranglijst met een bijnaam en je eigen avatar. Je echte naam en mailadres ziet niemand.</p>
+      <div class="rl-maak"><div class="rl-voorbeeld">${avatarSvg(k, 72)}<b>${esc(k.naam || 'Jouw bijnaam')}</b></div>
+      <div class="gr-maak"><label>Bijnaam</label><input id="rlNaam" maxlength="16" placeholder="Bijv. De Klimgeit" value="${esc(k.naam)}">
+      <label>Kleur</label><div class="rl-kleuren">${x.kleuren.map((c) => `<button type="button" data-rlkleur="${c}" class="${c === k.kleur ? 'aan' : ''}" style="background:${c}" aria-label="Kleur"></button>`).join('')}</div>
+      <label>Icoon</label><div class="rl-iconen">${x.iconen.map((i) => `<button type="button" data-rlicoon="${i}" class="${i === k.icoon ? 'aan' : ''}">${avatarSvg({ kleur: k.kleur, icoon: i }, 40)}</button>`).join('')}</div></div></div>
+      <button type="button" class="knop" data-rl="bewaar" style="margin-top:12px">Zet me op de ranglijst</button>${x.profiel ? '<button type="button" class="sb-link" data-rl="annuleer" style="display:block;margin:8px auto 0">Annuleren</button>' : ''}<p class="klein rl-fout" id="rlFout"></p></div></div>`;
+  }
+  const rij = (r) => `<li class="${r.ik ? 'ik' : ''} p${r.plek}"><span class="rl-plek">${r.plek <= 3 ? medailleSvg({ icoon: 'ster', niveau: 4 - r.plek }, 26) : r.plek}</span>${avatarSvg(r, 34)}<b>${esc(r.naam)}${r.ik ? ' <em>jij</em>' : ''}</b><span class="rl-score"><strong>${r.medailles}</strong><small>${r.goud ? r.goud + ' goud' : 'medailles'}</small></span></li>`;
+  const ikInTop = x.rijen.some((r) => r.ik);
+  return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in">
+    <div class="rl-kop"><div><div class="label">Ranglijst</div><h2>${x.ik ? 'Jij staat op #' + x.ik.plek : 'Ranglijst'}</h2><p class="klein" style="margin:2px 0 0">van ${x.totaal} ${x.totaal === 1 ? 'renner' : 'renners'} &middot; op medailles, bij gelijke stand telt goud</p></div><div class="rl-ik">${avatarSvg(x.profiel, 54)}<small>${esc(x.profiel.naam)}</small></div></div>
+    <ol class="rl-lijst">${x.rijen.map(rij).join('')}${!ikInTop && x.ik ? `<li class="rl-gat">&hellip;</li>${rij({ plek: x.ik.plek, naam: x.profiel.naam, kleur: x.profiel.kleur, icoon: x.profiel.icoon, medailles: x.ik.medailles, goud: x.ik.goud, ik: true })}` : ''}</ol>
+    <button type="button" class="sb-link" data-rl="wijzig">Renner aanpassen</button> <button type="button" class="sb-link" data-rl="weg" style="margin-left:12px">Van de ranglijst af</button></div></div>`;
+}
+document.addEventListener('click', async (e) => {
+  const kl = e.target.closest('[data-rlkleur]'), ic = e.target.closest('[data-rlicoon]'), a = e.target.closest('[data-rl]');
+  if (!kl && !ic && !a) return;
+  const veld = document.getElementById('rlNaam'); if (veld && RL.keuze) RL.keuze.naam = veld.value;
+  if (kl) { RL.keuze.kleur = kl.dataset.rlkleur; return rlTeken(); }
+  if (ic) { RL.keuze.icoon = ic.dataset.rlicoon; return rlTeken(); }
+  const w = a.dataset.rl;
+  if (w === 'wijzig') { RL.maak = true; RL.keuze = null; return rlTeken(); }
+  if (w === 'annuleer') { RL.maak = false; return rlTeken(); }
+  if (w === 'weg') { if (!confirm('Van de ranglijst af? Je medailles blijven gewoon staan.')) return; await fetch(API + '?actie=rangprofiel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), weg: true }) }); RL.data = null; RL.keuze = null; RL.maak = false; return rlTeken(); }
+  if (w === 'bewaar') {
+    a.disabled = true;
+    try {
+      const j = await (await fetch(API + '?actie=rangprofiel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), ...RL.keuze }) })).json();
+      if (!j.ok) { a.disabled = false; const f = document.getElementById('rlFout'); if (f) f.textContent = j.fout || 'Dat lukte niet.'; return; }
+      RL.maak = false; RL.data = null; RL.keuze = null; rlTeken();
+    } catch (er) { a.disabled = false; }
+  }
+});
+document.addEventListener('input', (e) => { if (e.target.id === 'rlNaam' && RL.keuze) { RL.keuze.naam = e.target.value; const b = document.querySelector('.rl-voorbeeld b'); if (b) b.textContent = e.target.value || 'Jouw bijnaam'; } });
 function medailleSlot() { return '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>'; }
 function badgeModal(id, nieuwNiveau) {
   const b = ((zicht() || {}).badges || []).find((x) => x.id === id); if (!b) return;
@@ -3072,7 +3159,7 @@ function badgeModal(id, nieuwNiveau) {
   modal(`<div class="md-modal${nieuwNiveau ? ' nieuw' : ''}">${nieuwNiveau ? `<div class="md-unlock">Ontgrendeld!</div>` : ''}<div class="md-groot">${medailleSvg(b, 150, nieuwNiveau ? { niveau: nieuwNiveau } : {})}</div>
     <h3>${b.naam}</h3><p class="md-niv">${b.niveau ? MD_NAAM[b.niveau - 1] : b.binnenkort ? 'Binnenkort te verdienen' : 'Nog op slot'}</p>
     <ul class="md-rijen">${[0, 1, 2].map(rij).join('')}</ul>
-    ${b.niveau ? `<button type="button" class="knop" data-badgedeel="${b.id}">Deel als story</button>` : `<p class="klein">${esc(b.nog)}</p>`}
+    ${b.niveau ? `<button type="button" class="knop" data-badgedeel="${b.id}">Deel als story</button>` : b.lid && !(isLid(zicht()) || ((zicht() || {}).lid || {}).bron === 'coaching') ? `<p class="klein">Deze badge verdien je met het lidmaatschap: met de ${b.groep === 'Core' ? 'Core-app' : 'slimme bandenspanning en Ik rijd hiermee'}.</p>${kanLidNu(zicht()) ? '<button type="button" class="knop" data-actie="naarlid">Bekijk het lidmaatschap</button>' : ''}` : `<p class="klein">${esc(b.nog)}</p>`}
     <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">${nieuwNiveau ? 'Top!' : 'Sluiten'}</button>${nieuwNiveau ? '<button type="button" class="sb-link" data-view="palmares" style="display:block;margin:4px auto 0">Bekijk je palmares</button>' : ''}</div>`);
 }
 function beloningModal(id, nieuw) {
