@@ -3238,9 +3238,18 @@ async function rlLaad() {
 function rlTeken() { const el = document.getElementById('ranglijst'); if (el) el.outerHTML = ranglijstHtml(zicht()); }
 function ranglijstHtml(d) {
   const m = (d && d.medailles) || 0, open = d && d.ranglijstOpen;
-  if (!open) return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in"><div class="rl-slot">${medailleSlot()}</div><div class="label">Ranglijst</div><h2>Op slot</h2><p class="klein" style="margin:4px 0 0">Haal ${Math.max(0, 3 - m)} ${3 - m === 1 ? 'medaille' : 'medailles'} en ontgrendel de ranglijst. Dan maak je je eigen renner en zie je waar je staat.</p></div></div>`;
   if (!RL.data) { rlLaad(); return '<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in"><div class="label">Ranglijst</div><p class="klein">Even laden...</p></div></div>'; }
   const x = RL.data;
+  // Startlijst: renner staat klaar, nog geen medaille. Eén medaille en je rijdt in het klassement.
+  if (!open && x.profiel && !RL.maak) {
+    // Snelste gratis eerste medaille (geen aankoop, geen maat of tocht nodig).
+    const dichtst = ((d && d.badges) || []).filter((b) => !b.lid && !b.binnenkort && b.volgende && !['gemeten', 'ploegbouwer', 'finisher', 'gewoontedier'].includes(b.id)).sort((a, b) => (a.volgende - a.waarde) - (b.volgende - b.waarde))[0];
+    return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in"><div class="label">Startlijst</div><h2>Je staat aan de start</h2>
+      <div class="rn-podium" style="margin-top:8px">${rennerFiets(x.profiel, 230)}<b class="rn-naam">${esc(x.profiel.naam)}</b></div>
+      <p class="klein" style="margin:8px 0 0">Haal je eerste medaille en je rijdt mee in het klassement, op weg naar het podium.${dichtst ? ' Het snelst: <b style="color:var(--accent)">' + esc(dichtst.naam) + '</b>, ' + esc(dichtst.uitleg[0]) + '.' : ''}</p>
+      <button type="button" class="sb-link" data-rl="wijzig" style="margin-top:8px">Naar je kleedkamer</button> <button type="button" class="sb-link" data-rl="weg" style="margin-left:12px">Niet meedoen</button></div></div>`;
+  }
+  if (!open && !x.profiel && !RL.maak && !x.weg) return '<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in"><div class="label">Startlijst</div><p class="klein">Je renner wordt klaargezet. Ververs de app zo even.</p></div></div>';
   if (!x.profiel || RL.maak) {
     const pr = x.profiel || {}, R = x.renner;
     const k = RL.keuze || { naam: pr.naam || '', huid: pr.huid || 'h1', trui: pr.trui || 'mkc', helm: pr.helm || 'wit', bril: pr.bril || 'zwart', fiets: pr.fiets || 'oranje', wielen: pr.wielen || 'standaard' };
@@ -3250,7 +3259,7 @@ function ranglijstHtml(d) {
     const voorbeeld = (soort, it) => soort === 'wielen' ? `<span class="kk-wiel">${rennerFiets({ ...k, wielen: it.id }, 96)}</span>` : soort === 'fiets' ? `<span class="kk-kleur" style="background:${RN_FIETS[it.id]}"></span>` : soort === 'huid' ? `<span class="kk-kleur" style="background:${RN_HUID[it.id]}"></span>` : rennerKop({ ...k, [soort]: it.id }, 46);
     const items = R[RL.tab].map((it) => `<button type="button" class="kk-item${k[RL.tab] === it.id ? ' aan' : ''}${open(it) ? '' : ' dicht'}" data-rlitem="${RL.tab}|${it.id}" ${open(it) ? '' : 'disabled'}>${voorbeeld(RL.tab, it)}<b>${esc(it.naam)}</b>${open(it) ? '' : `<small>${medailleSlotKlein()} ${it.vanaf.m} med.${it.vanaf.g ? ' + ' + it.vanaf.g + ' goud' : ''}</small>`}</button>`).join('');
     const volgend = Object.entries(R).flatMap(([s, l]) => l.filter((it) => !open(it)).map((it) => ({ s, it }))).sort((a, b) => a.it.vanaf.m - b.it.vanaf.m)[0];
-    return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in"><div class="md-unlock" style="animation:none">Ranglijst ontgrendeld</div><h2 style="margin-top:6px">${x.profiel ? 'Je kleedkamer' : x.weg ? 'Doe weer mee' : 'Maak je renner'}</h2>
+    return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in">${open ? '<div class="md-unlock" style="animation:none">Ranglijst ontgrendeld</div>' : '<div class="md-unlock" style="animation:none">Startlijst</div>'}<h2 style="margin-top:6px">${x.profiel ? 'Je kleedkamer' : x.weg ? 'Doe weer mee' : 'Maak je renner'}</h2>
       <p class="klein" style="margin:4px 0 12px">Je staat op de ranglijst met een bijnaam en je eigen renner. Met meer medailles speel je nieuwe truien, helmen, brillen en fietsen vrij. Je echte naam en mailadres ziet niemand.</p>
       <div class="rl-maak"><div class="rn-podium">${rennerFiets(k, 240)}<b class="rn-naam">${esc(k.naam || 'Jouw bijnaam')}</b></div>
       <div class="gr-maak"><label>Bijnaam</label><input id="rlNaam" maxlength="16" placeholder="Bijv. De Klimgeit" value="${esc(k.naam)}"></div>

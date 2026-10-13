@@ -365,9 +365,9 @@ async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], 
     if (nieuweBel.length) await redis(['SET', `app:badgebeloning:${email}`, JSON.stringify(bel)]);
     await redis(['SADD', 'app:badges:alle', email]);
   }
-  if (totaal >= RANGLIJST_VANAF) await rlAutoMee(email, voornaam, totaal * 100 + goud);
+  await rlAutoMee(email, voornaam, totaal >= RANGLIJST_VANAF ? totaal * 100 + goud : null);
   const rp = await redis(['GET', `app:rangprofiel:${email}`]);
-  if (rp.ok && rp.result) await redis(['ZADD', 'app:ranglijst', String(totaal * 100 + goud), email]);
+  if (rp.ok && rp.result && totaal >= RANGLIJST_VANAF) await redis(['ZADD', 'app:ranglijst', String(totaal * 100 + goud), email]);
   const beloningen = BELONINGEN.map((r) => ({ ...r, behaald: !!bel[r.id], ...(bel[r.id] || {}),
     ...(BELONING_SESSIES[r.id] && bel[r.id] ? { link: null, sessie: { ...BELONING_SESSIES[r.id], oefeningen: BELONING_SESSIES[r.id].oefeningen.map((id) => ({ naam: (OEFENINGEN[id] || {}).naam || id, cue: (OEFENINGEN[id] || {}).cue || '' })) } } : {}) }));
   // Bij de allereerste keer geen feestje voor alles wat er al lag.
@@ -422,7 +422,7 @@ async function rlAutoMee(email, voornaam, score) {
   for (let i = 2; i < 200 && !(await rlNaamClaim(naam, email)); i++) naam = rlNaam(basis.slice(0, 13) + ' ' + i);
   const prof = { naam, huid: 'h1', trui: 'mkc', helm: 'wit', bril: 'zwart', fiets: 'oranje', wielen: 'standaard', auto: true, op: new Date().toISOString() };
   await redis(['SET', `app:rangprofiel:${email}`, JSON.stringify(prof)]);
-  await redis(['ZADD', 'app:ranglijst', String(score), email]);
+  if (score != null) await redis(['ZADD', 'app:ranglijst', String(score), email]);
 }
 async function rlProfiel(email) { const r = await redis(['GET', `app:rangprofiel:${email}`]); try { return (r.ok && r.result && JSON.parse(r.result)) || null; } catch (e) { return null; } }
 async function routeRangProfiel(req, res) {
@@ -435,7 +435,6 @@ async function routeRangProfiel(req, res) {
   let v = {}; try { v = JSON.parse(rm.result) || {}; } catch (e) {}
   const totaal = Object.values(v).reduce((t, n) => t + (n && typeof n === 'object' ? Object.keys(n).filter((k) => /^[123]$/.test(k)).length : 0), 0);
   const goud = Object.values(v).filter((n) => n && n[3]).length;
-  if (totaal < RANGLIJST_VANAF) return res.status(400).json({ ok: false, fout: `De ranglijst gaat open bij ${RANGLIJST_VANAF} medailles.` });
   const naam = rlNaam(body.naam);
   if (naam.length < 2) return res.status(400).json({ ok: false, fout: 'Kies een bijnaam van minstens 2 tekens.' });
   if (/@|www|http|\.nl|\.com/i.test(String(body.naam))) return res.status(400).json({ ok: false, fout: 'Gebruik een bijnaam, geen mailadres of website.' });
@@ -451,7 +450,7 @@ async function routeRangProfiel(req, res) {
   const p = { naam, ...deel, op: new Date().toISOString() };
   await redis(['SET', `app:rangprofiel:${email}`, JSON.stringify(p)]);
   await redis(['DEL', `app:rangweg:${email}`]);
-  await redis(['ZADD', 'app:ranglijst', String(totaal * 100 + goud), email]);
+  if (totaal >= RANGLIJST_VANAF) await redis(['ZADD', 'app:ranglijst', String(totaal * 100 + goud), email]);
   return res.status(200).json({ ok: true, profiel: p });
 }
 // Beheer: alle renners op de ranglijst (met mailadres), bijnaam weghalen, en testmedailles voor jezelf.
