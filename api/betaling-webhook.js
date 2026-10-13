@@ -251,6 +251,8 @@ export default async function handler(req, res) {
 
     // 3) Succes → vastleggen zodat een latere retry niks dubbel doet.
     await markeerVerstuurd(id);
+    // Badge "Gemeten" in de MKC-app (13-10-2026): analyses tellen per mailadres.
+    if (m.email) { try { await redis(['HINCRBY', `app:teller:${String(m.email).trim().toLowerCase()}`, 'analyses', '1']); } catch (e) {} }
 
     // 3b) Meta Conversion API: aankoop server-side naar Meta melden (fail-safe:
     //     het rapport is al geleverd en de betaling al gemarkeerd, dus een

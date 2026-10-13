@@ -209,17 +209,43 @@
   .pm-kop { display:flex; justify-content:space-between; gap:12px; align-items:flex-start; }
   .pm-n { font-family:'Bebas Neue',sans-serif; font-size:64px; line-height:.85; color:var(--accent); }
   .pm-balk { height:6px; background:rgba(255,255,255,.1); border-radius:3px; margin:14px 0 4px; overflow:hidden; } .pm-balk i { display:block; height:100%; background:var(--accent); }
+  .pm-tel { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:14px; }
+  .pm-t { display:flex; align-items:center; justify-content:center; gap:6px; background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:6px 4px; min-width:0; }
+  .pm-t > div { display:flex; flex-direction:column; line-height:1; }
+  .pm-t b { font-family:'Bebas Neue',sans-serif; font-size:26px; line-height:1; } .pm-t small { font-size:11px; color:var(--muted); }
+  .pm-goud { display:inline-block; margin-left:6px; background:linear-gradient(90deg,#fff1a8,#f3c22c); color:#3d2700; font-size:10px; font-weight:800; letter-spacing:.08em; padding:2px 8px; border-radius:20px; }
   .md-raster { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
-  .md-tegel { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:12px 6px 10px; text-align:center; color:var(--white); font-family:inherit; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:3px; }
-  .md-tegel.aan { border-color:rgba(255,107,26,.5); background:linear-gradient(170deg, rgba(255,107,26,.14), rgba(255,107,26,.02)); }
-  .md-tegel b { font-size:12.5px; line-height:1.2; margin-top:4px; } .md-tegel small { font-size:11px; color:var(--muted); }
-  .md { display:flex; align-items:center; justify-content:center; width:52px; height:52px; border-radius:50%; background:#161616; border:2px dashed rgba(255,255,255,.18); }
-  .md i { font-style:normal; font-family:'Bebas Neue',sans-serif; font-size:21px; color:rgba(255,255,255,.35); letter-spacing:.02em; }
-  .md.aan { background:radial-gradient(circle at 35% 30%, #ffa063, var(--accent) 60%, #d9520c); border:3px solid rgba(255,255,255,.18); box-shadow:0 4px 16px rgba(255,107,26,.35); }
-  .md.aan i { color:#0a0a0a; }
-  .md.groot { width:120px; height:120px; margin:6px auto 12px; } .md.groot i { font-size:48px; }
-  .md-balk { width:80%; height:4px; background:rgba(255,255,255,.1); border-radius:2px; overflow:hidden; margin-top:3px; } .md-balk i { display:block; height:100%; background:var(--accent); }
-  .md-modal { text-align:center; } .md-modal h3 { font-family:'Bebas Neue',sans-serif; font-size:34px; margin:0 0 6px; text-transform:uppercase; } .md-modal p { margin:0 0 8px; }
+  .md-raster.goudrand { padding:6px; border-radius:14px; background:linear-gradient(135deg,#fff1a8,#f3c22c 40%,#a26c06); }
+  .md-tegel { position:relative; background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01)); border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px 6px 10px; text-align:center; color:var(--white); font-family:inherit; cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px; transition:transform .15s; }
+  .md-tegel:active { transform:scale(.97); }
+  .md-tegel.n1 { border-color:rgba(205,127,50,.55); background:linear-gradient(170deg, rgba(205,127,50,.18), rgba(0,0,0,.2)); }
+  .md-tegel.n2 { border-color:rgba(200,205,213,.55); background:linear-gradient(170deg, rgba(200,205,213,.16), rgba(0,0,0,.2)); }
+  .md-tegel.n3 { border-color:rgba(243,194,44,.7); background:linear-gradient(170deg, rgba(243,194,44,.2), rgba(0,0,0,.2)); box-shadow:0 0 18px rgba(243,194,44,.18); }
+  .md-tegel b { font-size:12.5px; line-height:1.2; margin-top:2px; } .md-tegel small { font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); }
+  .md-tegel.n1 small { color:#e0a26a; } .md-tegel.n2 small { color:#d9dde3; } .md-tegel.n3 small { color:#f3c22c; }
+  .md-tegel em { font-style:normal; font-size:10.5px; color:var(--muted); } .md-tegel em.goud { color:#f3c22c; font-weight:700; }
+  .md-svg { display:block; filter:drop-shadow(0 4px 8px rgba(0,0,0,.45)); } .md-svg.slot { opacity:.85; }
+  .md-balk { width:78%; height:4px; background:rgba(255,255,255,.1); border-radius:2px; overflow:hidden; margin-top:4px; } .md-balk i { display:block; height:100%; background:var(--accent); }
+  .bel-lijst { display:grid; gap:8px; }
+  .bel { position:relative; display:grid; grid-template-columns:62px 1fr; gap:12px; align-items:start; background:rgba(0,0,0,.3); border:1px dashed rgba(255,255,255,.16); border-radius:12px; padding:12px; }
+  .bel.aan { border:1px solid rgba(255,107,26,.6); background:linear-gradient(160deg, rgba(255,107,26,.16), rgba(0,0,0,.25)); }
+  .bel-n { text-align:center; border-radius:10px; background:#141414; padding:6px 0; } .bel.aan .bel-n { background:var(--accent); color:#0a0a0a; }
+  .bel-n b { display:block; font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1; } .bel-n small { font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; }
+  .bel-tekst b { display:block; font-size:14.5px; padding-right:26px; } .bel-tekst span { display:block; font-size:12.5px; color:var(--muted); line-height:1.4; margin-top:2px; }
+  .bel-tekst .bel-nog { color:var(--accent); font-weight:700; margin-top:6px; } .bel-tekst .bel-extra { color:var(--white); margin-top:6px; }
+  .bel-tekst .knop { margin-top:10px; height:42px; font-size:15px; }
+  .bel-slot { position:absolute; top:10px; right:12px; color:var(--muted); }
+  .bel-groot { width:96px; height:96px; margin:4px auto 10px; border-radius:50%; background:var(--accent); color:#0a0a0a; display:flex; flex-direction:column; align-items:center; justify-content:center; animation:mdPop .6s ease-out; }
+  .bel-groot b { font-family:'Bebas Neue',sans-serif; font-size:44px; line-height:.9; } .bel-groot small { font-size:10px; text-transform:uppercase; letter-spacing:.08em; }
+  .md-modal { text-align:center; } .md-modal h3 { font-family:'Bebas Neue',sans-serif; font-size:36px; margin:0; text-transform:uppercase; }
+  .md-niv { font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:2px 0 10px; }
+  .md-groot { display:flex; justify-content:center; margin:0 0 6px; } .md-modal.nieuw .md-groot { animation:mdPop .7s cubic-bezier(.2,1.4,.4,1); }
+  .md-unlock { display:inline-block; background:var(--accent); color:#0a0a0a; font-weight:800; letter-spacing:.12em; text-transform:uppercase; font-size:12px; padding:5px 12px; border-radius:20px; margin-bottom:6px; animation:mdPop .5s ease-out; }
+  @keyframes mdPop { 0% { transform:scale(.3) rotate(-12deg); opacity:0; } 70% { transform:scale(1.08) rotate(3deg); opacity:1; } 100% { transform:scale(1) rotate(0); } }
+  .md-rijen { list-style:none; margin:4px 0 12px; padding:0; display:grid; gap:6px; text-align:left; }
+  .md-rijen li { display:grid; grid-template-columns:30px 1fr auto; gap:10px; align-items:center; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:6px 10px; }
+  .md-rijen li.aan { border-color:rgba(255,107,26,.4); } .md-rijen b { display:block; font-size:13.5px; } .md-rijen span { font-size:12px; color:var(--muted); } .md-rijen small { font-size:11.5px; color:var(--muted); white-space:nowrap; }
+  .ms-lijst { text-align:left; margin:8px 0 12px; padding-left:20px; display:grid; gap:8px; } .ms-lijst b { display:block; font-size:14px; } .ms-lijst span { font-size:12.5px; color:var(--muted); }
   .bh-nakijk { margin-top:10px; padding:10px; border:1px solid rgba(255,255,255,.12); border-radius:8px; }
   .vr-label { display:block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:4px 0 5px; }
   .vr-naam { width:100%; height:46px; background:#000; border:1px solid rgba(255,255,255,.18); border-radius:6px; color:var(--white); padding:0 12px; font-size:15px; margin-bottom:8px; }
@@ -2033,7 +2059,12 @@ let LV = { plan: null };
 function lidStap2Html() {
   if (!LV.plan) return '';
   const jaar = LV.plan === 'jaar';
-  const maat = vriendActief();
+  const maat = vriendActief(), bk = !maat && D && D.badgeKorting ? D.badgeKorting : 0;
+  if (bk) return `<div class="lid-stap2"><b>Bijna klaar: ${jaar ? 'per jaar, &euro;' + (89 - bk) + ' het eerste jaar (badgekorting), daarna &euro;' + APP_PRIJS.jaar : 'per maand, &euro;' + (9.99 - bk).toFixed(2).replace('.', ',') + ' de eerste maand (badgekorting), daarna &euro;' + APP_PRIJS.maand}</b>
+    ${lidFactuurHtml()}
+    <label class="lid-akkoord"><input type="checkbox" id="lidAkkoord"> <span>Ik wil direct toegang en weet dat ik daarmee afzie van mijn bedenktijd van 14 dagen. Ik ga akkoord met de <a href="/voorwaarden" target="_blank" rel="noopener">voorwaarden</a> en de <a href="/privacy#app" target="_blank" rel="noopener">privacyverklaring</a>.</span></label>
+    <button class="knop" data-actie="wordlid" data-plan="${LV.plan}">Naar betalen</button>
+    <button type="button" class="sb-link" data-lidplan="terug" style="display:block;margin:8px auto 0">Ander plan kiezen</button></div>`;
   return `<div class="lid-stap2"><b>Bijna klaar: ${jaar ? 'per jaar, &euro;' + (maat ? APP_PRIJS.jaarMaat + ' het eerste jaar (via je maat), daarna &euro;' + APP_PRIJS.jaar : APP_PRIJS.jaar) : 'per maand, &euro;' + (maat ? APP_PRIJS.half + ' de eerste maand (via je maat), daarna &euro;' + APP_PRIJS.maand : APP_PRIJS.maand)}</b>
     ${lidFactuurHtml()}
     <label class="lid-akkoord"><input type="checkbox" id="lidAkkoord"> <span>Ik wil direct toegang en weet dat ik daarmee afzie van mijn bedenktijd van 14 dagen. Ik ga akkoord met de <a href="/voorwaarden" target="_blank" rel="noopener">voorwaarden</a> en de <a href="/privacy#app" target="_blank" rel="noopener">privacyverklaring</a>.</span></label>
@@ -2062,12 +2093,12 @@ function plannenHtml(dicht) {
       <div class="plan jaar"><span class="plan-badge">Beste keuze &middot; ruim 3 maanden gratis</span>
         <div class="plan-naam">Per jaar</div>
         <div class="prijs">&euro;${APP_PRIJS.jaarPerMaand}<small>per maand</small></div>
-        <div class="plan-sub">${vriendActief() ? '<b style="color:var(--accent)">&euro;5 korting via je maat:</b> &euro;' + APP_PRIJS.jaarMaat + ' in plaats van &euro;' + APP_PRIJS.jaar : '&euro;' + APP_PRIJS.jaar + ' per jaar in &eacute;&eacute;n keer'}</div>
+        <div class="plan-sub">${!vriendActief() && D && D.badgeKorting ? '<b style="color:var(--accent)">&euro;' + D.badgeKorting + ' badgekorting:</b> &euro;' + (89 - D.badgeKorting) + ' het eerste jaar' : vriendActief() ? '<b style="color:var(--accent)">&euro;5 korting via je maat:</b> &euro;' + APP_PRIJS.jaarMaat + ' in plaats van &euro;' + APP_PRIJS.jaar : '&euro;' + APP_PRIJS.jaar + ' per jaar in &eacute;&eacute;n keer'}</div>
         ${knop('jaar', 'Kies per jaar')}</div>
       <div class="plan">
         <div class="plan-naam">Per maand</div>
         <div class="prijs">&euro;${APP_PRIJS.maand}<small>per maand</small></div>
-        <div class="plan-sub">${vriendActief() ? '<b style="color:var(--accent)">50% korting via je maat:</b> eerste maand &euro;' + APP_PRIJS.half : D && D.lid && D.lid.terugAanbod ? 'welkom terug: eerste maand &euro;' + APP_PRIJS.half : 'op elk moment opzegbaar'}</div>
+        <div class="plan-sub">${!vriendActief() && D && D.badgeKorting ? '<b style="color:var(--accent)">&euro;' + D.badgeKorting + ' badgekorting:</b> eerste maand &euro;' + (9.99 - D.badgeKorting).toFixed(2).replace('.', ',') : vriendActief() ? '<b style="color:var(--accent)">50% korting via je maat:</b> eerste maand &euro;' + APP_PRIJS.half : D && D.lid && D.lid.terugAanbod ? 'welkom terug: eerste maand &euro;' + APP_PRIJS.half : 'op elk moment opzegbaar'}</div>
         ${knop('maand', 'Kies per maand', true)}</div>
     </div>`;
 }
@@ -2350,7 +2381,7 @@ function tegelsHtml(d) {
   if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
   else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Core stability voor wielrenners, op de timer', tag: binnenkortNu() ? 'Binnenkort' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Tijd voor een nieuwe' : 'Jouw uitslag') : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' }));
-  if (!d.gast) { const pb = palmaresStand(d); t.push(tegel({ v: 'palmares', ic: 'palmares', nm: 'Je palmares', sub: !pb.tot ? 'Badges verdienen met wat je doet' : pb.n + ' van ' + pb.tot + ' badges' + (pb.dichtst ? ' &middot; bijna: ' + pb.dichtst.naam : ''), tag: pb.n ? String(pb.n) : '', tagKlas: 'or', breed: true })); }
+  if (!d.gast) { const pb = palmaresStand(d); t.push(tegel({ v: 'palmares', ic: 'palmares', nm: 'Je palmares', sub: !pb.l.length ? 'Medailles verdienen met wat je doet' : pb.m + ' van ' + pb.max + ' medailles' + (pb.volgendeBel ? ' &middot; beloning bij ' + pb.volgendeBel.n : ''), tag: pb.m ? String(pb.m) : '', tagKlas: 'or', breed: true })); }
   t.push(tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? 'Lid' : '3 gratis', tagKlas: 'or' }));
   if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true }));
   const bk = `<div class="bk-rij"><span>Binnenkort</span><button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
@@ -2954,36 +2985,101 @@ function vriendLijstHtml() {
   const lid = l.filter((x) => x.status === 'lid').length;
   return `<details class="vr-lijst" data-klap="vrlijst"${klapOpen('vrlijst', l.length <= 4) ? ' open' : ''}><summary><b>Jouw uitnodigingen</b><span>${l.length} uitgenodigd &middot; ${lid} lid</span></summary><ul>${l.map(rij).join('')}</ul></details>`;
 }
-// ---- Palmares (13-10-2026): badges, uitgerekend door de server (lib/badges.js) ----
-function palmaresStand(d) {
-  const l = (d && d.badges) || [], n = l.filter((b) => b.behaald).length;
-  const open = l.filter((b) => !b.behaald && b.nodig > 0).sort((a, b) => b.nu / b.nodig - a.nu / a.nodig);
-  return { l, n, tot: l.length, dichtst: open.find((b) => b.nu > 0) || open[0] || null, open };
+// ---- Palmares (13-10-2026): medailles in brons, zilver en goud, uitgerekend door de server (lib/badges.js) ----
+const MD_NIV = ['brons', 'zilver', 'goud'], MD_NAAM = ['Brons', 'Zilver', 'Goud'];
+const MD_KLEUR = { 0: ['#4a4a4a', '#2c2c2c', '#171717', '#7a7a7a'], 1: ['#ffd3a3', '#cd7f32', '#6e3b0f', '#3b1d05'], 2: ['#ffffff', '#c8cdd5', '#6c7480', '#262b33'], 3: ['#fff4b8', '#f3c22c', '#a26c06', '#3d2700'] };
+const MD_IC = {
+  core: '<rect x="5" y="6" width="3.5" height="12" rx="1.2"/><rect x="15.5" y="6" width="3.5" height="12" rx="1.2"/><path d="M8.5 12h7M2.5 9.5v5M21.5 9.5v5"/>',
+  omhoog: '<path d="M6 14l6-6 6 6M6 20l6-6 6 6"/>',
+  grafiek: '<path d="M3 20h18M5 16l4-5 4 3 6-8"/><path d="M15 6h4v4"/>',
+  vlam: '<path d="M12 3c1 3.5 5 5.5 5 10a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .3 2 1.5 3 2.5 3-1-3 0-6 0-8z"/>',
+  fiets: '<circle cx="5.5" cy="16" r="3.5"/><circle cx="18.5" cy="16" r="3.5"/><path d="M5.5 16l4-8h5l4 8M9.5 8l3 8h-7M14.5 8l-1-2h-2"/>',
+  vink: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16.5 9.5"/>',
+  sneeuw: '<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M9 4l3 2 3-2M9 20l3-2 3 2"/>',
+  regen: '<path d="M7 15a4.5 4.5 0 0 1 .5-9 5.5 5.5 0 0 1 10.5 1.5A3.8 3.8 0 0 1 17.5 15z"/><path d="M8 18l-1 3M12.5 18l-1 3M17 18l-1 3"/>',
+  zon: '<path d="M3 18h18M7.5 18a4.5 4.5 0 0 1 9 0M12 6v3M5 10.5l2 2M19 10.5l-2 2M2.5 14.5h2M19.5 14.5h2"/>',
+  groep: '<circle cx="12" cy="8" r="3"/><circle cx="5" cy="10" r="2.3"/><circle cx="19" cy="10" r="2.3"/><path d="M6.5 20a5.5 5.5 0 0 1 11 0M1.5 18a3.5 3.5 0 0 1 4.5-3.3M22.5 18a3.5 3.5 0 0 0-4.5-3.3"/>',
+  magneet: '<path d="M6 4v8a6 6 0 0 0 12 0V4h-4v8a2 2 0 0 1-4 0V4z"/><path d="M6 8h4M14 8h4"/>',
+  vlag: '<path d="M5 21V4M5 4h13l-2 4 2 4H5"/><path d="M9 4v8M13 4v8"/>',
+  maten: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M18 8v6M15 11h6"/>',
+  vraag: '<path d="M4 5h16v11H9l-5 4z"/><path d="M10 8.5a2 2 0 1 1 2.5 2c-.5.2-.5.7-.5 1.2M12 14h.01"/>',
+  meten: '<path d="M3 20h18M6 16l4-5 3 3 5-7"/><circle cx="18" cy="7" r="1.6"/>',
+  pacing: '<circle cx="12" cy="13" r="8"/><path d="M12 13l4-3M10 2h4M12 2v3"/>'
+};
+let MD_ID = 0;
+// Eén medaille als SVG: lint, metalen schijf, icoon, sterren; op slot met slotje en voortgangsring.
+function medailleSvg(b, maat, opts = {}) {
+  const niv = opts.niveau != null ? opts.niveau : b.niveau, k = MD_KLEUR[niv], id = 'md' + (++MD_ID), slot = niv === 0;
+  const voortgang = slot ? Math.min(1, (b.waarde || 0) / ((b.drempels && b.drempels[0]) || 1)) : 0;
+  const omtrek = 2 * Math.PI * 47;
+  const ster = (x) => `<path transform="translate(${x} 143) scale(.62)" d="M0-9l2.6 5.6 6.1.6-4.6 4.1 1.3 6L0 4.3-5.4 7.3l1.3-6-4.6-4.1 6.1-.6z" fill="${k[1]}" stroke="${k[3]}" stroke-width="1.4"/>`;
+  return `<svg class="md-svg${slot ? ' slot' : ''}" viewBox="0 0 120 152" width="${maat}" height="${Math.round(maat * 152 / 120)}" aria-hidden="true">
+    <defs><radialGradient id="${id}g" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="${k[0]}"/><stop offset=".55" stop-color="${k[1]}"/><stop offset="1" stop-color="${k[2]}"/></radialGradient>
+    <linearGradient id="${id}r" x1="0" x2="1"><stop offset="0" stop-color="#ff8a3d"/><stop offset="1" stop-color="#d9520c"/></linearGradient></defs>
+    <path d="M34 0h22l10 50H48z" fill="${slot ? '#3a3a3a' : `url(#${id}r)`}"/><path d="M64 0h22L72 50H54z" fill="${slot ? '#2a2a2a' : '#1d1d1d'}"/><path d="M71 0h6L65 50h-5z" fill="${slot ? '#4a4a4a' : '#FF6B1A'}"/>
+    ${slot ? `<circle cx="60" cy="88" r="47" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="4"/><circle cx="60" cy="88" r="47" fill="none" stroke="#FF6B1A" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(omtrek * voortgang).toFixed(1)} ${omtrek.toFixed(1)}" transform="rotate(-90 60 88)"/>` : ''}
+    <circle cx="60" cy="88" r="41" fill="url(#${id}g)" stroke="${k[3]}" stroke-width="2"/>
+    <circle cx="60" cy="88" r="33" fill="none" stroke="${k[3]}" stroke-opacity=".45" stroke-width="2.2" stroke-dasharray="2 3.2"/>
+    <circle cx="60" cy="88" r="29" fill="url(#${id}g)" stroke="${k[3]}" stroke-opacity=".35"/>
+    ${slot ? '' : '<ellipse cx="46" cy="70" rx="17" ry="9" fill="#fff" opacity=".28" transform="rotate(-25 46 70)"/>'}
+    <g transform="translate(44.4 72.4) scale(1.3)" fill="none" stroke="${slot ? '#8a8a8a' : k[3]}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${MD_IC[b.icoon] || MD_IC.vink}</g>
+    ${slot ? `<g transform="translate(84 106)"><circle r="13" fill="#0b0b0b" stroke="#FF6B1A" stroke-width="2"/><rect x="-5.5" y="-2" width="11" height="9" rx="2" fill="#FF6B1A"/><path d="M-3.4-2v-3a3.4 3.4 0 0 1 6.8 0v3" fill="none" stroke="#FF6B1A" stroke-width="2"/></g>` : [1, 2, 3].slice(0, niv).map((n, i) => ster(60 + (i - (niv - 1) / 2) * 15)).join('')}
+  </svg>`;
 }
-function medaille(b, groot) { return `<span class="md${b.behaald ? ' aan' : ''}${groot ? ' groot' : ''}"><i>${b.kort}</i></span>`; }
+function palmaresStand(d) {
+  const l = (d && d.badges) || [], m = (d && d.medailles) || l.reduce((t, b) => t + (b.niveau || 0), 0);
+  const tel = [1, 2, 3].map((n) => l.filter((b) => b.niveau >= n).length);
+  const open = l.filter((b) => b.volgende != null && !b.binnenkort).sort((a, b) => (b.waarde / b.volgende) - (a.waarde / a.volgende));
+  const bel = (d && d.beloningen) || [], volgendeBel = bel.find((r) => !r.behaald) || null;
+  return { l, m, max: l.length * 3, tel, open, bel, volgendeBel };
+}
 function palmaresHtml(d) {
-  const { l, n, tot, open } = palmaresStand(d);
-  if (!l.length) return '<div class="kaart actief"><div class="kaart-in"><p class="klein">Je badges worden nog opgehaald. Ververs de app over een paar seconden.</p></div></div>';
+  const { l, m, max, tel, open, bel } = palmaresStand(d);
+  if (!l.length) return '<div class="kaart actief"><div class="kaart-in"><p class="klein">Je medailles worden nog opgehaald. Ververs de app over een paar seconden.</p></div></div>';
   const groepen = [...new Set(l.map((b) => b.groep))];
-  const dag = (x) => new Date(x).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
-  const tegeltje = (b) => `<button type="button" class="md-tegel${b.behaald ? ' aan' : ''}" data-badge="${b.id}">${medaille(b)}<b>${b.naam}</b><small>${b.behaald ? (b.op ? dag(b.op) : 'verdiend') : b.nodig > 1 ? b.nu + ' / ' + b.nodig : 'nog niet'}</small>${!b.behaald && b.nodig > 1 ? `<span class="md-balk"><i style="width:${Math.round(b.nu / b.nodig * 100)}%"></i></span>` : ''}</button>`;
-  const bijna = open.filter((b) => b.nu > 0).slice(0, 3);
+  const tegeltje = (b) => {
+    const p = b.volgende ? Math.round(Math.min(b.waarde, b.volgende) / b.volgende * 100) : 100;
+    return `<button type="button" class="md-tegel n${b.niveau}" data-badge="${b.id}">${medailleSvg(b, 74)}<b>${b.naam}</b><small>${b.binnenkort ? 'Binnenkort' : b.niveau ? MD_NAAM[b.niveau - 1] : 'Op slot'}</small>${b.volgende && !b.binnenkort ? `<span class="md-balk"><i style="width:${p}%"></i></span><em>${Math.min(b.waarde, b.volgende)} / ${b.volgende}</em>` : !b.volgende ? '<em class="goud">Alles goud</em>' : ''}</button>`;
+  };
+  const lidNu = isLid(d) || (d.lid && d.lid.bron === 'coaching');
+  const belKaart = (r) => {
+    const nog = Math.max(0, r.n - m);
+    const kort = lidNu ? String(r.kort).replace(/, plus .*$/, '.') : r.kort;
+    const knop = !r.behaald ? '' : r.id === 'm5' ? '<button type="button" class="knop" data-beloning="m5">Bekijk de sessie</button>' : r.coaching ? '<p class="klein" style="margin:6px 0 0">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">${r.id === 'm10' ? 'Kies je schema' : 'Start je analyse'}</a>` : '';
+    return `<div class="bel${r.behaald ? ' aan' : ''}"><div class="bel-n"><b>${r.n}</b><small>medailles</small></div><div class="bel-tekst"><b>${r.behaald ? '&#10003; ' : ''}${esc(r.titel)}</b><span>${esc(kort)}</span>${r.behaald ? (r.lidKorting ? '<span class="bel-extra">Je €' + r.lidKorting + ' lidmaatschapskorting staat klaar bij Mijn lidmaatschap.</span>' : '') + (r.vragen ? '<span class="bel-extra">Je 2 extra coachvragen staan klaar.</span>' : '') : `<span class="bel-nog">Nog ${nog} ${nog === 1 ? 'medaille' : 'medailles'}</span>`}${knop}</div>${r.behaald ? '' : '<div class="bel-slot">' + medailleSlot() + '</div>'}</div>`;
+  };
+  const allesGoud = (g) => l.filter((b) => b.groep === g && !b.binnenkort).every((b) => b.niveau === 3);
+  const bijna = open.filter((b) => b.waarde > 0).slice(0, 3);
   return `<div class="kaart actief palmares"><div class="kaart-in">
-    <div class="pm-kop"><div><div class="label">Je palmares</div><h2>${n} van ${tot} badges</h2><p class="klein" style="margin:4px 0 0">Verdiend met wat je echt doet: je Core, je ritten, je groep en je maten.</p></div><div class="pm-n">${n}</div></div>
-    <div class="pm-balk"><i style="width:${Math.round(n / tot * 100)}%"></i></div>
+    <div class="pm-kop"><div><div class="label">Je palmares</div><h2>${m} van ${max} medailles</h2><p class="klein" style="margin:4px 0 0">Elke badge heeft drie medailles: brons, zilver en goud. Verdiend met wat je echt doet.</p></div></div>
+    <div class="pm-tel">${[0, 1, 2].map((i) => `<div class="pm-t">${medailleSvg({ icoon: 'vink', niveau: i + 1 }, 30)}<div><b>${tel[i]}</b><small>${MD_NAAM[i]}</small></div></div>`).join('')}</div>
+    <div class="pm-balk"><i style="width:${Math.round(m / max * 100)}%"></i></div>
+    <div class="rv-sub">Beloningen</div><div class="bel-lijst">${bel.map(belKaart).join('')}</div>
     ${bijna.length ? `<div class="rv-sub">Bijna binnen</div><div class="md-raster">${bijna.map(tegeltje).join('')}</div>` : ''}
-    ${groepen.map((g) => `<div class="rv-sub">${g}</div><div class="md-raster">${l.filter((b) => b.groep === g).map(tegeltje).join('')}</div>`).join('')}
-    <p class="klein" style="margin-top:14px">Badges rekent de app zelf uit met wat er echt gebeurt: je Core-sessies, je ritten met het weer van dat moment, je groepsritten en maten die lid werden. Tik op een badge die je hebt om hem te delen.</p>
+    ${groepen.map((g) => `<div class="rv-sub">${g}${allesGoud(g) ? ' <span class="pm-goud">Alles goud</span>' : ''}</div><div class="md-raster${allesGoud(g) ? ' goudrand' : ''}">${l.filter((b) => b.groep === g).map(tegeltje).join('')}</div>`).join('')}
+    <p class="klein" style="margin-top:14px">De app rekent je medailles zelf uit met wat er echt gebeurt: je Core-sessies, je ritten met het weer van dat moment, je groepsritten, je analyses en maten die lid werden. Tik op een medaille voor de details of om hem te delen.</p>
   </div></div>`;
 }
-function badgeModal(id, nieuw) {
+function medailleSlot() { return '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>'; }
+function badgeModal(id, nieuwNiveau) {
   const b = ((zicht() || {}).badges || []).find((x) => x.id === id); if (!b) return;
-  const dag = b.op ? new Date(b.op).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
-  modal(`<div class="md-modal">${nieuw ? '<div class="label" style="text-align:center">Nieuwe badge</div>' : ''}${medaille(b, true)}<h3>${b.naam}</h3><p>${b.uitleg}</p>
-    ${b.behaald ? `<p class="klein">${dag ? 'Verdiend op ' + dag : 'Verdiend'}</p><button type="button" class="knop" data-badgedeel="${b.id}">Deel als story</button>` : `<p class="klein">${b.nodig > 1 ? 'Je staat op ' + b.nu + ' van ' + b.nodig + '.' : 'Nog niet verdiend.'}</p>`}
-    <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">${nieuw ? 'Top' : 'Sluiten'}</button>${nieuw ? '<button type="button" class="sb-link" data-view="palmares" style="display:block;margin:4px auto 0">Bekijk je palmares</button>' : ''}</div>`);
+  const dag = (x) => x ? new Date(x).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  const rij = (i) => { const gehaald = b.niveau > i; return `<li class="${gehaald ? 'aan' : ''}">${medailleSvg(b, 30, { niveau: gehaald ? i + 1 : 0 })}<div><b>${MD_NAAM[i]}</b><span>${b.uitleg[i]}</span></div><small>${gehaald ? dag(b.op[i + 1]) || 'gehaald' : b.binnenkort ? 'binnenkort' : Math.min(b.waarde, b.drempels[i]) + ' / ' + b.drempels[i]}</small></li>`; };
+  modal(`<div class="md-modal${nieuwNiveau ? ' nieuw' : ''}">${nieuwNiveau ? `<div class="md-unlock">Ontgrendeld!</div>` : ''}<div class="md-groot">${medailleSvg(b, 150, nieuwNiveau ? { niveau: nieuwNiveau } : {})}</div>
+    <h3>${b.naam}</h3><p class="md-niv">${b.niveau ? MD_NAAM[b.niveau - 1] : b.binnenkort ? 'Binnenkort te verdienen' : 'Nog op slot'}</p>
+    <ul class="md-rijen">${[0, 1, 2].map(rij).join('')}</ul>
+    ${b.niveau ? `<button type="button" class="knop" data-badgedeel="${b.id}">Deel als story</button>` : `<p class="klein">${esc(b.nog)}</p>`}
+    <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">${nieuwNiveau ? 'Top!' : 'Sluiten'}</button>${nieuwNiveau ? '<button type="button" class="sb-link" data-view="palmares" style="display:block;margin:4px auto 0">Bekijk je palmares</button>' : ''}</div>`);
 }
-// Story-plaatje van een badge, met je eigen uitnodiglink (50% voor je maten).
+function beloningModal(id, nieuw) {
+  const r = ((zicht() || {}).beloningen || []).find((x) => x.id === id); if (!r) return;
+  const sessie = r.sessie ? `<ol class="ms-lijst">${r.sessie.oefeningen.map((o) => `<li><b>${esc(o.naam)}</b><span>${esc(o.cue)}</span></li>`).join('')}</ol>` : '';
+  const actie = r.id === 'm5' ? '' : r.coaching ? '<p class="klein">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">${r.id === 'm10' ? 'Kies je schema met €10 korting' : 'Start je gratis analyse'}</a>` : '';
+  modal(`<div class="md-modal">${nieuw ? '<div class="md-unlock">Beloning ontgrendeld!</div>' : ''}<div class="bel-groot"><b>${r.n}</b><small>medailles</small></div><h3>${esc(r.id === 'm5' && r.sessie ? r.sessie.titel : r.titel)}</h3>
+    <p>${esc(r.id === 'm5' && r.sessie ? r.sessie.uitleg : r.kort)}</p>${sessie}${r.vragen ? '<p class="klein">Plus: 2 extra gratis coachvragen deze week.</p>' : ''}${r.lidKorting ? `<p class="klein">Plus: €${r.lidKorting} korting op je eerste lidmaatschap, die zie je bij het betalen.</p>` : ''}${actie}
+    <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">Sluiten</button></div>`);
+}
+// Story-plaatje van een medaille, met je eigen uitnodiglink (50% voor je maten).
 async function badgeStory(b) {
   try { await Promise.all([document.fonts.load('120px "Bebas Neue"'), document.fonts.load('600 40px "DM Sans"')]); } catch (e) {}
   let url = 'rapport.michelkredercoaching.nl/app';
@@ -2992,47 +3088,52 @@ async function badgeStory(b) {
   const OR = '#FF6B1A', WIT = '#F5F3EF', GRIJS = 'rgba(245,243,239,0.7)';
   const bebas = (px) => `${px}px "Bebas Neue", Impact, sans-serif`, dm = (px, w = 400) => `${w} ${px}px "DM Sans", Arial, sans-serif`;
   let g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1d120b'); g.addColorStop(0.55, '#0b0b0b'); g.addColorStop(1, '#0b0b0b'); x.fillStyle = g; x.fillRect(0, 0, W, H);
-  g = x.createRadialGradient(W / 2, 760, 50, W / 2, 760, 620); g.addColorStop(0, 'rgba(255,107,26,0.35)'); g.addColorStop(1, 'rgba(255,107,26,0)'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  g = x.createRadialGradient(W / 2, 760, 50, W / 2, 760, 640); g.addColorStop(0, 'rgba(255,107,26,0.32)'); g.addColorStop(1, 'rgba(255,107,26,0)'); x.fillStyle = g; x.fillRect(0, 0, W, H);
   x.textAlign = 'left'; x.fillStyle = WIT; x.font = bebas(110); x.fillText('MKC', 80, 190); const w1 = x.measureText('MKC').width; x.fillStyle = OR; x.fillText('.', 80 + w1, 190);
   x.font = dm(30, 700); x.fillStyle = OR; x.textAlign = 'right'; x.fillText('PALMARES', W - 80, 150);
-  // Medaille
+  const svg = medailleSvg(b, 560).replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+  const img = await new Promise((ok, nee) => { const i = new Image(); i.onload = () => ok(i); i.onerror = nee; i.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg); });
+  x.drawImage(img, (W - 560) / 2, 300, 560, Math.round(560 * 152 / 120));
   x.textAlign = 'center';
-  x.beginPath(); x.arc(W / 2, 760, 250, 0, Math.PI * 2); x.fillStyle = OR; x.fill();
-  x.beginPath(); x.arc(W / 2, 760, 214, 0, Math.PI * 2); x.lineWidth = 10; x.strokeStyle = 'rgba(10,10,10,0.35)'; x.stroke();
-  const kort = String(b.kort).replace(/&lt;/g, '<').replace(/&deg;/g, '°').replace(/&amp;/g, '&');
-  x.fillStyle = '#0b0b0b'; x.font = bebas(kort.length > 3 ? 170 : 230); x.fillText(kort, W / 2, 760 + (kort.length > 3 ? 60 : 80));
-  x.fillStyle = OR; x.font = dm(34, 700); x.fillText('BADGE VERDIEND', W / 2, 1110);
-  x.fillStyle = WIT; let px = 150; x.font = bebas(px); while (x.measureText(b.naam.toUpperCase()).width > W - 140 && px > 80) { px -= 10; x.font = bebas(px); } x.fillText(b.naam.toUpperCase(), W / 2, 1250);
-  x.fillStyle = GRIJS; x.font = dm(40, 500); rkRegels(x, b.uitleg, W - 200).slice(0, 3).forEach((r, i) => x.fillText(r, W / 2, 1340 + i * 56));
+  x.fillStyle = OR; x.font = dm(36, 700); x.fillText(MD_NAAM[b.niveau - 1].toUpperCase() + ' VERDIEND', W / 2, 1130);
+  x.fillStyle = WIT; let px = 150; x.font = bebas(px); while (x.measureText(b.naam.toUpperCase()).width > W - 140 && px > 80) { px -= 10; x.font = bebas(px); } x.fillText(b.naam.toUpperCase(), W / 2, 1270);
+  x.fillStyle = GRIJS; x.font = dm(42, 500); x.fillText(b.uitleg[b.niveau - 1], W / 2, 1350);
   const nm = String((D && D.naam) || '').split(' ')[0];
   if (nm) { x.fillStyle = WIT; x.font = dm(44, 700); x.fillText(nm + ' in de MKC-app', W / 2, 1560); }
   x.fillStyle = OR; x.font = dm(36, 700); x.fillText('Train mee met 50% korting:', W / 2, 1720);
   x.fillStyle = WIT; x.font = dm(32, 600); x.fillText(url, W / 2, 1772);
   const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.92));
-  const file = new File([blob], 'mkc-badge-' + b.id + '.jpg', { type: 'image/jpeg' });
+  const file = new File([blob], 'mkc-medaille-' + b.id + '.jpg', { type: 'image/jpeg' });
   statEens('deel');
-  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: b.naam + ' in de MKC-app. Train mee met 50% korting: https://' + url }); return; } catch (er) { if (er && er.name === 'AbortError') return; } }
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: b.naam + ' (' + MD_NAAM[b.niveau - 1].toLowerCase() + ') in de MKC-app. Train mee met 50% korting: https://' + url }); return; } catch (er) { if (er && er.name === 'AbortError') return; } }
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
 document.addEventListener('click', async (e) => {
   const t = e.target.closest('[data-badge]'); if (t) { e.preventDefault(); return badgeModal(t.dataset.badge); }
+  const bl = e.target.closest('[data-beloning]'); if (bl) { e.preventDefault(); return beloningModal(bl.dataset.beloning); }
   const s = e.target.closest('[data-badgedeel]'); if (!s) return;
   const b = ((zicht() || {}).badges || []).find((x) => x.id === s.dataset.badgedeel); if (!b) return;
   s.disabled = true; s.textContent = 'Even maken...';
   try { await badgeStory(b); } catch (er) { alert('Het plaatje maken lukte niet.'); }
   s.disabled = false; s.textContent = 'Deel als story';
 });
-// Nieuwe badge sinds je laatste bezoek: één keer een feestje.
+// Nieuwe medaille of beloning sinds je laatste bezoek: één keer een feestje.
 function badgeFeest() {
-  const ids = (D && D.nieuweBadges) || []; if (!ids.length || D.gast) return;
-  const sleutel = 'mkcBadgeFeest:' + ids.join(',');
+  if (!D || D.gast) return;
+  const nb = D.nieuweBadges || [], nbel = D.nieuweBeloningen || [];
+  if (!nb.length && !nbel.length) return;
+  const sleutel = 'mkcBadgeFeest:' + JSON.stringify([nb, nbel]);
   try { if (sessionStorage.getItem(sleutel)) return; sessionStorage.setItem(sleutel, '1'); } catch (e) {}
-  setTimeout(() => badgeModal(ids[0], true), 600);
+  setTimeout(() => {
+    if (nbel.length) return beloningModal(nbel[nbel.length - 1], true);
+    const hoogste = nb.slice().sort((a, b) => b.niveau - a.niveau)[0];
+    badgeModal(hoogste.id, hoogste.niveau);
+  }, 600);
 }
 // Je rang, op meer plekken, met een tik naar je ladder.
 function palmaresChipHtml(d) {
-  const l = (d && d.badges) || [], n = l.filter((b) => b.behaald).length;
-  return `<a href="#" class="rang-chip" data-view="palmares"><span>Palmares</span>${l.length ? n + ' van ' + l.length + ' badges' : 'Je badges'} <i>&rsaquo;</i></a>`;
+  const pb = palmaresStand(d);
+  return `<a href="#" class="rang-chip" data-view="palmares"><span>Palmares</span>${pb.l.length ? pb.m + (pb.m === 1 ? ' medaille' : ' medailles') : 'Je medailles'} <i>&rsaquo;</i></a>`;
 }
 function rangChipHtml(d) {
   const l = vriendLid(d); if (!l) return '';
@@ -3563,14 +3664,14 @@ async function bhLaad(wat) {
 function bhTeken(wat) { const id = { doelen: 'bhdoelen', schema: 'bhschema', core: 'bhcore', badges: 'bhbadges' }[wat]; const el = document.getElementById(id); if (el) el.outerHTML = { doelen: doelenBeheerHtml, schema: schemaBeheerHtml, core: coreBeheerHtml, badges: badgeBeheerHtml }[wat](); }
 function badgeBeheerHtml() {
   if (!D || !D.beheer) return '';
-  const x = BH.badges.data, kop = bhKop('badges', 'Badges', x ? x.totaal + ' mensen met badges' : 'wie verdiende wat, en waarom');
+  const x = BH.badges.data, kop = bhKop('badges', 'Badges', x ? x.totaal + ' mensen met medailles' : 'wie verdiende wat, en waarom');
   if (!BH.badges.open) return `<div class="geb" id="bhbadges">${kop}</div>`;
   if (!x) return `<div class="geb" id="bhbadges">${kop}<div class="geb-in"><p class="klein">Laden...</p></div></div>`;
   const w = BH.badges.wie;
-  const nakijk = w ? `<div class="bh-nakijk"><b>${esc(w.email)}</b><p class="klein">Tellers: ${Object.entries(w.teller || {}).filter(([k]) => k !== 'gezaaid').map(([k, v]) => esc(k) + ' ' + v).join(' &middot; ') || 'geen'}</p><table class="geb-tab">${Object.entries(w.verdiend || {}).map(([id, op]) => `<tr><td>${esc(((x.badges.find((b) => b.id === id)) || {}).naam || id)}</td><td><small>${esc(new Date(op).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}</small></td></tr>`).join('') || '<tr><td><small>Nog geen badges</small></td></tr>'}</table></div>` : '';
+  const nakijk = w ? `<div class="bh-nakijk"><b>${esc(w.email)}</b><p class="klein">Tellers: ${Object.entries(w.teller || {}).filter(([k]) => k !== 'gezaaid').map(([k, v]) => esc(k) + ' ' + v).join(' &middot; ') || 'geen'}</p><table class="geb-tab">${Object.entries(w.verdiend || {}).flatMap(([id, niv]) => Object.entries(niv || {}).map(([n, op]) => `<tr><td>${esc(((x.badges.find((b) => b.id === id)) || {}).naam || id)} &middot; ${['', 'brons', 'zilver', 'goud'][n] || n}</td><td><small>${esc(new Date(op).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }))}</small></td></tr>`)).join('') || '<tr><td><small>Nog geen medailles</small></td></tr>'}${Object.keys(w.beloning || {}).length ? `<tr><td colspan="2"><small>Beloningen: ${Object.entries(w.beloning).map(([k, v]) => esc(k) + ' (' + esc(new Date(v.op).toLocaleDateString('nl-NL')) + ')').join(', ')}</small></td></tr>` : ''}</table></div>` : '';
   return `<div class="geb" id="bhbadges">${kop}<div class="geb-in">
-    <table class="geb-tab"><tr><th>Badge</th><th>Groep</th><th>Verdiend</th></tr>${x.badges.map((b) => `<tr><td>${esc(b.naam)}</td><td><small>${esc(b.groep)}</small></td><td><b>${b.aantal}</b></td></tr>`).join('')}</table>
-    <div class="rv-sub">Meeste badges</div><table class="geb-tab">${x.top.map((m) => `<tr><td><button type="button" class="sb-link" data-bhbadge="${esc(m.email)}" style="margin:0">${esc(m.email)}</button></td><td><b>${m.aantal}</b></td></tr>`).join('') || '<tr><td><small>Nog niemand</small></td></tr>'}</table>
+    <table class="geb-tab"><tr><th>Badge</th><th>Brons</th><th>Zilver</th><th>Goud</th></tr>${x.badges.map((b) => `<tr><td>${esc(b.naam)}</td><td><b>${b.aantal[0]}</b></td><td><b>${b.aantal[1]}</b></td><td><b>${b.aantal[2]}</b></td></tr>`).join('')}</table>
+    <div class="rv-sub">Meeste medailles</div><table class="geb-tab">${x.top.map((m) => `<tr><td><button type="button" class="sb-link" data-bhbadge="${esc(m.email)}" style="margin:0">${esc(m.email)}</button></td><td><b>${m.aantal}</b></td></tr>`).join('') || '<tr><td><small>Nog niemand</small></td></tr>'}</table>
     <div class="gr-maak" style="margin-top:10px"><label>Nakijken: mailadres</label><div style="display:grid;grid-template-columns:1fr auto;gap:8px"><input id="bhBadgeMail" type="email" placeholder="naam@voorbeeld.nl"><button type="button" class="knop" data-bhbadge="veld" style="width:auto;padding:0 16px">Bekijk</button></div></div>
     ${nakijk}
     <button type="button" class="sb-link" data-bh="ververs" data-w="badges">Ververs</button></div></div>`;

@@ -699,11 +699,14 @@ async function routeStart(req, res) {
 
   await bewaarLid(email, lid);   // akkoord altijd vastleggen
   const plan = herstel ? planVan(lid.plan) : planVan(body.plan);
+  // Badgekorting (13-10-2026): €5 van de eerste betaling, alleen voor wie nog nooit betaald lid was.
+  let badgeKorting = 0;
+  if (!herstel && !vriendVan && !terug && !lid.betaaldOoit) { const bk = await redis(['GET', `app:badgekorting:${email}`]); badgeKorting = Number(bk.ok && bk.result) || 0; }
   const p = await mollie('/payments', {
     method: 'POST',
     body: JSON.stringify({
-      amount: { currency: 'EUR', value: vriendVan ? vriendBedrag(plan) : terug ? halve(herstel ? prijzenVan(lid).maand : PLANNEN.maand.bedrag) : (herstel ? prijzenVan(lid)[plan] : PLANNEN[plan].bedrag) },
-      description: herstel ? `${OMSCHRIJVING}, betaling bijwerken` : vriendVan ? (plan === 'jaar' ? `${OMSCHRIJVING}, eerste jaar (via een maat, ${euro(VRIEND_JAAR_KORTING)} korting)` : `${OMSCHRIJVING}, eerste maand (via een maat, 50% korting)`) : automatisch
+      amount: { currency: 'EUR', value: badgeKorting ? (Number(PLANNEN[plan].bedrag) - badgeKorting).toFixed(2) : vriendVan ? vriendBedrag(plan) : terug ? halve(herstel ? prijzenVan(lid).maand : PLANNEN.maand.bedrag) : (herstel ? prijzenVan(lid)[plan] : PLANNEN[plan].bedrag) },
+      description: herstel ? `${OMSCHRIJVING}, betaling bijwerken` : badgeKorting ? `${OMSCHRIJVING}, ${plan === 'jaar' ? 'eerste jaar' : 'eerste maand'} (badgekorting ${euro(badgeKorting)})` : vriendVan ? (plan === 'jaar' ? `${OMSCHRIJVING}, eerste jaar (via een maat, ${euro(VRIEND_JAAR_KORTING)} korting)` : `${OMSCHRIJVING}, eerste maand (via een maat, 50% korting)`) : automatisch
         ? (plan === 'jaar' ? `${OMSCHRIJVING}, eerste jaar` : `${OMSCHRIJVING}, eerste maand`)
         : (plan === 'jaar' ? `${OMSCHRIJVING}, 1 jaar` : `${OMSCHRIJVING}, 1 maand`),
       customerId: lid.customerId,
@@ -712,7 +715,7 @@ async function routeStart(req, res) {
       // vaak in Safari uit, en die heeft eigen opslag (zie api/app.js).
       redirectUrl: `${APP_URL}?lid=terug&t=${encodeURIComponent(String(body.t))}`,
       webhookUrl: WEBHOOK_URL,
-      metadata: { email, soort: herstel ? 'lid-herstel' : automatisch ? 'lid-eerste' : 'lid-periode', plan, akkoord: lid.akkoord.op, ...(vriendVan ? { vriend: vriendVan } : {}), ...(terug ? { terug: true } : {}) }
+      metadata: { email, soort: herstel ? 'lid-herstel' : automatisch ? 'lid-eerste' : 'lid-periode', plan, akkoord: lid.akkoord.op, ...(badgeKorting ? { badgeKorting: String(badgeKorting) } : {}), ...(vriendVan ? { vriend: vriendVan } : {}), ...(terug ? { terug: true } : {}) }
     })
   });
   if (!p.ok) return res.status(502).json({ ok: false, fout: 'Betalen lukt nu even niet. Probeer het zo nog eens.' });
@@ -744,6 +747,7 @@ async function routeWebhook(req, res) {
     const betaaldOp = p.paidAt || new Date().toISOString();
     const soort = (p.metadata && p.metadata.soort) || '';
     lid.betaaldOoit = true;
+    if (p.metadata && p.metadata.badgeKorting) await redis(['DEL', `app:badgekorting:${lidEmail}`]);
 
     if (p.sequenceType === 'first') {
       // Eerste periode binnen: abonnement aanmaken, eerste incasso na een maand of een jaar.

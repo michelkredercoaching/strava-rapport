@@ -44,7 +44,8 @@ import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN, laadPlan } from 
 import { haalMeldingen, leesMelding, appMelding, logPush } from '../lib/app-melding.js';
 import { leesDoel, nieuwDoel, volgendeStap, doelContext } from '../lib/doelen.js';
 import { maakKortingToken } from '../lib/korting.js';
-import { BADGES, badgeOverzicht } from '../lib/badges.js';
+import { BADGES, BELONINGEN, NIVEAUS, badgeOverzicht, medailleTotaal } from '../lib/badges.js';
+import { OEFENINGEN } from '../lib/core.js';
 import { tel, overzicht as gebruikOverzicht, CLIENT_GEBEURTENISSEN, GAST_GEBEURTENISSEN } from '../lib/stat.js';
 import { COACH_KENNIS, COACH_REGELS, COACH_TOON } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
@@ -279,61 +280,94 @@ function beheerEmail(req, t) { const e = leesAppToken(String(t || '')); return e
 // (ritten, coach) worden afgekapt, de tellers niet.
 async function telOp(email, veld, n = 1) { if (email) await redis(['HINCRBY', `app:teller:${email}`, veld, String(n)]); }
 const amsUur = (iso) => Number(new Date(iso).toLocaleString('en-GB', { timeZone: 'Europe/Amsterdam', hour: '2-digit', hour12: false })) % 24;
+// Michel-sessie (beloning bij 5 medailles): 6 oefeningen, 40 s werk en 20 s rust, 2 rondes.
+const MICHEL_SESSIE = { titel: 'Michel-sessie: klaar voor een lange rit', uitleg: 'Mijn eigen routine voor de dag voor een lange rit of tocht. 6 oefeningen, 40 seconden werk en 20 seconden rust, 2 rondes. Ongeveer 12 minuten.',
+  oefeningen: ['birddog', 'deadbug-gebogen', 'zijplank-knieen', 'bridge-mars', 'fietshouding', 'plank'] };
+// €10 schemakorting: hetzelfde kh10-token dat het WordPress-snippet al accepteert (zie keuzehulp-inschrijving.js).
+function schemaKortingLink(email) {
+  const geheim = process.env.PP_TOKEN_SECRET || ''; if (!geheim) return null;
+  const exp = Date.now() + 90 * 864e5, payload = `kh10|${String(email).toLowerCase()}|${exp}`;
+  const sig = crypto.createHmac('sha256', geheim).update(payload).digest('hex').slice(0, 16);
+  return 'https://michelkredercoaching.nl/trainingsschemas/?kh=' + Buffer.from(`${payload}|${sig}`).toString('base64url');
+}
 async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], doel, lidmaatschap, analyse }) {
   const t = await redis(['HGETALL', `app:teller:${email}`]);
   const teller = {};
   if (t.ok && Array.isArray(t.result)) for (let i = 0; i < t.result.length; i += 2) teller[t.result[i]] = Number(t.result[i + 1]) || 0;
   else if (t.ok && t.result && typeof t.result === 'object') for (const [k, v] of Object.entries(t.result)) teller[k] = Number(v) || 0;
-  if (!teller.gezaaid) {
-    // Eenmalig: wat er al op de server staat (ritten met servertijd, coachvragen).
-    const zaai = { ritten: ritten.length, beoordeeld: ritten.filter((x) => x.oordeel || x.oordeelKleding).length, vroeg: ritten.filter((x) => amsUur(x.op) < 7).length, coach: coachBerichten.filter((b) => b.van === 'ik').length };
+  if (teller.gezaaid !== 2) {
+    // Eenmalig: wat er al op de server staat (ritten met servertijd, coachvragen, doel, analyse).
+    const zaai = { ritten: ritten.length, beoordeeld: ritten.filter((x) => x.oordeel || x.oordeelKleding).length, vroeg: ritten.filter((x) => amsUur(x.op) < 7).length,
+      coach: coachBerichten.filter((b) => b.van === 'ik').length, finishes: doel && doel.doel === 'evenement' && doel.klaar ? 1 : 0, analyses: analyse ? 1 : 0 };
     const velden = [];
     for (const [k, v] of Object.entries(zaai)) { teller[k] = Math.max(teller[k] || 0, v); velden.push(k, String(teller[k])); }
-    teller.gezaaid = 1; velden.push('gezaaid', '1');
+    teller.gezaaid = 2; velden.push('gezaaid', '2');
     await redis(['HSET', `app:teller:${email}`, ...velden]);
   }
   const stand = {
     ...teller,
     coreSessies: (core && core.sessiesTotaal) || 0, coreNiveaus: (core && core.afgerond) || 0, reeks: (core && core.reeks) || 0,
     rompPlus: core && core.rompscore != null && core.startScore != null ? core.rompscore - core.startScore : 0,
-    doel: doel ? 1 : 0, finisher: doel && doel.doel === 'evenement' && doel.klaar ? 1 : 0, doelNaam: (doel && doel.naam) || '',
-    maten: (lidmaatschap && lidmaatschap.vriendAantal) || 0, analyse: analyse ? 1 : 0
+    maten: (lidmaatschap && lidmaatschap.vriendAantal) || 0
   };
-  const r = await redis(['GET', `app:badges:${email}`]);
-  let verdiend = {}; try { verdiend = (r.ok && r.result && JSON.parse(r.result)) || {}; } catch (e) {}
-  const eerste = !(r.ok && r.result);
-  const nieuw = badgeOverzicht(stand, verdiend).filter((b) => b.behaald && !verdiend[b.id]);
-  if (nieuw.length || eerste) {
-    const nu = new Date().toISOString();
-    for (const b of nieuw) verdiend[b.id] = nu;
-    await redis(['SET', `app:badges:${email}`, JSON.stringify(verdiend)]);
+  const [rm, rb] = await Promise.all([redis(['GET', `app:medailles:${email}`]), redis(['GET', `app:badgebeloning:${email}`])]);
+  let verdiend = {}; try { verdiend = (rm.ok && rm.result && JSON.parse(rm.result)) || {}; } catch (e) {}
+  let bel = {}; try { bel = (rb.ok && rb.result && JSON.parse(rb.result)) || {}; } catch (e) {}
+  const eerste = !(rm.ok && rm.result);
+  const nu = new Date().toISOString(), nieuw = [];
+  for (const b of badgeOverzicht(stand, verdiend)) {
+    for (let i = 1; i <= b.niveau; i++) {
+      verdiend[b.id] = verdiend[b.id] || {};
+      if (!verdiend[b.id][i]) { verdiend[b.id][i] = nu; nieuw.push({ id: b.id, niveau: i }); }
+    }
+  }
+  const lijst = badgeOverzicht(stand, verdiend), totaal = medailleTotaal(lijst);
+  // Beloningen: één keer, bij het halen van het aantal medailles.
+  const lid = !!(lidmaatschap && lidmaatschap.tot && Date.parse(lidmaatschap.tot) > Date.now());
+  const coaching = !!(lidmaatschap && lidmaatschap.bron === 'coaching');
+  const nieuweBel = [];
+  for (const r of BELONINGEN) {
+    if (totaal < r.n || bel[r.id]) continue;
+    const x = { op: nu };
+    if (r.id === 'm5' && !lid && !coaching) { const k = `app:gratisvragen:${email}:${weekSleutel()}`; await redis(['INCRBY', k, '-2']); await redis(['EXPIRE', k, String(8 * 86400)]); x.vragen = 2; }
+    if (r.id === 'm10') { x.link = schemaKortingLink(email); if (!lid && !coaching) { await redis(['SET', `app:badgekorting:${email}`, '5']); x.lidKorting = 5; } }
+    if (r.id === 'm15') { if (coaching) x.coaching = true; else { const tk = maakKortingToken(0, 365); x.link = tk ? `https://rapport.michelkredercoaching.nl/?korting=${tk}` : null; } }
+    bel[r.id] = x; nieuweBel.push(r.id);
+  }
+  if (nieuw.length || nieuweBel.length || eerste) {
+    await redis(['SET', `app:medailles:${email}`, JSON.stringify(verdiend)]);
+    if (nieuweBel.length) await redis(['SET', `app:badgebeloning:${email}`, JSON.stringify(bel)]);
     await redis(['SADD', 'app:badges:alle', email]);
   }
-  // Bij de allereerste keer geen feestje voor alles wat er al lag: dat staat gewoon in je palmares.
-  return { badges: badgeOverzicht(stand, verdiend), nieuweBadges: eerste ? [] : nieuw.map((b) => b.id) };
+  const beloningen = BELONINGEN.map((r) => ({ ...r, behaald: !!bel[r.id], ...(bel[r.id] || {}),
+    ...(r.id === 'm5' && bel[r.id] ? { sessie: { ...MICHEL_SESSIE, oefeningen: MICHEL_SESSIE.oefeningen.map((id) => ({ naam: (OEFENINGEN[id] || {}).naam || id, cue: (OEFENINGEN[id] || {}).cue || '' })) } } : {}) }));
+  // Bij de allereerste keer geen feestje voor alles wat er al lag.
+  return { badges: lijst, medailles: totaal, beloningen, nieuweBadges: eerste ? [] : nieuw, nieuweBeloningen: eerste ? [] : nieuweBel };
 }
-// Beheer: hoe vaak elke badge is verdiend, wie de meeste heeft, en per persoon
-// de onderbouwing (tellers en datums), zodat je elke badge kunt nakijken.
+// Beheer: hoe vaak elk niveau is gehaald, wie de meeste medailles heeft, en per
+// persoon de onderbouwing (tellers, datums en beloningen), om alles na te kijken.
 async function routeBadgeOverzicht(req, res) {
   if (!beheerEmail(req, req.query?.t)) return res.status(403).json({ ok: false });
   const wie = String(req.query?.email || '').trim().toLowerCase();
   if (wie) {
-    const [b, t] = await Promise.all([redis(['GET', `app:badges:${wie}`]), redis(['HGETALL', `app:teller:${wie}`])]);
+    const [b, t, bl] = await Promise.all([redis(['GET', `app:medailles:${wie}`]), redis(['HGETALL', `app:teller:${wie}`]), redis(['GET', `app:badgebeloning:${wie}`])]);
     let verdiend = {}; try { verdiend = JSON.parse(b.result) || {}; } catch (e) {}
+    let beloning = {}; try { beloning = JSON.parse(bl.result) || {}; } catch (e) {}
     const teller = {}; if (t.ok && Array.isArray(t.result)) for (let i = 0; i < t.result.length; i += 2) teller[t.result[i]] = Number(t.result[i + 1]) || 0;
-    return res.status(200).json({ ok: true, email: wie, verdiend, teller });
+    return res.status(200).json({ ok: true, email: wie, verdiend, teller, beloning });
   }
   const r = await redis(['SMEMBERS', 'app:badges:alle']);
   const perBadge = {}, mensen = [];
   for (const email of (r.ok && r.result) || []) {
     if (BEHEER.includes(email)) continue;
-    const b = await redis(['GET', `app:badges:${email}`]);
+    const b = await redis(['GET', `app:medailles:${email}`]);
     let v = {}; try { v = JSON.parse(b.result) || {}; } catch (e) {}
-    const ids = Object.keys(v); for (const id of ids) perBadge[id] = (perBadge[id] || 0) + 1;
-    mensen.push({ email, aantal: ids.length });
+    let n = 0;
+    for (const [id, niv] of Object.entries(v)) { if (!niv || typeof niv !== 'object') continue; perBadge[id] = perBadge[id] || [0, 0, 0]; for (const k of Object.keys(niv)) { perBadge[id][Number(k) - 1]++; n++; } }
+    mensen.push({ email, aantal: n });
   }
   mensen.sort((a, b) => b.aantal - a.aantal);
-  return res.status(200).json({ ok: true, badges: BADGES.map((b) => ({ id: b.id, naam: b.naam, groep: b.groep, aantal: perBadge[b.id] || 0 })), top: mensen.slice(0, 15), totaal: mensen.length });
+  return res.status(200).json({ ok: true, badges: BADGES.map((b) => ({ id: b.id, naam: b.naam, groep: b.groep, aantal: perBadge[b.id] || [0, 0, 0] })), top: mensen.slice(0, 15), totaal: mensen.length });
 }
 async function routeDoelenOverzicht(req, res) {
   if (!beheerEmail(req, req.query?.t)) return res.status(403).json({ ok: false });
@@ -689,7 +723,7 @@ async function routeDoelRonde(req, res) {
     uit.push({ email, stap: st.id });
     if (proef) continue;
     await appMelding(email, { soort: 'doel', titel: st.titel, tekst: st.tekst, link: st.link });
-    d.gestuurd = [...(d.gestuurd || []), st.id]; if (st.klaar) d.klaar = true;
+    d.gestuurd = [...(d.gestuurd || []), st.id]; if (st.klaar) { d.klaar = true; if (d.doel === 'evenement') await telOp(email, 'finishes'); }
     await redis(['SET', `app:doel:${email}`, JSON.stringify(d)]);
   }
   return res.status(200).json({ ok: true, proef, verstuurd: uit });
@@ -953,8 +987,9 @@ async function routeOverzicht(req, res) {
   let uitnodigingen = []; try { uitnodigingen = ((uitn.ok && uitn.result && JSON.parse(uitn.result)) || []).slice(0, 30); } catch (e) {}
   let uitgenodigd = null; try { const u = uitg.ok && uitg.result ? JSON.parse(uitg.result) : null; if (u && !(lidmaatschap && lidmaatschap.betaaldOoit)) uitgenodigd = { naam: u.naam || '' }; } catch (e) {}
   const ledenAnalyse = lb.open && lb.bron !== 'coaching' && !lb.coaching ? (() => { const t = maakKortingToken(LEDEN_ANALYSE, 30); return t ? `https://rapport.michelkredercoaching.nl/?korting=${t}` : null; })() : null;
-  const palmares = await badgesBijwerken(email, { core, ritten, coachBerichten, doel, lidmaatschap, analyse }).catch((e) => { console.error('badges', email, e && e.message); return { badges: [], nieuweBadges: [] }; });
-  return res.status(200).json({ doel, ledenAnalyse, badges: palmares.badges, nieuweBadges: palmares.nieuweBadges, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1) }, 
+  const palmares = await badgesBijwerken(email, { core, ritten, coachBerichten, doel, lidmaatschap, analyse }).catch((e) => { console.error('badges', email, e && e.message); return { badges: [], medailles: 0, beloningen: [], nieuweBadges: [], nieuweBeloningen: [] }; });
+  const badgeKorting = await redis(['GET', `app:badgekorting:${email}`]);
+  return res.status(200).json({ doel, ledenAnalyse, badges: palmares.badges, medailles: palmares.medailles, beloningen: palmares.beloningen, nieuweBadges: palmares.nieuweBadges, nieuweBeloningen: palmares.nieuweBeloningen, badgeKorting: Number(badgeKorting.ok && badgeKorting.result) || 0, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1) }, 
     ok: true,
     email,
     beheer: BEHEER.includes(email),
