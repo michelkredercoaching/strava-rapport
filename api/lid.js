@@ -368,6 +368,28 @@ async function uitnStatus(email, { u, naam, status }) {
   await redis(['SET', `lid:uitnodigingen:${email}`, JSON.stringify(l.slice(0, 60))]);
 }
 const waTekst = (naam, url) => `${naam ? 'Hoi ' + naam + '! ' : ''}Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding en voeding voor elke rit, core-oefeningen en een eigen coach. Via mijn link krijg je 50% korting op je eerste maand, of €5 korting op een jaar: ${url}`;
+// Leesbare maat-code (13-10-2026): "SANNE", "SANNE2"... voor op stories en om te noemen.
+// Verwijst naar de gewone (hex) uitnodigcode; eerste die hem claimt houdt hem.
+async function leesbareCode(email, voornaam, code) {
+  const al = await redis(['GET', `lid:mijncode:${email}`]); if (al.ok && al.result) return al.result;
+  const basis = String(voornaam || '').normalize('NFD').replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 8) || 'MKC';
+  for (let i = 1; i < 300; i++) {
+    const c = i === 1 ? basis : basis + i;
+    const z = await redis(['SET', `lid:vriendcode:${c}`, code, 'NX']);
+    const van = z.ok && z.result === 'OK' ? code : (await redis(['GET', `lid:vriendcode:${c}`])).result;
+    if (van === code) { await redis(['SET', `lid:mijncode:${email}`, c]); return c; }
+  }
+  return null;
+}
+// Code invullen op de lidpagina: zoekt de uitnodigcode en de voornaam van de maat op.
+async function routeVriendCode(req, res) {
+  const c = String(req.query?.code || '').normalize('NFD').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 12);
+  if (!c) return res.status(400).json({ ok: false });
+  const r = await redis(['GET', `lid:vriendcode:${c}`]);
+  if (!r.ok || !r.result) return res.status(200).json({ ok: false, fout: 'Deze code kennen we niet. Check even de spelling.' });
+  const nm = await redis(['GET', `lid:vriendnaam:${r.result}`]);
+  return res.status(200).json({ ok: true, code: r.result, naam: (nm.ok && nm.result) || '' });
+}
 async function routeUitnodig(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const body = await leesBody(req);
@@ -390,7 +412,8 @@ async function routeUitnodig(req, res) {
   }
   const url = `${APP_URL}?vriend=${code}${x ? '&u=' + x.id : ''}`;
   const tekst = waTekst(x ? x.naam.split(' ')[0] : '', url);
-  return res.status(200).json({ ok: true, url, tekst, whatsapp: 'https://wa.me/?text=' + encodeURIComponent(tekst), lijst: l.slice(0, 30) });
+  const leesCode = await leesbareCode(email, mijn || (lid && lid.naam) || '', code);
+  return res.status(200).json({ ok: true, url, tekst, leesCode, whatsapp: 'https://wa.me/?text=' + encodeURIComponent(tekst), lijst: l.slice(0, 30) });
 }
 // Uitnodiging vastleggen bij het account van de maat (13-10-2026). Dan telt hij ook
 // als die later of op een ander toestel lid wordt. Eerste uitnodiger telt.
@@ -648,6 +671,7 @@ export default async function handler(req, res) {
     if (actie === 'vriend') return await routeVriend(req, res);
     if (actie === 'vriendkoppel') return await routeVriendKoppel(req, res);
     if (actie === 'uitnodig') return await routeUitnodig(req, res);
+    if (actie === 'vriendcode') return await routeVriendCode(req, res);
     if (actie === 'herinner') return await routeHerinner(req, res);
     if (actie === 'schema') return await routeSchema(req, res);
     if (actie === 'cadeaumail') return await routeCadeauMail(req, res);

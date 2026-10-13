@@ -318,6 +318,9 @@
   .bh-sec { font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin:16px 0 6px; padding-top:10px; border-top:1px solid rgba(255,255,255,.08); }
   @media (max-width:420px) { .bhd-rij { grid-template-columns:repeat(2, 1fr); } }
   .bh-nakijk { margin-top:10px; padding:10px; border:1px solid rgba(255,255,255,.12); border-radius:8px; }
+  .vr-code { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 10px; background:rgba(0,0,0,.3); border:1px dashed rgba(255,107,26,.6); border-radius:10px; padding:10px 12px; margin:0 0 12px; font-size:12.5px; color:var(--muted); }
+  .vr-code b { font-family:'Bebas Neue',sans-serif; font-size:28px; letter-spacing:.06em; color:var(--accent); line-height:1; } .vr-code span { flex-basis:100%; font-size:11.5px; }
+  details.vr-codeveld { margin:4px 0 14px; } details.vr-codeveld > summary { cursor:pointer; font-size:13.5px; color:var(--white); } details.vr-codeveld > summary span { color:var(--accent); font-weight:700; margin-left:4px; }
   .vr-label { display:block; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:4px 0 5px; }
   .vr-naam { width:100%; height:46px; background:#000; border:1px solid rgba(255,255,255,.18); border-radius:6px; color:var(--white); padding:0 12px; font-size:15px; margin-bottom:8px; }
   details.vr-lijst { margin-top:14px; border-top:1px solid rgba(255,255,255,.1); padding-top:10px; }
@@ -2163,6 +2166,22 @@ function lidStap2Html() {
     <button type="button" class="sb-link" data-lidplan="terug" style="display:block;margin:8px auto 0">Ander plan kiezen</button></div>`;
 }
 document.addEventListener('click', (e) => { const k = e.target.closest('[data-lidplan="terug"]'); if (!k) return; LV.plan = null; const s2 = document.getElementById('lidStap2'); if (s2) s2.innerHTML = ''; document.querySelector('.plannen')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+function vriendCodeVeld() {
+  if (vriendActief()) return '';
+  return `<details class="vr-codeveld"><summary>Heb je een code van een maat? <span>50% korting</span></summary><div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:8px"><input id="vrCodeIn" maxlength="12" placeholder="Bijv. SANNE" autocomplete="off" style="text-transform:uppercase"><button type="button" class="knop" data-vrcode="1" style="width:auto;padding:0 18px">Toepassen</button></div><p class="klein" id="vrCodeFout" style="margin:6px 0 0"></p></details>`;
+}
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-vrcode]'); if (!k) return;
+  const v = (document.getElementById('vrCodeIn') || {}).value || '', f = document.getElementById('vrCodeFout');
+  if (!v.trim()) return;
+  k.disabled = true;
+  try {
+    const j = await (await fetch('/api/lid?actie=vriendcode&code=' + encodeURIComponent(v.trim()))).json();
+    if (!j.ok) { if (f) f.textContent = j.fout || 'Deze code kennen we niet.'; k.disabled = false; return; }
+    try { localStorage.setItem('mkcVriend', j.code); localStorage.setItem('mkcVriendU', ''); if (j.naam) localStorage.setItem('mkcVriendNaam', j.naam); localStorage.removeItem('mkcVriendGekoppeld'); } catch (er) {}
+    await vriendKoppel(); teken();
+  } catch (er) { if (f) f.textContent = 'Verbinding mislukt.'; k.disabled = false; }
+});
 function vriendUitnodigHtml() {
   if (!vriendActief()) return '';
   return `<div class="vr-uitnodig"><b>${vriendDoor() ? esc(vriendDoor()) + ' nodigt je uit' : 'Je bent uitgenodigd door een maat'}</b><span>Je eerste maand voor &euro;${APP_PRIJS.half} in plaats van &euro;${APP_PRIJS.maand} (50% korting), of een jaar voor &euro;${APP_PRIJS.jaarMaat} in plaats van &euro;${APP_PRIJS.jaar}.</span></div>`;
@@ -2218,6 +2237,7 @@ document.addEventListener('change', (e) => { if (e.target.id === 'lfLand') { lid
 function lidPitchHtml() {
   const d = zicht();
   return `<div class="lidblok">${vriendUitnodigHtml()}${lidKopHtml(d)}
+    ${vriendCodeVeld()}
     ${lidGebruikHtml(d)}${lidStapelHtml(d)}${LID_BEWIJS_KORT}
     ${plannenHtml(false)}
     <p class="klein lid-risico">Geen contract. Per maand altijd opzegbaar, met &eacute;&eacute;n tik in de app.</p>
@@ -3083,6 +3103,7 @@ function vriendKaartHtml(l, compact) {
   if (compact) return `<div class="vr-kaart compact"><div class="vr-kop"><div><small>Jouw rang</small><a href="#" data-actie="naarmaten" class="vr-rang-link"><b>${rang}</b> <span>bekijk je beloningen &rsaquo;</span></a></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'}</small></div></div><p class="vr-doel">${doel}</p>${knoppen}</div>`;
   return `<div class="vr-kaart"><div class="vr-kop"><div><small>Jouw rang</small><b>${rang}</b></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'} via jouw link</small></div></div>
     <h3>${l.gratis ? 'Word gratis lid via je maten' : 'Nodig je maten uit'}</h3>
+    ${D && D.mijnCode ? `<div class="vr-code">Jouw code <b>${esc(D.mijnCode)}</b><span>Noem hem gewoon, je maat vult hem in bij lid worden.</span></div>` : ''}
     <div class="vr-geef"><div><small>Jouw maat krijgt</small><b>50% korting</b><span>eerste maand &euro;${APP_PRIJS.half}, of een jaar voor &euro;${APP_PRIJS.jaarMaat}</span></div><div><small>Jij krijgt</small><b>${zelf ? '2 weken' : coaching ? 'Een rang' : 'Analyse'}</b><span>${zelf ? (gratisLid ? 'gratis lid per maat, plus de mijlpalen hieronder' : 'extra per maat, plus de mijlpalen hieronder') : coaching ? 'van Gangmaker tot Ploegleider' : 'gratis bij 3 maten, plus je rang'}</span></div></div>
     ${ladder}<p class="vr-doel">${doel}</p>
     ${l.vriendAnalyse ? `<a class="knop" href="${esc(l.vriendAnalyse)}" target="_blank" rel="noopener" style="margin-bottom:10px">Claim je gratis analyse</a>` : ''}
@@ -3399,12 +3420,39 @@ function rnNieuwVrij() {
   const open = (it, mm, gg) => !it.vanaf || (mm >= (it.vanaf.m || 0) && gg >= (it.vanaf.g || 0));
   return Object.values(R).flat().filter((it) => it.vanaf && open(it, m, g) && !open(it, vorig.m, vorig.g)).map((it) => it.naam);
 }
+// Onderkant van elke story (13-10-2026): korting + leesbare code in een pil + kort adres.
+// De volledige link gaat naar het klembord, om als link-sticker te plakken.
+async function storyLink() {
+  try { const j = await (await fetch('/api/lid?actie=uitnodig', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), mijnNaam: String((D && D.naam) || '').split(' ')[0] }) })).json(); if (j.ok) { if (D && j.leesCode) D.mijnCode = j.leesCode; return { url: j.url, code: j.leesCode || '' }; } } catch (e) {}
+  return { url: 'https://rapport.michelkredercoaching.nl/app', code: '' };
+}
+function storyVoet(x, W, H, code) {
+  const bebas = (px) => px + 'px "Bebas Neue", Impact, sans-serif', dm = (px, w = 400) => w + ' ' + px + 'px "DM Sans", Arial, sans-serif';
+  const y0 = H - 330;
+  x.fillStyle = 'rgba(255,107,26,0.12)'; x.strokeStyle = 'rgba(255,107,26,0.6)'; x.lineWidth = 3;
+  x.beginPath(); x.roundRect(90, y0, W - 180, 250, 34); x.fill(); x.stroke();
+  x.textAlign = 'center'; x.fillStyle = '#F5F3EF'; x.font = bebas(64); x.fillText('TRAIN MEE MET 50% KORTING', W / 2, y0 + 82);
+  if (code) {
+    x.font = bebas(76); const tw = x.measureText('CODE  ' + code).width + 90;
+    x.fillStyle = '#FF6B1A'; x.beginPath(); x.roundRect((W - tw) / 2, y0 + 104, tw, 92, 46); x.fill();
+    x.fillStyle = '#0b0b0b'; x.fillText('CODE  ' + code, W / 2, y0 + 176);
+  }
+  x.fillStyle = 'rgba(245,243,239,0.7)'; x.font = dm(30, 600); x.fillText('in de MKC-app  ·  rapport.michelkredercoaching.nl/app', W / 2, y0 + (code ? 232 : 160));
+}
+async function storyDelen(blob, naam, tekst, link) {
+  const file = new File([blob], naam, { type: 'image/jpeg' });
+  statEens('deel');
+  let gekopieerd = false; try { await navigator.clipboard.writeText(link); gekopieerd = true; } catch (e) {}
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: tekst + ' ' + link }); if (gekopieerd) storyTip(); return; } catch (er) { if (er && er.name === 'AbortError') return; } }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = naam; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  if (gekopieerd) storyTip();
+}
+function storyTip() { modal('<h3>Je link staat klaar</h3><p>Je persoonlijke link is gekopieerd. Zet hem in je Instagram-story met een <b>link-sticker</b> (sticker-knop, dan Link) en plak hem. Wie erop tikt, krijgt meteen 50% korting.</p><p class="klein">Zonder sticker kan je maat ook je code invullen op de lidpagina.</p><button type="button" class="knop" data-lx="dicht">Top</button>'); }
 // Story van je renner: renner op de fiets, je naam, je plek en medailles, en je uitnodiglink.
 async function rennerStory() {
   const x = RL.data, d = zicht() || {}; if (!x || !x.profiel) return;
   try { await Promise.all([document.fonts.load('120px "Bebas Neue"'), document.fonts.load('600 40px "DM Sans"')]); } catch (e) {}
-  let url = 'rapport.michelkredercoaching.nl/app';
-  try { const j = await (await fetch('/api/lid?actie=uitnodig', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), mijnNaam: String((D && D.naam) || '').split(' ')[0] }) })).json(); if (j.ok) url = j.url.replace(/^https?:\/\//, ''); } catch (e) {}
+  const sl = await storyLink();
   const W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H; const g2 = c.getContext('2d');
   let g = g2.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#1d120b'); g.addColorStop(.6, '#0b0b0b'); g2.fillStyle = g; g2.fillRect(0, 0, W, H);
   g = g2.createRadialGradient(W / 2, 900, 60, W / 2, 900, 700); g.addColorStop(0, 'rgba(255,107,26,.3)'); g.addColorStop(1, 'rgba(255,107,26,0)'); g2.fillStyle = g; g2.fillRect(0, 0, W, H);
@@ -3418,13 +3466,9 @@ async function rennerStory() {
   const plek = x.ik ? (x.periode === 'maand' ? '#' + x.ik.plek + ' deze maand' : '#' + x.ik.plek + ' aller tijden') : '';
   g2.fillStyle = '#FF6B1A'; g2.font = dm(46, 700); g2.fillText([(d.medailles || 0) + ' medailles', plek].filter(Boolean).join('  ·  '), W / 2, 1320);
   g2.fillStyle = 'rgba(245,243,239,.75)'; g2.font = dm(40, 500); g2.fillText('Medailles verdienen met elke rit en elke Core-sessie.', W / 2, 1420);
-  g2.fillStyle = '#FF6B1A'; g2.font = dm(36, 700); g2.fillText('Rij mee met 50% korting:', W / 2, 1720);
-  g2.fillStyle = '#F5F3EF'; g2.font = dm(32, 600); g2.fillText(url, W / 2, 1772);
+  storyVoet(g2, W, H, sl.code);
   const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.92));
-  const file = new File([blob], 'mkc-renner.jpg', { type: 'image/jpeg' });
-  statEens('deel');
-  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: 'Mijn renner in de MKC-app. Rij mee met 50% korting: https://' + url }); return; } catch (er) { if (er && er.name === 'AbortError') return; } }
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  await storyDelen(blob, 'mkc-renner.jpg', 'Mijn renner in de MKC-app.' + (sl.code ? ' Met code ' + sl.code + ' krijg je 50% korting:' : ' Train mee met 50% korting:'), sl.url);
 }
 function medailleSlot() { return '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>'; }
 function badgeModal(id, nieuwNiveau) {
@@ -3452,8 +3496,7 @@ function beloningModal(id, nieuw) {
 // Story-plaatje van een medaille, met je eigen uitnodiglink (50% voor je maten).
 async function badgeStory(b) {
   try { await Promise.all([document.fonts.load('120px "Bebas Neue"'), document.fonts.load('600 40px "DM Sans"')]); } catch (e) {}
-  let url = 'rapport.michelkredercoaching.nl/app';
-  try { const j = await (await fetch('/api/lid?actie=uitnodig', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), mijnNaam: String((D && D.naam) || '').split(' ')[0] }) })).json(); if (j.ok) url = j.url.replace(/^https?:\/\//, ''); } catch (e) {}
+  const sl = await storyLink();
   const W = 1080, H = 1920, c = document.createElement('canvas'); c.width = W; c.height = H; const x = c.getContext('2d');
   const OR = '#FF6B1A', WIT = '#F5F3EF', GRIJS = 'rgba(245,243,239,0.7)';
   const bebas = (px) => `${px}px "Bebas Neue", Impact, sans-serif`, dm = (px, w = 400) => `${w} ${px}px "DM Sans", Arial, sans-serif`;
@@ -3469,14 +3512,10 @@ async function badgeStory(b) {
   x.fillStyle = WIT; let px = 150; x.font = bebas(px); while (x.measureText(b.naam.toUpperCase()).width > W - 140 && px > 80) { px -= 10; x.font = bebas(px); } x.fillText(b.naam.toUpperCase(), W / 2, 1270);
   x.fillStyle = GRIJS; x.font = dm(42, 500); x.fillText(b.uitleg[b.niveau - 1], W / 2, 1350);
   const nm = String((D && D.naam) || '').split(' ')[0];
-  if (nm) { x.fillStyle = WIT; x.font = dm(44, 700); x.fillText(nm + ' in de MKC-app', W / 2, 1560); }
-  x.fillStyle = OR; x.font = dm(36, 700); x.fillText('Train mee met 50% korting:', W / 2, 1720);
-  x.fillStyle = WIT; x.font = dm(32, 600); x.fillText(url, W / 2, 1772);
+  if (nm) { x.fillStyle = WIT; x.font = dm(44, 700); x.fillText(nm + ' in de MKC-app', W / 2, 1490); }
+  storyVoet(x, W, H, sl.code);
   const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.92));
-  const file = new File([blob], 'mkc-medaille-' + b.id + '.jpg', { type: 'image/jpeg' });
-  statEens('deel');
-  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: b.naam + ' (' + MD_NAAM[b.niveau - 1].toLowerCase() + ') in de MKC-app. Train mee met 50% korting: https://' + url }); return; } catch (er) { if (er && er.name === 'AbortError') return; } }
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  await storyDelen(blob, 'mkc-medaille-' + b.id + '.jpg', b.naam + ' (' + MD_NAAM[b.niveau - 1].toLowerCase() + ') in de MKC-app.' + (sl.code ? ' Met code ' + sl.code + ' krijg je 50% korting:' : ' Train mee met 50% korting:'), sl.url);
 }
 document.addEventListener('click', async (e) => {
   const t = e.target.closest('[data-badge]'); if (t) { e.preventDefault(); return badgeModal(t.dataset.badge); }
