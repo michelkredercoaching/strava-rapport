@@ -2341,6 +2341,19 @@ const IC = {
 const DOEL_NAMEN = { sneller: 'Sneller worden', evenement: 'Een tocht of wedstrijd', afvallen: 'Afvallen', fit: 'Fit blijven en plezier' };
 let DOELV = { open: false, kies: null, fout: '', bezig: false };
 function doelLater() { try { return Date.now() - Number(localStorage.getItem('mkcDoelLater') || 0) < 5 * 864e5; } catch (e) { return false; } }
+// Dubbel voorkomen (13-10-2026): staat "Kies waar je voor traint" al in de startlijst of
+// eerste week, dan het losse doelblok pas tonen als iemand op dat item tikt.
+function doelVakHtml(d) {
+  if (d && !d.doel && !DOELV.open && !DOELV.bevestig && (startlijstHtml(d) || eersteWeekHtml(d))) return '';
+  return doelHtml(d);
+}
+// Rustig beginnen: de eerste 3 dagen, zolang de startlijst of eerste week loopt, geen
+// lidvoorbeeld, volgende stap of beginscherm-tip. Eerst wennen, dan pas verkopen.
+function rustigBegin(d) {
+  let eerste = 0;
+  try { eerste = Number(localStorage.getItem('mkcEersteBezoek')) || 0; if (!eerste) { eerste = Date.now(); localStorage.setItem('mkcEersteBezoek', String(eerste)); } } catch (e) { return false; }
+  return Date.now() - eerste < 3 * 864e5 && !!(startlijstHtml(d) || eersteWeekHtml(d));
+}
 function doelHtml(d) {
   if (!d || d.gast) return '';
   const dl = d.doel;
@@ -2884,13 +2897,13 @@ function teken() {
     ${vandaagHtml(d)}
     <div id="startlijst">${startlijstHtml(d)}</div>
     ${schemaEindeHtml(d)}
-    <div id="doelvak">${doelHtml(d)}</div>
+    <div id="doelvak">${doelVakHtml(d)}</div>
     ${tipHtml(d)}
     ${tegelsHtml(d)}
-    ${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
-    ${verkoopMomentHtml(d) || lidBalkHtml(d)}
+    ${rustigBegin(d) ? '' : `${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
+    ${verkoopMomentHtml(d) || lidBalkHtml(d)}`}
     ${vriendMomentHtml(d)}
-    ${volgendeStapHtml(d)}
+    ${rustigBegin(d) ? '' : volgendeStapHtml(d)}
     <div id="meldinst">${meldInstHtml()}</div>
     ${feedbackHtml()}
     <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a> &middot; <a href="#" data-lx="verwijder">Account verwijderen</a></div>`;
@@ -4772,7 +4785,7 @@ function meldTeken() {
   const a = document.getElementById('meldvraag'); if (a) a.innerHTML = D && (startlijstHtml(zicht()) || eersteWeekHtml(zicht())) ? '' : meldVraagHtml();
   const sl = document.getElementById('startlijst'); if (sl && D) sl.innerHTML = startlijstHtml(zicht());
   const b = document.getElementById('meldinst'); if (b) b.innerHTML = meldInstHtml();
-  const dv = document.getElementById('doelvak'); if (dv && D && !D.gast) dv.innerHTML = doelHtml(zicht());
+  const dv = document.getElementById('doelvak'); if (dv && D && !D.gast) dv.innerHTML = doelVakHtml(zicht());
 }
 document.addEventListener('change', async (e) => {
   const c = e.target.closest('[data-pushsoort]'); if (!c) return;
