@@ -598,6 +598,9 @@
   .rv-instel .klap-in.gr-maak { background:none; border:0; padding:0 14px 14px; margin:0; }
   .rv-instel .gr-maak label:first-child, .rv-instel .rij2:first-child label { margin-top:4px; }
   .rv-uit { margin-top:14px; }
+  .vn .vn-blok + .vn-blok { margin-top:6px; }
+  .vn .rv-sub { margin-top:6px; }
+  .vn p { font-size:14px; line-height:1.5; margin:0 0 8px; padding-left:12px; border-left:2px solid rgba(255,107,26,.5); }
   .kl-kou { margin:10px 0 4px; }
   .kl-kou > b { display:block; font-size:12px; color:var(--muted); font-weight:500; margin-bottom:6px; }
   .kl-kou.nieuw { border:1px solid rgba(255,107,26,.55); background:rgba(255,107,26,.08); border-radius:8px; padding:12px; }
@@ -1445,6 +1448,7 @@ function slimBandenKaart() {
     ${sbOordeelHtml()}
     ${instel}
     ${res}
+    ${uit && SB.weer ? ritVoorNaHtml('banden') : ''}
     ${windRegelHtml()}
     <details class="klap" data-klap="bandvraag" ${SB.antwoord || SB.vraagBezig || klapOpen('bandvraag', false) ? 'open' : ''}><summary><b>Vraag het je bandencoach</b><span>kasseien, regen, tocht</span></summary><div class="klap-in sb-vraag" style="margin:0;border:0;padding-top:0">
       <div class="sb-rij"><input id="sbVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen de Ronde met kasseien" value="${esc(SB.vraag)}"><button type="button" class="knop" data-sb="vraag" ${SB.vraagBezig ? 'disabled' : ''}>${SB.vraagBezig ? '...' : 'Vraag'}</button></div>
@@ -3092,11 +3096,11 @@ function voedingTabHtml() {
   const k = klKeuze(), stuk = ritUren();
   const temp = stuk.length ? Math.round(stuk.reduce((t, u) => t + u.temp, 0) / stuk.length) : SB.weer.temp;
   const a = RV_LIB.voedingAdvies({ duur: k.duur, temp, hard: k.hard });
-  const tips = (temp <= 5 ? ['Koud weer: een thermosbidon met warme thee of sportdrank drinkt een stuk prettiger, en dan drink je ook echt genoeg.'] : []).concat(a.tips);
+  const tips = (temp <= 5 ? ['Koud weer: een thermosbidon met warme thee of sportdrank drinkt een stuk prettiger, en dan drink je ook echt genoeg.'] : []).concat(a.tips.filter((t) => !/^(Ontbijt|Na afloop)/.test(t)));
   return sbRitInstelHtml(false) + `<div class="rv-uit">
     <div class="rv-kop"><div><b>${a.gPerUur || '0'}</b><span>gram per uur</span></div><div><b>${a.bidons}</b><span>${a.bidons === 1 ? 'bidon' : 'bidons'}</span></div><div><b>${temp}&deg;</b><span>onderweg</span></div></div>
     <div class="rv-sub">Neem mee</div><ul class="kl-lijst">${a.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
-    ${sbTipsKlap('rvtips', tips, '')}`;
+    ${sbTipsKlap('rvtips', tips, '')}${ritVoorNaHtml('voeding')}`;
 }
 
 // ---- Gratis windadvies: lokkertje voor wie nog geen lid is (09-10-2026) ----
@@ -3179,6 +3183,54 @@ function klKouHtml() {
   return `<div class="kl-kou${gekozen ? '' : ' nieuw'}"><b>${gekozen ? 'Zo ben jij op de fiets' : 'Heb jij het snel koud op de fiets?'}</b>${gekozen ? '' : '<span>Dan stem ik je kleding daarop af.</span>'}
     <div class="bt-keuze">${knop('koud', 'Snel koud')}${knop('normaal', 'Normaal')}${knop('warm', 'Snel warm')}</div></div>`;
 }
+// Voor en na je rit (13-10-2026): tips voor vandaag, op het weer, je vertrektijd,
+// de duur en het tempo. Per tab andere tips: banden, kleding of voeding.
+function ritVoorNa(tab) {
+  const w = SB.weer; if (!w) return null;
+  const k = klKeuze(), uren = w.uren || [];
+  const stuk = uren.slice(Math.floor(k.over), Math.ceil(k.over + k.duur) + 1);
+  const temps = stuk.length ? stuk.map((u) => u.temp) : [w.temp];
+  const laag = Math.round(Math.min(...temps)), hoog = Math.round(Math.max(...temps));
+  const mm = stuk.reduce((a, u) => a + (u.regen || 0), 0), regen = mm >= 0.5, nat = sbNat() || regen;
+  const uur = k.over === 0 ? new Date().getHours() : uren[k.over] ? Number(uren[k.over].uur) : 10;
+  const lang = k.duur >= 3, f = sbFiets(), gravel = f && f.type === 'gravel';
+  const voor = [], na = [];
+  if (tab === 'banden') {
+    voor.push("Pomp vlak voor vertrek, niet de avond ervoor. Een band verliest in een nacht zo een paar tiende bar.");
+    if (nat) voor.push("Nat wegdek: kijk even of er glas of steentjes in je band zitten. Nat rubber snijdt makkelijker.");
+    voor.push("Mee: een binnenband, bandenlichters en een pompje of CO2-patroon. Ook als je tubeless rijdt.");
+    if (f && f.tubeless) voor.push("Tubeless? Schud je wiel eens: hoor je geen melk meer klotsen, vul dan bij. Melk droogt na een paar maanden op.");
+    if (nat) na.push("Spoel of veeg je fiets af, maak je ketting droog en smeer hem. Nat wegdek spoelt het vet eraf.");
+    if (gravel) na.push("Na gravel: haal steentjes uit je profiel en kijk je banden na op sneetjes.");
+    na.push("Voelde je spanning te zacht of te hard? Geef het na je rit aan, dan rekent de app de volgende keer preciezer.");
+  }
+  if (tab === 'kleding') {
+    voor.push("Leg je kleding de avond ervoor klaar, dan sta je 's ochtends niet te zoeken.".replace("'", "&rsquo;"));
+    if (laag < 10) voor.push("Trek alles binnen aan en vertrek meteen. Buiten staan wachten kost je je warmte voor je bent begonnen.");
+    if (hoog - laag >= 4) voor.push("Het wordt " + (hoog - laag) + " graden warmer tijdens je rit (van " + laag + " naar " + hoog + "). Kies laagjes die in je achterzak passen, zoals armstukken en een windvest.");
+    if (regen) voor.push("Overschoenen als laatste aan, over je broek of beenstukken heen. Dan loopt het water er niet van boven in.");
+    if (uur < 9 && laag < 12) voor.push("Vroeg weg is het het koudst. Na een uur rijden ben je warm, dus kleed je niet op het vertrekmoment maar op de hele rit.");
+    if (nat || laag < 10) na.push("Meteen droge kleren aan en een warme douche. Met natte kleren koel je sneller af dan je denkt.");
+    if (nat) na.push("Natte schoenen? Prop er krant in en zet ze niet op de verwarming, dan blijft de lijm goed.");
+    na.push("Was je fietsbroek na elke rit, ook na een korte. Dat scheelt zadelpijn.");
+    na.push("Was het te koud of te warm? Geef het aan, dan stelt de app je kleding de volgende keer bij.");
+  }
+  if (tab === 'voeding') {
+    if (uur < 8) voor.push("Vroeg weg? Eet een uur van tevoren iets kleins, zoals een banaan of een boterham met jam, en begin na twintig minuten al met eten.");
+    else if (k.duur >= 2 || k.hard) voor.push("Eet 2 tot 3 uur voor vertrek een ontbijt met koolhydraten, zoals havermout of brood met jam.");
+    voor.push("Drink voor vertrek een groot glas water. Wie droog begint, haalt dat onderweg niet meer in.");
+    if (hoog >= 20) voor.push("Warm vandaag: zet je bidons halfvol in de vriezer en vul ze voor vertrek aan. Dan blijft je drinken langer koel.");
+    na.push("Eet binnen een half uur na je rit iets met eiwit en koolhydraten, zoals kwark met fruit of een boterham met ei.");
+    if (lang || k.hard || hoog >= 20) na.push("Weeg jezelf voor en na je rit. Per kilo die je kwijt bent, drink je ongeveer anderhalve liter.");
+    if (laag < 8) na.push("Na een koude rit is warme chocolademelk helemaal niet gek: koolhydraten, eiwit en het warmt op.");
+  }
+  return { voor: voor.slice(0, 4), na: na.slice(0, 3) };
+}
+function ritVoorNaHtml(tab) {
+  const v = ritVoorNa(tab); if (!v) return '';
+  const blok = (kop, l) => l.length ? `<div class="vn-blok"><div class="rv-sub">${kop}</div>${l.map((t) => '<p>' + t + '</p>').join('')}</div>` : '';
+  return `<details class="klap" data-klap="voorna-${tab}"${klapOpen('voorna-' + tab, false) ? ' open' : ''}><summary><b>Voor en na je rit</b><span>vandaag</span></summary><div class="klap-in vn">${blok('Vooraf', v.voor)}${blok('Na je rit', v.na)}</div></details>`;
+}
 function sbTipsKlap(naam, tips, extra) {
   if (!tips.length && !extra) return '';
   return `<details class="klap" data-klap="${naam}"${klapOpen(naam, false) ? ' open' : ''}><summary><b>Tips voor deze rit</b><span>${tips.length} ${tips.length === 1 ? 'tip' : 'tips'}</span></summary><div class="klap-in kl-tips">${tips.map((t) => '<p>' + esc(t) + '</p>').join('')}${extra ? '<p class="klein" style="margin-top:6px">' + extra + '</p>' : ''}</div></details>`;
@@ -3192,7 +3244,7 @@ function kledingTabHtml() {
     <div class="kl-groepen">${(a.groepen || [{ kop: 'Trek aan', items: a.items }]).map((g) => `<div class="kl-groep"><div class="rv-sub">${g.kop}</div><ul class="kl-lijst">${g.items.map((x) => { const m = x.match(/^(.*?) \((.*)\)$/); return `<li><span>${esc(m ? m[1] : x)}${m ? `<small>${esc(m[2])}</small>` : ''}</span></li>`; }).join('')}</ul></div>`).join('')}</div>
     ${a.mee && a.mee.length ? `<div class="rv-sub">Mee in je achterzak</div><ul class="kl-lijst kl-mee">${a.mee.map((x) => `<li><span>${esc(x)}</span></li>`).join('')}</ul>` : ''}</div>
     ${sbTipsKlap('kltips', a.tips.concat(a.regel ? [a.regel] : []), a.redenen.length ? 'Meegerekend: ' + esc(a.redenen.join(', ')) + '.' : '')}`;
-  return sbRitInstelHtml(true) + uit;
+  return sbRitInstelHtml(true) + uit + (a ? ritVoorNaHtml('kleding') : '');
 }
 document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-kl]'); if (!k) return;
