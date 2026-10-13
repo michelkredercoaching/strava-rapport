@@ -420,7 +420,7 @@ async function routeRangProfiel(req, res) {
   if (/@|www|http|\.nl|\.com/i.test(String(body.naam))) return res.status(400).json({ ok: false, fout: 'Gebruik een bijnaam, geen mailadres of website.' });
   // Renner: elk onderdeel moet bestaan én vrijgespeeld zijn (medailles en goud).
   const deel = {};
-  for (const soort of ['huid', 'trui', 'helm', 'bril', 'fiets']) {
+  for (const soort of ['huid', 'trui', 'helm', 'bril', 'fiets', 'wielen']) {
     const item = RENNER[soort].find((x) => x.id === body[soort]) || RENNER[soort][0];
     if (!rennerOpen(item, totaal, goud)) return res.status(400).json({ ok: false, fout: `${item.naam} speel je vrij bij ${item.vanaf.m} medailles${item.vanaf.g ? ' waarvan ' + item.vanaf.g + ' goud' : ''}.` });
     deel[soort] = item.id;
@@ -457,7 +457,7 @@ async function routeRanglijst(req, res) {
   for (let i = 0; i < l.length; i += 2) {
     const p = await rlProfiel(l[i]); if (!p) continue;
     const sc = Number(l[i + 1]) || 0;
-    rijen.push({ plek: rijen.length + 1, naam: p.naam, kleur: p.kleur, icoon: p.icoon, huid: p.huid, trui: p.trui, helm: p.helm, bril: p.bril, fiets: p.fiets, medailles: Math.floor(sc / 100), goud: sc % 100, ik: l[i] === email });
+    rijen.push({ plek: rijen.length + 1, naam: p.naam, kleur: p.kleur, icoon: p.icoon, huid: p.huid, trui: p.trui, helm: p.helm, bril: p.bril, fiets: p.fiets, wielen: p.wielen, medailles: Math.floor(sc / 100), goud: sc % 100, ik: l[i] === email });
   }
   const sc = Number(mijnScore.ok && mijnScore.result) || 0;
   return res.status(200).json({ ok: true, rijen, totaal: Number(n.ok && n.result) || 0, profiel: mijn,
