@@ -214,6 +214,19 @@
   .pm-t > div { display:flex; flex-direction:column; line-height:1; }
   .pm-t b { font-family:'Bebas Neue',sans-serif; font-size:26px; line-height:1; } .pm-t small { font-size:11px; color:var(--muted); }
   .rl-kaart { position:relative; margin-bottom:12px; }
+  .rn-podium { position:relative; text-align:center; background:radial-gradient(ellipse at 50% 85%, rgba(255,107,26,.25), rgba(0,0,0,0) 65%); border-radius:12px; padding:6px 0 10px; }
+  .rn-podium .rn-fiets { display:block; margin:0 auto; } .rn-naam { display:inline-block; margin-top:2px; font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:.02em; }
+  .kk { margin-top:4px; } .kk-tabs { display:grid; grid-template-columns:repeat(5,1fr); gap:4px; background:rgba(0,0,0,.35); border-radius:10px; padding:4px; }
+  .kk-tabs button { background:none; border:0; color:var(--muted); font-family:inherit; font-size:12.5px; font-weight:700; padding:8px 0; border-radius:8px; cursor:pointer; }
+  .kk-tabs button.aan { background:var(--accent); color:#0a0a0a; }
+  .kk-items { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:10px; }
+  .kk-item { position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:10px; padding:8px 4px; color:var(--white); font-family:inherit; cursor:pointer; }
+  .kk-item.aan { border-color:var(--accent); background:rgba(255,107,26,.16); } .kk-item b { font-size:11.5px; line-height:1.2; text-align:center; }
+  .kk-item.dicht { opacity:.55; cursor:default; } .kk-item.dicht svg.rl-av { filter:grayscale(1); } .kk-item small { font-size:10px; color:var(--accent); display:flex; align-items:center; gap:3px; }
+  .kk-kleur { display:block; width:40px; height:40px; border-radius:50%; border:2px solid rgba(255,255,255,.25); margin:3px 0; }
+  .kk-volgend { margin-top:10px; } .kk-volgend b { color:var(--accent); }
+  .kk-nieuw { margin:0 0 12px; background:rgba(255,107,26,.12); border:1px solid rgba(255,107,26,.5); border-radius:10px; padding:8px 12px; } .kk-nieuw b { display:block; font-size:13px; color:var(--accent); } .kk-nieuw span { font-size:13px; }
+  .rl-ik .rn-fiets { display:block; }
   .rl-slot { position:absolute; top:16px; right:16px; color:var(--accent); }
   .rl-kop { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
   .rl-ik { text-align:center; } .rl-ik small { display:block; font-size:11px; color:var(--muted); margin-top:2px; max-width:80px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -3103,7 +3116,52 @@ const RL_IC = {
   wiel: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="2"/><path d="M12 3v7M12 14v7M3 12h7M14 12h7M5.6 5.6l5 5M13.4 13.4l5 5M18.4 5.6l-5 5M10.6 13.4l-5 5"/>',
   vlag: MD_IC.vlag, ster: '<path d="M12 3l2.7 5.6 6.1.8-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1-4.4-4.3 6.1-.8z"/>', vlam: MD_IC.vlam, kroon: '<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>'
 };
+// Renner-tekening: kop en schouders (klein, voor de lijst) en de hele renner op de fiets.
+const RN_HUID = { h1: '#f2c9a5', h2: '#d9a171', h3: '#a86b43', h4: '#6b4228' };
+const RN_TRUI = { mkc: ['#FF6B1A', '#111'], zwart: ['#151515', '#FF6B1A'], wit: ['#f2f2f2', '#FF6B1A'], streep: ['#1E88E5', '#fff'], bolletjes: ['#ffffff', '#E53935'], groen: ['#2EAD4B', '#fff'], geel: ['#FFD21F', '#111'], regenboog: ['#ffffff', '#111'] };
+const RN_HELM = { wit: '#f4f4f4', zwart: '#1a1a1a', oranje: '#FF6B1A', aero: '#E53935', goud: '#f3c22c' };
+const RN_BRIL = { geen: null, zwart: '#111', spiegel: 'url(#rnSp)', oranje: '#FF8A3D', goud: '#f3c22c' };
+const RN_FIETS = { zwart: '#1d1d1d', wit: '#eeeeee', oranje: '#FF6B1A', rood: '#D32F2F', blauw: '#1E63D6', goud: '#f3c22c' };
+function rnDefs(id) { return `<defs><linearGradient id="rnSp" x1="0" x2="1"><stop offset="0" stop-color="#7fd3ff"/><stop offset=".5" stop-color="#d08bff"/><stop offset="1" stop-color="#ffb35c"/></linearGradient>
+  <pattern id="${id}b" width="7" height="7" patternUnits="userSpaceOnUse"><rect width="7" height="7" fill="#fff"/><circle cx="3.5" cy="3.5" r="1.6" fill="#E53935"/></pattern>
+  <linearGradient id="${id}r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".38" stop-color="#fff"/><stop offset=".38" stop-color="#1E63D6"/><stop offset=".46" stop-color="#1E63D6"/><stop offset=".46" stop-color="#E53935"/><stop offset=".54" stop-color="#E53935"/><stop offset=".54" stop-color="#111"/><stop offset=".62" stop-color="#111"/><stop offset=".62" stop-color="#FFD21F"/><stop offset=".7" stop-color="#FFD21F"/><stop offset=".7" stop-color="#2EAD4B"/><stop offset=".78" stop-color="#2EAD4B"/><stop offset=".78" stop-color="#fff"/></linearGradient></defs>`; }
+function rnTruiVul(p, id) { return p.trui === 'bolletjes' ? `url(#${id}b)` : p.trui === 'regenboog' ? `url(#${id}r)` : (RN_TRUI[p.trui] || RN_TRUI.mkc)[0]; }
+function rennerKop(p, maat) {
+  const id = 'rk' + (++MD_ID), huid = RN_HUID[p.huid] || RN_HUID.h1, helm = RN_HELM[p.helm] || RN_HELM.wit, bril = RN_BRIL[p.bril || 'zwart'], tr = RN_TRUI[p.trui] || RN_TRUI.mkc;
+  return `<svg class="rl-av" viewBox="0 0 64 64" width="${maat}" height="${maat}" aria-hidden="true">${rnDefs(id)}<circle cx="32" cy="32" r="31" fill="#1b1b1b" stroke="rgba(255,107,26,.6)" stroke-width="2"/>
+    <clipPath id="${id}c"><circle cx="32" cy="32" r="30"/></clipPath><g clip-path="url(#${id}c)">
+    <path d="M6 66c2-14 12-21 26-21s24 7 26 21z" fill="${rnTruiVul(p, id)}"/>
+    ${p.trui === 'streep' || p.trui === 'mkc' || p.trui === 'zwart' || p.trui === 'groen' || p.trui === 'wit' ? `<path d="M9 56h46v5H9z" fill="${tr[1]}" opacity=".9"/>` : ''}
+    <path d="M27 40h10v7a5 5 0 0 1-10 0z" fill="${huid}"/><path d="M30 45l2 8 2-8" fill="none" stroke="${tr[1]}" stroke-width="1.4"/>
+    <ellipse cx="32" cy="30" rx="10" ry="11.5" fill="${huid}"/>
+    <path d="M20.5 28c0-10 5-15 11.5-15s11.5 5 11.5 15c-2-3-5-5-11.5-5s-9.5 2-11.5 5z" fill="${helm}" stroke="rgba(0,0,0,.35)" stroke-width=".8"/>
+    ${p.helm === 'aero' ? '<path d="M24 19c3-3 13-3 16 0" stroke="#fff" stroke-width="1.6" fill="none"/>' : '<path d="M27 16v4M32 15v4M37 16v4" stroke="rgba(0,0,0,.35)" stroke-width="1.2"/>'}
+    ${bril ? `<path d="M21.5 29h21v3.2c0 1.6-1.6 2.6-3.6 2.6h-4c-1.5 0-2-1.4-2.9-1.4s-1.4 1.4-2.9 1.4h-4c-2 0-3.6-1-3.6-2.6z" fill="${bril}" stroke="#000" stroke-width=".6"/>` : '<circle cx="28" cy="31" r="1.2" fill="#2a1a10"/><circle cx="36" cy="31" r="1.2" fill="#2a1a10"/>'}
+    <path d="M29 37c1.8 1.2 4.2 1.2 6 0" stroke="#5a3320" stroke-width="1.1" fill="none" stroke-linecap="round"/></g></svg>`;
+}
+function rennerFiets(p, breed) {
+  const id = 'rf' + (++MD_ID), huid = RN_HUID[p.huid] || RN_HUID.h1, helm = RN_HELM[p.helm] || RN_HELM.wit, bril = RN_BRIL[p.bril || 'zwart'], fiets = RN_FIETS[p.fiets] || RN_FIETS.zwart, tr = RN_TRUI[p.trui] || RN_TRUI.mkc, trui = rnTruiVul(p, id);
+  return `<svg class="rn-fiets" viewBox="0 0 220 140" width="${breed}" height="${Math.round(breed * 140 / 220)}" aria-hidden="true">${rnDefs(id)}
+    <ellipse cx="110" cy="132" rx="92" ry="5" fill="rgba(0,0,0,.35)"/>
+    <g fill="none" stroke="#2b2b2b" stroke-width="5"><circle cx="52" cy="102" r="28"/><circle cx="168" cy="102" r="28"/></g>
+    <g fill="none" stroke="#8a8a8a" stroke-width="1"><circle cx="52" cy="102" r="24"/><circle cx="168" cy="102" r="24"/></g>
+    <g fill="none" stroke="${fiets}" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"><path d="M52 102l40-2-14-38z"/><path d="M92 100l46-40H78"/><path d="M138 60l30 42"/><path d="M78 62l-3-10"/></g>
+    <path d="M66 50h18" stroke="#111" stroke-width="5" stroke-linecap="round"/><path d="M138 60l6-10 9 2c3 1 3 6 0 8" fill="none" stroke="#222" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="92" cy="100" r="6" fill="#333"/>
+    <path d="M80 50l14 26-4 22" fill="none" stroke="#141414" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M90 98h9" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+    <path d="M82 50l18 18 12 6" fill="none" stroke="#1d1d1d" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M78 47C92 30 112 24 128 26" fill="none" stroke="${trui}" stroke-width="19" stroke-linecap="round"/>
+    ${['mkc', 'zwart', 'wit', 'groen', 'streep'].includes(p.trui) ? `<path d="M86 39c12-9 26-12 38-11" fill="none" stroke="${tr[1]}" stroke-width="4" stroke-linecap="round"/>` : ''}
+    <path d="M126 30l14 20" fill="none" stroke="${trui}" stroke-width="8" stroke-linecap="round"/><path d="M134 42l11 12" fill="none" stroke="${huid}" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="140" cy="18" r="10" fill="${huid}"/>
+    <path d="M128 17c0-9 7-13 13-13 7 0 12 4 13 11-3-1-6-2-13-1-6 0-10 2-13 3z" fill="${helm}" stroke="rgba(0,0,0,.4)" stroke-width=".8"/>
+    ${p.helm === 'aero' ? '<path d="M128 15l-8 4 8 1" fill="' + helm + '"/>' : ''}
+    ${bril ? `<path d="M141 17h11v3c0 1.2-1 2-2.4 2h-6.2c-1.4 0-2.4-.8-2.4-2z" fill="${bril}" stroke="#000" stroke-width=".5"/>` : '<circle cx="147" cy="19" r="1.2" fill="#2a1a10"/>'}
+  </svg>`;
+}
 function avatarSvg(p, maat) {
+  if (p && p.trui) return rennerKop(p, maat);
   const k = (p && p.kleur) || '#FF6B1A', ic = RL_IC[(p && p.icoon) || 'fiets'] || RL_IC.fiets, donker = ['#FDD835', '#F5F3EF'].includes(k);
   return `<svg class="rl-av" viewBox="0 0 48 48" width="${maat}" height="${maat}" aria-hidden="true"><defs><linearGradient id="av${++MD_ID}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient></defs>
     <path d="M24 3l18 10v22L24 45 6 35V13z" fill="${k}"/><path d="M24 3l18 10v22L24 45 6 35V13z" fill="url(#av${MD_ID})"/>
@@ -3121,27 +3179,35 @@ function ranglijstHtml(d) {
   if (!RL.data) { rlLaad(); return '<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in"><div class="label">Ranglijst</div><p class="klein">Even laden...</p></div></div>'; }
   const x = RL.data;
   if (!x.profiel || RL.maak) {
-    const k = RL.keuze || { naam: (x.profiel && x.profiel.naam) || '', kleur: (x.profiel && x.profiel.kleur) || x.kleuren[0], icoon: (x.profiel && x.profiel.icoon) || x.iconen[0] };
-    RL.keuze = k;
-    return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in"><div class="md-unlock" style="animation:none">Ranglijst ontgrendeld</div><h2 style="margin-top:6px">Maak je renner</h2>
-      <p class="klein" style="margin:4px 0 12px">Je staat op de ranglijst met een bijnaam en je eigen avatar. Je echte naam en mailadres ziet niemand.</p>
-      <div class="rl-maak"><div class="rl-voorbeeld">${avatarSvg(k, 72)}<b>${esc(k.naam || 'Jouw bijnaam')}</b></div>
-      <div class="gr-maak"><label>Bijnaam</label><input id="rlNaam" maxlength="16" placeholder="Bijv. De Klimgeit" value="${esc(k.naam)}">
-      <label>Kleur</label><div class="rl-kleuren">${x.kleuren.map((c) => `<button type="button" data-rlkleur="${c}" class="${c === k.kleur ? 'aan' : ''}" style="background:${c}" aria-label="Kleur"></button>`).join('')}</div>
-      <label>Icoon</label><div class="rl-iconen">${x.iconen.map((i) => `<button type="button" data-rlicoon="${i}" class="${i === k.icoon ? 'aan' : ''}">${avatarSvg({ kleur: k.kleur, icoon: i }, 40)}</button>`).join('')}</div></div></div>
+    const pr = x.profiel || {}, R = x.renner;
+    const k = RL.keuze || { naam: pr.naam || '', huid: pr.huid || 'h1', trui: pr.trui || 'mkc', helm: pr.helm || 'wit', bril: pr.bril || 'zwart', fiets: pr.fiets || 'zwart' };
+    RL.keuze = k; RL.tab = RL.tab || 'trui';
+    const m = (d && d.medailles) || 0, g = (d && d.goud) || 0, open = (it) => !it.vanaf || (m >= (it.vanaf.m || 0) && g >= (it.vanaf.g || 0));
+    const tabs = [['trui', 'Trui'], ['helm', 'Helm'], ['bril', 'Bril'], ['fiets', 'Fiets'], ['huid', 'Huid']];
+    const voorbeeld = (soort, it) => soort === 'fiets' ? `<span class="kk-kleur" style="background:${RN_FIETS[it.id]}"></span>` : soort === 'huid' ? `<span class="kk-kleur" style="background:${RN_HUID[it.id]}"></span>` : rennerKop({ ...k, [soort]: it.id }, 46);
+    const items = R[RL.tab].map((it) => `<button type="button" class="kk-item${k[RL.tab] === it.id ? ' aan' : ''}${open(it) ? '' : ' dicht'}" data-rlitem="${RL.tab}|${it.id}" ${open(it) ? '' : 'disabled'}>${voorbeeld(RL.tab, it)}<b>${esc(it.naam)}</b>${open(it) ? '' : `<small>${medailleSlotKlein()} ${it.vanaf.m} med.${it.vanaf.g ? ' + ' + it.vanaf.g + ' goud' : ''}</small>`}</button>`).join('');
+    const volgend = Object.entries(R).flatMap(([s, l]) => l.filter((it) => !open(it)).map((it) => ({ s, it }))).sort((a, b) => a.it.vanaf.m - b.it.vanaf.m)[0];
+    return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in"><div class="md-unlock" style="animation:none">Ranglijst ontgrendeld</div><h2 style="margin-top:6px">${x.profiel ? 'Je kleedkamer' : 'Maak je renner'}</h2>
+      <p class="klein" style="margin:4px 0 12px">Je staat op de ranglijst met een bijnaam en je eigen renner. Met meer medailles speel je nieuwe truien, helmen, brillen en fietsen vrij. Je echte naam en mailadres ziet niemand.</p>
+      <div class="rl-maak"><div class="rn-podium">${rennerFiets(k, 240)}<b class="rn-naam">${esc(k.naam || 'Jouw bijnaam')}</b></div>
+      <div class="gr-maak"><label>Bijnaam</label><input id="rlNaam" maxlength="16" placeholder="Bijv. De Klimgeit" value="${esc(k.naam)}"></div>
+      <div class="kk"><div class="kk-tabs">${tabs.map(([t, n]) => `<button type="button" data-rltab="${t}" class="${RL.tab === t ? 'aan' : ''}">${n}</button>`).join('')}</div><div class="kk-items">${items}</div>
+      ${volgend ? `<p class="klein kk-volgend">Volgende in je kleedkamer: <b>${esc(volgend.it.naam)}</b> (${volgend.s}) bij ${volgend.it.vanaf.m} medailles${volgend.it.vanaf.g ? ' waarvan ' + volgend.it.vanaf.g + ' goud' : ''}.</p>` : '<p class="klein kk-volgend">Je hebt alles vrijgespeeld. Respect.</p>'}</div></div>
       <button type="button" class="knop" data-rl="bewaar" style="margin-top:12px">Zet me op de ranglijst</button>${x.profiel ? '<button type="button" class="sb-link" data-rl="annuleer" style="display:block;margin:8px auto 0">Annuleren</button>' : ''}<p class="klein rl-fout" id="rlFout"></p></div></div>`;
   }
   const rij = (r) => `<li class="${r.ik ? 'ik' : ''} p${r.plek}"><span class="rl-plek">${r.plek <= 3 ? medailleSvg({ icoon: 'ster', niveau: 4 - r.plek }, 26) : r.plek}</span>${avatarSvg(r, 34)}<b>${esc(r.naam)}${r.ik ? ' <em>jij</em>' : ''}</b><span class="rl-score"><strong>${r.medailles}</strong><small>${r.goud ? r.goud + ' goud' : 'medailles'}</small></span></li>`;
   const ikInTop = x.rijen.some((r) => r.ik);
   return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in">
-    <div class="rl-kop"><div><div class="label">Ranglijst</div><h2>${x.ik ? 'Jij staat op #' + x.ik.plek : 'Ranglijst'}</h2><p class="klein" style="margin:2px 0 0">van ${x.totaal} ${x.totaal === 1 ? 'renner' : 'renners'} &middot; op medailles, bij gelijke stand telt goud</p></div><div class="rl-ik">${avatarSvg(x.profiel, 54)}<small>${esc(x.profiel.naam)}</small></div></div>
+    <div class="rl-kop"><div><div class="label">Ranglijst</div><h2>${x.ik ? 'Jij staat op #' + x.ik.plek : 'Ranglijst'}</h2><p class="klein" style="margin:2px 0 0">van ${x.totaal} ${x.totaal === 1 ? 'renner' : 'renners'} &middot; op medailles, bij gelijke stand telt goud</p></div><div class="rl-ik">${x.profiel.trui ? rennerFiets(x.profiel, 120) : avatarSvg(x.profiel, 54)}<small>${esc(x.profiel.naam)}</small></div></div>
     <ol class="rl-lijst">${x.rijen.map(rij).join('')}${!ikInTop && x.ik ? `<li class="rl-gat">&hellip;</li>${rij({ plek: x.ik.plek, naam: x.profiel.naam, kleur: x.profiel.kleur, icoon: x.profiel.icoon, medailles: x.ik.medailles, goud: x.ik.goud, ik: true })}` : ''}</ol>
-    <button type="button" class="sb-link" data-rl="wijzig">Renner aanpassen</button> <button type="button" class="sb-link" data-rl="weg" style="margin-left:12px">Van de ranglijst af</button></div></div>`;
+    <button type="button" class="sb-link" data-rl="wijzig">Naar je kleedkamer</button> <button type="button" class="sb-link" data-rl="weg" style="margin-left:12px">Van de ranglijst af</button></div></div>`;
 }
 document.addEventListener('click', async (e) => {
-  const kl = e.target.closest('[data-rlkleur]'), ic = e.target.closest('[data-rlicoon]'), a = e.target.closest('[data-rl]');
-  if (!kl && !ic && !a) return;
+  const kl = e.target.closest('[data-rlkleur]'), ic = e.target.closest('[data-rlicoon]'), a = e.target.closest('[data-rl]'), tb = e.target.closest('[data-rltab]'), it = e.target.closest('[data-rlitem]');
+  if (!kl && !ic && !a && !tb && !it) return;
   const veld = document.getElementById('rlNaam'); if (veld && RL.keuze) RL.keuze.naam = veld.value;
+  if (tb) { RL.tab = tb.dataset.rltab; return rlTeken(); }
+  if (it) { const [s, id] = it.dataset.rlitem.split('|'); RL.keuze[s] = id; return rlTeken(); }
   if (kl) { RL.keuze.kleur = kl.dataset.rlkleur; return rlTeken(); }
   if (ic) { RL.keuze.icoon = ic.dataset.rlicoon; return rlTeken(); }
   const w = a.dataset.rl;
@@ -3157,7 +3223,8 @@ document.addEventListener('click', async (e) => {
     } catch (er) { a.disabled = false; }
   }
 });
-document.addEventListener('input', (e) => { if (e.target.id === 'rlNaam' && RL.keuze) { RL.keuze.naam = e.target.value; const b = document.querySelector('.rl-voorbeeld b'); if (b) b.textContent = e.target.value || 'Jouw bijnaam'; } });
+document.addEventListener('input', (e) => { if (e.target.id === 'rlNaam' && RL.keuze) { RL.keuze.naam = e.target.value; const b = document.querySelector('.rn-naam'); if (b) b.textContent = e.target.value || 'Jouw bijnaam'; } });
+function medailleSlotKlein() { return '<svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>'; }
 // ---- Maanduitdaging: limited-edition medaille, alleen deze maand ----
 function maandMedaille(u, behaald, maat) { return medailleSvg({ tekst: u.kort, niveau: behaald ? 4 : 0, waarde: u.waarde || 0, drempels: [u.doel || 1] }, maat, { niveau: behaald ? 4 : 0 }); }
 function maandHtml(d) {
@@ -3174,15 +3241,26 @@ function maandModal(nieuw) {
     <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">${nieuw ? 'Top!' : 'Sluiten'}</button></div>`);
 }
 document.addEventListener('click', (e) => { if (e.target.closest('[data-maand]')) { e.preventDefault(); maandModal(); } });
+// Welke renner-spullen zijn sinds de vorige keer vrijgespeeld? (per toestel onthouden)
+function rnNieuwVrij() {
+  const d = zicht() || {}, R = (RL.data && RL.data.renner) || null, m = d.medailles || 0, g = d.goud || 0;
+  let vorig = null; try { vorig = JSON.parse(localStorage.getItem('mkcRnStand') || 'null'); } catch (e) {}
+  try { localStorage.setItem('mkcRnStand', JSON.stringify({ m, g })); } catch (e) {}
+  if (!R || !vorig) return [];
+  const open = (it, mm, gg) => !it.vanaf || (mm >= (it.vanaf.m || 0) && gg >= (it.vanaf.g || 0));
+  return Object.values(R).flat().filter((it) => it.vanaf && open(it, m, g) && !open(it, vorig.m, vorig.g)).map((it) => it.naam);
+}
 function medailleSlot() { return '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>'; }
 function badgeModal(id, nieuwNiveau) {
   const b = ((zicht() || {}).badges || []).find((x) => x.id === id); if (!b) return;
   const dag = (x) => x ? new Date(x).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   const gratisNu = !(isLid(zicht()) || ((zicht() || {}).lid || {}).bron === 'coaching');
   const rij = (i) => { const gehaald = b.niveau > i; return `<li class="${gehaald ? 'aan' : ''}">${medailleSvg(b, 30, { niveau: gehaald ? i + 1 : 0 })}<div><b>${MD_NAAM[i]}</b><span>${b.uitleg[i]}</span></div><small>${gehaald ? dag(b.op[i + 1]) || 'gehaald' : b.binnenkort ? 'binnenkort' : gratisNu && (i === 2 || b.lid) ? (b.waarde >= b.drempels[i] ? 'klaar, als lid' : 'als lid') : Math.min(b.waarde, b.drempels[i]) + ' / ' + b.drempels[i]}</small></li>`; };
+  const vrij = nieuwNiveau ? rnNieuwVrij() : [];
   modal(`<div class="md-modal${nieuwNiveau ? ' nieuw' : ''}">${nieuwNiveau ? `<div class="md-unlock">Ontgrendeld!</div>` : ''}<div class="md-groot">${medailleSvg(b, 150, nieuwNiveau ? { niveau: nieuwNiveau } : {})}</div>
     <h3>${b.naam}</h3><p class="md-niv">${b.niveau ? MD_NAAM[b.niveau - 1] : b.binnenkort ? 'Binnenkort te verdienen' : 'Nog op slot'}</p>
     <ul class="md-rijen">${[0, 1, 2].map(rij).join('')}</ul>
+    ${vrij.length ? `<div class="kk-nieuw"><b>Nieuw in je kleedkamer</b><span>${vrij.map(esc).join(', ')}</span></div>` : ''}
     ${b.goudKlaar || b.goudLid ? `<p class="klein">${esc(b.nog)}</p>${kanLidNu(zicht()) ? '<button type="button" class="sb-link" data-actie="naarlid" style="margin:0 0 8px">Bekijk het lidmaatschap</button>' : ''}` : ''}
     ${b.niveau ? `<button type="button" class="knop" data-badgedeel="${b.id}">Deel als story</button>` : b.lid && !(isLid(zicht()) || ((zicht() || {}).lid || {}).bron === 'coaching') ? `<p class="klein">Deze badge verdien je met het lidmaatschap: met de ${b.groep === 'Core' ? 'Core-app' : 'slimme bandenspanning en Ik rijd hiermee'}.</p>${kanLidNu(zicht()) ? '<button type="button" class="knop" data-actie="naarlid">Bekijk het lidmaatschap</button>' : ''}` : `<p class="klein">${esc(b.nog)}</p>`}
     <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">${nieuwNiveau ? 'Top!' : 'Sluiten'}</button>${nieuwNiveau ? '<button type="button" class="sb-link" data-view="palmares" style="display:block;margin:4px auto 0">Bekijk je palmares</button>' : ''}</div>`);
