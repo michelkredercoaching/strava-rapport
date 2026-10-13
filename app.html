@@ -1062,7 +1062,7 @@ function analyseBlok(a, altijdOpen) {
       ${a.type ? `<p class="an-type"><b>${esc(a.type)}.</b> ${esc(RENNERTYPES[a.type] || '')}</p>` : ''}
       ${dec != null && isFinite(dec) ? `<p class="klein">${dec < 5 ? 'Decoupling onder de 5%: je basis staat, je hartslag blijft mooi gelijk op een lange rit.' : 'Decoupling boven de 5%: een aandachtspunt. Vaak zit het in eten en drinken onderweg of de lengte van je ritten.'}</p>` : ''}
       ${basis ? `<div class="an-sub">Jouw zones</div><table class="an-zones">${zones}</table>` : ''}
-      ${a.advies ? `<div class="an-advies"><div class="an-sub">Mijn advies voor jou</div><b>${esc(a.advies)}</b>
+      ${a.advies && !inCoaching() ? `<div class="an-advies"><div class="an-sub">Mijn advies voor jou</div><b>${esc(a.advies)}</b>
         ${a.tegoedLink && a.adviesPrijs ? `<p class="klein">Met je tegoed uit de analyse: <b style="color:var(--white)">&euro;${esc(a.adviesPrijs)}</b>${a.adviesOud ? ` in plaats van <s>&euro;${esc(a.adviesOud)}</s>` : ''}${a.deadline ? `, geldig tot ${esc(a.deadline)}` : ''}.</p>
         <a class="knop" href="${esc(a.tegoedLink)}">Bekijk mijn schema</a>` : ''}</div>` : ''}
       <p class="klein">Het volledige rapport staat als pdf in je mail.${altijdOpen ? '' : ` Na een paar weken trainen zie je met een nieuwe analyse of je vooruit bent gegaan. <a href="${analyseKoop()}" style="color:var(--accent)">Doe een nieuwe analyse</a>`}</p>
@@ -1083,7 +1083,7 @@ function analyseKaart(a) {
       <div class="label">Strava-analyse</div><h2>Waar je staat</h2>
       <p>Je analyse ${a.datum ? 'van ' + esc(a.datum) + ' ' : ''}${meet}. Het volledige rapport staat als pdf in je mail.</p>
       <div class="cijfers">${hoofd}<div class="cijfer" style="grid-column:span 2"><span>Rennerstype</span><b style="font-size:22px">${esc(a.type || '–')}</b></div></div>
-      ${a.advies ? `<p class="klein">Mijn advies voor jou: <b style="color:var(--white)">${esc(a.advies)}</b></p>` : ''}
+      ${a.advies && !inCoaching() ? `<p class="klein">Mijn advies voor jou: <b style="color:var(--white)">${esc(a.advies)}</b></p>` : ''}
       <a class="knop leeg" href="${analyseKoop()}">Doe een nieuwe analyse</a>
       <p class="klein">Na een paar weken trainen zie je zo of je FTP gestegen is.</p></div></div>`;
   }
@@ -2165,7 +2165,7 @@ function tegelsHtml(d) {
   const mijnSp = !slim ? laatsteSpanning() : '';
   t.push(tegel({ v: 'rijden', ic: 'rijden', nm: 'Vandaag rijden', sub: slim ? 'Je bandenspanning, kleding, voeding en wind voor je rit' : mijnSp ? 'Jouw spanning: ' + mijnSp + ' &middot; plus wind en groepsrit' : 'Je bandenspanning en windadvies, en plan een groepsrit', tag: slim ? 'Lid' : 'Gratis', tagKlas: slim ? 'or' : 'gr', breed: true }));
   if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: schemaTegelSub(d.schema), tag: d.schema.status === 'klaar' ? 'Afgerond' : 'Actief', tagKlas: 'gr' }));
-  if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.volgende && !d.core.intakeNodig && !d.core.opSlot ? 'Start' : 'Actief', tagKlas: 'gr' }));
+  if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
   else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Core stability voor wielrenners, op de timer', tag: binnenkortNu() ? 'Binnenkort' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Tijd voor een nieuwe' : 'Jouw uitslag') : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' }));
   t.push(tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? 'Lid' : '3 gratis', tagKlas: 'or' }));
@@ -2175,6 +2175,7 @@ function tegelsHtml(d) {
 }
 // Laatst berekende gratis spanning (btReken bewaart hem), om op de tegel te tonen.
 function laatsteSpanning() { try { return localStorage.getItem('mkcLaatsteSpanning') || ''; } catch (e) { return ''; } }
+function inCoaching() { const d = zicht(); return !!(d && d.lid && d.lid.bron === 'coaching'); }
 function schemaTegelSub(s) {
   if (s.status === 'voor') return 'Start ' + esc(datumKort(s.start));
   if (s.status === 'klaar') return 'Alle ' + s.weken + ' weken gedaan, kies je vervolg';
@@ -2184,7 +2185,9 @@ function schemaTegelSub(s) {
 // Hoe oud is de analyse? RAPDAT staat als "12 oktober 2026".
 const NL_MAANDEN = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
 function analyseDatum(a) {
-  const m = String((a && a.datum) || '').toLowerCase().match(/(\d{1,2})\s+([a-z]+)\s+(\d{4})/);
+  const t = String((a && a.datum) || '').toLowerCase();
+  const c = t.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/); if (c) return new Date(Number(c[3]), Number(c[2]) - 1, Number(c[1]), 12);
+  const m = t.match(/(\d{1,2})\s+([a-z]+)\s+(\d{4})/);
   if (!m || NL_MAANDEN.indexOf(m[2]) < 0) return null;
   return new Date(Number(m[3]), NL_MAANDEN.indexOf(m[2]), Number(m[1]), 12);
 }
@@ -2522,6 +2525,7 @@ function naAnalyseHtml(d) {
 function volgendeStapHtml(d) {
   const coaching = !!(d.lid && d.lid.bron === 'coaching');
   if (coaching || d.schema || (d.lid && d.lid.bron === 'schema')) return '';
+  if (isLid(d) && !(d.lid && d.lid.bron === 'cadeau')) return '';
   const k = (href, nm, sub, cta) => `<a href="${SITE}${href}" target="_blank" rel="noopener"><b>${nm}</b><span>${sub}</span><em>${cta} &rarr;</em></a>`;
   const doel = d.doel && !d.doel.klaar ? d.doel.doel : null, maand = new Date().getMonth(), winter = maand >= 9 || maand <= 1;
   const kaart = doel === 'fit' ? k('/het-startpakket/', 'Rustig opbouwen, met plezier', 'Het Startpakket: 4 weken opbouwen zonder gedoe, met een startgids erbij.', 'Bekijk het Startpakket')
@@ -2537,7 +2541,7 @@ function paginaHtml(d) {
   if (VIEW === 'rijden') return appBalkHtml('Vandaag rijden') + `<div class="kaarten">${bandenKaart(d)}${toonSlim(d) ? '' : windKaartHtml()}</div>` + voet;
   if (VIEW === 'schema') return appBalkHtml('Mijn schema') + `<div class="kaarten">${schemaKaart(d)}</div>` + voet;
   if (VIEW === 'core') return appBalkHtml('Core-app') + `<div class="kaarten">${coreKaart(dz.core)}</div>` + voet;
-  if (VIEW === 'analyse') return appBalkHtml('Strava-analyse') + (dz.analyse ? (dz.analyse.datum ? `<p class="klein" style="margin:14px 0 -4px">Gemeten op ${esc(dz.analyse.datum)}${analyseWeken(dz.analyse) >= 1 ? ' &middot; ' + analyseWeken(dz.analyse) + (analyseWeken(dz.analyse) === 1 ? ' week' : ' weken') + ' geleden' : ''}</p>` : '') + analyseBlok(dz.analyse, true) + naAnalyseHtml(dz) + `<a class="knop ${analyseWeken(dz.analyse) >= 8 ? '' : 'leeg'}" href="${analyseKoop()}" style="margin-top:14px">${analyseWeken(dz.analyse) >= 8 ? 'Tijd voor een nieuwe meting' : 'Doe een nieuwe analyse'}${analysePrijs() < 29 ? ' &middot; &euro;' + analysePrijs() : ''}</a><p class="klein">Na een paar weken gericht trainen zie je met een nieuwe analyse of je vooruit bent gegaan.</p>` : `<div class="kaarten">${analyseKaart(null)}</div>`) + voet;
+  if (VIEW === 'analyse') return appBalkHtml('Strava-analyse') + (dz.analyse ? (dz.analyse.datum ? `<p class="klein" style="margin:14px 0 -4px">Gemeten op ${esc(dz.analyse.datum)}${analyseWeken(dz.analyse) >= 1 ? ' &middot; ' + analyseWeken(dz.analyse) + (analyseWeken(dz.analyse) === 1 ? ' week' : ' weken') + ' geleden' : ''}</p>` : '') + analyseBlok(dz.analyse, true) + naAnalyseHtml(dz) + (inCoaching() ? '<p class="klein" style="margin-top:14px">Een nieuwe meting regelt Michel binnen je coaching.</p>' : `<a class="knop ${analyseWeken(dz.analyse) >= 8 ? '' : 'leeg'}" href="${analyseKoop()}" style="margin-top:14px">${analyseWeken(dz.analyse) >= 8 ? 'Tijd voor een nieuwe meting' : 'Doe een nieuwe analyse'}${analysePrijs() < 29 ? ' &middot; &euro;' + analysePrijs() : ''}</a><p class="klein">Na een paar weken gericht trainen zie je met een nieuwe analyse of je vooruit bent gegaan.</p>`) : `<div class="kaarten">${analyseKaart(null)}</div>`) + voet;
   if (VIEW === 'afval') return appBalkHtml('Afvalprogramma') + `<div class="kaarten">${afvalKaart()}</div>` + voet;
   if (VIEW === 'pacing') return appBalkHtml('Pacingplan') + `<div class="kaarten">${pacingKaart()}</div>` + voet;
   if (VIEW === 'lid') {
@@ -2570,7 +2574,7 @@ function teken() {
     ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
     <div id="groepsrit">${grHtml()}</div>
     ${reviewHtml(d)}
-    ${meldingenHtml(d)}<div id="meldvraag">${meldVraagHtml()}</div><div id="startlijst">${startlijstHtml(d)}</div>
+    ${meldingenHtml(d)}<div id="meldvraag">${startlijstHtml(d) ? '' : meldVraagHtml()}</div><div id="startlijst">${startlijstHtml(d)}</div>
     ${eersteWeekHtml(d) ? eersteWeekHtml(d) + '<div style="display:none">' : ''}${isNieuw(d) ? `<div class="welkom"><b>Zo werkt je app</b>
       <ol><li><span>1</span>Tik op Vandaag rijden en vul je gewicht en band in: je ziet meteen wat je pompt. Gratis, voor elke rit.</li>
       <li><span>2</span>${binnenkortNu() ? 'Rechtsonder zit <em>Vraag je coach</em>: stel elke week 3 vragen gratis, over training, voeding, banden of herstel.' : 'Start je gratis week in de Core-app: korte sessies thuis, op de timer.'}</li>
@@ -3871,7 +3875,7 @@ function meldInstHtml() {
     <p class="klein" style="margin-top:8px">Staat iets uit, dan zie je het gewoon hier in de app zodra je hem opent.</p></div>`;
 }
 function meldTeken() {
-  const a = document.getElementById('meldvraag'); if (a) a.innerHTML = meldVraagHtml();
+  const a = document.getElementById('meldvraag'); if (a) a.innerHTML = D && startlijstHtml(zicht()) ? '' : meldVraagHtml();
   const sl = document.getElementById('startlijst'); if (sl && D) sl.innerHTML = startlijstHtml(zicht());
   const b = document.getElementById('meldinst'); if (b) b.innerHTML = meldInstHtml();
   const dv = document.getElementById('doelvak'); if (dv && D && !D.gast) dv.innerHTML = doelHtml(zicht());
