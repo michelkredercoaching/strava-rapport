@@ -1138,7 +1138,7 @@ function schoonProfiel(p) {
   });
   // Kledingadvies: heb je het snel koud of snel warm? En het ochtendbericht.
   const kouType = ['koud', 'warm'].includes(p.kouType) ? p.kouType : 'normaal';
-  return { gewicht: gewicht >= 40 && gewicht <= 150 ? gewicht : null, plaats, fietsen, kouType };
+  return { gewicht: gewicht >= 40 && gewicht <= 150 ? gewicht : null, plaats, fietsen, kouType, kouGekozen: !!p.kouGekozen || kouType !== "normaal" };
 }
 async function haalBandenProfiel(email) {
   const r = await redis(['GET', `app:banden:${email}`]);
@@ -1610,7 +1610,7 @@ async function ochtendBericht(email) {
 }
 function ochtendTekst(profiel, weer, bijstel = 0, duurUur = 2) {
   const rit = weerTijdensRit(weer, 0.5, duurUur);
-  const kl = kledingAdvies({ temp: rit.temp, start: rit.start, wind: rit.wind, regen: rit.regen, kouType: profiel.kouType || 'normaal', bijstel, duurUur });
+  const kl = kledingAdvies({ temp: rit.temp, start: rit.start, wind: rit.wind, regen: rit.regen, nat: !!weer.nat, kouType: profiel.kouType || 'normaal', bijstel, duurUur });
   let banden = '';
   const f = (profiel.fietsen || [])[0];
   if (f && profiel.gewicht) {

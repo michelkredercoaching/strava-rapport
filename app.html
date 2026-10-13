@@ -590,11 +590,20 @@
   .rv-instel { margin-top:12px; }
   .rv-instel > summary b, .sb-oordeel-k > summary b { white-space:nowrap; flex-shrink:0; margin-right:10px; }
   .rv-instel > summary span { font-size:12.5px; text-align:right; }
-  .rv-uit .kl-lijst { gap:4px; }
+  .rv-uit .kl-lijst { gap:4px; margin-bottom:4px; }
+  .rv-uit .kl-lijst li small { display:block; font-size:12px; color:var(--muted); margin-top:1px; }
+  .kl-mee li { background:transparent !important; border-style:dashed !important; }
+  .kl-groep .rv-sub { margin-top:12px; }
   .rv-uit .kl-lijst li { padding:8px 12px; font-size:14px; }
   .rv-instel .klap-in.gr-maak { background:none; border:0; padding:0 14px 14px; margin:0; }
   .rv-instel .gr-maak label:first-child, .rv-instel .rij2:first-child label { margin-top:4px; }
   .rv-uit { margin-top:14px; }
+  .kl-kou { margin:10px 0 4px; }
+  .kl-kou > b { display:block; font-size:12px; color:var(--muted); font-weight:500; margin-bottom:6px; }
+  .kl-kou.nieuw { border:1px solid rgba(255,107,26,.55); background:rgba(255,107,26,.08); border-radius:8px; padding:12px; }
+  .kl-kou.nieuw > b { font-size:15px; color:var(--text, #f5f3ef); font-weight:700; margin-bottom:2px; }
+  .kl-kou.nieuw > span { display:block; font-size:12.5px; color:var(--muted); margin-bottom:8px; }
+  .kl-kou .bt-keuze { margin:0; }
   .rv-sub { font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin:14px 0 6px; }
   .rv-uit .kl-gevoel { margin-top:0; }
   .sb-oordeel-k { border-color:rgba(255,107,26,.45) !important; }
@@ -3140,15 +3149,15 @@ function klRitWeer(over, duur) {
   const w = SB.weer; if (!w) return null;
   const uren = w.uren || [];
   const stuk = uren.slice(Math.floor(over), Math.ceil(over + duur) + 1);
-  if (!stuk.length) return { temp: w.laagste, start: w.temp, wind: w.wind, regen: w.nat || w.regenStraks };
+  if (!stuk.length) return { temp: w.laagste, start: w.temp, wind: w.wind, regen: !!w.regenStraks, nat: sbNat() };
   const mm = stuk.reduce((a, u) => a + u.regen, 0);
-  return { temp: Math.min(...stuk.map((u) => u.temp)), start: stuk[0].temp, wind: Math.max(...stuk.map((u) => u.wind)), regen: (over < 1 && w.nat) || mm >= 0.5, regenMm: mm };
+  return { temp: Math.min(...stuk.map((u) => u.temp)), start: stuk[0].temp, wind: Math.max(...stuk.map((u) => u.wind)), regen: mm >= 0.5 || (over < 1 && (stuk[0].regen || 0) >= 0.2), regenMm: mm, nat: over < 1 ? sbNat() : sbNat() || mm >= 0.2 };
 }
 function klReken() {
   if (!KL_LIB || !SB.weer) return null;
   const k = klKeuze(), rw = klRitWeer(k.over, k.duur);
   if (!rw) return null;
-  const a = KL_LIB.kledingAdvies({ temp: rw.temp, start: rw.start, wind: rw.wind, regen: rw.regen, regenMm: rw.regenMm, intensiteit: k.hard ? 'hard' : 'rustig', kouType: (SB.profiel && SB.profiel.kouType) || 'normaal', bijstel: KL_LIB.kledingBijstel(SB.ritten || []), duurUur: k.duur });
+  const a = KL_LIB.kledingAdvies({ temp: rw.temp, start: rw.start, wind: rw.wind, regen: rw.regen, nat: rw.nat, regenMm: rw.regenMm, intensiteit: k.hard ? 'hard' : 'rustig', kouType: (SB.profiel && SB.profiel.kouType) || 'normaal', bijstel: KL_LIB.kledingBijstel(SB.ritten || []), duurUur: k.duur });
   return a ? { ...a, rw } : null;
 }
 function sbRitInstelHtml(metKou) {
@@ -3158,11 +3167,17 @@ function sbRitInstelHtml(metKou) {
   const duurNaam = (KL_DUUR.find((x) => x[0] === k.duur) || [0, k.duur + ' uur'])[1];
   const sam = ['vertrek ' + vertrekNaam, duurNaam, k.hard ? 'hard' : 'rustig'].concat(metKou && kt !== 'normaal' ? [kt === 'koud' ? 'snel koud' : 'snel warm'] : []).join(' &middot; ');
   const vertrek = ['<option value="0"' + (k.over === 0 ? ' selected' : '') + '>Nu</option>'].concat(uren.slice(1, 11).map((u, i) => `<option value="${i + 1}" ${k.over === i + 1 ? 'selected' : ''}>${u.uur}:00</option>`)).join('');
-  return `<details class="klap rv-instel" data-klap="ritinstel"${klapOpen('ritinstel', false) ? ' open' : ''}><summary><b>Je rit</b><span>${sam}</span></summary><div class="klap-in gr-maak">
+  return `<details class="klap rv-instel" data-klap="ritinstel"${klapOpen('ritinstel', false) ? ' open' : ''}><summary><b>Je rit</b><span>${sam.replace(/ &middot; snel (koud|warm)$/, '')}</span></summary><div class="klap-in gr-maak">
     <div class="rij2"><div><label for="klOver">Vertrek</label><select id="klOver">${vertrek}</select></div>
       <div><label for="klDuur">Hoe lang</label><select id="klDuur">${KL_DUUR.map(([v, t]) => `<option value="${v}" ${k.duur === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
     <div class="rij2"><div><label for="klTempo">Tempo</label><select id="klTempo"><option value="0">Rustige rit</option><option value="1" ${k.hard ? 'selected' : ''}>Harde training</option></select></div>
-      ${metKou ? `<div><label for="klKou">Heb je het snel koud?</label><select id="klKou"><option value="koud" ${kt === 'koud' ? 'selected' : ''}>Snel koud</option><option value="normaal" ${kt === 'normaal' ? 'selected' : ''}>Normaal</option><option value="warm" ${kt === 'warm' ? 'selected' : ''}>Snel warm</option></select></div>` : '<div></div>'}</div></div></details>`;
+      <div></div></div></div></details>`;
+}
+function klKouHtml() {
+  const kt = (SB.profiel && SB.profiel.kouType) || 'normaal', gekozen = !!(SB.profiel && (SB.profiel.kouGekozen || kt !== 'normaal'));
+  const knop = (w, t) => `<button type="button" data-kl="kou" data-w="${w}" class="${kt === w ? 'aan' : ''}">${t}</button>`;
+  return `<div class="kl-kou${gekozen ? '' : ' nieuw'}"><b>${gekozen ? 'Zo ben jij op de fiets' : 'Heb jij het snel koud op de fiets?'}</b>${gekozen ? '' : '<span>Dan stem ik je kleding daarop af.</span>'}
+    <div class="bt-keuze">${knop('koud', 'Snel koud')}${knop('normaal', 'Normaal')}${knop('warm', 'Snel warm')}</div></div>`;
 }
 function sbTipsKlap(naam, tips, extra) {
   if (!tips.length && !extra) return '';
@@ -3173,14 +3188,16 @@ function kledingTabHtml() {
   const a = klReken();
   const uit = !a ? '<p class="klein">Even rekenen...</p>' : `<div class="rv-uit">
     <div class="kl-gevoel"><b>${a.gevoel}&deg;</b><span>voelt het onderweg${a.rw.temp !== a.gevoel ? ` (het wordt ${a.rw.temp}&deg;)` : ''}</span></div>
-    <div class="rv-sub">Trek aan</div><ul class="kl-lijst">${a.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
+    ${klKouHtml()}
+    <div class="kl-groepen">${(a.groepen || [{ kop: 'Trek aan', items: a.items }]).map((g) => `<div class="kl-groep"><div class="rv-sub">${g.kop}</div><ul class="kl-lijst">${g.items.map((x) => { const m = x.match(/^(.*?) \((.*)\)$/); return `<li><span>${esc(m ? m[1] : x)}${m ? `<small>${esc(m[2])}</small>` : ''}</span></li>`; }).join('')}</ul></div>`).join('')}</div>
+    ${a.mee && a.mee.length ? `<div class="rv-sub">Mee in je achterzak</div><ul class="kl-lijst kl-mee">${a.mee.map((x) => `<li><span>${esc(x)}</span></li>`).join('')}</ul>` : ''}</div>
     ${sbTipsKlap('kltips', a.tips.concat(a.regel ? [a.regel] : []), a.redenen.length ? 'Meegerekend: ' + esc(a.redenen.join(', ')) + '.' : '')}`;
   return sbRitInstelHtml(true) + uit;
 }
 document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-kl]'); if (!k) return;
   if (k.dataset.kl === 'hard') { sbBewaarKeuze({ klHard: k.dataset.w === '1' }); return sbTeken(); }
-  if (k.dataset.kl === 'kou') { SB.profiel.kouType = k.dataset.w; sbTeken(); await sbBewaarProfiel(true); }
+  if (k.dataset.kl === 'kou') { SB.profiel.kouType = k.dataset.w; SB.profiel.kouGekozen = true; sbTeken(); await sbBewaarProfiel(true); }
   if (k.dataset.kl === 'tab') { if (k.dataset.w === 'kleding') statEens('kleding'); sbBewaarKeuze({ tab: k.dataset.w }); return sbTeken(); }
   if (k.dataset.kl === 'vrijtab') { btBewaar({ ...btLees(), tab: k.dataset.w }); return teken(); }
 });
