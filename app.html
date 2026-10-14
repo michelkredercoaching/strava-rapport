@@ -133,7 +133,7 @@
   .tegels.kort .tg-sub { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; padding-right:14px; }
   .tegel .tg-tag svg { width:10px; height:10px; vertical-align:-1px; }
   .app-zin { margin:4px 0 0; font-size:13.5px; line-height:1.5; color:var(--muted); } .app-zin a { color:var(--accent); white-space:nowrap; } .app-zin b { color:var(--white); font-weight:600; }
-  #eenstap:not(:empty) { margin-top:14px; }
+  #eenstap:not(:empty) { margin-top:14px; } .onder-doel:not(:empty) { margin-top:14px; }
   .hklap { margin-top:12px; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
   .hklap > summary { list-style:none; cursor:pointer; display:flex; align-items:baseline; gap:10px; padding:13px 14px; } .hklap > summary::-webkit-details-marker { display:none; }
   .hklap > summary b { font-family:'Bebas Neue',sans-serif; font-size:19px; letter-spacing:.03em; font-weight:400; }
@@ -2718,7 +2718,7 @@ function doelHtml(d) {
   if (dl && !dl.klaar && !DOELV.open) {
     const nog = dl.doel === 'evenement' ? Math.ceil((Date.parse(dl.datum + 'T08:00:00') - Date.now()) / 864e5) : null;
     const wat = dl.doel === 'evenement' ? esc(dl.naam) + (nog > 0 ? ' &middot; nog ' + nog + (nog === 1 ? ' dag' : ' dagen') : '') : DOEL_NAMEN[dl.doel];
-    const inVandaag = dl.doel === 'evenement' && dl.datum && (isLid(d) || (d.lid && d.lid.bron === 'coaching')) && Date.parse(dl.datum + 'T08:00:00') >= Date.now() - 864e5;
+    const inVandaag = false; // doel staat onderaan het beginscherm (14-10-2026)
     // Jouw doel in een licht oranje vak, duidelijk in beeld (12-10-2026)
     const hoofd = dl.doel === 'evenement' ? esc(dl.naam) : DOEL_NAMEN[dl.doel];
     const aftel = dl.doel === 'evenement' && nog > 0 ? `<span class="dr-nog"><b>${nog}</b>${nog === 1 ? 'dag' : 'dagen'}</span>` : '';
@@ -2850,17 +2850,16 @@ function onderaanHtml(d) {
   const coaching = !!(d.lid && d.lid.bron === 'coaching');
   const lidT = isLid(d) ? `<div class="tegels kort" style="margin-top:14px">${tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true })}</div>` : (routeHtml(d) ? '' : lidBalkHtml(d));
   const bk = `<div class="bk-rij"><span>Binnenkort</span>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}<button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${(!d.kracht || d.beheer) && Date.now() < KRACHT_OPEN_APP ? `<button type="button" data-view="krachtteaser">${IC.kracht}Kracht</button>` : ''}</div>`;
-  return lidT + (eersteWeekHtml(d) ? '' : bk);
+  const doel = d.gast ? '' : `<div id="doelvak" class="onder-doel">${doelVakHtml(d)}</div>`;
+  return lidT + doel + hklap('tipdicht', 'Tip van Michel', tipKop(d), tipHtml(d), false) + (eersteWeekHtml(d) ? '' : bk);
 }
 // Eén volgende stap tegelijk: de eerste die nu van toepassing is.
 function stapHtml(d) {
   if (!d || d.gast) return '';
   const ew = eersteWeekHtml(d); if (ew) return ew;
   const sl = startlijstHtml(d); if (sl) return `<div id="startlijst">${sl}</div>`;
-  if (DOELV.open || DOELV.bevestig) return `<div id="doelvak">${doelVakHtml(d)}</div>`;
   const opties = [() => schemaEindeHtml(d), () => reviewHtml(d), () => krachtNieuwHtml(d), () => analyseNudgeHtml(d),
-    () => { const m = meldVraagHtml(); return m && m.trim() ? `<div id="meldvraag">${m}</div>` : ''; },
-    () => { if (d.doel && !d.doel.klaar) return ''; const v = doelVakHtml(d); return v && v.trim() ? `<div id="doelvak">${v}</div>` : ''; }];
+    () => { const m = meldVraagHtml(); return m && m.trim() ? `<div id="meldvraag">${m}</div>` : ''; }];
   if (!rustigBegin(d)) opties.push(() => verkoopMomentHtml(d), () => routeHtml(d) || volgendeStapHtml(d), () => vriendMomentHtml(d), () => appHtml() || '');
   for (const f of opties) { const h = f(); if (h && String(h).trim()) return h; }
   return '';
@@ -3429,7 +3428,7 @@ function vandaagHtml(d) {
   }
   // Doel: aftellen naar je tocht, met wat dat nu betekent
   const dl = d.doel;
-  if (dl && dl.doel === 'evenement' && dl.datum && !dl.klaar) {
+  if (false && dl && dl.doel === 'evenement' && dl.datum && !dl.klaar) { // doel staat sinds 14-10-2026 onderaan het beginscherm
     const nog = Math.ceil((Date.parse(dl.datum + 'T08:00:00') - Date.now()) / 864e5);
     if (nog >= 0) rijen.push(vdRij('pacing', 'Je doel', esc(dl.naam) + ' &middot; ' + (nog === 0 ? 'vandaag, succes!' : nog === 1 ? 'morgen' : 'nog ' + nog + ' dagen'), { doel: true }));
   }
@@ -3570,8 +3569,7 @@ function teken() {
     ${meldingenHtml(d)}
     ${tegelsHtml(d)}
     <div id="eenstap">${stapHtml(d)}</div>
-    ${hklap('vandaag', 'Vandaag', new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' }), vandaagHtml(d) + (d.doel && !d.doel.klaar && !DOELV.open && !DOELV.bevestig ? '<div id="doelvak">' + doelVakHtml(d) + '</div>' : ''), true)}
-    ${hklap('tip', 'Tip van Michel', tipKop(d), tipHtml(d), false)}
+    ${hklap('vandaag', 'Vandaag', new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' }), vandaagHtml(d), true)}
     ${onderaanHtml(d)}
     <div id="meldinst">${meldInstHtml()}</div>
     ${feedbackHtml()}
