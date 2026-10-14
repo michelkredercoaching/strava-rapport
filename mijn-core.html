@@ -282,7 +282,7 @@
   .reekspil { display:inline-block; margin:8px 0 0 6px; }
   .speler .balk .t { margin-right:auto; }
   .speler .spk { background:rgba(255,107,26,.1); border:1px solid rgba(255,107,26,.6); color:#FF6B1A; border-radius:99px; padding:7px 14px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; }
-  .strava-knop { display:inline-flex; align-items:center; gap:8px; margin:14px auto 0; background:#FC4C02; color:#fff; border:0; border-radius:8px; padding:10px 16px; font-weight:700; font-size:14px; cursor:pointer; }
+  .strava-knop { display:inline-flex; align-items:center; gap:8px; margin:14px auto 0; background:#FF6B1A; color:#fff; border:0; border-radius:8px; padding:10px 16px; font-weight:700; font-size:14px; cursor:pointer; }
   .deel-rij { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:14px; }
   .deel-rij .strava-knop { margin:0; }
   .plaatje-knop { display:inline-flex; align-items:center; gap:6px; background:none; border:1px solid rgba(255,107,26,.6); color:#FF6B1A; border-radius:8px; padding:10px 16px; font-weight:700; font-size:14px; cursor:pointer; }
@@ -1671,12 +1671,12 @@ function sluitSpeler() {
 const STRAVA_LOGO = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M15.4 17.9l-2.1-4.1h-3.1l5.2 10.2 5.1-10.2h-3.1zM10.2 0L3.3 13.8h4.1l2.8-5.5 2.8 5.5h4z"/></svg>';
 async function stravaPlaats(data, knop) {
   if (!data) return;
-  if (knop) { knop.disabled = true; knop.innerHTML = STRAVA_LOGO + 'Even plaatsen...'; }
+  if (knop) { knop.disabled = true; knop.innerHTML = 'Even plaatsen...'; }
   const r = await fetch(API + '?actie=stravapost', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: token, ...data }) });
   const j = await r.json().catch(() => ({ ok: false }));
   if (j.koppel) { try { localStorage.setItem('coreStravaWacht', JSON.stringify(data)); } catch (e) {} const mob = /iPhone|iPad|iPod|Android/.test(navigator.userAgent) ? '&m=1' : ''; location.href = API + '?actie=stravakoppel&t=' + encodeURIComponent(token) + mob; return; }
-  if (j.ok) { if (knop) { knop.innerHTML = STRAVA_LOGO + 'Staat op Strava'; knop.classList.add('klaar'); if (j.url) knop.onclick = () => window.open(j.url, '_blank'), knop.disabled = false; } return j; }
-  if (knop) { knop.disabled = false; knop.innerHTML = STRAVA_LOGO + 'Opnieuw proberen'; }
+  if (j.ok) { if (knop) { knop.innerHTML = 'Staat op Strava'; knop.classList.add('klaar'); if (j.url) knop.onclick = () => window.open(j.url, '_blank'), knop.disabled = false; } return j; }
+  if (knop) { knop.disabled = false; knop.innerHTML = 'Opnieuw proberen'; }
   stravaMelding(j.fout || 'Plaatsen op Strava lukte niet. Probeer het zo nog eens.');
 }
 function stravaMelding(tekst, metPlaatje) {
@@ -1769,7 +1769,7 @@ async function klaarSpeler() {
   if (j.ok) { const werk = sp.stappen.filter((s) => s.soort === 'werk'); const oef = [...new Set(werk.map((s) => s.naam))]; sp.stravaData = { letter: sp.sessie.letter, naam: sp.sessie.naam, sec: Math.round(sp.echt || sp.gepland || 900), oefeningen: oef };
     const t = (S.tests || []).filter((x) => x.score != null);
     try { localStorage.setItem('coreLaatsteDeel', JSON.stringify({ naam: sp.sessie.naam, niveau: S.week, min: Math.round((sp.echt || sp.gepland || 900) / 60), ids: [...new Set(werk.map((s) => s.id))], oef, romp: t.length ? t[t.length - 1].score : null, plus: t.length > 1 && t[t.length - 1].score > t[0].score ? t[t.length - 1].score - t[0].score : 0, op: Date.now() })); } catch (e) {} }
-  if (j.ok) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<div class="deel-rij"><button type="button" class="strava-knop" data-sp="strava">${STRAVA_LOGO}Zet op Strava</button><button type="button" class="plaatje-knop" data-sp="plaatje">Maak je deelplaatje</button></div>`);
+  if (j.ok) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<div class="deel-rij"><button type="button" class="strava-knop" data-sp="strava">Zet op Strava</button><button type="button" class="plaatje-knop" data-sp="plaatje">Maak je deelplaatje</button></div>`);
   if (j.ok) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<p class="cue" style="margin-top:18px">Hoe voelde deze sessie?</p><div class="gevoel3"><button data-gevoel="licht">Te licht</button><button data-gevoel="goed">Goed</button><button data-gevoel="zwaar">Te zwaar</button></div>`);
   $('.bediening', sp.el).innerHTML = '<button class="hoofd" data-sp="klaar">Terug naar mijn pagina</button>';
   sp.el.addEventListener('click', async (e) => {
