@@ -1181,6 +1181,7 @@
   .an-advies { margin-top:6px; }
   .an-advies > b { font-size:16px; }
   .an-advies .knop { margin-top:10px; }
+  .core-punten { margin:8px 0 14px; padding-left:18px; font-size:14px; } .core-punten li { margin:4px 0; }
   .binnenkort-label { display:inline-block; margin-top:12px; font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); border:1px solid rgba(255,107,26,.5); border-radius:4px; padding:6px 10px; }
   /* Lidmaatschap: per jaar of per maand */
   .plannen { display:grid; gap:10px; margin:14px 0 10px; }
@@ -1428,6 +1429,7 @@ function coreKaart(c) {
     return `<div class="kaart"><div class="kaart-in"><span class="tag oranje">${binnenkortNu() ? 'Vrijdag 12:00' : inb ? 'Inbegrepen' : 'Gratis week'}</span>
       <div class="label">Core-app</div><h2>Sterk tot de laatste km</h2>
       <p>Core op maat die met je meebeweegt, thuis zonder gewichten. 10 tot 20 minuten, je traint mee op de timer en ziet je Rompscore stijgen.</p>
+      <ul class="core-punten"><li>Elke week 2 tot 4 korte sessies, op jouw niveau</li><li>Je starttest geeft je Rompscore, later zie je hoeveel sterker je bent</li><li>Na elke sessie met één tik op Strava, met je eigen deelplaatje</li></ul>
       ${startKnop}
       <details class="core-uitleg" style="margin-top:14px"><summary class="klein" style="cursor:pointer;color:var(--accent);font-weight:700">Hoe werkt het?</summary>
       ${coreMeeHtml(zicht())}

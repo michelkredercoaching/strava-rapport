@@ -308,6 +308,7 @@
   .speler .balk .t { margin-right:auto; }
   .speler .spk { background:rgba(255,107,26,.1); border:1px solid rgba(255,107,26,.6); color:#FF6B1A; border-radius:99px; padding:7px 14px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; }
   .strava-knop { display:inline-flex; align-items:center; gap:8px; margin:14px auto 0; background:#FF6B1A; color:#fff; border:0; border-radius:8px; padding:10px 16px; font-weight:700; font-size:14px; cursor:pointer; }
+  .strava-kaart { margin:16px auto 0; max-width:360px; border:1px solid rgba(255,107,26,.45); background:rgba(255,107,26,.07); border-radius:12px; padding:14px; text-align:center; } .strava-kaart b { display:block; font-size:16px; } .strava-kaart span { display:block; font-size:13px; color:rgba(245,243,239,.78); margin:4px 0 2px; line-height:1.45; }
   .deel-rij { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:14px; }
   .deel-rij .strava-knop { margin:0; }
   .plaatje-knop { display:inline-flex; align-items:center; gap:6px; background:none; border:1px solid rgba(255,107,26,.6); color:#FF6B1A; border-radius:8px; padding:10px 16px; font-weight:700; font-size:14px; cursor:pointer; }
@@ -357,6 +358,7 @@
   .speler .bediening button { min-width:64px; padding:14px 16px; border-radius:6px; border:1px solid rgba(255,255,255,.2); background:var(--surface); color:var(--white); cursor:pointer; font-weight:600; }
   .speler .bediening button.hoofd { background:var(--accent); color:#0A0A0A; border-color:var(--accent); min-width:120px; font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.05em; }
   /* Proefweek */
+  .proefweek { display:block; } .proefweek > b { display:block; font-size:15px; margin-bottom:4px; } .proefweek ul { margin:4px 0 8px; padding-left:18px; } .proefweek li { margin:3px 0; } .proefweek .klein { color:var(--muted); }
   .proefbalk { display:flex; gap:10px; align-items:center; background:var(--accent-dim); border:1px solid rgba(255,107,26,.35); border-radius:6px; padding:12px 14px; margin-bottom:24px; font-size:14px; }
   .proefbalk b { color:var(--accent); }
   .opslot { position:relative; }
@@ -451,7 +453,7 @@ function teken() {
     const meterLater = d.meterNodig != null && !d.afgerond && d.sessies.length;
     if (d.meterNodig != null && !meterLater) h += meterHtml(d);
     if (d.testNodig != null && d.testNodig !== 0) h += testHtml(d, false);
-    if (!d.betaald && !d.opSlot) h += `<div class="proefbalk"><span><b>Niveau 1 is gratis.</b> Doe je sessies en je starttest, dan zie je meteen wat het programma met je doet.</span></div>`;
+    if (!d.betaald && !d.opSlot) h += `<div class="proefbalk proefweek"><b>Je gratis week</b><ul><li>${d.frequentie || 3} sessies op jouw niveau, thuis op de timer</li><li>Je starttest: je Rompscore als nulmeting</li><li>Elke sessie met één tik op Strava, met je eigen deelplaatje</li></ul><span class="klein">Daarna ga je als lid door naar niveau 2 en verder. Alles wat je deze week doet, blijft staan.</span></div>`;
     if (d.opSlot) h += muurHtml(d);
     else if (d.klaar) h += `<div class="blok kaart accent"><h2>Niveau 12 bereikt</h2><p>Knap gedaan. ${d.testNodig != null ? 'Doe hierboven je romptest en kijk wat het je heeft opgeleverd.' : 'Je Rompscore staat in je voortgang hieronder.'}</p>${d.magDoorlopen ? '' : `<p style="margin-top:10px">Wil je verder? De app beweegt met je mee: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller. Doorgaan doe je als lid van de MKC-app: &euro;9,99 per maand, maandelijks opzegbaar, of &euro;89 per jaar.</p><a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word lid en ga door</a>`}</div>`;
     else {
@@ -606,6 +608,7 @@ function muurHtml(d) {
         <li>Je romptest elke 4 weken, met grafiek</li>
         <li>Je eigen MKC-coach: kent je plan en antwoordt dag en nacht</li>
         <li>Slimme bandenspanning: je fietsen en het weer van vandaag</li>
+        <li>Elke sessie met één tik op Strava, en medailles en beloningen in je palmares</li>
       </ul>
       <a class="knop breed" href="/app?ct=${encodeURIComponent(token)}">Word lid en ga door</a>
       <p class="klein muted" style="margin-top:12px">Alles wat je deed blijft staan. Opzeggen kan altijd, in de app.</p>` : `<div class="prijs">&euro;49</div>
@@ -669,7 +672,7 @@ function dashHtml(d) {
   }).join('');
   const testLab = d.testNodig === 0 ? 'Starttest' : 'Romptest', testSub = d.testNodig === 0 && !slot ? 'Vóór sessie 2' : d.testNodig != null ? 'Nu doen' : t.length ? 'Laatste: ' + romp + '/100' : 'Later';
   return `<div class="dash">${vandaag}
-    <div class="dash-cijfers">${cel(Math.min(d.week, 50), 50, 'Niveau')}${cel(romp != null ? romp : '&ndash;', 100, 'Rompscore', plus > 0 ? '+' + plus : '')}${cel(d.gedaanDezeWeek.length, nodig, 'Deze week')}${cel(d.reeks || 0, '', (d.reeks || 0) === 1 ? 'week op rij' : 'weken op rij')}</div>
+    <div class="dash-cijfers">${cel(Math.min(d.week, 50), 50, 'Niveau')}${cel(romp != null ? romp : '&ndash;', 100, 'Rompscore', plus > 0 ? '+' + plus : '')}${cel(d.gedaanDezeWeek.length, d.frequentie || nodig, 'Deze week')}${cel(d.reeks || 0, '', (d.reeks || 0) === 1 ? 'week op rij' : 'weken op rij')}</div>
     <div class="dash-balk"><i style="width:${pct}%"></i></div><div class="dash-balktekst">${nog ? 'Nog ' + nog + (nog === 1 ? ' sessie' : ' sessies') + ', dan kun je niveau ' + wib + ' afronden' : 'Klaar om niveau ' + wib + ' af te ronden'}</div>
     <div class="dash-sec">Deze week</div><div class="dash-rijen">${rijen}</div>
     <div class="dash-sec">Extra</div><div class="dash-extra">
@@ -804,6 +807,16 @@ async function vgDeel(knop) {
   } catch (e) { alert('Je kaart maken lukte niet op dit toestel.'); }
   finally { knop.disabled = false; knop.textContent = oud; }
 }
+// Toestemming voor gezondheidsgegevens (AVG art. 9) alleen vragen als iemand klachten, een rode vlag of
+// beperkingen opgeeft (14-10-2026). Wie nergens last van heeft, hoeft niets aan te vinken.
+function gezondheidOpgegeven() {
+  const klacht = [...document.querySelectorAll('input[name=klacht]:checked')].some((x) => x.value !== 'geen');
+  const vlag = (document.querySelector('input[name=vlag]:checked') || {}).value === 'ja';
+  const bep = [...document.querySelectorAll('input[name=beperking]:checked')].some((x) => x.value !== 'geen');
+  return klacht || vlag || bep;
+}
+function toestemmingTonen() { const l = document.querySelector('label.toestemming'); if (l) l.style.display = gezondheidOpgegeven() ? '' : 'none'; }
+document.addEventListener('change', (e) => { if (e.target && /^(klacht|vlag|beperking)$/.test(e.target.name || '')) toestemmingTonen(); });
 document.addEventListener('click', (e) => { const k = e.target.closest('[data-vgdeel]'); if (k) { e.preventDefault(); vgDeel(k); } });
 
 function voortgangHtml(d) {
@@ -935,6 +948,7 @@ document.addEventListener('click', async (e) => {
   const actie = k.dataset.actie;
 
   if (actie === 'intake') {
+    toestemmingTonen();
     const klachten = [...document.querySelectorAll('input[name=klacht]:checked')].map((i) => i.value).filter((v) => v !== 'geen');
     const geen = $('input[name=klacht][value=geen]').checked;
     const vlag = $('input[name=vlag]:checked')?.value, erv = $('input[name=ervaring]:checked')?.value;
@@ -946,11 +960,11 @@ document.addEventListener('click', async (e) => {
     const leeftijd = $('input[name=leeftijd]:checked')?.value;
     if (!leeftijd) return (fout.textContent = 'Kies bij vraag 3 je leeftijd.');
     if (!erv) return (fout.textContent = 'Kies bij vraag 4 je ervaring.');
-    if (!$('input[name=toestemming]').checked) return (fout.textContent = 'Vink onderaan de toestemming aan, dan kan ik je plan op je klachten afstemmen.');
+    if (gezondheidOpgegeven() && !$('input[name=toestemming]').checked) return (fout.textContent = 'Vink onderaan de toestemming aan, dan kan ik je plan op je klachten afstemmen.');
     k.disabled = true; k.textContent = 'Plan maken...';
     const freq = $('input[name=freq]:checked')?.value;
     if (!freq) { k.disabled = false; k.textContent = 'Maak mijn plan'; return (fout.textContent = 'Kies bij vraag 5 hoe vaak per week.'); }
-    const j = await post('intake', { klachten, rugErnst: rug, rodeVlag: vlag === 'ja', ervaring: erv, leeftijd, frequentie: Number(freq), zwaarsteDag: $('select[name=dag]').value, discipline: $('select[name=discipline]') ? $('select[name=discipline]').value : '', beperkingen: [...document.querySelectorAll('input[name=beperking]:checked')].map((i) => i.value).filter((v) => v !== 'geen'), kracht: $('input[name=kracht]:checked')?.value || 'nee', toestemming: true,
+    const j = await post('intake', { klachten, rugErnst: rug, rodeVlag: vlag === 'ja', ervaring: erv, leeftijd, frequentie: Number(freq), zwaarsteDag: $('select[name=dag]').value, discipline: $('select[name=discipline]') ? $('select[name=discipline]').value : '', beperkingen: [...document.querySelectorAll('input[name=beperking]:checked')].map((i) => i.value).filter((v) => v !== 'geen'), kracht: $('input[name=kracht]:checked')?.value || 'nee', toestemming: gezondheidOpgegeven() && $('input[name=toestemming]').checked,
       doelNaam: $('input[name=doelNaam]').value.trim(), doelDatum: $('input[name=doelDatum]').value });
     if (!j.ok) { k.disabled = false; k.textContent = 'Maak mijn plan'; fout.textContent = j.fout || 'Mislukt.'; }
     else window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1822,6 +1836,7 @@ async function klaarSpeler() {
   }
   piep(660, .15); setTimeout(() => piep(880, .15), 160); setTimeout(() => piep(1100, .3), 320);
   zeg('Goed gedaan. Sessie klaar.');
+  sp.el.querySelectorAll('.balk .spk, .stemklap').forEach((x) => { x.style.display = 'none'; });
   const finisher = sp.finisherSec;
   $('.midden', sp.el).innerHTML = `<div class="soort">${NR[sp.sessie.letter] ? 'Sessie ' + NR[sp.sessie.letter] + ' klaar' : esc(sp.sessie.naam || 'Klaar')}</div><div class="naam" style="font-size:52px">Goed gedaan</div>
     ${finisher ? `<p class="cue">Je finisher: <b>${finisher} seconden</b> plank.</p>` : ''}
@@ -1850,7 +1865,7 @@ async function klaarSpeler() {
   if (j.ok) { const werk = sp.stappen.filter((s) => s.soort === 'werk'); const oef = [...new Set(werk.map((s) => s.naam))]; sp.stravaData = { letter: sp.sessie.letter, naam: sp.sessie.naam, sec: Math.round(sp.totaal || sp.gepland || 900), oefeningen: oef }; // geplande duur van de training, niet hoe snel er geklikt werd
     const t = (S.tests || []).filter((x) => x.score != null);
     try { localStorage.setItem('coreLaatsteDeel', JSON.stringify({ naam: sp.sessie.naam, niveau: S.week, min: Math.max(1, Math.round((sp.totaal || sp.gepland || 900) / 60)), ids: [...new Set(werk.map((s) => s.id))], oef, romp: t.length ? t[t.length - 1].score : null, plus: t.length > 1 && t[t.length - 1].score > t[0].score ? t[t.length - 1].score - t[0].score : 0, op: Date.now() })); } catch (e) {} }
-  if (j.ok) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<div class="deel-rij"><button type="button" class="strava-knop" data-sp="strava">Zet op Strava</button><button type="button" class="plaatje-knop" data-sp="plaatje">Maak je deelplaatje</button></div>`);
+  if (j.ok) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<div class="strava-kaart"><b>Laat zien wat je deed</b><span>Met één tik staat je sessie op Strava, met je oefeningen erbij. Je maten zien het in hun feed, en het telt voor je badge Op Strava.</span><div class="deel-rij"><button type="button" class="strava-knop" data-sp="strava">Zet op Strava</button><button type="button" class="plaatje-knop" data-sp="plaatje">Maak je deelplaatje</button></div></div>`);
   if (j.ok) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<p class="cue" style="margin-top:18px">Hoe voelde deze sessie?</p><div class="gevoel3"><button data-gevoel="licht">Te licht</button><button data-gevoel="goed">Goed</button><button data-gevoel="zwaar">Te zwaar</button></div>`);
   $('.bediening', sp.el).innerHTML = '<button class="hoofd" data-sp="klaar">Terug naar mijn pagina</button>';
   sp.el.addEventListener('click', async (e) => {
