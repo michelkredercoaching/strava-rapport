@@ -351,8 +351,12 @@ async function routeStravaPost(req, res) {
   const lokaal = new Date(start.toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' }));
   const p = (n) => String(n).padStart(2, '0');
   const startLokaal = `${lokaal.getFullYear()}-${p(lokaal.getMonth() + 1)}-${p(lokaal.getDate())}T${p(lokaal.getHours())}:${p(lokaal.getMinutes())}:${p(lokaal.getSeconds())}`;
-  const form = new URLSearchParams({ name: schoon('Core: ' + (body.naam || 'sessie'), 90), sport_type: 'Workout', type: 'Workout', start_date_local: startLokaal, elapsed_time: String(sec),
-    description: `Core-sessie in de MKC Core-app, niveau ${d.week}.${oef.length ? '\n' + oef.join(', ') : ''}\nrapport.michelkredercoaching.nl/app`, trainer: '1' });
+  // Tekst op Strava: ook gratis reclame in de feed van maten (besluit Michel 14-10-2026)
+  const tests = (d.tests || []).filter((x) => x.score != null), eerst = tests[0], laatst = tests[tests.length - 1];
+  const romp = laatst ? `\nRompscore: ${laatst.score}${eerst && laatst !== eerst && laatst.score > eerst.score ? ` (+${laatst.score - eerst.score} sinds de start)` : ''}` : '';
+  const omschrijving = `${Math.round(sec / 60)} minuten core stability voor wielrenners.${oef.length ? '\nOefeningen: ' + oef.join(', ') : ''}${romp}\n\nGetraind met de MKC Core-app van Michel Kreder Coaching\nrapport.michelkredercoaching.nl/app`;
+  const form = new URLSearchParams({ name: schoon('Core: ' + (body.naam || 'sessie') + ' · niveau ' + d.week, 90), sport_type: 'Workout', type: 'Workout', start_date_local: startLokaal, elapsed_time: String(sec),
+    description: omschrijving, trainer: '1' });
   const a = await fetch('https://www.strava.com/api/v3/activities', { method: 'POST', headers: { Authorization: 'Bearer ' + access, 'Content-Type': 'application/x-www-form-urlencoded' }, body: form });
   const aj = await a.json().catch(() => ({}));
   if (!a.ok || !aj.id) { await redis(['DEL', `core:strava:post:${d.id}:${sessie.op}`]); if (a.status === 401) { await redis(['DEL', `core:strava:${d.id}`]); return res.status(200).json({ ok: false, koppel: true }); } console.error('strava post', a.status, JSON.stringify(aj).slice(0, 300)); return res.status(502).json({ ok: false, fout: 'Strava gaf een fout. Probeer het zo nog eens.' }); }
