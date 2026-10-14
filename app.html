@@ -2845,7 +2845,7 @@ function tegelsHtml(d) {
   const t = [trein, banden, derde, coach];
   if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: schemaTegelSub(d.schema), tag: d.schema.status === 'klaar' ? 'Afgerond' : 'Actief', tagKlas: 'gr', breed: true }));
   // Michel ziet Kracht tot de opening altijd als voorbeeld, ook als hij zelf Core doet.
-  const wissel = vorm === 'core' && d.kracht ? `<p class="klein tg-wissel">Liever kracht in de sportschool? <button type="button" class="sb-link" data-wisselvorm="kracht" style="display:inline;margin:0">Wissel naar Kracht</button></p>` : '';
+  const wissel = vorm === 'core' && d.kracht && Date.now() >= KRACHT_OPEN_APP ? `<p class="klein tg-wissel">Liever kracht in de sportschool? <button type="button" class="sb-link" data-wisselvorm="kracht" style="display:inline;margin:0">Wissel naar Kracht</button></p>` : '';
   return `<div class="tegels kort">${t.join('')}</div>${wissel}`;
 }
 // Onderaan het beginscherm: je lidmaatschap (of lid worden) en wat er binnenkort komt.
@@ -4333,7 +4333,7 @@ function zetGratis(n, l, tg) { if (!D) return; if (tg != null) D.vraagTegoed = t
 // Leden: hoeveel vragen er deze week nog zijn (14-10-2026). Niet in Michels voorbeeldweergave.
 function tegoedNu() { return D && !D.gast && !(D.beheer && BEKIJK === 'alles') ? (D.vraagTegoed || 0) : 0; }
 const tegoedTekst = (n) => n + ' extra ' + (n === 1 ? 'vraag' : 'vragen') + ' in je tegoed';
-function lidOverNu() { const d = zicht(); if (D && D.beheer) return BEKIJK === 'klant' && d && isLid(d) ? (D.lidMax || 25) : null; return d && D && D.lidOver != null && ccOnbeperkt() ? D.lidOver : null; }
+function lidOverNu() { const d = zicht(); if (D && D.beheer) return d && (isLid(d) || (d.lid && d.lid.bron === 'coaching')) ? (D.lidMax || 25) : null; return d && D && D.lidOver != null && ccOnbeperkt() ? D.lidOver : null; }
 function gratisTellerHtml(id) {
   const over = gratisOver();
   if (over == null) { const lo = lidOverNu(), lm = (D && D.lidMax) || 25; if (lo == null) return `<span id="${id}"></span>`;
