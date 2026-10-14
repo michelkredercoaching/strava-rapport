@@ -754,6 +754,7 @@
   .login-punten .ic { flex:0 0 32px; height:32px; border-radius:50%; background:var(--accent-dim); display:flex; align-items:center; justify-content:center; }
   .login-punten svg { width:18px; height:18px; stroke:var(--accent); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
   .login-nieuw { font-size:13px; color:var(--muted); line-height:1.45; margin:12px 0 0; } .login-nieuw b { color:var(--white); }
+  .login-app { background:rgba(255,107,26,.1); border:1px solid rgba(255,107,26,.45); border-radius:12px; padding:12px 14px; margin-bottom:14px; } .login-app b { display:block; color:#FF6B1A; font-size:15px; margin-bottom:3px; } .login-app span { font-size:13.5px; line-height:1.45; color:rgba(245,243,239,.85); }
   .login-vak { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:18px; }
   .login-vak label { display:block; font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
   .login input { width:100%; background:var(--black); border:1px solid rgba(255,255,255,.14); color:var(--white); font-family:inherit; font-size:16px; padding:15px 16px; border-radius:6px; margin-bottom:12px; transition:border-color .15s; }
@@ -1426,6 +1427,7 @@ function loginHtml(melding, soort) {
     <p class="lead">Alles voor je training op één plek, van je eerste rit van de dag tot je volgende stap.</p>
     <ul class="login-punten">${LOGIN_PUNTEN.map(([i, t]) => `<li><span class="ic">${LOGIN_IC[i]}</span>${t}</li>`).join('')}</ul>
     <div class="login-vak">
+      ${isApp() ? '<div class="login-app"><b>Welkom in je MKC-app</b><span>Op je beginscherm log je één keer opnieuw in met je mailadres. Daarna blijf je ingelogd en staat alles klaar.</span></div>' : ''}
       <form id="loginForm"><label for="loginMail">Inloggen of account maken</label>
         <input type="email" id="loginMail" placeholder="naam@voorbeeld.nl" autocomplete="email" required>
         <button class="knop" type="submit" id="loginKnop">Ga verder</button>
@@ -3568,7 +3570,7 @@ document.addEventListener('click', (e) => {
   if (actie === 'simreset') { SIM = { core: 'echt', analyse: 'echt', lid: 'echt', lancering: 'echt', schema: 'echt' }; simBewaar(); SK.dag = null; teken(); }
   if (actie === 'wordlid') wordLid(k);
   if (actie === 'startcore') startCore(k);
-  if (actie === 'naargast') { e.preventDefault(); return toonGast(); }
+  if (actie === 'naargast') { e.preventDefault(); try { localStorage.setItem('mkcGastKeuze', '1'); } catch (er) {} return toonGast(); }
   if (actie === 'gastlogin' || (actie === 'naarlid' && D && D.gast)) { e.preventDefault(); const m = gastMail(); return toonLogin(); }
   if (actie === 'naarmaten') {
     e.preventDefault();
@@ -5617,7 +5619,12 @@ async function laadOverzicht() {
   const t = leesToken();
   // Zonder inlog (13-10-2026): /app is de ingang voor nieuwe mensen (inloggen of gratis account maken).
   // De bandencheck zonder account staat op /banden, een groepsrit op /rit/..., en ?banden blijft werken.
-  if (!t) { const p = new URLSearchParams(location.search); return (location.pathname.startsWith('/banden') || GR_PAD || p.has('banden')) ? toonGast() : toonLogin(); }
+  if (!t) {
+    const p = new URLSearchParams(location.search), banden = location.pathname.startsWith('/banden') || p.has('banden');
+    let gastGekozen = false; try { gastGekozen = !!localStorage.getItem('mkcGastKeuze'); } catch (e) {}
+    if (GR_PAD || (banden && !(isApp() && !gastGekozen))) return toonGast();
+    return toonLogin();
+  }
   zetLoginInApp(t);
   try {
     const r = await fetch(API + '?actie=overzicht&t=' + encodeURIComponent(t));
