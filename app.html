@@ -67,6 +67,7 @@
   /* Op slot: echte inhoud wazig, slot erover */
   .wazig { position:relative; }
   .wazig .achter { filter:blur(5px) grayscale(.5); opacity:.45; pointer-events:none; user-select:none; }
+  .kr-voorbeeld .achter { filter:blur(2px); opacity:.55; } .kr-voorbeeld .slotje { background:linear-gradient(transparent, rgba(10,10,10,.55) 40%, transparent); }
   .wazig .slotje { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; text-align:center; padding:12px; }
   .slotje svg { width:26px; height:26px; color:var(--white); }
   .slotje b { font-family:'Bebas Neue',sans-serif; font-size:24px; letter-spacing:.04em; }
@@ -2673,8 +2674,8 @@ const IC = {
   palmares: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="M8.5 14 7 22l5-3 5 3-1.5-8"/><path d="m12 6 .9 1.9 2.1.3-1.5 1.4.4 2-1.9-1-1.9 1 .4-2L9 8.2l2.1-.3z"/></svg>',
   rijden: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17" r="3.5"/><circle cx="18.5" cy="17" r="3.5"/><path d="M15 6h2l3 11M5.5 17l4-8h7l-5 8M9 9l-1.5-3H5"/></svg>',
   schema: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h3M8 17h6"/></svg>',
-  kracht: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 9.5V7.5a3.5 3.5 0 0 1 7 0v2"/><circle cx="12" cy="15" r="6"/></svg>',
-  core: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="6" width="3.5" height="12" rx="1.2"/><rect x="15.5" y="6" width="3.5" height="12" rx="1.2"/><path d="M2.5 9.5v5M21.5 9.5v5M8.5 12h7"/></svg>',
+  kracht: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="6" width="3.5" height="12" rx="1.2"/><rect x="15.5" y="6" width="3.5" height="12" rx="1.2"/><path d="M2.5 9.5v5M21.5 9.5v5M8.5 12h7"/></svg>',
+  core: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3h8l1.2 6L15 21H9L6.8 9z"/><path d="M9.2 9h5.6M9.6 13h4.8M10 17h4M12 9v8"/></svg>',
   analyse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M6 16l4-5 3 3 5-7"/></svg>',
   coach: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
   afval: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20h14l-1.5-11h-11zM9 9a3 3 0 0 1 6 0"/></svg>',
@@ -2827,7 +2828,7 @@ function tegelsHtml(d) {
   const halfNu = t.filter((x) => !x.includes('tegel breed')).length; // even? dan zou de coach alleen op een halve rij staan
   t.push(tegel({ breed: halfNu % 2 === 0, v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Lid') : '3 gratis', tagKlas: 'or' }));
   if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true }));
-  const bk = `<div class="bk-rij"><span>Binnenkort</span>${(!d.kracht || d.beheer) && Date.now() < KRACHT_OPEN_APP ? `<button type="button" data-view="krachtteaser">${IC.kracht}Kracht &middot; 1 nov</button>` : ''}<button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
+  const bk = `<div class="bk-rij"><span>Binnenkort</span>${(!d.kracht || d.beheer) && Date.now() < KRACHT_OPEN_APP ? `<button type="button" data-view="krachtteaser" style="border-color:rgba(255,107,26,.6);color:#FF6B1A">${IC.kracht}Kracht &middot; 1 nov</button>` : ''}<button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
   const wissel = vorm === 'core' && d.kracht ? `<p class="klein tg-wissel">Liever kracht in de sportschool? <button type="button" class="sb-link" data-wisselvorm="kracht" style="display:inline;margin:0">Wissel naar Kracht</button></p>` : '';
   return `<div class="tegels">${t.join('')}</div>${wissel}${routeHtml(d)}${eersteWeekHtml(d) ? '' : bk}`;
 }
@@ -3237,11 +3238,13 @@ function krSetsVoor(o) {
 }
 function krachtPagina(d) {
   const k = d && d.kracht;
-  if (!k) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><span class="tag oranje">Vanaf 1 november</span><div class="label">Kracht</div><h2>Sterker trappen komt eraan</h2>
+  if (!k) { const nogD = Math.max(0, Math.ceil((KRACHT_OPEN_APP - Date.now()) / 864e5));
+  return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><span class="tag oranje">${nogD > 1 ? 'Nog ' + nogD + ' dagen' : nogD === 1 ? 'Morgen' : 'Vandaag'}</span><div class="label">Kracht</div><h2>Sterker trappen komt eraan</h2>
     <p>We zijn er hard mee bezig. Vanaf 1 november kies je in de app tussen Core en Kracht: twee keer per week een uur in de sportschool, met een opbouw van 12 weken en gewichten die de app voor je uitrekent.</p>${KR_VERSCHIL}
+    <div class="wazig kr-voorbeeld" style="margin:14px 0"><div class="achter"><div class="kr-volgende" style="margin:0"><div class="dash-lab">Week 4 &middot; Opbouw</div><b>Sessie A: Squat en bilspieren</b><small>Ongeveer 45 minuten</small><ul class="kr-lijst"><li><b>Squat met stang</b><span>3 x 8-10 &middot; 62,5 kg</span></li><li><b>Roemeense deadlift</b><span>3 x 8-10 &middot; 55 kg</span></li><li><b>Bulgaarse split squat</b><span>3 x 8-10 per kant &middot; 14 kg</span></li><li><b>Hip thrust</b><span>3 x 8-10 &middot; 70 kg</span></li></ul></div></div><div class="slotje">${SLOT}<b>Zo ziet je sessie eruit</b><span class="klein">De app rekent je gewichten uit</span></div></div>
     <ul class="core-punten"><li>Zware oefeningen die op de trapbeweging lijken: squat, step-up, deadlift op één been</li><li>Je logt je gewichten, de app zegt wanneer het zwaarder mag</li><li>In de winter opbouw, in het seizoen 1 keer per week vasthouden</li></ul>
     <p class="klein">Kracht hoort bij het lidmaatschap, ook als je coaching of een schema hebt.${isLid(d) || (d.lid && d.lid.bron === 'coaching') ? ' Jij kunt er op 1 november meteen mee aan de slag.' : ''}</p>
-    ${opDeHoogteHtml('kracht')}<p class="klein" style="margin-top:6px">Sta je op de lijst, dan krijg je op 1 november een berichtje in de app${D && PUSH && PUSH.inst && PUSH.inst.aan ? ' en een pushmelding' : ''}.</p></div></div></div>`;
+    ${opDeHoogteHtml('kracht')}<p class="klein" style="margin-top:6px">Sta je op de lijst, dan krijg je op 1 november een berichtje in de app${D && PUSH && PUSH.inst && PUSH.inst.aan ? ' en een pushmelding' : ''}.</p></div></div></div>`; }
   if (!k.open) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht</div><h2>Sterker trappen</h2><p>Twee keer per week een uur in de sportschool, met een opbouw van 12 weken.</p>${KR_VERSCHIL}<p class="klein">Kracht zit in het lidmaatschap.</p><button type="button" class="knop" data-view="lid">Bekijk het lidmaatschap</button></div></div></div>`;
   const b = k.beeld;
   if (!b) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht</div><h2>Sterker trappen</h2>
