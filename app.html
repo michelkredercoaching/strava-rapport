@@ -2909,7 +2909,7 @@ let TIPS_LIB = null;
 import('/lib/tips.js').then((m) => { TIPS_LIB = m; const el = document.getElementById('tipvak'); if (el && D) el.innerHTML = tipBinnen(zicht()); }).catch(() => {});
 function tipVanDag(d) {
   if (!TIPS_LIB || !d) return null;
-  return TIPS_LIB.tipVoor({ doel: d.doel && !d.doel.klaar ? d.doel.doel : null, core: !!d.core, schema: !!(d.schema && d.schema.status === 'loopt'), hartslag: !!(d.analyse && d.analyse.meet === 'hartslag') });
+  return TIPS_LIB.tipVoor({ doel: d.doel && !d.doel.klaar ? d.doel.doel : null, core: !!d.core, schema: !!(d.schema && d.schema.status === 'loopt'), hartslag: !!(d.analyse && d.analyse.meet === 'hartslag'), coaching: !!(d.lid && d.lid.bron === 'coaching') });
 }
 function tipBinnen(d) {
   const t = tipVanDag(d); if (!t) return '';

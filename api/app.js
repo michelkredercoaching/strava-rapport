@@ -1590,7 +1590,7 @@ async function coachContext(email) {
   const mf = (lid && lid.merge_fields) || {};
   const regels = [];
   if (doelContext(doel)) regels.push(doelContext(doel));
-  if (lidm && lidm.coaching) regels.push(`BELANGRIJK: deze renner zit in persoonlijke coaching bij Michel (${lidm.coaching === 'premium' ? 'Premium' : 'Flexibel'}). Michel maakt zijn trainingsplan zelf, persoonlijk in TrainingPeaks. Pas dat plan nooit aan en schuif geen trainingen: bij vragen over zijn plan, zijn trainingen of zijn opbouw zeg je vriendelijk dat hij dat even met Michel kortsluit, via TrainingPeaks of de mail, omdat Michel zijn plan zo heeft opgebouwd. Algemene vragen over voeding, herstel, materiaal, kleding, banden en techniek beantwoord je gewoon. Raad hem nooit een Strava-analyse, een trainingsschema of een pacingplan aan: dat regelt Michel binnen zijn coaching.`);
+  if (lidm && lidm.coaching) regels.push(`BELANGRIJK: deze renner zit in persoonlijke coaching bij Michel (${lidm.coaching === 'premium' ? 'Premium' : 'Flexibel'}). Michel maakt zijn trainingsplan zelf, persoonlijk in TrainingPeaks. Pas dat plan nooit aan en schuif geen trainingen: bij vragen over zijn plan, zijn trainingen of zijn opbouw zeg je vriendelijk dat hij dat even met Michel kortsluit, via TrainingPeaks of de mail, omdat Michel zijn plan zo heeft opgebouwd. Algemene vragen over voeding, herstel, materiaal, kleding, banden en techniek beantwoord je gewoon. Geef hem vooral toepasbare tips: iets wat hij vandaag of deze week zelf kan doen rond zijn trainingen, zoals wat hij eet en drinkt, hoe hij herstelt en slaapt, hoe hij zijn training in een drukke week inpast, zijn materiaal, kleding, techniek en hoe hij het mentaal volhoudt. Leg geen trainingsinhoud uit zoals zones, intervallen, opbouw of hoeveel uur hij moet fietsen: dat stemt Michel met hem af. Raad hem nooit een Strava-analyse, een trainingsschema of een pacingplan aan: dat regelt Michel binnen zijn coaching.`);
   const sb = schemaDossier && schemaDossier.huidig && schemaDossier.huidig.plan ? schemaBeeld(schemaDossier.huidig) : null;
   if (sb) regels.push(schemaContext(sb));
   else if (!(lidm && lidm.coaching)) regels.push('Deze renner heeft geen trainingsschema en geen persoonlijke coaching.');
@@ -1949,8 +1949,8 @@ async function routePushTest(req, res) {
 // Tip van Michel als pushbericht (12-10-2026): dezelfde tip als in de app,
 // afgestemd op doel, Core en schema. Nooit midden in een woord afkappen.
 async function tipBericht(email) {
-  const [doel, core, sch] = await Promise.all([haalDoel(email), coreVoorEmail(email).catch(() => null), haalSchema(email).catch(() => null)]);
-  const t = tipVoor({ doel: doel && !doel.klaar ? doel.doel : null, core: !!core, schema: !!(sch && sch.huidig), datum: new Date() });
+  const [doel, core, sch, lidm] = await Promise.all([haalDoel(email), coreVoorEmail(email).catch(() => null), haalSchema(email).catch(() => null), haalLid(email).catch(() => null)]);
+  const t = tipVoor({ doel: doel && !doel.klaar ? doel.doel : null, core: !!core, schema: !!(sch && sch.huidig), coaching: !!(lidm && lidm.bron === 'coaching'), datum: new Date() });
   if (!t) return null;
   let body = t.k + ' ' + t.t;
   if (body.length > 230) { body = body.slice(0, 229); body = body.slice(0, body.lastIndexOf(' ')) + '...'; }
