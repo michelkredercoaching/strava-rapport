@@ -89,6 +89,14 @@
       "schedule": "0 2 * * *"
     },
     {
+      "path": "/api/lid?actie=schemainhaal",
+      "schedule": "1 10 16 10 *"
+    },
+    {
+      "path": "/api/lid?actie=schemainhaal",
+      "schedule": "0 8 17 10 *"
+    },
+    {
       "path": "/api/lid?actie=cadeaumail",
       "schedule": "5 10 16 10 *"
     },

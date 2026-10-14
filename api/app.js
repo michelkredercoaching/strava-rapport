@@ -40,7 +40,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { coreVoorEmail, emailVoorCoreToken, coreTrechter, coreOverzicht } from './core.js';
 import { lidOpenApp, voorverkoopAan, lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar, haalSchema, ledenOverzicht, lidZoek, geefToegang } from './lid.js';
-import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN, laadPlan } from '../lib/schema-app.js';
+import { schemaBeeld, schemaContext, planStart, PLANNEN as SCHEMA_PLANNEN, laadPlan } from '../lib/schema-app.js';
 import { haalMeldingen, leesMelding, appMelding, logPush } from '../lib/app-melding.js';
 import { leesDoel, nieuwDoel, volgendeStap, doelContext } from '../lib/doelen.js';
 import { maakKortingToken } from '../lib/korting.js';
@@ -192,6 +192,8 @@ async function routeSchema(req, res) {
   const d = await haalSchema(email);
   if (!d || !d.huidig) return res.status(404).json({ ok: false, fout: 'Geen schema gevonden.' });
   const stap = Number(body.verschuif) > 0 ? 1 : -1;
+  // Eerst de start vastleggen zoals de app hem nu toont (maandag-regel), dan pas schuiven.
+  if (!d.huidig.startExact) { d.huidig.start = planStart(d.huidig); d.huidig.startExact = true; }
   d.huidig.verschuif = Math.max(-14, Math.min(28, (Number(d.huidig.verschuif) || 0) + stap));
   await redis(['SET', `schema:${email}`, JSON.stringify(d)]);
   return res.status(200).json({ ok: true, schema: schemaBeeld(d.huidig) });
@@ -627,7 +629,7 @@ async function routeSchemaBeheer(req, res) {
   const h = oud && oud.huidig && oud.huidig.plan ? oud.huidig : null;
   // Welke dag van de week is het vandaag in het schema? Zelfde weekdag houden.
   const dagInWeek = Number.isFinite(Number(body.dag)) && Number(body.dag) >= 1 && Number(body.dag) <= 7 ? Number(body.dag)
-    : h ? ((((dagVerschil(h.start, vandaag) - (Number(h.verschuif) || 0)) % 7) + 7) % 7) + 1
+    : h ? ((((dagVerschil(planStart(h), vandaag) - (Number(h.verschuif) || 0)) % 7) + 7) % 7) + 1
     : ((new Date(vandaag + 'T12:00:00Z').getUTCDay() + 6) % 7) + 1;   // nieuw schema: dag 1 = maandag
   const nieuwDagNr = (week - 1) * 7 + dagInWeek;
   if (!h) {
@@ -636,8 +638,9 @@ async function routeSchemaBeheer(req, res) {
     const r = await geefToegang({ email, naam: '', soort: 'schema', plan, start });
     return res.status(r.ok ? 200 : 400).json({ ...r, nieuw: true });
   }
-  const verschuif = dagVerschil(h.start, vandaag) + 1 - nieuwDagNr;
-  const huidig = { ...h, plan, weken, niveauNaam, titel, verschuif, bijgesteld: new Date().toISOString() };
+  const basisStart = planStart(h);
+  const verschuif = dagVerschil(basisStart, vandaag) + 1 - nieuwDagNr;
+  const huidig = { ...h, start: basisStart, startExact: true, plan, weken, niveauNaam, titel, verschuif, bijgesteld: new Date().toISOString() };
   await redis(['SET', `schema:${email}`, JSON.stringify({ ...oud, huidig })]);
   const b = schemaBeeld(huidig);
   return res.status(200).json({ ok: true, schema: { email, titel, plan, week: b ? b.week : week, dagNr: b ? b.dagNr : nieuwDagNr, status: b ? b.status : null, vandaag: b && b.vandaag.length ? b.vandaag.map((w) => w.titel).join(' + ') : 'rust' } });

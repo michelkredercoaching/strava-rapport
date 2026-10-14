@@ -699,6 +699,7 @@ export default async function handler(req, res) {
     if (actie === 'herinner') return await routeHerinner(req, res);
     if (actie === 'schema') return await routeSchema(req, res);
     if (actie === 'cadeaumail') return await routeCadeauMail(req, res);
+    if (actie === 'schemainhaal') return await routeSchemaInhaal(req, res);
     if (actie === 'open') {
       // Publiek: kunnen mensen al lid worden? De WordPress-pagina's (/core/,
       // bedankpagina, homepage, checkout) vragen dit, zodat het oude aanbod
@@ -1129,7 +1130,7 @@ async function routeSchema(req, res) {
   const plan = soort === 'vervolg' ? null : planNaam({ soort, niveau: body.niveau, weken, meet: body.meet });
   const niveauNaam = (String(body.niveau || '').match(/basis|opbouw|piek/i) || [''])[0].replace(/^./, (c) => c.toUpperCase());
   const titel = soort === 'winter' ? `Indoor Winterprogramma ${niveauNaam}` : `${niveauNaam || 'Trainingsschema'} ${weken} weken`;
-  const huidig = { plan: plan && laadPlan(plan) ? plan : null, soort, weken, niveauNaam, titel, start, verschuif: 0, order, sinds: new Date().toISOString() };
+  const huidig = { plan: plan && laadPlan(plan) ? plan : null, soort, weken, niveauNaam, titel, start, verschuif: 0, maandag: true, order, sinds: new Date().toISOString() };
   // Recente Strava-analyse (max. 8 weken voor de start)? Dan is de test in
   // week 1 vrijwillig (de app zegt het erbij) en krijgt Michel een mail om de
   // FTP of het omslagpunt in TrainingPeaks te zetten.
@@ -1256,6 +1257,41 @@ async function schemaEindeMails() {
 
 // Cadeaumail aan bestaande schema-klanten, op het lanceermoment (cron
 // vr 16-10 12:05 Amsterdam). Eén keer per klant; vóór de lancering doet hij niets.
+// Inhaalslag (besluit Michel 14-10-2026): schema's betaald tussen 9 oktober en de lancering vielen
+// buiten het cadeau (gekozen op 9-10) én buiten de webshop-koppeling (pas vanaf 16-10 12:00).
+// Ze krijgen de app alsnog cadeau, met hun schema in de app. Draait vr 16-10 om 12:01 (vóór de
+// cadeaumail van 12:05) en za 17-10 als vangnet; dubbel aanmelden kan niet (schema:order:<id>).
+const INHAAL_PRODUCTEN = { 6440: ['schema', 8], 8387: ['schema', 12], 8388: ['schema', 16], 12609: ['winter', 12], 12248: ['vervolg', 8], 12252: ['vervolg', 12], 12256: ['vervolg', 16] };
+async function routeSchemaInhaal(req, res) {
+  const cron = process.env.CRON_SECRET || '';
+  if (!cron || String(req.headers?.authorization || '') !== `Bearer ${cron}`) return res.status(401).json({ ok: false });
+  const basis = (process.env.WC_URL || 'https://michelkredercoaching.nl').replace(/\/$/, '');
+  const ck = process.env.WC_CONSUMER_KEY, cs = process.env.WC_CONSUMER_SECRET, geheim = process.env.WOO_WEBHOOK_SECRET;
+  if (!ck || !cs || !geheim) return res.status(500).json({ ok: false, fout: 'WooCommerce- of webhookgegevens ontbreken' });
+  const r = await fetch(`${basis}/wp-json/wc/v3/orders?after=2026-10-08T22:00:00&before=${new Date(LANCERING).toISOString().slice(0, 19)}&dates_are_gmt=true&per_page=100&status=processing,completed`, { headers: { Authorization: 'Basic ' + Buffer.from(ck + ':' + cs).toString('base64') }, signal: AbortSignal.timeout(20000) });
+  if (!r.ok) return res.status(502).json({ ok: false, fout: 'WooCommerce HTTP ' + r.status });
+  const orders = await r.json();
+  const uit = [];
+  for (const o of Array.isArray(orders) ? orders : []) {
+    let gevonden = null;
+    for (const i of o.line_items || []) {
+      const p = INHAAL_PRODUCTEN[i.product_id]; if (!p) continue;
+      const niveau = ((i.meta_data || []).find((m) => /niveau/i.test(m.key)) || {});
+      if (!gevonden || p[1] > gevonden.weken) gevonden = { soort: p[0], weken: p[1], niveau: String(niveau.display_value || niveau.value || '') };
+    }
+    if (!gevonden || !o.billing || !o.billing.email) continue;
+    const meta = (k) => String(((o.meta_data || []).find((m) => m.key === k) || {}).value || '');
+    const ruw = meta('Gewenste startdatum') || meta('Startdatum schema');
+    const m1 = ruw.match(/^(\d{4})-(\d{2})-(\d{2})/), m2 = ruw.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    const start = m1 ? `${m1[1]}-${m1[2]}-${m1[3]}` : m2 ? `${m2[3]}-${m2[2]}-${m2[1]}` : '';
+    const body = { secret: geheim, email: o.billing.email, naam: `${o.billing.first_name || ''} ${o.billing.last_name || ''}`.trim(), order: String(o.id), ...gevonden, meet: meta('Trainingsschema gebaseerd op'), start, cadeau: true };
+    let antwoord = null;
+    await routeSchema({ method: 'POST', body, headers: {} }, { setHeader() {}, status() { return this; }, send() { return this; }, json(j) { antwoord = j; return this; } });
+    uit.push({ order: o.id, ok: !!(antwoord && antwoord.ok), al: !!(antwoord && antwoord.al), plan: antwoord && antwoord.plan });
+  }
+  if (uit.some((x) => x.ok && !x.al)) await meldIntern('Schema-inhaalslag MKC-app', `Schema's betaald tussen 9-10 en de lancering kregen de app alsnog cadeau:\n\n${uit.filter((x) => !x.al).map((x) => `order ${x.order}: ${x.ok ? 'aangemeld (' + (x.plan || 'alleen app') + ')' : 'MISLUKT'}`).join('\n')}`).catch(() => {});
+  return res.status(200).json({ ok: true, bekeken: Array.isArray(orders) ? orders.length : 0, schemas: uit });
+}
 async function routeCadeauMail(req, res) {
   const cron = process.env.CRON_SECRET || '';
   if (!cron || String(req.headers?.authorization || '') !== `Bearer ${cron}`) return res.status(401).json({ ok: false });
