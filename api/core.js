@@ -318,7 +318,7 @@ const STRAVA_TERUG = 'https://rapport.michelkredercoaching.nl/api/core?actie=str
 // en bewaren we het token maar kort. Kost de renner één tik op Toestaan per keer.
 // Rem (14-10-2026): de Core-knop gebruikt hooguit 3 van de 10 Strava-plekken tegelijk en hooguit
 // 30 delingen per kwartier, zodat de analyse altijd ruimte houdt (plekken en verzoeken worden gedeeld).
-const CORE_MAX_TEGELIJK = STRAVA_EIGEN ? 8 : 3, CORE_MAX_KWARTIER = STRAVA_EIGEN ? 90 : 30;
+const CORE_MAX_TEGELIJK = STRAVA_EIGEN ? 8 : 2, CORE_MAX_KWARTIER = STRAVA_EIGEN ? 90 : 30;
 async function stravaRuimte(id) {
   const nu = Date.now(), k = 'core:strava:bezig';
   await redis(['ZREMRANGEBYSCORE', k, '0', String(nu - 5 * 60000)]); // een poging telt 5 minuten mee, of tot hij ontkoppeld is
