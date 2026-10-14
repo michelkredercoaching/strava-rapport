@@ -671,7 +671,8 @@ async function lidOpen() { return !voorLancering() && !!MOLLIE_KEY; }
 // Voorverkoop (14-10-2026): vóór de lancering kan lid worden alvast in de app,
 // als Michel de schakelaar in Beheer aanzet. Homepage, /core/ en checkout blijven
 // op lidOpen() wachten. De eerste periode begint pas bij de lancering.
-async function voorverkoopAan() { const r = await redis(['GET', 'lid:voorverkoop']); return r.ok && r.result === '1'; }
+// Voorverkoop (14-10-2026) geschrapt op verzoek van Michel: lid worden kan pas vanaf de lancering.
+async function voorverkoopAan() { return false; }
 async function lidOpenApp() { if (!MOLLIE_KEY) return false; if (!voorLancering()) return true; return voorverkoopAan(); }
 
 // ---- Routes ----------------------------------------------------------------------

@@ -857,7 +857,7 @@ async function routePushOpnieuw(req, res) {
 async function routeVoorverkoop(req, res) {
   const body = req.method === 'POST' ? await leesBody(req) : {};
   if (!beheerEmail(req, body.t || req.query?.t)) return res.status(403).json({ ok: false });
-  if (req.method === 'POST') await redis(body.aan ? ['SET', 'lid:voorverkoop', '1'] : ['DEL', 'lid:voorverkoop']);
+  if (req.method === 'POST') await redis(['DEL', 'lid:voorverkoop']); // voorverkoop geschrapt (14-10-2026)
   return res.status(200).json({ ok: true, aan: await voorverkoopAan(), voorLancering: Date.now() < LANCERING });
 }
 async function routeBeheerDash(req, res) {
