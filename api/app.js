@@ -482,8 +482,9 @@ async function rlAutoMee(email, voornaam, score) {
 //   POST kracht { t, start: {ervaring, waar} } | { t, log: {sessie, oef} } | { t, stop: true }
 // Redis: app:kracht:<email> (JSON)
 // ===========================================================================
-// Besluit Michel 14-10-2026: Kracht gaat voor leden (ook coaching en schema) open op de lancering, vr 16-10 12:00.
-const KRACHT_VOOR_LEDEN = () => Date.now() >= LANCERING;
+// Besluit Michel 14-10-2026: Kracht gaat voor leden (ook coaching en schema) open op zo 1 november 2026.
+const KRACHT_OPEN = Date.parse('2026-11-01T00:00:00+01:00');
+const KRACHT_VOOR_LEDEN = () => Date.now() >= KRACHT_OPEN;
 async function magKracht(email) { if (BEHEER.includes(email)) return true; return KRACHT_VOOR_LEDEN() && await magSlim(email); }
 // Core óf Kracht (besluit Michel 14-10-2026): één trainingsvorm tegelijk, wisselen kan altijd.
 async function haalProgramma(email) { const r = await redis(['GET', `app:programma:${email}`]); return (r.ok && r.result) || null; }
@@ -1283,7 +1284,7 @@ async function routeOverzicht(req, res) {
     automatisch: await incassoKlaar(),
     naam: (core && core.naam) || mf.FNAME || '',
     core,
-    kracht: (await magKracht(email)) ? { open: true, beeld: krachtBeeld(await haalKracht(email)) } : (Date.now() >= LANCERING ? { open: false, beeld: null } : null),
+    kracht: (await magKracht(email)) ? { open: true, beeld: krachtBeeld(await haalKracht(email)) } : (KRACHT_VOOR_LEDEN() ? { open: false, beeld: null } : null),
     programma: await haalProgramma(email),
     analyse,
     banden: heeftTag(lid, 'bandenspanning-pdf'),
@@ -1726,7 +1727,7 @@ async function coachContext(email) {
     if (core.disbalans) regels.push('Disbalans uit de romptest: ' + Object.entries(core.disbalans).map(([k, x]) => `${k} ${x.pct}% zwakker ${x.kant.toLowerCase()}`).join(', ') + '. De Core-app laat die kant eerst gaan en langer werken.');
   } else regels.push('Core-app: niet gestart.');
   if (kr) regels.push(krachtContext(krachtBeeld(kr)));
-  if (Date.now() >= LANCERING) regels.push('In de app kiest een lid tussen Core (thuis, zonder gewichten, 10 tot 20 min, 2 tot 4x per week) en Kracht (sportschool, met gewichten, ongeveer een uur, 2x per week, in het seizoen 1x). Eén tegelijk; wisselen kan onder de tegels op het beginscherm of op de Kracht-pagina. Vraagt iemand naar krachttraining, verwijs dan naar de tegel Kracht (KNOP: kracht).');
+  if (KRACHT_VOOR_LEDEN()) regels.push('In de app kiest een lid tussen Core (thuis, zonder gewichten, 10 tot 20 min, 2 tot 4x per week) en Kracht (sportschool, met gewichten, ongeveer een uur, 2x per week, in het seizoen 1x). Eén tegelijk; wisselen kan onder de tegels op het beginscherm of op de Kracht-pagina. Vraagt iemand naar krachttraining, verwijs dan naar de tegel Kracht (KNOP: kracht).');
   if ((lid && (lid.tags || []).some((t) => t.name === 'power-profile-koper'))) {
     regels.push(`Strava-analyse (${mf.RAPDAT || 'datum onbekend'}): ${mf.MEETMETH === 'hartslag' ? `omslagpunt ${mf.KOOPOMS || mf.OMSLAG || '?'} bpm` : `FTP ${mf.KOOPFTP || mf.FTP || '?'} W`}, renner-type ${mf.RENTYPE || '?'}, geadviseerd schema ${mf.ADVSCHEMA || '?'}.`);
     // Het actieplan uit zijn rapport (14-10-2026, na Steven): de coach mag het rapport niet tegenspreken.

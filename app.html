@@ -1413,7 +1413,7 @@ function appHtml() {
 // Twee stappen: mailadres, dan de code uit de mail. Nieuw adres = gratis account.
 const LOGIN_PUNTEN = [
   ['band', 'Bandenspanning voor elke rit, afgestemd op het weer'],
-  ['core', 'Core thuis of kracht in de sportschool, op jouw niveau'],
+  ['core', Date.now() >= Date.parse('2026-11-01T00:00:00+01:00') ? 'Core thuis of kracht in de sportschool, op jouw niveau' : 'Core-training die met je meebeweegt'],
   ['kleding', 'Kledingadvies en een ochtendbericht voor je rit'],
   ['coach', 'Je vragen beantwoord met de kennis van Michel']
 ];
