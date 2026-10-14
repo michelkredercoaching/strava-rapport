@@ -54,7 +54,7 @@ import { tel } from '../lib/stat.js';
 import { lidOpen, haalLid as haalLidmaatschap, haalSchema, LANCERING } from './lid.js';
 // Voorverkoop (14-10-2026): nieuwe leden kunnen al betalen, de Core-app opent pas bij de lancering.
 const CORE_BEHEER = ['michel.kredercoaching@gmail.com', 'michel.kreder@gmail.com'];
-const coreNogDicht = (d) => Date.now() < LANCERING && d.bron === 'lid' && !CORE_BEHEER.includes(String(d.email || '').toLowerCase());
+const coreNogDicht = (d) => Date.now() < LANCERING && !!d.wachtOpLancering && !CORE_BEHEER.includes(String(d.email || '').toLowerCase());
 import { meld as meldActief } from '../lib/app-opruimen.js';
 import { reviewMoment } from '../lib/review.js';
 
@@ -390,7 +390,8 @@ async function plaatsOpStrava(d, body, access) {
   // Tekst op Strava: ook gratis reclame in de feed van maten (besluit Michel 14-10-2026)
   const tests = (d.tests || []).filter((x) => x.score != null), eerst = tests[0], laatst = tests[tests.length - 1];
   const romp = laatst ? `\nRompscore: ${laatst.score}${eerst && laatst !== eerst && laatst.score > eerst.score ? ` (+${laatst.score - eerst.score} sinds de start)` : ''}` : '';
-  const omschrijving = `${Math.round(sec / 60)} minuten core stability voor wielrenners.${oef.length ? '\nOefeningen: ' + oef.join(', ') : ''}${romp}\n\nGetraind met de MKC Core-app van Michel Kreder Coaching\nhttps://michelkredercoaching.nl/app`;
+  // Afzender en link bovenaan: in de feed zie je meteen waar het vandaan komt (besluit Michel 14-10-2026)
+  const omschrijving = `Getraind met de MKC Core-app van Michel Kreder Coaching\nhttps://michelkredercoaching.nl/app\n\n${Math.round(sec / 60)} minuten core stability voor wielrenners.${oef.length ? '\nOefeningen: ' + oef.join(', ') : ''}${romp}`;
   const form = new URLSearchParams({ name: schoon('Core: ' + (body.naam || 'sessie') + ' · niveau ' + d.week, 90), sport_type: 'Workout', type: 'Workout', start_date_local: startLokaal, elapsed_time: String(sec), description: omschrijving, trainer: '1' });
   const a = await fetch('https://www.strava.com/api/v3/activities', { method: 'POST', headers: { Authorization: 'Bearer ' + access, 'Content-Type': 'application/x-www-form-urlencoded' }, body: form });
   const aj = await a.json().catch(() => ({}));
@@ -511,7 +512,7 @@ function klantBeeld(d) {
   const doel = d.doel ? { ...d.doel, ...(besteStart(d.doel.datum) || {}) } : null;
 
   return {
-    naam: d.naam || '', status: d.status, nogDicht: coreNogDicht(d), opent: LANCERING,
+    naam: d.naam || '', status: d.status, nogDicht: coreNogDicht(d), opent: LANCERING, beheer: CORE_BEHEER.includes(String(d.email || '').toLowerCase()),
     betaald: isBetaald(d),
     // Proefweek: week 1 mag, vanaf week 2 op slot tot er betaald is.
     opSlot: opSlotNu(d),
@@ -629,7 +630,7 @@ export async function coreVoorEmail(email) {
 // Bestaat er nog geen dossier, dan wordt het aangemaakt en gaat de welkomstmail
 // met de link de deur uit. Wie eerder eenmalig betaalde, houdt die toegang:
 // daar zetten we geen einddatum op.
-export async function zetLidmaatschap({ email, naam, tot, stil = false }) {
+export async function zetLidmaatschap({ email, naam, tot, stil = false, wachtOpLancering = false }) {
   email = String(email || '').toLowerCase();
   if (!email || !tot) return null;
   let d = await dossierVoorEmail(email);
@@ -637,6 +638,7 @@ export async function zetLidmaatschap({ email, naam, tot, stil = false }) {
   if (!d) {
     d = nieuwDossier({ email, naam, betaald: true, bron: 'lid' });
     d.lidTot = tot; d.lidSinds = nu();
+    if (wachtOpLancering) d.wachtOpLancering = true;
     await bewaarNieuw(d); nieuw = true;
   } else {
     const eenmalig = d.betaald !== false && !d.lidTot && d.bron !== 'proef' && d.bron !== 'lid';
@@ -647,6 +649,7 @@ export async function zetLidmaatschap({ email, naam, tot, stil = false }) {
     // Had je de 12 weken al af en word je lid: dan begint blok 2.
     if (d.status === 'klaar') { d.status = 'actief'; d.week = Math.max(d.week, d.afgerond + 1); }
     if (!d.naam && naam) d.naam = String(naam).slice(0, 80);
+    if (wachtOpLancering) d.wachtOpLancering = true;
     await bewaarDossier(d);
   }
   await mcTag(email, 'core-klant');

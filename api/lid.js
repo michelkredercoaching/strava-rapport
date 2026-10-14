@@ -911,7 +911,7 @@ async function verwerkBetaald(req, res, p, id, lidEmail) {
     // Vanaf hier is de betaling verwerkt: een herhaalde webhook doet niets dubbel.
     await redis(['SET', `lid:betaling:${id}`, '1', 'EX', String(60 * 60 * 24 * 400)]);
     for (const f of naBewaren) { try { await f(); } catch (e) { console.error('Maat-beloning mislukt:', id, e && e.message); await meldIntern(`MAAT-BELONING MISLUKT - ${lidEmail}`, `Na betaling ${id} lukte de maat-beloning niet: ${e && e.message}. Kijk het even na.`); } }
-    await zetLidmaatschap({ email: lidEmail, naam: lid.naam, tot: lid.tot, stil: voorLancering() }); // voorverkoop: geen Core-mail, Core opent bij de lancering
+    await zetLidmaatschap({ email: lidEmail, naam: lid.naam, tot: lid.tot, stil: voorLancering(), wachtOpLancering: voorLancering() }); // voorverkoop: geen Core-mail, Core opent bij de lancering
     await mcTag(lidEmail, 'mkc-lid');
     // Welkomstmail van Michel (09-10-2026), één keer per lid.
     if ((soort === 'lid-eerste' || soort === 'lid-periode') && !lid.welkomGemaild) {

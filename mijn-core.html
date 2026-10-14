@@ -1474,7 +1474,7 @@ async function startSpeler(sessie, hervat) {
     <details class="stemklap"><summary>${stemSamen()}</summary><div class="stemkeuze" role="radiogroup" aria-label="Stem"><span>Stem</span>${['vrouw', 'man', 'uit'].map((x) => `<button type="button" data-sp="stem" data-stem="${x}" class="${stemKeuze() === x ? 'aan' : ''}" role="radio">${{ vrouw: 'Vrouw', man: 'Man', uit: 'Uit' }[x]}</button>`).join('')}</div><div class="stemhint"></div></details>
     <div class="voortgang"><i></i></div>
     <div class="midden"><div class="soort"></div><div class="naam"></div><div class="kant"></div><div class="beeld"></div><div class="spieren"></div><div class="klok"></div><div class="cue"></div><div class="straks"></div><div class="uitleg"></div></div>
-    <div class="bediening"><button data-sp="terug" aria-label="Vorige">&#9664;&#9664;</button><button class="hoofd" data-sp="pauze">Pauze</button><button data-sp="verder" aria-label="Volgende">&#9654;&#9654;</button></div>`;
+    <div class="bediening"><button data-sp="terug" aria-label="Vorige">&#9664;&#9664;</button><button class="hoofd" data-sp="pauze">Pauze</button>${S.beheer ? '<button data-sp="verder" aria-label="Volgende">&#9654;&#9654;</button>' : '<button disabled aria-hidden="true" tabindex="-1" style="visibility:hidden">&#9654;&#9654;</button>'}</div>`; // doorklikken alleen voor Michel (testen), anders sla je oefeningen over
   document.body.appendChild(el);
   zetPaginaVast();
   let wakeLock = null;
@@ -1656,7 +1656,7 @@ function spelerKlik(e) {
     if (st.soort === 'finisher') { sp.finisherSec = Math.floor((Date.now() - sp.finisherStart) / 1000); piep(660, .2); return naarStap(sp.i + 1); }
     sp.pauze = !sp.pauze; k.textContent = sp.pauze ? 'Verder' : 'Pauze';
   }
-  if (k.dataset.sp === 'verder') naarStap(sp.i + 1);
+  if (k.dataset.sp === 'verder' && S.beheer) naarStap(sp.i + 1);
   if (k.dataset.sp === 'terug') naarStap(sp.over < st.sec - 2 ? sp.i : sp.i - 1);
   if (k.dataset.sp === 'stop') { if (confirm('Sessie stoppen? Hij wordt dan niet afgevinkt.')) { wisVoortgang(); sluitSpeler(); } }
 }
@@ -1717,7 +1717,7 @@ async function deelPlaatje() {
   const woorden = String(x.naam || 'Core-sessie').toUpperCase().split(' '), regels = [''];
   for (const w of woorden) { const t = (regels[regels.length - 1] + ' ' + w).trim(); if (g.measureText(t).width > 760 && regels[regels.length - 1]) regels.push(w); else regels[regels.length - 1] = t; }
   let y = 290; for (const r of regels.slice(0, 2)) { g.fillText(r, L, y); y += 92; }
-  g.fillStyle = '#FF6B1A'; g.font = '600 36px "DM Sans", sans-serif'; g.fillText('Niveau ' + x.niveau + '  ·  ' + x.min + ' minuten', L, y + 4);
+  g.fillStyle = '#FF6B1A'; g.font = '600 36px "DM Sans", sans-serif'; g.fillText('Niveau ' + x.niveau + '  ·  ' + Math.max(1, Number(x.min) || 0) + ' minuten', L, y + 4);
   const kaart = K.vanSessie(x.ids || []), n = K.namenLijst(kaart);
   y += 84;
   if (n.hoofd.length) {
@@ -1789,9 +1789,9 @@ async function klaarSpeler() {
     : 'Afvinken lukte niet. Probeer het straks opnieuw vanaf je pagina.';
   if (volgende) { nieuwOpen = volgende.letter; setTimeout(() => piep(1320, .18), 500); }
   if (j.ok && sp.extraRegel) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<p class="cue" style="margin-top:10px;color:#4CC38A">${sp.extraRegel}</p>`);
-  if (j.ok) { const werk = sp.stappen.filter((s) => s.soort === 'werk'); const oef = [...new Set(werk.map((s) => s.naam))]; sp.stravaData = { letter: sp.sessie.letter, naam: sp.sessie.naam, sec: Math.round(sp.echt || sp.gepland || 900), oefeningen: oef };
+  if (j.ok) { const werk = sp.stappen.filter((s) => s.soort === 'werk'); const oef = [...new Set(werk.map((s) => s.naam))]; sp.stravaData = { letter: sp.sessie.letter, naam: sp.sessie.naam, sec: Math.round(sp.totaal || sp.gepland || 900), oefeningen: oef }; // geplande duur van de training, niet hoe snel er geklikt werd
     const t = (S.tests || []).filter((x) => x.score != null);
-    try { localStorage.setItem('coreLaatsteDeel', JSON.stringify({ naam: sp.sessie.naam, niveau: S.week, min: Math.round((sp.echt || sp.gepland || 900) / 60), ids: [...new Set(werk.map((s) => s.id))], oef, romp: t.length ? t[t.length - 1].score : null, plus: t.length > 1 && t[t.length - 1].score > t[0].score ? t[t.length - 1].score - t[0].score : 0, op: Date.now() })); } catch (e) {} }
+    try { localStorage.setItem('coreLaatsteDeel', JSON.stringify({ naam: sp.sessie.naam, niveau: S.week, min: Math.max(1, Math.round((sp.totaal || sp.gepland || 900) / 60)), ids: [...new Set(werk.map((s) => s.id))], oef, romp: t.length ? t[t.length - 1].score : null, plus: t.length > 1 && t[t.length - 1].score > t[0].score ? t[t.length - 1].score - t[0].score : 0, op: Date.now() })); } catch (e) {} }
   if (j.ok) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<div class="deel-rij"><button type="button" class="strava-knop" data-sp="strava">Zet op Strava</button><button type="button" class="plaatje-knop" data-sp="plaatje">Maak je deelplaatje</button></div>`);
   if (j.ok) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<p class="cue" style="margin-top:18px">Hoe voelde deze sessie?</p><div class="gevoel3"><button data-gevoel="licht">Te licht</button><button data-gevoel="goed">Goed</button><button data-gevoel="zwaar">Te zwaar</button></div>`);
   $('.bediening', sp.el).innerHTML = '<button class="hoofd" data-sp="klaar">Terug naar mijn pagina</button>';
