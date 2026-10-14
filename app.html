@@ -3196,7 +3196,8 @@ function trainingsvorm(d) {
   if (!d) return null;
   if (d.programma === 'kracht' || d.programma === 'core') return d.programma;
   if (d.kracht && d.kracht.beeld) return 'kracht';
-  if (d.core) return 'core';
+  // Leden hebben al een Core-dossier klaarstaan; pas na de intake is het echt een keuze voor Core.
+  if (d.core && !(d.kracht && d.core.intakeNodig)) return 'core';
   return null;
 }
 function krKiesHtml(d) {
@@ -3337,9 +3338,10 @@ function vandaagHtml(d) {
   else if (s && s.status === 'klaar') rijen.push(vdRij('schema', 'Training', 'Schema afgerond. Kies je vervolg', { href: SITE + '/trainingsschema-vervolg/', extern: true }));
   else if (coaching) rijen.push(vdRij('schema', 'Training', 'Je trainingen staan in TrainingPeaks, open ze daar', { href: 'https://app.trainingpeaks.com/', extern: true }));
   // Core
-  const kb = trainingsvorm(d) === 'kracht' && d.kracht && d.kracht.beeld;
+  const kiesVorm = !!d.kracht && !trainingsvorm(d), kb = trainingsvorm(d) === 'kracht' && d.kracht && d.kracht.beeld;
+  if (kiesVorm) rijen.push(vdRij('core', 'Je training', 'Kies Core of Kracht', { view: 'kiestraining' }));
   if (kb && kb.volgende) rijen.push(vdRij('kracht', kb.seizoen ? 'Kracht &middot; seizoen' : 'Kracht &middot; week ' + kb.week, (kb.seizoen ? '' : 'Sessie ' + kb.volgende.letter + ': ') + esc(kb.volgende.naam) + ' &middot; ongeveer ' + kb.volgende.minuten + ' min', { view: 'kracht' }));
-  const c = d.core;
+  const c = trainingsvorm(d) === 'kracht' || kiesVorm ? null : d.core;
   if (c && c.intakeNodig) rijen.push(vdRij('core', 'Core', 'Start je intake, 1 minuut', { href: c.link + '#vandaag' }));
   else if (c && c.nogDicht) { /* Core opent bij de lancering */ }
   else if (c && !c.opSlot && !c.klaar) {
@@ -3348,7 +3350,7 @@ function vandaagHtml(d) {
     if (!c.volgende) rijen.push(vdRij('core', 'Core', 'Deze week klaar' + (c.rompscore ? ' &middot; Rompscore ' + c.rompscore : ''), { href: c.link + '#vandaag' }));
     else if (vandaagCore) rijen.push(vdRij('core', 'Core vandaag', esc(c.volgende.naam) + ' &middot; ' + c.volgende.minuten + ' min', { href: c.link + '#vandaag' }));
     else { const iNu = s.weekDagen.findIndex((x) => x.vandaag), nx = cd.find((x) => s.weekDagen.indexOf(x) > iNu) || cd[0]; rijen.push(vdRij('core', 'Core', 'Niet vandaag, je benen gaan voor. Volgende: ' + esc(datumKort(nx.datum)).split(' ')[0], { href: c.link + '#vandaag' })); }
-  } else if (!c && !binnenkortNu()) rijen.push(vdRij('core', 'Core', 'Start je eerste sessie, thuis op de timer', { actie: 'startcore' }));
+  } else if (!c && !binnenkortNu() && !kiesVorm && trainingsvorm(d) !== 'kracht') rijen.push(vdRij('core', 'Core', 'Start je eerste sessie, thuis op de timer', { actie: 'startcore' }));
   // Rit: spanning en weer (zelfde berekening als op Rijden)
   const p = SB.profiel || d.bandenProfiel;
   if (toonSlim(d)) {
@@ -5396,7 +5398,7 @@ function startlijstStappen(d) {
     { k: 'doel', t: 'Kies waar je voor traint', klaar: !!d.doel, actie: 'doel' },
     { k: 'fiets', t: 'Zet je fiets en woonplaats erin', klaar: !!(prof.plaats && (prof.fietsen || []).length), actie: 'fiets' },
     { k: 'push', t: 'Zet meldingen aan', klaar: !!(PUSH.inst && PUSH.inst.aan), actie: 'push' },
-    ...(binnenkortNu() || (d.core && d.core.nogDicht) ? [] : [{ k: 'core', t: !d.core || d.core.intakeNodig ? 'Start je Core-app (intake van een minuut)' : 'Doe je Core-starttest', klaar: !!(d.core && !d.core.intakeNodig && d.core.rompscore != null), actie: 'core' }]),
+    ...(binnenkortNu() || (d.core && d.core.nogDicht) ? [] : d.kracht && !trainingsvorm(d) ? [{ k: 'core', t: 'Kies je training: Core of Kracht', klaar: false, actie: 'kiestraining' }] : trainingsvorm(d) === 'kracht' ? [{ k: 'core', t: 'Start je krachtprogramma', klaar: !!(d.kracht && d.kracht.beeld), actie: 'kracht' }] : [{ k: 'core', t: !d.core || d.core.intakeNodig ? 'Start je Core-app (intake van een minuut)' : 'Doe je Core-starttest', klaar: !!(d.core && !d.core.intakeNodig && d.core.rompscore != null), actie: 'core' }]),
     { k: 'coach', t: 'Stel je eerste vraag aan de coach', klaar: !!d.coachGesteld, actie: 'coach' }
   ];
 }
@@ -5417,6 +5419,7 @@ document.addEventListener('click', (e) => {
   if (a === 'fiets') { naar('rijden'); setTimeout(() => { const b = document.getElementById('banden'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300); }
   if (a === 'doel') { DOELV = { open: true, kies: null, fout: '', bezig: false }; teken(); setTimeout(() => document.getElementById('doelvraag')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150); }
   if (a === 'push') { const v = document.querySelector('[data-push="aan"]'); if (v) v.click(); else { const m = document.getElementById('meldinst') || document.getElementById('banden'); if (m) m.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }
+  if (a === 'kiestraining' || a === 'kracht') return naar(a);
   if (a === 'core') { const c = zicht() && zicht().core; if (c && c.link) location.href = c.link + (c.intakeNodig ? '' : '#vandaag'); else startCore(k); }
   if (a === 'coach') coachOpen(true);
   if (a === 'scherm') { if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.then((c) => { if (c && c.outcome === 'accepted') { try { localStorage.setItem('mkcBeginscherm', '1'); } catch (er) {} } installPrompt = null; teken(); }); return; } installGids(true); }
