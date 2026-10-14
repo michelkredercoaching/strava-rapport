@@ -485,7 +485,10 @@
   .onb-nee { background:none; border:0; color:var(--muted); font:inherit; font-size:14px; padding:8px; cursor:pointer; }
   .ew-uitleg { font-size:13px; color:var(--muted); margin:2px 0 8px; }
   .eersteweek .knop { margin-top:10px; }
+  .doelregel.doel-leeg { width:100%; text-align:left; font-family:inherit; color:inherit; cursor:pointer; display:flex; align-items:center; }
+  .doel-leeg .dr-tekst { flex:1; } .doel-leeg small { display:block; font-size:12.5px; color:var(--muted); margin-top:2px; } .doel-leeg .dr-pijl { font-style:normal; font-size:24px; color:var(--accent); }
   .welkom-michel { font-size:14px; color:rgba(245,243,239,.8); margin:-4px 0 14px; line-height:1.5; }
+  .ob-vraag { border:1px solid rgba(255,107,26,.55); background:rgba(255,107,26,.07); border-radius:12px; padding:14px; margin:14px 0 10px; } .ob-vraag b { display:block; font-size:15px; } .ob-vraag p { font-size:13.5px; margin:4px 0 10px; color:rgba(245,243,239,.8); } .ob-vraag .knop { margin:0; }
   .welkom-michel b { color:var(--accent); font-weight:600; }
   .geb-tab td:first-child, .geb-tab td:last-child { white-space:normal; }
   .bh-cellen { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:12px; }
@@ -1594,7 +1597,7 @@ function vrijVoedingAchter() {
   const w = weerNu();
   if (!w || !RV_LIB) return '<div class="rv-kop"><div><b>70</b><span>gram per uur</span></div><div><b>3</b><span>bidons</span></div></div><ul class="kl-lijst"><li>2 bidons sportdrank</li><li>2 repen</li><li>1 gel voor het laatste uur</li><li>Onderweg 1 bidon bijvullen</li></ul>';
   const a = RV_LIB.voedingAdvies({ duur: 2, temp: w.temp, hard: false });
-  return `<div class="rv-kop"><div><b>${a.gPerUur || 0}</b><span>gram per uur</span></div><div><b>${a.bidons}</b><span>${a.bidons === 1 ? 'bidon' : 'bidons'}</span></div><div><b>${w.temp}&deg;</b><span>onderweg</span></div></div><ul class="kl-lijst">${a.items.map((x) => '<li>' + esc(x) + '</li>').join('')}</ul>`;
+  return `<div class="rv-kop"><div><b>${a.gPerUur || 0}</b><span>gram per uur</span></div><div><b>${a.bidons}</b><span>${a.bidons === 1 ? 'bidon' : 'bidons'}</span></div><div><b>${w.temp}&deg;</b><span>onderweg</span></div></div>${a.totaalG ? `<p class="klein rv-uitleg">Vanaf ongeveer 20 minuten na de start, samen ${a.totaalG} gram.</p>` : ''}<ul class="kl-lijst">${a.items.map((x) => '<li>' + esc(x) + '</li>').join('')}</ul>`;
 }
 function bandenKaart(d) {
   if (toonSlim(d)) return slimBandenKaart();
@@ -1773,7 +1776,7 @@ function sbWeerHtml() {
   const p = SB.profiel.plaats;
   if (!p) return `<div class="sb-weer leeg"><span>Waar fiets je? Dan reken ik het weer van vandaag mee.</span>
     <div class="sb-plek"><button type="button" class="knop leeg" data-sb="locatie">Mijn locatie</button>
-    <input id="sbZoek" type="text" placeholder="of typ je woonplaats" autocomplete="off"></div>${sbZoekHtml()}</div>`;
+    <input id="sbZoek" type="text" placeholder="Woonplaats" autocomplete="off"></div>${sbZoekHtml()}</div>`;
   if (SB.weerFout) return `<div class="sb-weer"><span>${esc(SB.weerFout)}</span> <button type="button" data-sb="plekweg">Andere plek</button></div>`;
   if (!SB.weer) return `<div class="sb-weer"><span>Weer in ${esc(p.naam)} ophalen...</span></div>`;
   const w = SB.weer;
@@ -2651,6 +2654,8 @@ function doelHtml(d) {
       ${PUSH.melding ? `<p class="klein">${esc(PUSH.melding)}</p>` : ''}</div>`;
   }
   if (!DOELV.open && doelLater()) return '';
+  // Compact (14-10-2026): de grote keuzekaart duwde de tip en de tegels ver naar beneden.
+  if (!DOELV.open) return `<button type="button" class="doelregel doel-leeg" data-doel="wijzig"><div class="dr-tekst"><span class="dr-l">Jouw doel</span><b>${dl && dl.klaar ? 'Kies je volgende doel' : 'Waar train je voor?'}</b><small>Dan stemt de app je tips en meldingen erop af</small></div><i class="dr-pijl">&#8250;</i></button>`;
   const k = DOELV.kies;
   return `<div class="doelkaart" id="doelvraag"><b>${dl && dl.klaar ? 'Wat is je volgende doel?' : 'Waar train je voor?'}</b><p>Dan stemt de app je tips en meldingen daarop af.</p>
     <div class="doel-opties">${Object.entries(DOEL_NAMEN).map(([w, n]) => `<button type="button" data-doel="kies" data-w="${w}" class="${k === w ? 'aan' : ''}" ${DOELV.bezig ? 'disabled' : ''}>${n}</button>`).join('')}</div>
@@ -4220,7 +4225,7 @@ function voedingTabHtml() {
   const a = RV_LIB.voedingAdvies({ duur: k.duur, temp, hard: k.hard });
   const tips = (temp <= 5 ? ['Koud weer: een thermosbidon met warme thee of sportdrank drinkt een stuk prettiger, en dan drink je ook echt genoeg.'] : []).concat(a.tips.filter((t) => !/^(Ontbijt|Na afloop)/.test(t)));
   return sbRitInstelHtml(false) + `<div class="rv-uit">
-    <div class="rv-kop"><div><b>${a.gPerUur || '0'}</b><span>gram per uur</span></div><div><b>${a.bidons}</b><span>${a.bidons === 1 ? 'bidon' : 'bidons'}</span></div><div><b>${temp}&deg;</b><span>onderweg</span></div></div>
+    <div class="rv-kop"><div><b>${a.gPerUur || '0'}</b><span>gram per uur</span></div><div><b>${a.bidons}</b><span>${a.bidons === 1 ? 'bidon' : 'bidons'}</span></div><div><b>${temp}&deg;</b><span>onderweg</span></div></div>${a.totaalG ? `<p class="klein rv-uitleg">Vanaf ongeveer 20 minuten na de start, samen ${a.totaalG} gram.</p>` : ''}
     <div class="rv-sub">Neem mee</div><ul class="kl-lijst">${a.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
     ${sbTipsKlap('rvtips', tips, '')}${ritVoorNaHtml('voeding')}`;
 }
@@ -5277,7 +5282,9 @@ function pushHtml() {
       : `<button type="button" class="knop" data-push="aan" ${PUSH.bezig ? 'disabled' : ''}>${PUSH.bezig ? 'Even toestemming vragen...' : 'Zet mijn ochtendbericht aan'}</button>`}
     ${PUSH.melding ? `<p class="klein">${esc(PUSH.melding)}</p>` : ''}`;
   const st = i.aan ? `staat aan &middot; ${esc(i.tijd)}` : 'uit';
-  return `<details class="klap" data-klap="ochtend" ${klapOpen('ochtend', false) ? 'open' : ''}><summary><b>Ochtendbericht</b><span>${st}</span></summary><div class="klap-in"><div class="push"><p class="klein" style="margin-top:0">Elke rijdag een melding met het weer, je bandenspanning en wat je aantrekt.</p>${inhoud}</div></div></details>`;
+  const vraag = !i.aan && pushKan() && PUSH.key && !iosZonderApp() && !(typeof Notification !== 'undefined' && Notification.permission === 'denied')
+    ? `<div class="ob-vraag"><b>Zal ik dit elke ochtend om ${esc(i.tijd || '07:00')} sturen?</b><p>Je spanning, je kleding en de wind voor die dag, voordat je de deur uitgaat.</p><button type="button" class="knop" data-push="aan" ${PUSH.bezig ? 'disabled' : ''}>${PUSH.bezig ? 'Even toestemming vragen...' : 'Ja, stuur het elke ochtend'}</button></div>` : '';
+  return vraag + `<details class="klap" data-klap="ochtend" ${klapOpen('ochtend', false) ? 'open' : ''}><summary><b>Ochtendbericht</b><span>${st}</span></summary><div class="klap-in"><div class="push"><p class="klein" style="margin-top:0">Elke rijdag een melding met het weer, je bandenspanning en wat je aantrekt.</p>${inhoud}</div></div></details>`;
 }
 function b64naarBytes(s) { const p = '='.repeat((4 - s.length % 4) % 4); const r = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...r].map((c) => c.charCodeAt(0))); }
 async function pushOpslaan(extra) {
