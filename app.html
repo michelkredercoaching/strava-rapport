@@ -2818,6 +2818,7 @@ function tegelsHtml(d) {
   else if (d.core && d.core.nogDicht) t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Opent vrijdag 16 oktober om 12:00', tag: 'Vrijdag', tagKlas: 'or' }));
   else if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
   else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Thuis, 10 tot 20 min, 2 tot 4x per week', tag: binnenkortNu() ? 'Binnenkort' : lid ? 'Inbegrepen' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
+  if (!d.kracht && Date.now() < KRACHT_OPEN_APP) t.push(tegel({ v: 'kracht', ic: 'kracht', nm: 'Kracht', sub: 'Sportschool, 2x per week met gewichten. We zijn er hard mee bezig', tag: 'Vanaf 1 nov', tagKlas: 'or' }));
   if (d.kracht && d.kracht.open && vorm === 'kracht') { const kb = d.kracht.beeld; t.push(tegel({ v: 'kracht', ic: 'kracht', nm: 'Kracht', sub: !kb ? 'Sportschool, 2x per week een uur, met gewichten' : kb.seizoen ? (kb.volgende ? 'Seizoen &middot; onderhoud, ongeveer ' + kb.volgende.minuten + ' min' : 'Seizoen &middot; onderhoud deze week gedaan') : kb.volgende ? 'Week ' + kb.week + ' &middot; sessie ' + kb.volgende.letter + ', ongeveer ' + kb.volgende.minuten + ' min' : 'Week ' + kb.week + ' rond, volgende week staat klaar', tag: kb ? (kb.volgende ? 'Start' : 'Klaar') : 'Nieuw', tagKlas: kb && kb.volgende ? 'gr' : 'or' })); }
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Tijd voor een nieuwe' : 'Jouw uitslag') : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' }));
   const halfNu = t.filter((x) => !x.includes('tegel breed')).length; // even? dan zou de coach alleen op een halve rij staan
@@ -3189,6 +3190,7 @@ function routeHtml(d) {
 // KRACHT (14-10-2026). Anders dan Core: in de sportschool, 2x per week ongeveer een uur, met gewichten.
 // Server: api/app.js actie=kracht, motor: lib/kracht.js. Eerst alleen zichtbaar voor Michel.
 // ===========================================================================
+const KRACHT_OPEN_APP = Date.parse('2026-11-01T00:00:00+01:00');
 const KR = { actief: null, sets: {}, timer: null, eind: 0, bezig: false, fout: '' };
 const KR_PLANNING = '<p class="klein"><b>Zo past het in je week:</b> doe kracht liefst op een dag zonder harde rit. Moet het op dezelfde dag, fiets dan eerst en houd minstens 3 tot 6 uur ertussen. Na een zware krachtsessie 1 tot 2 dagen geen harde training. In het seizoen is 1 sessie per week genoeg om je kracht vast te houden.</p>';
 const KR_VERSCHIL = `<div class="kr-verschil"><div><b>Core</b><span>Thuis, zonder gewichten. 10 tot 20 minuten, 2 tot 4 keer per week. Voor een stabiele romp op de fiets.</span></div><div><b>Kracht</b><span>In de sportschool, met gewichten. Ongeveer een uur, 2 keer per week. Voor meer kracht in je benen: sterker bergop, aanzetten en sprinten.</span></div></div>`;
@@ -3225,7 +3227,12 @@ function krSetsVoor(o) {
   return Array.from({ length: o.sets }, () => ({ kg: o.gewichtloos ? 0 : kg, reps: o.hoog, klaar: false }));
 }
 function krachtPagina(d) {
-  const k = d && d.kracht; if (!k || !k.open) return `<div class="kaarten"><div class="kaart"><div class="kaart-in"><div class="label">Kracht</div><h2>Binnenkort</h2>${KR_VERSCHIL}</div></div></div>`;
+  const k = d && d.kracht;
+  if (!k) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><span class="tag oranje">Vanaf 1 november</span><div class="label">Kracht</div><h2>Sterker trappen komt eraan</h2>
+    <p>We zijn er hard mee bezig. Vanaf 1 november kies je in de app tussen Core en Kracht: twee keer per week een uur in de sportschool, met een opbouw van 12 weken en gewichten die de app voor je uitrekent.</p>${KR_VERSCHIL}
+    <ul class="core-punten"><li>Zware oefeningen die op de trapbeweging lijken: squat, step-up, deadlift op één been</li><li>Je logt je gewichten, de app zegt wanneer het zwaarder mag</li><li>In de winter opbouw, in het seizoen 1 keer per week vasthouden</li></ul>
+    <p class="klein">Kracht hoort bij het lidmaatschap, ook als je coaching of een schema hebt.${isLid(d) || (d.lid && d.lid.bron === 'coaching') ? ' Jij kunt er op 1 november meteen mee aan de slag.' : ''}</p></div></div></div>`;
+  if (!k.open) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht</div><h2>Sterker trappen</h2><p>Twee keer per week een uur in de sportschool, met een opbouw van 12 weken.</p>${KR_VERSCHIL}<p class="klein">Kracht zit in het lidmaatschap.</p><button type="button" class="knop" data-view="lid">Bekijk het lidmaatschap</button></div></div></div>`;
   const b = k.beeld;
   if (!b) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht</div><h2>Sterker trappen</h2>
     <p>Twee keer per week een uur in de sportschool. Je bouwt in 12 weken op van wennen naar zware kracht en snelkracht, en de app rekent je gewichten uit.</p>
