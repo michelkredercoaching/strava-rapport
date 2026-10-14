@@ -667,6 +667,14 @@ export async function emailVoorCoreToken(token) {
 // vanzelf om; lid.js houdt het 10 minuten vast.
 let LID_OPEN = false;
 export default async function handler(req, res) {
+  // (14-10-2026) De Strava-app plakt soms ?state=..&code=.. achter onze ?actie=stravaterug met een tweede vraagteken.
+  // Dan komt alles in actie terecht; hier pluizen we dat weer uit elkaar.
+  if (req.query && typeof req.query.actie === 'string' && req.query.actie.includes('?')) {
+    const [echt, rest] = req.query.actie.split('?');
+    for (const [k, v] of new URLSearchParams(rest)) if (req.query[k] == null) req.query[k] = v;
+    req.query.actie = echt;
+  }
+  if (String(req.query?.actie || '').startsWith('strava')) console.log('core strava', req.query.actie, Object.keys(req.query || {}).join(','));
   const actie = (req.query?.actie || '').toString();
   try { LID_OPEN = await lidOpen(); } catch { LID_OPEN = false; }
   try {
