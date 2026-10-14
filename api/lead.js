@@ -197,10 +197,15 @@ export default async function handler(req, res) {
     zetKopersCors(req, res);
     try {
       const uit = await haalGoogleReviews();
-      res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400');
+      // Alleen een gevuld antwoord aan de rand cachen, anders blijft een
+      // storing of ontbrekende sleutel een uur lang hangen.
+      res.setHeader('Cache-Control', uit && uit.aantal
+        ? 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400'
+        : 'no-store');
       return res.status(200).json(uit || {});
     } catch (e) {
       console.error('Google-reviews ophalen mislukt:', e);
+      res.setHeader('Cache-Control', 'no-store');
       return res.status(200).json({});
     }
   }
