@@ -2743,6 +2743,7 @@ function onbKlaar(sla) {
   document.getElementById('onb')?.remove(); document.body.classList.remove('onb-open');
   if (!sla) statEens('welkom');
   ONB = null; VIEW = 'home'; teken(); window.scrollTo(0, 0);
+  setTimeout(installEenmaal, 700); // Android en anderen: meteen na de welkomstreeks de installatiehulp (iPhone zag hem al in stap 6)
 }
 const ONB_STAPPEN = 6;
 function onbHtml() {
@@ -2787,7 +2788,7 @@ function onbHtml() {
     knop = kan ? `<button type="button" class="knop" data-onb="pushja" ${o.bezig ? 'disabled' : ''}>${o.bezig ? 'Even toestemming vragen...' : 'Ja, stuur me elke dag een tip'}</button><button type="button" class="onb-nee" data-onb="pushnee">Liever niet</button>` : '<button type="button" class="knop" data-onb="pushnee">Naar mijn app</button>';
   }
   const terug = o.stap > 0 ? '<button type="button" class="onb-terug" data-onb="terug">&#8249; Terug</button>' : '<span></span>';
-  return `<div class="onb" id="onb" role="dialog" aria-label="Welkom"><div class="onb-top">${terug}${balk}<button type="button" class="onb-sla" data-onb="sla">Overslaan</button></div>
+  return `<div class="onb" id="onb" role="dialog" aria-label="Welkom"><div class="onb-top">${terug}${balk}<span></span></div>
     <div class="onb-in">${inhoud}</div><div class="onb-voet">${knop}</div></div>`;
 }
 function onbTeken() {
