@@ -577,6 +577,7 @@
   .lid-extra .vriend { background:linear-gradient(160deg, rgba(255,107,26,.14), rgba(255,107,26,.02) 60%), var(--surface); border:1px solid rgba(255,107,26,.45); border-radius:8px; padding:14px; }
   .lid-extra .vriend b { display:block; font-size:15px; }
   .lid-extra .vriend p { font-size:13.5px; color:var(--muted); margin:4px 0 10px; }
+  .wa-coach.cc-prod { background:transparent; color:var(--accent) !important; border:1px solid rgba(255,107,26,.6); margin-right:6px; font-family:inherit; cursor:pointer; }
   .wa-coach { display:inline-block; margin-top:10px; background:#25D366; color:#fff !important; text-decoration:none; font-weight:600; font-size:14px; padding:9px 14px; border-radius:6px; white-space:normal; }
   .wa-knop { background:#25D366 !important; color:#fff !important; border:0 !important; }
   .lid-link { background:none; border:1px solid var(--border); color:var(--white); border-radius:6px; padding:11px; font-family:inherit; font-size:14px; cursor:pointer; text-align:left; }
@@ -1205,7 +1206,24 @@ function opmaak(t) {
     s = s.replace(/^\s*[-*•]\s+/, '&bull; ');
     s = s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/__(.+?)__/g, '<b>$1</b>').replace(/\*/g, '');
     return s;
-  }).join('\n').replace(/\n{3,}/g, '\n\n').trim() + (/whats ?app/i.test(String(t || '')) ? WA_KNOP : '');
+  }).join('\n').replace(/\n{3,}/g, '\n\n').trim() + (/whats ?app/i.test(String(t || '')) ? WA_KNOP : '') + productKnoppen(t);
+}
+// Noemt de coach een product, dan een knop eronder (correctie Michel 14-10-2026: "geef een link bij alle adviezen").
+// De coach schrijft zelf geen links; de app herkent de naam. Coaching en schema krijgen geen verkoopknoppen.
+const PRODUCT_KNOPPEN = [
+  { re: /startpakket/i, t: 'Bekijk Het Startpakket', href: () => SITE + '/het-startpakket/', verkoop: true },
+  { re: /strava-?analyse|power ?profile/i, t: 'Bekijk de Strava-analyse', view: 'analyse', verkoop: true },
+  { re: /winterprogramma/i, t: 'Bekijk het Winterprogramma', href: () => SITE + '/winterprogramma/', verkoop: true },
+  { re: /trainingsschema/i, t: 'Bekijk de trainingsschema\'s', href: () => SITE + '/trainingsschemas/', verkoop: true },
+  { re: /trainingsbegeleiding|1-op-1 coaching|persoonlijke begeleiding/i, t: 'Bekijk de trainingsbegeleiding', href: () => SITE + '/trainingsbegeleiding/', verkoop: true },
+  { re: /core-app/i, t: 'Open de Core-app', view: 'core' },
+  { re: /bandenspanning in de app|vandaag rijden/i, t: 'Naar je bandenspanning', view: 'rijden' }
+];
+function productKnoppen(t) {
+  const tekst = String(t || ''), d = D && !D.gast ? zicht() : null;
+  const klant = !!(d && ((d.lid && ['coaching', 'schema'].includes(d.lid.bron)) || d.schema));
+  const l = PRODUCT_KNOPPEN.filter((p) => p.re.test(tekst) && !(p.verkoop && klant)).slice(0, 2);
+  return l.map((p) => p.view ? `<button type="button" class="wa-coach cc-prod" data-view="${p.view}">${p.t}</button>` : `<a class="wa-coach cc-prod" href="${esc(p.href())}" target="_blank" rel="noopener">${p.t}</a>`).join('');
 }
 // Verwijst de coach naar Michel (weet het antwoord niet), dan een knop naar WhatsApp (09-10-2026).
 const WA_KNOP = '<a class="wa-coach" href="https://wa.me/31639771314?text=' + encodeURIComponent('Hoi Michel, ik heb een vraag over mijn training:') + '" target="_blank" rel="noopener">Stuur Michel een WhatsApp</a>';
@@ -2575,6 +2593,7 @@ document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-view]'); if (!k) return;
   e.preventDefault();
   if (k.closest('#lxModal')) lxDicht();
+  if (k.closest('#ccPaneel')) coachOpen(false);
   const v = k.dataset.view;
   if (k.dataset.kk && typeof RL === 'object') { RL.maak = true; RL.keuze = null; setTimeout(() => { const el = document.getElementById('ranglijst'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 450); }
   if (v === 'coach') { const f = document.getElementById('ccFab'); if (f) f.click(); return; }
