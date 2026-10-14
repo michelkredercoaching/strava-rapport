@@ -1211,13 +1211,56 @@ const esc = (t) => String(t == null ? '' : t).replace(/[&<>"]/g, (c) => ({ '&': 
 // opsommingen met een bolletje en losse sterretjes of hekjes weg. De coaches
 // krijgen de opdracht platte tekst te schrijven, dit vangt de rest op.
 function opmaak(t) {
+  const kn = ccKnopRegel(t); t = kn.tekst;
   return String(t == null ? '' : t).split('\n').map((r) => {
     let s = esc(r).replace(/^\s*#{1,6}\s*/, '');
     s = s.replace(/^\s*[-*•]\s+/, '&bull; ');
     s = s.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/__(.+?)__/g, '<b>$1</b>').replace(/\*/g, '');
     return s;
-  }).join('\n').replace(/\n{3,}/g, '\n\n').trim() + (/whats ?app/i.test(String(t || '')) ? WA_KNOP : '') + productKnoppen(t);
+  }).join('\n').replace(/\n{3,}/g, '\n\n').trim() + (/whats ?app/i.test(String(t || '')) ? WA_KNOP : '') + (kn.codes.length ? ccKnoppenHtml(kn.codes) : productKnoppen(t));
 }
+// Knoppen naar elke plek in de app (14-10-2026). De coach zet op de laatste regel "KNOP: rijden, schema";
+// de app haalt die regel weg en maakt er knoppen van die er in één tik heen gaan.
+const CC_KNOPPEN = {
+  rijden: ['Naar je bandenspanning', { tab: 'banden' }], kleding: ['Naar je kleding', { tab: 'kleding' }], voeding: ['Naar je ritvoeding', { tab: 'voeding' }],
+  groepsrit: ['Plan een groepsrit', { tab: 'groep' }], ochtend: ['Naar je ochtendbericht', { tab: 'banden', klap: 'ochtend' }],
+  schema: ['Naar je schema', {}], core: ['Open de Core-app', {}], analyse: ['Naar je Strava-analyse', {}], palmares: ['Naar je palmares', {}],
+  kleedkamer: ['Naar je kleedkamer', {}], doel: ['Pas je doel aan', {}], lid: ['Naar je lidmaatschap', {}], coaching: ['Naar Jouw coaching', {}], meldingen: ['Naar je meldingen', {}],
+  startpakket: ['Bekijk Het Startpakket', { href: '/het-startpakket/', verkoop: true }], schemas: ['Bekijk de trainingsschema\'s', { href: '/trainingsschemas/', verkoop: true }],
+  winter: ['Bekijk het Winterprogramma', { href: '/winterprogramma/', verkoop: true }], begeleiding: ['Bekijk de trainingsbegeleiding', { href: '/trainingsbegeleiding/', verkoop: true }]
+};
+function ccKnopRegel(t) {
+  const s = String(t == null ? '' : t), m = s.match(/\n?[ \t]*KNOPP?E?N?:\s*([a-z ,]+)\s*$/i);
+  if (!m) return { tekst: s, codes: [] };
+  return { tekst: s.slice(0, m.index).trimEnd(), codes: [...new Set(m[1].toLowerCase().split(/[ ,]+/).filter((c) => CC_KNOPPEN[c]))].slice(0, 2) };
+}
+function ccKnoppenHtml(codes) {
+  const d = D && !D.gast ? zicht() : null;
+  const klant = !!(d && ((d.lid && ['coaching', 'schema'].includes(d.lid.bron)) || d.schema));
+  return codes.filter((c) => !(CC_KNOPPEN[c][1].verkoop && klant)).map((c) => { const [t, o] = CC_KNOPPEN[c];
+    return o.href ? `<a class="wa-coach cc-prod" href="${SITE}${o.href}" target="_blank" rel="noopener">${t}</a>` : `<button type="button" class="wa-coach cc-prod" data-ccknop="${c}">${t}</button>`; }).join('');
+}
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-ccknop]'); if (!k) return;
+  e.preventDefault();
+  const c = k.dataset.ccknop, o = (CC_KNOPPEN[c] || [])[1] || {}, d = zicht();
+  if (document.getElementById('ccPaneel')?.classList.contains('open')) coachOpen(false);
+  if (o.tab) {
+    if (o.klap) { try { localStorage.setItem('mkcKlap:' + o.klap, '1'); } catch (er) {} }
+    naar('rijden');
+    try { sbBewaarKeuze({ tab: o.tab }); btBewaar({ ...btLees(), tab: o.tab }); } catch (er) {}
+    teken();
+    if (o.klap) setTimeout(() => document.querySelector('[data-klap="' + o.klap + '"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 600);
+    return;
+  }
+  if (c === 'core') { if (d && d.core && d.core.link) { location.href = d.core.link + '#vandaag'; return; } return naar('core'); }
+  if (c === 'schema') return d && d.schema ? naar('schema') : window.open(SITE + '/trainingsschemas/', '_blank');
+  if (c === 'kleedkamer') { if (typeof RL === 'object') { RL.maak = true; RL.keuze = null; } naar('palmares'); setTimeout(() => document.getElementById('ranglijst')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 600); return; }
+  if (c === 'doel') { naar('home'); DOELV = { open: true, kies: d && d.doel && d.doel.doel, fout: '', bezig: false }; teken(); setTimeout(() => document.getElementById('doelvak')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); return; }
+  if (c === 'meldingen') { naar('home'); setTimeout(() => (document.getElementById('meldvraag')?.innerHTML ? document.getElementById('meldvraag') : document.getElementById('meldinst'))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); return; }
+  if (c === 'coaching') return naar(d && d.lid && d.lid.bron === 'coaching' ? 'coaching' : 'lid');
+  naar(c);
+});
 // Noemt de coach een product, dan een knop eronder (correctie Michel 14-10-2026: "geef een link bij alle adviezen").
 // De coach schrijft zelf geen links; de app herkent de naam. Coaching en schema krijgen geen verkoopknoppen.
 const PRODUCT_KNOPPEN = [
@@ -3302,7 +3345,7 @@ function teken() {
     ${tpUitlegHtml(d)}${vandaagHtml(d)}
     <div id="startlijst">${startlijstHtml(d)}</div>
     ${schemaEindeHtml(d)}
-    <div id="doelvak">${eersteWeekHtml(d) ? '' : doelVakHtml(d)}</div>
+    <div id="doelvak">${eersteWeekHtml(d) && !DOELV.open ? '' : doelVakHtml(d)}</div>
     ${tipHtml(d)}
     ${tegelsHtml(d)}
     ${rustigBegin(d) ? '' : `${appHtml() && !eersteWeekHtml(d) && !startlijstHtml(d) ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
@@ -4192,11 +4235,11 @@ document.addEventListener('click', (e) => {
 function nakijkHtml() {
   if (!D || !D.beheer) return '';
   const l = NAK.lijst;
-  const kop = `<button type="button" class="opv-kop" data-nak="klap"><span><b>Coach-antwoorden nakijken</b> ${l === null ? '' : `<i>${l.length} nog na te kijken &middot; ${NAK.aantal} correcties</i>`}</span><span>${NAK.open ? '&#9650;' : '&#9660;'}</span></button>`;
+  const kop = `<button type="button" class="opv-kop" data-nak="klap"><span><b>Coach-antwoorden nakijken</b> ${l === null ? '' : `<i>${l.length} nog na te kijken${NAK.gaten ? ' &middot; <span style="color:#ff8a5c">' + NAK.gaten + ' keer wist de coach het niet</span>' : ''} &middot; ${NAK.aantal} correcties</i>`}</span><span>${NAK.open ? '&#9650;' : '&#9660;'}</span></button>`;
   if (!NAK.open) return `<div class="opv nak" id="nakijk">${kop}</div>`;
   const datum = (op) => new Date(op).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   const rij = (a) => `<div class="opv-rij ${a.correctie ? 'afgehandeld-niet' : ''}">
-      <div class="opv-top"><b>${a.bron === 'bandvraag' ? 'Bandenvraag' : 'MKC-coach'}${a.nuttig ? (a.nuttig === 'ja' ? ' &middot; <span style="color:#7fe0a0">nuttig</span>' : ' &middot; <span style="color:#ff8a5c">niet nuttig</span>') : ''}</b><span>${datum(a.op)} &middot; ${esc(a.email)}</span></div>
+      <div class="opv-top"><b>${a.bron === 'bandvraag' ? 'Bandenvraag' : 'MKC-coach'}${a.gat ? ' &middot; <span style="color:#ff8a5c">coach wist het niet</span>' : ''}${a.nuttig ? (a.nuttig === 'ja' ? ' &middot; <span style="color:#7fe0a0">nuttig</span>' : ' &middot; <span style="color:#ff8a5c">niet nuttig</span>') : ''}</b><span>${datum(a.op)} &middot; ${esc(a.email)}</span></div>
       <div class="opv-vraag">${esc(a.vraag)}</div>
       <div class="nak-antwoord">${opmaak(a.antwoord)}</div>
       ${NAK.bewerk === a.id ? `<textarea class="nak-tekst" id="nakTekst" rows="5" placeholder="Zo zou ik het zeggen...">${esc(a.correctie || '')}</textarea>
@@ -4212,7 +4255,7 @@ async function nakLaad(id, correctie, goed) {
     const j = id != null
       ? await (await fetch(`${API}?actie=antwoorden`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), id, correctie, goed: !!goed }) })).json()
       : await (await fetch(`${API}?actie=antwoorden&t=${encodeURIComponent(leesToken())}`)).json();
-    if (j.ok) { NAK.lijst = j.antwoorden; NAK.aantal = j.aantalCorrecties; }
+    if (j.ok) { NAK.lijst = j.antwoorden; NAK.aantal = j.aantalCorrecties; NAK.gaten = j.gaten || 0; }
   } catch (e) {}
   nakTeken();
 }
@@ -5264,7 +5307,7 @@ function meldTeken() {
   const a = document.getElementById('meldvraag'); if (a) a.innerHTML = D && (startlijstHtml(zicht()) || eersteWeekHtml(zicht())) ? '' : meldVraagHtml();
   const sl = document.getElementById('startlijst'); if (sl && D) sl.innerHTML = startlijstHtml(zicht());
   const b = document.getElementById('meldinst'); if (b) b.innerHTML = meldInstHtml();
-  const dv = document.getElementById('doelvak'); if (dv && D && !D.gast) dv.innerHTML = eersteWeekHtml(zicht()) ? '' : doelVakHtml(zicht());
+  const dv = document.getElementById('doelvak'); if (dv && D && !D.gast) dv.innerHTML = eersteWeekHtml(zicht()) && !DOELV.open ? '' : doelVakHtml(zicht());
 }
 document.addEventListener('change', async (e) => {
   const c = e.target.closest('[data-pushsoort]'); if (!c) return;

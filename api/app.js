@@ -1850,11 +1850,18 @@ async function routeBandenRitten(req, res) {
 //        app:nagekeken (set met id's die klaar zijn: goedgekeurd of gecorrigeerd)
 // ===========================================================================
 const MAX_VOORBEELDEN = 8;
+// Kennisgaten (14-10-2026): antwoorden waarin de coach zegt dat hij het niet weet of naar Michel verwijst.
+// Die komen bovenaan in Nakijken met "Coach wist het niet", en Claude vult elke week de kennis aan.
+// Medische doorverwijzingen (huisarts, fysio) tellen niet: dat is bewust.
+const GAT_RE = /(weet ik (dat |het )?niet|ik weet (het )?niet|eerlijk gezegd weet ik|kan ik (je )?niet (met zekerheid )?(zien|zeggen)|heb ik geen (informatie|zicht|gegevens)|stuur michel (dan )?(even )?een whatsapp|vraag het (even )?aan michel)/i;
+function isKennisgat(antwoord) { const t = String(antwoord || ''); return GAT_RE.test(t) && !/huisarts|fysio|\barts\b/i.test(t); }
 async function bewaarAntwoord({ email, bron, vraag, antwoord }) {
   try {
     const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
     bewaarAntwoord.laatste = id;
-    await redis(['LPUSH', 'app:antwoorden', JSON.stringify({ id, email, bron, vraag: String(vraag).slice(0, 600), antwoord: String(antwoord).slice(0, 1500), op: new Date().toISOString() })]);
+    const gat = isKennisgat(antwoord);
+    await redis(['LPUSH', 'app:antwoorden', JSON.stringify({ id, email, bron, vraag: String(vraag).slice(0, 600), antwoord: String(antwoord).slice(0, 1500), op: new Date().toISOString(), ...(gat ? { gat: true } : {}) })]);
+    if (gat) { await redis(['LPUSH', 'app:kennisgaten', JSON.stringify({ id, bron, vraag: String(vraag).slice(0, 600), antwoord: String(antwoord).slice(0, 1500), op: new Date().toISOString() })]); await redis(['LTRIM', 'app:kennisgaten', '0', '199']); }
     await redis(['LTRIM', 'app:antwoorden', '0', '199']);
     return id;
   } catch { return null; }
@@ -1881,9 +1888,10 @@ async function voorbeeldenTekst(bron, vraag) {
 async function routeCorrectiesExport(req, res) {
   const sleutel = process.env.TRECHTER_SLEUTEL || '';
   if (!sleutel || String(req.headers?.['x-sleutel'] || '') !== sleutel) return res.status(403).json({ ok: false });
-  const [c, a, k] = await Promise.all([haalCorrecties(), redis(['LRANGE', 'app:antwoorden', '0', '199']), redis(['SCARD', 'app:nagekeken'])]);
+  const [c, a, k, g] = await Promise.all([haalCorrecties(), redis(['LRANGE', 'app:antwoorden', '0', '199']), redis(['SCARD', 'app:nagekeken']), redis(['LRANGE', 'app:kennisgaten', '0', '199'])]);
+  const gaten = ((g.ok && g.result) || []).map((x) => { try { return JSON.parse(x); } catch { return null; } }).filter(Boolean);
   const antwoorden = ((a.ok && a.result) || []).map((x) => { try { const j = JSON.parse(x); return { id: j.id, bron: j.bron, vraag: j.vraag, antwoord: j.antwoord, op: j.op }; } catch { return null; } }).filter(Boolean);
-  return res.status(200).json({ ok: true, correcties: c.map((x) => ({ id: x.id, bron: x.bron, vraag: x.vraag, origineel: x.origineel, correctie: x.correctie, op: x.op })), antwoorden, nagekeken: Number(k.result) || 0 });
+  return res.status(200).json({ ok: true, correcties: c.map((x) => ({ id: x.id, bron: x.bron, vraag: x.vraag, origineel: x.origineel, correctie: x.correctie, op: x.op })), antwoorden, nagekeken: Number(k.result) || 0, gaten });
 }
 async function routeAntwoorden(req, res) {
   const body = req.method === 'POST' ? await leesBody(req) : {};
@@ -1910,9 +1918,10 @@ async function routeAntwoorden(req, res) {
   if (Array.isArray(na)) for (let x = 0; x < na.length; x += 2) nut[na[x]] = na[x + 1]; else Object.assign(nut, na);
   // Alleen wat nog niet is nagekeken; "niet nuttig" bovenaan.
   const nk = await redis(['SMEMBERS', 'app:nagekeken']); const klaar = new Set((nk.ok && nk.result) || []);
-  const open = antwoorden.filter((a) => !klaar.has(a.id)).map((a) => ({ ...a, correctie: perId[a.id] || '', nuttig: nut[a.id] || '' }));
-  open.sort((a, b) => (b.nuttig === 'nee') - (a.nuttig === 'nee'));
-  return res.status(200).json({ ok: true, antwoorden: open, aantalCorrecties: correcties.length, nagekeken: klaar.size });
+  const open = antwoorden.filter((a) => !klaar.has(a.id)).map((a) => ({ ...a, gat: !!(a.gat || isKennisgat(a.antwoord)), correctie: perId[a.id] || '', nuttig: nut[a.id] || '' }));
+  // Eerst waar de coach het niet wist, dan "niet nuttig".
+  open.sort((a, b) => (b.gat - a.gat) || ((b.nuttig === 'nee') - (a.nuttig === 'nee')));
+  return res.status(200).json({ ok: true, antwoorden: open, aantalCorrecties: correcties.length, nagekeken: klaar.size, gaten: open.filter((a) => a.gat).length });
 }
 
 // ===========================================================================
