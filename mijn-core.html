@@ -669,7 +669,7 @@ function dashHtml(d) {
   }).join('');
   const testLab = d.testNodig === 0 ? 'Starttest' : 'Romptest', testSub = d.testNodig === 0 && !slot ? 'Vóór sessie 2' : d.testNodig != null ? 'Nu doen' : t.length ? 'Laatste: ' + romp + '/100' : 'Later';
   return `<div class="dash">${vandaag}
-    <div class="dash-cijfers">${cel(wib, 12, 'Niveau', blok > 1 ? 'blok ' + blok : '')}${cel(romp != null ? romp : '&ndash;', 100, 'Rompscore', plus > 0 ? '+' + plus : '')}${cel(d.gedaanDezeWeek.length, nodig, 'Deze week')}${cel(d.reeks || 0, '', (d.reeks || 0) === 1 ? 'week op rij' : 'weken op rij')}</div>
+    <div class="dash-cijfers">${cel(Math.min(d.week, 50), 50, 'Niveau')}${cel(romp != null ? romp : '&ndash;', 100, 'Rompscore', plus > 0 ? '+' + plus : '')}${cel(d.gedaanDezeWeek.length, nodig, 'Deze week')}${cel(d.reeks || 0, '', (d.reeks || 0) === 1 ? 'week op rij' : 'weken op rij')}</div>
     <div class="dash-balk"><i style="width:${pct}%"></i></div><div class="dash-balktekst">${nog ? 'Nog ' + nog + (nog === 1 ? ' sessie' : ' sessies') + ', dan kun je niveau ' + wib + ' afronden' : 'Klaar om niveau ' + wib + ' af te ronden'}</div>
     <div class="dash-sec">Deze week</div><div class="dash-rijen">${rijen}</div>
     <div class="dash-sec">Extra</div><div class="dash-extra">

@@ -44,7 +44,7 @@ import { schemaBeeld, schemaContext, PLANNEN as SCHEMA_PLANNEN, laadPlan } from 
 import { haalMeldingen, leesMelding, appMelding, logPush } from '../lib/app-melding.js';
 import { leesDoel, nieuwDoel, volgendeStap, doelContext } from '../lib/doelen.js';
 import { maakKortingToken } from '../lib/korting.js';
-import { BADGES, BELONINGEN, NIVEAUS, RANGLIJST_VANAF, RENNER, rennerOpen, badgeOverzicht, medailleTotaal, maandUitdaging } from '../lib/badges.js';
+import { BADGES, BELONINGEN, NIVEAUS, RANGLIJST_VANAF, RENNER, rennerOpen, badgeOverzicht, medailleTotaal, maandUitdaging, MAX_MEDAILLES } from '../lib/badges.js';
 import { OEFENINGEN } from '../lib/core.js';
 import { tel, overzicht as gebruikOverzicht, CLIENT_GEBEURTENISSEN, GAST_GEBEURTENISSEN } from '../lib/stat.js';
 import { COACH_KENNIS, COACH_REGELS, COACH_TOON } from '../lib/coach-kennis.js';
@@ -304,9 +304,9 @@ async function telOp(email, veld, n = 1, { push = false } = {}) {
 const amsUur = (iso) => Number(new Date(iso).toLocaleString('en-GB', { timeZone: 'Europe/Amsterdam', hour: '2-digit', hour12: false })) % 24;
 // Sessies van Michel als beloning (5 en 10 medailles), met oefeningen uit de Core-bibliotheek.
 const BELONING_SESSIES = {
-  m5: { titel: 'Michel-sessie: klaar voor een lange rit', uitleg: 'Mijn eigen routine voor de dag voor een lange rit of tocht. 6 oefeningen, 40 seconden werk en 20 seconden rust, 2 rondes. Ongeveer 12 minuten.',
+  _oud_m5: { titel: 'Michel-sessie: klaar voor een lange rit', uitleg: 'Mijn eigen routine voor de dag voor een lange rit of tocht. 6 oefeningen, 40 seconden werk en 20 seconden rust, 2 rondes. Ongeveer 12 minuten.',
     oefeningen: ['birddog', 'deadbug-gebogen', 'zijplank-knieen', 'bridge-mars', 'fietshouding', 'plank'] },
-  m10: { titel: 'Herstelsessie van Michel', uitleg: 'Wat ik zelf doe na een lange of zware rit: rustig losmaken, je rug en heupen weer soepel. 6 oefeningen, elk 60 seconden, rustig ademen. Ongeveer 8 minuten.',
+  _oud_m10: { titel: 'Herstelsessie van Michel', uitleg: 'Wat ik zelf doe na een lange of zware rit: rustig losmaken, je rug en heupen weer soepel. 6 oefeningen, elk 60 seconden, rustig ademen. Ongeveer 8 minuten.',
     oefeningen: ['kat-koe', 'draai-bovenrug', 'knie-borst', 'couch-stretch', 'bridge', 'kin-intrekken'] }
 };
 async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], doel, lidmaatschap, analyse, voornaam = '', pushAan = false, profiel = null }) {
@@ -373,13 +373,22 @@ async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], 
   const nieuweBel = [];
   for (const r of BELONINGEN) {
     if (totaal < r.n || goud < (r.goud || 0) || bel[r.id]) continue;
+    if (r.alle && medailleTotaal(lijst) < MAX_MEDAILLES) continue;
     const claim = await redis(['SET', `app:badgebeloning:${email}:${r.id}`, '1', 'NX']);
     if (!claim.ok || claim.result !== 'OK') continue;
     const x = { op: nu };
     if (r.id === 'm5' && !lid && !coaching) { const k = `app:gratisvragen:${email}:${weekSleutel()}`; await redis(['INCRBY', k, '-2']); await redis(['EXPIRE', k, String(8 * 86400)]); x.vragen = 2; }
     if (r.id === 'm10') { if (!lid && !coaching && !(lidmaatschap && lidmaatschap.betaaldOoit)) { await redis(['SET', `app:badgekorting:${email}`, '5']); x.lidKorting = 5; } }
-    if (r.id === 'm25') { x.binnenkort = true; }
-    if (r.id === 'm15') { if (coaching) x.coaching = true; else { const tk = maakKortingToken(0, 365); x.link = tk ? `https://rapport.michelkredercoaching.nl/?korting=${tk}` : null; } }
+    if (r.id === 'm30') { x.binnenkort = true; }
+    if (r.id === 'legende') await redis(['SET', `app:legende:${email}`, '1']);
+    if (r.handmatig) {
+      x.handmatig = true;
+      await redis(['SADD', 'app:beloningen:teregelen', `${email}|${r.id}|${nu}`]);
+      if (RESEND_KEY) await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from: 'MKC-app <michel@michelkredercoaching.nl>', to: 'michel.kredercoaching@gmail.com', reply_to: email, subject: `Beloning verdiend: ${r.titel} (${email})`, text: `${email} heeft ${totaal} medailles (${goud} goud) en verdiende: ${r.titel}.\n\n${r.kort}\n\nDeze regel je zelf${coaching ? ' (coachingklant)' : lid ? ' (lid)' : ''}. Beantwoorden gaat rechtstreeks naar ${email}.` }), signal: AbortSignal.timeout(8000) }).catch(() => {});
+    }
+    if (r.id === 'm20') { await redis(['SET', `app:goudweek:${email}`, '1', 'EX', String(7 * 86400)]); x.goudTot = new Date(Date.now() + 7 * 864e5).toISOString(); }
+    if (r.id === 'm25') { if (coaching) x.coaching = true; else { const tk = maakKortingToken(0, 365); x.link = tk ? `https://rapport.michelkredercoaching.nl/?korting=${tk}` : null; } }
     bel[r.id] = x; nieuweBel.push(r.id);
   }
   if (nieuw.length || nieuweBel.length || eerste) {
@@ -455,7 +464,7 @@ async function rlAutoMee(email, voornaam, score) {
   const basis = rlNaam(String(voornaam || '').split(' ')[0]) || 'Renner';
   let naam = basis;
   for (let i = 2; i < 200 && !(await rlNaamClaim(naam, email)); i++) naam = rlNaam(basis.slice(0, 13) + ' ' + i);
-  const prof = { naam, huid: 'h1', trui: 'mkc', helm: 'wit', bril: 'zwart', fiets: 'oranje', wielen: 'standaard', auto: true, op: new Date().toISOString() };
+  const prof = { naam, huid: 'h1', trui: 'mkc', helm: 'wit', bril: 'zwart', schoenen: 'wit', fiets: 'oranje', wielen: 'standaard', auto: true, op: new Date().toISOString() };
   await redis(['SET', `app:rangprofiel:${email}`, JSON.stringify(prof)]);
   if (score != null) await rlZet('app:ranglijst', score, email);
 }
@@ -475,7 +484,7 @@ async function routeRangProfiel(req, res) {
   if (/@|www|http|\.nl|\.com/i.test(String(body.naam))) return res.status(400).json({ ok: false, fout: 'Gebruik een bijnaam, geen mailadres of website.' });
   // Renner: elk onderdeel moet bestaan én vrijgespeeld zijn (medailles en goud).
   const deel = {};
-  for (const soort of ['huid', 'trui', 'helm', 'bril', 'fiets', 'wielen']) {
+  for (const soort of ['huid', 'trui', 'helm', 'bril', 'schoenen', 'fiets', 'wielen']) {
     const item = RENNER[soort].find((x) => x.id === body[soort]) || RENNER[soort][0];
     if (!rennerOpen(item, totaal, goud)) return res.status(400).json({ ok: false, fout: `${item.naam} speel je vrij bij ${item.vanaf.m} medailles${item.vanaf.g ? ' waarvan ' + item.vanaf.g + ' goud' : ''}.` });
     deel[soort] = item.id;
@@ -507,6 +516,8 @@ async function routeRangBeheer(req, res) {
   for (let i = 0; i < l.length; i += 2) { const p = await rlProfiel(l[i]); rijen.push({ email: l[i], naam: p ? p.naam : '(geen profiel)', medailles: Math.floor((Number(l[i + 1]) || 0) / 100) }); }
   return res.status(200).json({ ok: true, rijen });
 }
+const GOUDEN_RENNER = { trui: 'goud', helm: 'goud', bril: 'goud', schoenen: 'goud', fiets: 'goud', wielen: 'disc' };
+async function metGoudweek(email, p) { if (!p) return p; const [g, l] = await Promise.all([redis(['GET', `app:goudweek:${email}`]), redis(['GET', `app:legende:${email}`])]); const leg = !!(l.ok && l.result); return leg || (g.ok && g.result) ? { ...p, ...GOUDEN_RENNER, goudweek: true, legende: leg } : p; }
 async function routeRanglijst(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email) return res.status(401).json({ ok: false });
@@ -516,13 +527,14 @@ async function routeRanglijst(req, res) {
   const [top, mijn, mijnRang, mijnScore] = await Promise.all([redis(['ZREVRANGE', sleutel, '0', '2', 'WITHSCORES']), rlProfiel(email), redis(['ZREVRANK', sleutel, email]), redis(['ZSCORE', sleutel, email])]);
   const l = (top.ok && top.result) || [], rijen = [];
   for (let i = 0; i < l.length; i += 2) {
-    const p = await rlProfiel(l[i]); if (!p) continue;
+    const p = await metGoudweek(l[i], await rlProfiel(l[i])); if (!p) continue;
     const sc = Number(l[i + 1]) || 0;
-    rijen.push({ plek: rijen.length + 1, naam: p.naam, kleur: p.kleur, icoon: p.icoon, huid: p.huid, trui: p.trui, helm: p.helm, bril: p.bril, fiets: p.fiets, wielen: p.wielen, medailles: Math.floor(sc / 100), goud: sc % 100, ik: l[i] === email });
+    rijen.push({ plek: rijen.length + 1, naam: p.naam, kleur: p.kleur, icoon: p.icoon, huid: p.huid, trui: p.trui, helm: p.helm, bril: p.bril, schoenen: p.schoenen, fiets: p.fiets, wielen: p.wielen, goudweek: !!p.goudweek, legende: !!p.legende, medailles: Math.floor(sc / 100), goud: sc % 100, ik: l[i] === email });
   }
   const sc = Number(mijnScore.ok && mijnScore.result) || 0;
   const weg = await redis(['GET', `app:rangweg:${email}`]);
-  return res.status(200).json({ ok: true, periode: req.query?.periode === 'alles' ? 'alles' : 'maand', rijen, profiel: mijn, weg: !!(weg.ok && weg.result),
+  const goudIk = await redis(['GET', `app:goudweek:${email}`]);
+  return res.status(200).json({ ok: true, periode: req.query?.periode === 'alles' ? 'alles' : 'maand', rijen, profiel: mijn, goudweek: !!(goudIk.ok && goudIk.result), weg: !!(weg.ok && weg.result),
     ik: mijnRang.ok && mijnRang.result != null ? { plek: Number(mijnRang.result) + 1, medailles: Math.floor(sc / 100), goud: sc % 100 } : null,
     kleuren: RL_KLEUREN, iconen: RL_ICONEN, renner: RENNER });
 }

@@ -695,6 +695,12 @@
   .tp-uitleg { position:relative; border:1px solid rgba(255,107,26,.45); background:rgba(255,107,26,.06); border-radius:12px; padding:14px; margin-bottom:16px; }
   .tp-uitleg > b { display:block; font-size:15px; margin-bottom:6px; padding-right:24px; }
   .tp-uitleg p { display:flex; gap:8px; font-size:13.5px; margin:5px 0; line-height:1.45; }
+  .cp-michel { border-color:rgba(255,107,26,.6); background:rgba(255,107,26,.06); }
+  .cp-knoppen { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; } .cp-knoppen .knop { width:auto; flex:1 1 140px; margin:0; text-align:center; }
+  .cp-plek { display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); } .cp-plek:last-child { border-bottom:0; }
+  .cp-ic { width:34px; height:34px; flex-shrink:0; border-radius:10px; background:rgba(255,107,26,.12); color:#FF6B1A; display:flex; align-items:center; justify-content:center; } .cp-ic svg { width:19px; height:19px; }
+  .cp-plek b { display:block; font-size:14.5px; } .cp-plek span { display:block; font-size:13px; color:var(--muted); line-height:1.45; margin-top:2px; } .cp-plek .sb-link { display:inline-block; margin:6px 0 0; padding:0; }
+  .cp-vraag { border-bottom:1px solid var(--border); padding:10px 0; } .cp-vraag summary { cursor:pointer; font-weight:600; font-size:14px; } .cp-vraag p { font-size:13.5px; color:var(--muted); margin:8px 0 2px; line-height:1.5; }
   .tp-uitleg p i { font-style:normal; color:#4CC38A; font-weight:800; flex-shrink:0; }
   .tp-uitleg .knop { width:auto; display:inline-block; margin-top:8px; padding:8px 14px 6px; font-size:16px; }
   .appkaart { display:flex; gap:14px; align-items:flex-start; background:var(--surface); border:1px solid rgba(255,107,26,.4); border-radius:8px; padding:14px; margin-bottom:18px; position:relative; }
@@ -2548,6 +2554,7 @@ document.addEventListener('click', (e) => {
   e.preventDefault();
   if (k.closest('#lxModal')) lxDicht();
   const v = k.dataset.view;
+  if (k.dataset.kk && typeof RL === 'object') { RL.maak = true; RL.keuze = null; setTimeout(() => { const el = document.getElementById('ranglijst'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 450); }
   if (v === 'coach') { const f = document.getElementById('ccFab'); if (f) f.click(); return; }
   if (v === 'home') { if (history.state && history.state.v && history.state.v !== 'home') { history.back(); return; } VIEW = 'home'; teken(); window.scrollTo(0, 0); return; }
   naar(v);
@@ -2661,6 +2668,7 @@ window.addEventListener('hashchange', naarAnker);
 const KOPPEN = {
   home: ['MKC-App', 'Michel Kreder Coaching'],
   palmares: ['MKC-Palmares', 'Je badges, verdiend met wat je echt doet'],
+  coaching: ['MKC-Coaching', 'Zo werkt het, en zo bereik je mij'],
   rijden: ['MKC-Rijden', 'Banden, kleding, voeding en wind voor je rit'],
   schema: ['MKC-Schema', 'Je training van vandaag'],
   core: ['MKC-Core', 'Core stability voor wielrenners'],
@@ -2687,6 +2695,7 @@ function tegelsHtml(d) {
   const lid = isLid(d), slim = toonSlim(d);
   const t = [];
   const mijnSp = !slim ? laatsteSpanning() : '';
+  if (coaching) t.push(tegel({ v: 'coaching', ic: 'coach', nm: 'Jouw coaching', sub: 'Waar je wat vindt, de TrainingPeaks-app en hoe je mij bereikt', tag: 'Michel', tagKlas: 'or', breed: true }));
   t.push(tegel({ v: 'rijden', ic: 'rijden', nm: 'Vandaag rijden', sub: slim ? 'Je bandenspanning, kleding, voeding en wind voor je rit' : mijnSp ? 'Jouw spanning: ' + mijnSp + ' &middot; plus wind en groepsrit' : 'Je bandenspanning en windadvies, en plan een groepsrit', tag: slim ? 'Lid' : 'Gratis', tagKlas: slim ? 'or' : 'gr', breed: true }));
   if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: schemaTegelSub(d.schema), tag: d.schema.status === 'klaar' ? 'Afgerond' : 'Actief', tagKlas: 'gr' }));
   if (d.core && d.core.nogDicht) t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Opent vrijdag 16 oktober om 12:00', tag: 'Vrijdag', tagKlas: 'or' }));
@@ -2964,7 +2973,46 @@ function tpUitlegHtml(d) {
     <p><i>&#10003;</i><span>Je <b>trainingen blijven in TrainingPeaks</b>, daar zet ik ze voor je klaar. Daar verandert niets.</span></p>
     <p><i>&#10003;</i><span>Je <b>core doe je hier</b>, in de Core-app. Die past zich aan op jouw niveau en houdt je Rompscore bij.</span></p>
     <p><i>&#10003;</i><span>Verder: je bandenspanning, kleding en voeding voor elke rit, en een coach voor je vragen.</span></p>
-    <a class="knop leeg" href="https://app.trainingpeaks.com/" target="_blank" rel="noopener">Open TrainingPeaks</a></div>`;
+    <a class="knop leeg" href="https://app.trainingpeaks.com/" target="_blank" rel="noopener">Open TrainingPeaks</a> <button type="button" class="sb-link" data-view="coaching" style="display:inline;margin-left:10px">Meer uitleg</button></div>`;
+}
+// Coachingpagina (14-10-2026, na vragen van Daan en Ilse): alles over app + TrainingPeaks op één plek, en vooral: benader me gewoon.
+const TP_IOS = 'https://apps.apple.com/nl/app/trainingpeaks-plan-train-lift/id408047715', TP_ANDROID = 'https://play.google.com/store/apps/details?id=com.peaksware.trainingpeaks';
+function coachingPaginaHtml(d) {
+  const vn = esc(String((d && d.naam) || '').trim().split(' ')[0]);
+  const ua = navigator.userAgent || '', ios = /iPhone|iPad|iPod/.test(ua), android = /Android/.test(ua);
+  const wa = 'https://wa.me/31639771314?text=' + encodeURIComponent('Hoi Michel, ');
+  const plek = (ic, kop, tekst, knop) => `<div class="cp-plek"><span class="cp-ic">${IC[ic] || ''}</span><div><b>${kop}</b><span>${tekst}</span>${knop || ''}</div></div>`;
+  const vraag = (v, a) => `<details class="cp-vraag"><summary>${v}</summary><p>${a}</p></details>`;
+  const winkel = ios ? `<a class="knop" href="${TP_IOS}" target="_blank" rel="noopener">Download voor iPhone</a>` : android ? `<a class="knop" href="${TP_ANDROID}" target="_blank" rel="noopener">Download voor Android</a>` : `<a class="knop" href="${TP_IOS}" target="_blank" rel="noopener">iPhone</a><a class="knop" href="${TP_ANDROID}" target="_blank" rel="noopener">Android</a>`;
+  return `<div class="kaarten cp">
+    <div class="kaart actief cp-michel"><div class="kaart-in">
+      <h2>Is er iets? Benader me gewoon${vn ? ', ' + vn : ''}</h2>
+      <p>Daar is coaching voor. Een vraag over je training, je voelt je niet fit, je week loopt anders dan gepland of je twijfelt ergens over: stuur me een bericht. Liever te vroeg dan te laat, dan pas ik je planning op tijd aan.</p>
+      <div class="cp-knoppen"><a class="knop" href="${wa}" target="_blank" rel="noopener">WhatsApp Michel</a><a class="knop leeg" href="https://app.trainingpeaks.com/" target="_blank" rel="noopener">Bericht via TrainingPeaks</a></div>
+    </div></div>
+    <div class="kaart"><div class="kaart-in">
+      <h2>Waar vind je wat</h2>
+      ${plek('schema', 'Je trainingen: TrainingPeaks', 'Daar zet ik ze voor je klaar en stuur ik bij op wat je rijdt en hoe je je voelt. Daar verandert niets.', '<a class="sb-link" href="https://app.trainingpeaks.com/" target="_blank" rel="noopener">Open TrainingPeaks</a>')}
+      ${plek('core', 'Je core: de Core-app', 'Korte sessies thuis op de timer. Ze passen zich aan op je niveau en je Rompscore laat zien dat je sterker wordt.', d && d.core && d.core.link ? `<a class="sb-link" href="${esc(d.core.link)}#vandaag">Naar de Core-app</a>` : '')}
+      ${plek('rijden', 'Voor je rit: Vandaag rijden', 'Je bandenspanning, kleding, voeding en de wind voor de rit van vandaag.', '<button type="button" class="sb-link" data-view="rijden">Naar Vandaag rijden</button>')}
+      ${plek('coach', 'Snelle vraag: Vraag je coach', 'Een algemene vraag over voeding, materiaal of herstel, ook om 23:00. Hij antwoordt met mijn kennis. Gaat het over jouw planning of hoe je je voelt, dan liever direct naar mij.', '<button type="button" class="sb-link" data-view="coach">Stel een vraag</button>')}
+      ${plek('palmares', 'Je medailles: Palmares', 'Wat je doet levert medailles en beloningen op, en je renner op de ranglijst.', '<button type="button" class="sb-link" data-view="palmares">Naar je palmares</button>')}
+    </div></div>
+    <div class="kaart"><div class="kaart-in">
+      <h2>De TrainingPeaks-app</h2>
+      <p>Met de app op je telefoon zie je je training van vandaag meteen, en kun je na je rit laten weten hoe het ging. Dat lees ik.</p>
+      <div class="cp-knoppen">${winkel}</div>
+      <p class="klein">Tip: koppel in TrainingPeaks je Garmin, Wahoo of Zwift. Dan staan je trainingen vanzelf op je teller en komen je ritten automatisch binnen.</p>
+    </div></div>
+    <div class="kaart"><div class="kaart-in">
+      <h2>Vaak gevraagd</h2>
+      ${vraag('Komen mijn trainingen ook in deze app?', 'Nee, die blijven in TrainingPeaks. Daar stuur ik ze bij. Deze app is een aanvulling: je core, je bandenspanning en kleding voor elke rit, je palmares en een coach voor snelle vragen.')}
+      ${vraag('Kost de app extra?', 'Nee. Het lidmaatschap is inbegrepen bij je coaching, zolang je coaching loopt.')}
+      ${vraag('Ik mis een training of ben ziek. Wat nu?', 'Laat het me even weten. Inhalen is meestal niet nodig, ik schuif je week liever slim om dan dat je alles achter elkaar propt.')}
+      ${vraag('Mijn rit staat niet in TrainingPeaks', 'Check of je teller of Strava gekoppeld is in TrainingPeaks (Instellingen, Apps en apparaten). Lukt het niet, stuur me een berichtje.')}
+      ${vraag('Wie leest mijn berichten?', 'Ik. Berichten via WhatsApp en TrainingPeaks lees en beantwoord ik zelf. Alleen Vraag je coach in de app antwoordt automatisch, met mijn kennis.')}
+    </div></div>
+  </div>`;
 }
 function vandaagHtml(d) {
   if (!d || d.gast) return '';
@@ -3106,6 +3154,7 @@ function paginaHtml(d) {
   if (VIEW === 'afval') return appBalkHtml('Afvalprogramma') + `<div class="kaarten">${afvalKaart()}</div>` + voet;
   if (VIEW === 'pacing') return appBalkHtml('Pacingplan') + `<div class="kaarten">${pacingKaart()}</div>` + voet;
   if (VIEW === 'palmares') return appBalkHtml() + palmaresHtml(d) + voet;
+  if (VIEW === 'coaching') return appBalkHtml() + coachingPaginaHtml(dz) + voet;
   if (VIEW === 'lid') {
     const lid = isLid(d), tijdelijk = lid && d.lid && ['schema', 'cadeau'].includes(d.lid.bron);
     const pitch = binnenkortNu() && !d.voorverkoop ? binnenkortPitchHtml() : kanLidNu(d) ? lidPitchHtml() : '';
@@ -3376,7 +3425,7 @@ function pmIntroHtml() {
   if (pmIntroWeg()) return '';
   return `<div class="kaart actief pm-intro"><div class="kaart-in"><div class="label">Zo werkt je palmares</div><h2>Verdien je medailles</h2>
     <ol class="pm-stappen"><li><b>Brons, zilver en goud</b><span>Elke badge heeft drie medailles. Je verdient ze met wat je echt doet: Core, ritten, groepsritten, maten en elke dag de app openen.</span></li>
-    <li><b>Beloningen</b><span>Bij 5, 10, 15 en 25 medailles speel je iets vrij, van een extra sessie van Michel tot een gratis analyse.</span></li>
+    <li><b>Beloningen</b><span>Elke paar medailles speel je iets vrij: nieuwe spullen voor je renner, een gouden week, een gratis analyse en verder zelfs een rit met Michel.</span></li>
     <li><b>Je renner en het podium</b><span>Je staat op de ranglijst met je eigen renner. Elke maand begint de maandstand opnieuw, dus iedereen maakt kans op het podium.</span></li></ol>
     <button type="button" class="knop" data-pmintro="weg">Begrepen, laat zien</button></div></div>`;
 }
@@ -3401,7 +3450,7 @@ function palmaresHtml(d) {
   const belKaart = (r) => {
     const nog = Math.max(0, r.n - m), goudNog = Math.max(0, (r.goud || 0) - ((d && d.goud) || 0));
     const kort = lidNu ? String(r.kort).replace(/, plus .*$/, '.') : r.kort;
-    const knop = !r.behaald ? '' : r.binnenkort ? '<p class="klein" style="margin:6px 0 0">Verdiend! Je krijgt hem zodra het pacingplan er is.</p>' : r.sessie ? `<button type="button" class="knop" data-beloning="${r.id}">Bekijk de sessie</button>` : r.coaching ? '<p class="klein" style="margin:6px 0 0">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">Start je analyse</a>` : '';
+    const knop = !r.behaald ? '' : r.binnenkort ? '<p class="klein" style="margin:6px 0 0">Verdiend! Je krijgt hem zodra het pacingplan er is.</p>' : r.handmatig ? '<p class="klein" style="margin:6px 0 0">Verdiend! Michel neemt contact met je op om dit te regelen.</p>' : r.renner || r.id === 'm20' ? `<button type="button" class="knop" data-view="palmares" data-kk="1">Naar je kleedkamer</button>` : r.sessie ? `<button type="button" class="knop" data-beloning="${r.id}">Bekijk de sessie</button>` : r.coaching ? '<p class="klein" style="margin:6px 0 0">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">Start je analyse</a>` : '';
     return `<div class="bel${r.behaald ? ' aan' : ''}"><div class="bel-n"><b>${r.n}</b><small>medailles</small>${r.goud ? '<em>+' + r.goud + ' goud</em>' : ''}</div><div class="bel-tekst"><b>${r.behaald ? '&#10003; ' : ''}${esc(r.titel)}</b><span>${esc(kort)}</span>${r.behaald ? (r.lidKorting ? '<span class="bel-extra">Je €' + r.lidKorting + ' lidmaatschapskorting staat klaar bij Mijn lidmaatschap.</span>' : '') + (r.vragen ? '<span class="bel-extra">Je 2 extra coachvragen staan klaar.</span>' : '') : `<span class="bel-nog">${nog ? 'Nog ' + nog + ' ' + (nog === 1 ? 'medaille' : 'medailles') : ''}${nog && goudNog ? ' en ' : ''}${goudNog ? (nog ? '' : 'Nog ') + goudNog + ' gouden ' + (goudNog === 1 ? 'medaille' : 'medailles') : ''}${r.binnenkort ? ' &middot; binnenkort' : ''}</span>`}${knop}</div>${r.behaald ? '' : '<div class="bel-slot">' + medailleSlot() + '</div>'}</div>`;
   };
   const gratisHaal = l.filter((b) => !b.lid && !b.binnenkort).length;
@@ -3429,7 +3478,8 @@ const RL_IC = {
 };
 // Renner-tekening: kop en schouders (klein, voor de lijst) en de hele renner op de fiets.
 const RN_HUID = { h1: '#f2c9a5', h2: '#d9a171', h3: '#a86b43', h4: '#6b4228' };
-const RN_TRUI = { mkc: ['#FF6B1A', '#111'], zwart: ['#151515', '#FF6B1A'], wit: ['#f2f2f2', '#FF6B1A'], streep: ['#1E88E5', '#fff'], bolletjes: ['#ffffff', '#E53935'], groen: ['#2EAD4B', '#fff'], geel: ['#FFD21F', '#111'], regenboog: ['#ffffff', '#111'] };
+const RN_SCHOEN = { wit: '#f2f2f2', zwart: '#1a1a1a', oranje: '#FF6B1A', fluor: '#d7f53a', goud: '#f3c22c' };
+const RN_TRUI = { goud: ['#f3c22c', '#7a5a00'], mkc: ['#FF6B1A', '#111'], zwart: ['#151515', '#FF6B1A'], wit: ['#f2f2f2', '#FF6B1A'], streep: ['#1E88E5', '#fff'], bolletjes: ['#ffffff', '#E53935'], groen: ['#2EAD4B', '#fff'], geel: ['#FFD21F', '#111'], regenboog: ['#ffffff', '#111'] };
 const RN_HELM = { wit: '#f4f4f4', zwart: '#1a1a1a', oranje: '#FF6B1A', aero: '#E53935', goud: '#f3c22c' };
 const RN_BRIL = { geen: null, zwart: '#111', spiegel: 'url(#rnSp)', oranje: '#FF8A3D', goud: '#f3c22c' };
 const RN_FIETS = { oranje: '#FF6B1A', rood: '#D32F2F', blauw: '#1E63D6', groen: '#2E9E4F', grijs: '#8a9099', wit: '#f1f1f1', zwart: '#1b1b1b', goud: '#e2b228' };
@@ -3496,7 +3546,7 @@ function rennerFiets(p, breed) {
     <path d="M125 82l-3 33" fill="none" stroke="${huid}" stroke-width="8.5" stroke-linecap="round"/>
     <path d="M123 82l-.5 6" stroke="#141414" stroke-width="9" stroke-linecap="round"/>
     <path d="M121.5 112l-.4 7" stroke="#f5f5f5" stroke-width="8" stroke-linecap="round"/>
-    <path d="M117 124.5h14c1.5 0 2-2.5 0-3.4l-6-2.6c-3-1.2-6-.8-8 .6z" fill="#f2f2f2" stroke="#222" stroke-width=".8"/>
+    <path d="M117 124.5h14c1.5 0 2-2.5 0-3.4l-6-2.6c-3-1.2-6-.8-8 .6z" fill="${RN_SCHOEN[p.schoenen] || RN_SCHOEN.wit}" stroke="#222" stroke-width=".8"/>
     <!-- romp in de trui -->
     <path d="M86 56c2-14 18-26 40-29 9-1.2 18 0 25 3l2 12c-7-2-14-2.4-21-1.4-15 2.2-27 10-33 22z" fill="${vul}"/>
     ${band ? `<path d="M93 43c13-10 30-14 52-12l1 5c-20-1.6-36 2-49 11z" fill="${tr[1]}"/>` : ''}
@@ -3546,11 +3596,11 @@ function ranglijstHtml(d) {
   if (!open && !x.profiel && !RL.maak && !x.weg) return '<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in"><div class="label">Startlijst</div><p class="klein">Je renner wordt klaargezet. Ververs de app zo even.</p></div></div>';
   if (!x.profiel || RL.maak) {
     const pr = x.profiel || {}, R = x.renner;
-    const k = RL.keuze || { naam: pr.naam || '', huid: pr.huid || 'h1', trui: pr.trui || 'mkc', helm: pr.helm || 'wit', bril: pr.bril || 'zwart', fiets: pr.fiets || 'oranje', wielen: pr.wielen || 'standaard' };
+    const k = RL.keuze || { naam: pr.naam || '', huid: pr.huid || 'h1', trui: pr.trui || 'mkc', helm: pr.helm || 'wit', bril: pr.bril || 'zwart', schoenen: pr.schoenen || 'wit', fiets: pr.fiets || 'oranje', wielen: pr.wielen || 'standaard' };
     RL.keuze = k; RL.tab = RL.tab || 'trui';
     const m = (d && d.medailles) || 0, g = (d && d.goud) || 0, open = (it) => !it.vanaf || (m >= (it.vanaf.m || 0) && g >= (it.vanaf.g || 0));
-    const tabs = [['trui', 'Trui'], ['helm', 'Helm'], ['bril', 'Bril'], ['fiets', 'Fiets'], ['wielen', 'Wielen'], ['huid', 'Huid']];
-    const voorbeeld = (soort, it) => soort === 'wielen' ? `<span class="kk-wiel">${rennerFiets({ ...k, wielen: it.id }, 96)}</span>` : soort === 'fiets' ? `<span class="kk-kleur" style="background:${RN_FIETS[it.id]}"></span>` : soort === 'huid' ? `<span class="kk-kleur" style="background:${RN_HUID[it.id]}"></span>` : rennerKop({ ...k, [soort]: it.id }, 46);
+    const tabs = [['trui', 'Trui'], ['helm', 'Helm'], ['bril', 'Bril'], ['schoenen', 'Schoenen'], ['fiets', 'Fiets'], ['wielen', 'Wielen'], ['huid', 'Huid']];
+    const voorbeeld = (soort, it) => soort === 'wielen' ? `<span class="kk-wiel">${rennerFiets({ ...k, wielen: it.id }, 96)}</span>` : soort === 'fiets' ? `<span class="kk-kleur" style="background:${RN_FIETS[it.id]}"></span>` : soort === 'schoenen' ? `<span class="kk-kleur" style="background:${RN_SCHOEN[it.id]}"></span>` : soort === 'huid' ? `<span class="kk-kleur" style="background:${RN_HUID[it.id]}"></span>` : rennerKop({ ...k, [soort]: it.id }, 46);
     const items = R[RL.tab].map((it) => `<button type="button" class="kk-item${k[RL.tab] === it.id ? ' aan' : ''}${open(it) ? '' : ' dicht'}" data-rlitem="${RL.tab}|${it.id}" ${open(it) ? '' : 'disabled'}>${voorbeeld(RL.tab, it)}<b>${esc(it.naam)}</b>${open(it) ? '' : `<small>${medailleSlotKlein()} ${it.vanaf.m} med.${it.vanaf.g ? ' + ' + it.vanaf.g + ' goud' : ''}</small>`}</button>`).join('');
     const volgend = Object.entries(R).flatMap(([s, l]) => l.filter((it) => !open(it)).map((it) => ({ s, it }))).sort((a, b) => a.it.vanaf.m - b.it.vanaf.m)[0];
     return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in">${open ? '<div class="md-unlock" style="animation:none">Ranglijst ontgrendeld</div>' : '<div class="md-unlock" style="animation:none">Startlijst</div>'}<h2 style="margin-top:6px">${x.profiel ? 'Je kleedkamer' : x.weg ? 'Doe weer mee' : 'Maak je renner'}</h2>
@@ -3562,7 +3612,7 @@ function ranglijstHtml(d) {
       <button type="button" class="knop" data-rl="bewaar" style="margin-top:12px">${x.profiel ? 'Bewaar mijn renner' : 'Zet me op de ranglijst'}</button>${x.profiel ? '<button type="button" class="sb-link" data-rl="annuleer" style="display:block;margin:8px auto 0">Annuleren</button>' : ''}<p class="klein rl-fout" id="rlFout"></p></div></div>`;
   }
   // Podium (2-1-3) en daaronder alleen je eigen plek. Geen totaal aantal deelnemers.
-  const blok = (r, plek) => r ? `<div class="pd-plek p${plek}${r.ik ? ' ik' : ''}"><div class="pd-renner">${avatarSvg(r, plek === 1 ? 70 : 56)}${plek === 1 ? '<span class="pd-kroon">' + medailleSvg({ icoon: 'ster', niveau: 3 }, 26) + '</span>' : ''}</div><b>${esc(r.naam)}${r.ik ? ' <em>jij</em>' : ''}</b><small>${r.medailles} ${r.medailles === 1 ? 'medaille' : 'medailles'}${r.goud ? ' &middot; ' + r.goud + ' goud' : ''}</small><div class="pd-trede"><span>${plek}</span></div></div>`
+  const blok = (r, plek) => r ? `<div class="pd-plek p${plek}${r.ik ? ' ik' : ''}"><div class="pd-renner">${avatarSvg(r, plek === 1 ? 70 : 56)}${plek === 1 || r.legende ? '<span class="pd-kroon">' + medailleSvg({ icoon: r.legende ? 'kroon' : 'ster', niveau: 3 }, 26) + '</span>' : ''}</div><b>${esc(r.naam)}${r.ik ? ' <em>jij</em>' : ''}</b><small>${r.medailles} ${r.medailles === 1 ? 'medaille' : 'medailles'}${r.goud ? ' &middot; ' + r.goud + ' goud' : ''}</small><div class="pd-trede"><span>${plek}</span></div></div>`
     : `<div class="pd-plek p${plek} leeg"><div class="pd-renner"><span class="pd-vrij">?</span></div><b>Nog vrij</b><small>&nbsp;</small><div class="pd-trede"><span>${plek}</span></div></div>`;
   const r1 = x.rijen[0], r2 = x.rijen[1], r3 = x.rijen[2];
   const opPodium = x.rijen.some((r) => r.ik);
@@ -3697,7 +3747,7 @@ function badgeModal(id, nieuwNiveau) {
 function beloningModal(id, nieuw) {
   const r = ((zicht() || {}).beloningen || []).find((x) => x.id === id); if (!r) return;
   const sessie = r.sessie ? `<ol class="ms-lijst">${r.sessie.oefeningen.map((o) => `<li><b>${esc(o.naam)}</b><span>${esc(o.cue)}</span></li>`).join('')}</ol>` : '';
-  const actie = r.sessie ? '' : r.coaching ? '<p class="klein">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">Start je gratis analyse</a>` : '';
+  const actie = r.handmatig ? '<p class="klein">Michel neemt contact met je op om dit te regelen.</p>' : r.renner || r.id === 'm20' ? '<button type="button" class="knop" data-view="palmares" data-kk="1">Naar je kleedkamer</button>' : r.sessie ? '' : r.coaching ? '<p class="klein">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">Start je gratis analyse</a>` : '';
   modal(`<div class="md-modal">${nieuw ? '<div class="md-unlock">Beloning ontgrendeld!</div>' : ''}<div class="bel-groot"><b>${r.n}</b><small>medailles</small></div><h3>${esc(r.sessie ? r.sessie.titel : r.titel)}</h3>
     <p>${esc(r.sessie ? r.sessie.uitleg : r.kort)}</p>${sessie}${r.vragen ? '<p class="klein">Plus: 2 extra gratis coachvragen deze week.</p>' : ''}${r.lidKorting ? `<p class="klein">Plus: €${r.lidKorting} korting op je eerste lidmaatschap, die zie je bij het betalen.</p>` : ''}${actie}
     <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">Sluiten</button></div>`);
