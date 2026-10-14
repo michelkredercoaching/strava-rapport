@@ -1392,12 +1392,27 @@ async function routeStartBonus(req, res) {
   await tel(email, 'startbonus');
   return res.status(200).json({ ok: true, gratisOver: await gratisOver(email) });
 }
+// Analysebonus (besluit Michel 14-10-2026): wie in de week na zijn Strava-analyse zijn gratis vragen
+// opmaakt, krijgt er eenmalig 2 bij. Juist dan wil hij weten wat zijn cijfers betekenen.
+async function analyseBonus(email) {
+  const lid = await mcLid(email); const mf = (lid && lid.merge_fields) || {};
+  if (!heeftTag(lid, 'power-profile-koper')) return false;
+  const m = String(mf.RAPDAT || '').match(/^(\d{2})-(\d{2})-(\d{4})$/); if (!m) return false;
+  const dag = Date.parse(`${m[3]}-${m[2]}-${m[1]}T12:00:00Z`); if (!(Date.now() - dag <= 7 * 864e5)) return false;
+  const nx = await redis(['SET', `app:analysebonus:${email}:${mf.RAPDAT}`, '1', 'NX', 'EX', String(30 * 86400)]);
+  if (!nx.ok || nx.result !== 'OK') return false;
+  const k = `app:gratisvragen:${email}:${weekSleutel()}`;
+  await redis(['INCRBY', k, '-2']); await redis(['EXPIRE', k, String(8 * 86400)]);
+  await tel(email, 'analysebonus').catch(() => {});
+  return true;
+}
 // Ingelogd? Leden en Michel mogen altijd, anderen zolang er gratis vragen over zijn.
 async function vraagRecht(res, t) {
   const email = leesAppToken(String(t || ''));
   if (!email) { res.status(401).json({ ok: false, fout: 'Log opnieuw in.' }); return null; }
   if (await magSlim(email)) return { email, lid: true };
   if (await gratisOver(email) <= 0) {
+    if (await analyseBonus(email)) return { email, lid: false, bonus: true };
     res.status(402).json({ ok: false, limiet: true, gratisOver: 0, fout: 'Je 3 gratis vragen van deze week zijn op. Maandag kun je weer, of word lid en vraag zoveel je wilt.' });
     return null;
   }
@@ -1624,7 +1639,7 @@ async function routeBandVraag(req, res) {
     const tekst = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
     if (!tekst) throw new Error('leeg');
     const aid = await bewaarAntwoord({ email, bron: 'bandvraag', vraag, antwoord: tekst });
-    return res.status(200).json({ ok: true, antwoord: tekst, aid, gratisOver: recht.lid ? null : await telGratis(email) });
+    return res.status(200).json({ ok: true, antwoord: tekst, aid, gratisOver: recht.lid ? null : await telGratis(email), analyseBonus: !!recht.bonus });
   } catch {
     return res.status(502).json({ ok: false, fout: 'Even geen antwoord. Probeer het zo nog eens.' });
   }
@@ -1748,7 +1763,7 @@ async function routeCoach(req, res) {
   }
   // Alleen een echt antwoord telt als gratis vraag; medisch en storingen niet.
   const over = recht.lid ? null : (antwoord && !medisch ? await telGratis(email) : await gratisOver(email));
-  return res.status(200).json({ ok: true, berichten: nieuw.slice(-30), gratisOver: over });
+  return res.status(200).json({ ok: true, berichten: nieuw.slice(-30), gratisOver: over, analyseBonus: !!recht.bonus });
 }
 
 // ===========================================================================
