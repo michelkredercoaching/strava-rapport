@@ -3204,6 +3204,12 @@ function trainingsvorm(d) {
   if (d.core && !(d.kracht && d.core.intakeNodig)) return 'core';
   return null;
 }
+// Vanaf 1 november: wie al Core doet, hoort één keer dat Kracht er is (besluit Michel 14-10-2026).
+function krachtNieuwHtml(d) {
+  if (!d || !d.kracht || !d.kracht.open || trainingsvorm(d) !== 'core') return '';
+  try { if (localStorage.getItem('mkcKrachtNieuwWeg') === '1') return ''; } catch (e) { return ''; }
+  return `<div class="an-coach an-nudge kr-nieuw"><button type="button" class="welkom-x" data-actie="krnieuwweg" aria-label="Sluiten">&times;</button><b>Nieuw: Kracht in de sportschool</b><span>Twee keer per week een uur met gewichten, voor meer kracht in je benen. Je doet Core of Kracht, en je Core-voortgang blijft bewaard als je wisselt.</span><button type="button" data-view="kracht">Bekijk Kracht</button><button type="button" data-actie="krnieuwweg">Ik blijf bij Core</button></div>`;
+}
 function krKiesHtml(d) {
   const kOpen = d.kracht && d.kracht.open;
   return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Je training</div><h2>Core of kracht?</h2>
@@ -3520,7 +3526,7 @@ function teken() {
     <div id="startlijst">${startlijstHtml(d)}</div>
     ${schemaEindeHtml(d)}
     <div id="doelvak">${eersteWeekHtml(d) && !DOELV.open ? '' : doelVakHtml(d)}</div>
-    ${analyseNudgeHtml(d)}${tipHtml(d)}
+    ${krachtNieuwHtml(d)}${analyseNudgeHtml(d)}${tipHtml(d)}
     ${tegelsHtml(d)}
     ${rustigBegin(d) ? '' : `${appHtml() && !eersteWeekHtml(d) && !startlijstHtml(d) ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     ${verkoopMomentHtml(d) || (routeHtml(d) ? '' : lidBalkHtml(d))}`}
@@ -3573,6 +3579,7 @@ document.addEventListener('click', (e) => {
     setTimeout(() => { const b = document.querySelector('.plannen') || document.querySelector('.lidblok'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 250);
   }
   if (actie === 'opzeggen') zegOp(k);
+  if (actie === 'krnieuwweg') { try { localStorage.setItem('mkcKrachtNieuwWeg', '1'); } catch (er) {} k.closest('.kr-nieuw')?.remove(); return; }
   if (actie === 'annudgeweg') { try { localStorage.setItem('mkcAnNudgeWeg', k.dataset.dat || '1'); } catch (er) {} k.closest('.an-nudge')?.remove(); return; }
   if (actie === 'routeweg') { try { localStorage.setItem('mkcRouteWeg', String(Date.now())); } catch (er) {} const r = k.closest('.route'); if (r) r.remove(); return; }
   if (actie === 'uitloggen') { wisToken(); D = null; CC.berichten = null; document.getElementById('ccFab')?.remove(); document.getElementById('ccPaneel')?.remove(); toonLogin('Je bent uitgelogd.'); }
