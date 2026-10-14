@@ -447,7 +447,8 @@
   .bw-soort { position:absolute; top:10px; right:12px; font-size:10px; letter-spacing:.1em; text-transform:uppercase; font-weight:700; color:var(--accent); }
   .vk-bewijs { display:block; text-align:center; font-size:11.5px; color:var(--muted); margin-top:4px; }
   body.onb-open { overflow:hidden; }
-  body.onb-open .cc-fab, body.onb-open .meting { display:none !important; }
+  body.onb-open .cc-fab, body.onb-open .meting, body.typt .meting { display:none !important; }
+  body.met-meting { padding-bottom:190px; }
   .onb { position:fixed; inset:0; z-index:200; background:var(--black); display:flex; flex-direction:column; max-width:520px; margin:0 auto; padding:max(14px, env(safe-area-inset-top)) 20px max(18px, env(safe-area-inset-bottom)); }
   .onb-top { display:grid; grid-template-columns:72px 1fr 72px; align-items:center; gap:8px; }
   .onb-terug, .onb-sla { background:none; border:0; color:var(--muted); font:inherit; font-size:13px; cursor:pointer; padding:6px 0; }
@@ -1317,6 +1318,7 @@ function installGidsHtml() {
 }
 function installGezien() { try { return !!(localStorage.getItem('mkcInstallGezien') || localStorage.getItem('mkcBeginscherm') === '1'); } catch (e) { return true; } }
 function installEenmaal() {
+  try { if (sessionStorage.getItem('mkcNetOnb') === '1') return; } catch (e) {}
   if (document.getElementById('lxModal') && !installGezien()) { NA_DICHT = installEenmaal; return; }
   if (!D || D.gast || isApp() || installGezien() || ONB || document.getElementById('onb') || document.getElementById('lxModal')) return;
   if (!window.matchMedia('(pointer: coarse)').matches || installRoute() === 'computer') return;
@@ -1417,7 +1419,7 @@ function coreKaart(c) {
   if (!c) {
     const inb = isLid(zicht() || {});
     const startKnop = binnenkortNu() ? BINNENKORT : `<button class="knop" data-actie="startcore">${inb ? 'Start je Core-app' : 'Start je gratis week'}</button><p class="klein">Eerst een intake van een minuut, dan staat je eerste sessie klaar. Je account staat al klaar.</p>`;
-    return `<div class="kaart"><div class="kaart-in"><span class="tag oranje">${inb ? 'Inbegrepen' : 'Gratis week'}</span>
+    return `<div class="kaart"><div class="kaart-in"><span class="tag oranje">${binnenkortNu() ? 'Vrijdag 12:00' : inb ? 'Inbegrepen' : 'Gratis week'}</span>
       <div class="label">Core-app</div><h2>Sterk tot de laatste km</h2>
       <p>Core op maat die met je meebeweegt, thuis zonder gewichten. 10 tot 20 minuten, je traint mee op de timer en ziet je Rompscore stijgen.</p>
       ${startKnop}
@@ -2747,7 +2749,7 @@ function tegelsHtml(d) {
   if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true }));
   if (!d.gast) { const pb = palmaresStand(d); t.push(tegel({ v: 'palmares', ic: 'palmares', nm: 'Je palmares', sub: !pb.l.length ? 'Medailles verdienen met wat je doet' : pb.m + (pb.m === 1 ? ' medaille' : ' medailles') + (pb.volgendeBel ? ' &middot; beloning bij ' + pb.volgendeBel.n : ''), tag: pb.m ? String(pb.m) : '', tagKlas: 'or', breed: true })); }
   const bk = `<div class="bk-rij"><span>Binnenkort</span><button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
-  return `<div class="tegels">${t.join('')}</div>${routeHtml(d)}${bk}`;
+  return `<div class="tegels">${t.join('')}</div>${routeHtml(d)}${eersteWeekHtml(d) ? '' : bk}`;
 }
 // Laatst berekende gratis spanning (btReken bewaart hem), om op de tegel te tonen.
 function laatsteSpanning() { try { return localStorage.getItem('mkcLaatsteSpanning') || ''; } catch (e) { return ''; } }
@@ -2806,6 +2808,7 @@ function onbKlaar(sla) {
   try { localStorage.setItem('mkcOnbKlaar', '1'); localStorage.setItem('mkcWelkomOp', String(Date.now())); } catch (e) {}
   document.getElementById('onb')?.remove(); document.body.classList.remove('onb-open');
   if (!sla) statEens('welkom');
+  try { sessionStorage.setItem('mkcNetOnb', '1'); } catch (e) {}
   ONB = null; VIEW = 'home'; teken(); window.scrollTo(0, 0);
   laadOverzicht(); // haalt je eerste medaille (Van start) op; feestje en daarna de installatiehulp volgen vanzelf
 }
@@ -3270,7 +3273,7 @@ function teken() {
     ${tpUitlegHtml(d)}${vandaagHtml(d)}
     <div id="startlijst">${startlijstHtml(d)}</div>
     ${schemaEindeHtml(d)}
-    <div id="doelvak">${doelVakHtml(d)}</div>
+    <div id="doelvak">${eersteWeekHtml(d) ? '' : doelVakHtml(d)}</div>
     ${tipHtml(d)}
     ${tegelsHtml(d)}
     ${rustigBegin(d) ? '' : `${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
@@ -4611,14 +4614,17 @@ function metingToon() {
   if (metingKeuze() || document.getElementById('meting')) return;
   const el = document.createElement('div'); el.className = 'meting'; el.id = 'meting';
   el.innerHTML = '<b>Mag ik meten waar je vandaan komt?</b>Dan weet ik welke posts en advertenties werken. Ik gebruik daarvoor een gehashte versie van je mailadres bij Meta, nooit je trainings- of gezondheidsgegevens. <a href="/privacy#app" target="_blank" rel="noopener">Privacy</a><div class="rij"><button type="button" class="nee" data-meting="nee">Liever niet</button><button type="button" class="ja" data-meting="ja">Prima</button></div>';
-  document.body.appendChild(el);
+  document.body.appendChild(el); document.body.classList.add('met-meting');
 }
+// Typ je (inloggen, gewicht, coachvraag)? Dan gaat de meetvraag even opzij (14-10-2026).
+document.addEventListener('focusin', (e) => { if (e.target.matches && e.target.matches('input, textarea, select')) document.body.classList.add('typt'); });
+document.addEventListener('focusout', () => setTimeout(() => { const a = document.activeElement; if (!(a && a.matches && a.matches('input, textarea, select'))) document.body.classList.remove('typt'); }, 150));
 document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-meting]'); if (!k) return;
   const w = k.dataset.meting === 'ja' ? 'ja' : 'nee';
   try { localStorage.setItem('mkcMeting', w); } catch (er) {}
   document.cookie = 'mkc_meting=' + w + '; path=/; max-age=31536000; SameSite=Lax; Secure';
-  const el = document.getElementById('meting'); if (el) el.remove();
+  const el = document.getElementById('meting'); if (el) el.remove(); document.body.classList.remove('met-meting');
 });
 setTimeout(metingToon, 1500);
 
@@ -5227,7 +5233,7 @@ function meldTeken() {
   const a = document.getElementById('meldvraag'); if (a) a.innerHTML = D && (startlijstHtml(zicht()) || eersteWeekHtml(zicht())) ? '' : meldVraagHtml();
   const sl = document.getElementById('startlijst'); if (sl && D) sl.innerHTML = startlijstHtml(zicht());
   const b = document.getElementById('meldinst'); if (b) b.innerHTML = meldInstHtml();
-  const dv = document.getElementById('doelvak'); if (dv && D && !D.gast) dv.innerHTML = doelVakHtml(zicht());
+  const dv = document.getElementById('doelvak'); if (dv && D && !D.gast) dv.innerHTML = eersteWeekHtml(zicht()) ? '' : doelVakHtml(zicht());
 }
 document.addEventListener('change', async (e) => {
   const c = e.target.closest('[data-pushsoort]'); if (!c) return;
