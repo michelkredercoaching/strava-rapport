@@ -709,6 +709,12 @@
   .rt-in { flex:1; border:1px solid rgba(255,107,26,.5); background:rgba(255,107,26,.06); border-radius:12px; padding:12px; }
   .rt-in b { display:block; font-size:15px; } .rt-in p { font-size:13.5px; margin:4px 0 6px; line-height:1.45; } .rt-in small { display:block; font-size:12px; color:var(--muted); margin-bottom:10px; }
   .rt-in .knop { margin:0; }
+  .rt-kies { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; color:var(--accent); margin:10px 0 8px; } .rt-kies svg { width:16px; height:16px; }
+  .rt-keuze { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:8px; min-width:0; } .rt-keuze .rt-in { display:flex; flex-direction:column; padding:11px; } .rt-keuze .rt-in p { font-size:12.5px; flex:1; } .rt-keuze .rt-in .knop { font-size:15px; padding:10px 6px 8px; }
+  .rt-stap.of { align-items:flex-start; } .rt-stap.of .rt-bol { color:var(--accent); border-color:rgba(255,107,26,.5); }
+  .rt-of { flex:1; } .rt-of > b { display:block; font-size:14px; margin:4px 0 8px; } .rt-of > div { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .rt-of a { display:block; border:1px solid var(--border); border-radius:10px; padding:10px; color:inherit; text-decoration:none; font-weight:700; font-size:13.5px; } .rt-of a small { display:block; font-weight:500; font-size:12px; color:var(--muted); margin-top:2px; }
+  .rt-of > span { display:block; font-size:12px; color:var(--muted); margin-top:6px; }
   @media (prefers-reduced-motion: reduce) { .rt-stap.open .rt-bol { animation:none; } }
   .cp-michel { border-color:rgba(255,107,26,.6); background:rgba(255,107,26,.06); }
   .cp-knoppen { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; } .cp-knoppen .knop { width:auto; flex:1 1 140px; margin:0; text-align:center; }
@@ -3041,17 +3047,20 @@ function routeHtml(d) {
   const stappen = [
     { nm: 'Gratis account', wat: 'Bandenspanning, wind en 3 coachvragen per week' },
     { nm: 'MKC-lid', wat: 'Slimme bandenspanning, kleding en voeding voor elke rit, je coach zonder limiet en de Core-app.', prijs: '&euro;' + APP_PRIJS.maand + ' per maand, altijd opzegbaar', knop: `<button type="button" class="knop" data-view="lid">${kanLidNu(d) ? 'Word lid' : 'Bekijk wat je krijgt'}</button>` },
-    { nm: 'Trainingsschema', wat: 'Een plan van 8, 12 of 16 weken in TrainingPeaks. Hier in de app zie je elke dag je training, met uitleg.', prijs: naLancering ? 'Vanaf &euro;59, lidmaatschap inbegrepen' : 'Je lidmaatschap loopt mee zolang je schema loopt', knop: `<a class="knop" href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Kies je schema</a>` },
+    { nm: 'Trainingsschema', wat: 'Een plan van 8, 12 of 16 weken in TrainingPeaks. Hier in de app zie je elke dag je training, met uitleg.', prijs: naLancering ? 'Vanaf &euro;59, lidmaatschap inbegrepen' : 'Lidmaatschap inbegrepen', knop: `<a class="knop" href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Kies je schema</a>` },
     { nm: '1-op-1 coaching', wat: 'Michel maakt je plan en stuurt elke week bij op wat je rijdt en hoe je je voelt.', prijs: 'Vanaf &euro;79 per maand, app inbegrepen', knop: `<a class="knop" href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener">Bekijk coaching</a>` }
   ];
+  // Schema en coaching zijn twee keuzes naast elkaar, geen trap: wie lid is kiest zelf (besluit Michel 14-10-2026).
   const kop = ['Haal meer uit elke rit', 'Klaar voor een echt plan?', 'Train met Michel zelf'][nu];
-  const rij = (st, i) => {
-    if (i < nu) return `<div class="rt-stap klaar"><span class="rt-bol">&#10003;</span><b>${st.nm}</b><em>Heb je</em></div>`;
-    if (i === nu) return `<div class="rt-stap nu"><span class="rt-bol">&#10003;</span><b>${st.nm}</b><em>Jij nu</em></div>`;
-    if (i === nu + 1) return `<div class="rt-stap open"><span class="rt-bol">${OPEN_SLOT}</span><div class="rt-in"><b>${st.nm}</b><p>${st.wat}</p><small>${st.prijs}</small>${st.knop}</div></div>`;
-    return `<div class="rt-stap dicht"><span class="rt-bol">${SLOT}</span><b>${st.nm}</b><em>Op slot</em></div>`;
-  };
-  return `<div class="route"><div class="rt-lab">Jouw volgende stap</div><div class="rt-kop">${kop}</div><div class="rt-lijst">${stappen.map(rij).join('')}</div></div>`;
+  const klaar = (st, i) => `<div class="rt-stap ${i === nu ? 'nu' : 'klaar'}"><span class="rt-bol">&#10003;</span><b>${st.nm}</b><em>${i === nu ? 'Jij nu' : 'Heb je'}</em></div>`;
+  const open = (st) => `<div class="rt-stap open"><span class="rt-bol">${OPEN_SLOT}</span><div class="rt-in"><b>${st.nm}</b><p>${st.wat}</p><small>${st.prijs}</small>${st.knop}</div></div>`;
+  const kaartje = (st, kort) => `<div class="rt-in"><b>${st.nm}</b><p>${kort}</p><small>${st.prijs}</small>${st.knop}</div>`;
+  const [sch, coa] = [stappen[2], stappen[3]];
+  let verder = '';
+  if (nu === 0) verder = open(stappen[1]) + `<div class="rt-stap of"><span class="rt-bol">${OPEN_SLOT}</span><div class="rt-of"><b>Of meteen met een plan</b><div><a href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Trainingsschema<small>${naLancering ? 'vanaf &euro;59' : '8, 12 of 16 weken'}</small></a><a href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener">1-op-1 coaching<small>vanaf &euro;79 p/m</small></a></div><span>Het lidmaatschap zit er dan bij in.</span></div></div>`;
+  const keuze = nu === 1 ? `<div class="rt-kies">${OPEN_SLOT}Kies wat bij je past</div><div class="rt-keuze">${kaartje(sch, '8, 12 of 16 weken in TrainingPeaks, met elke dag uitleg in de app.')}${kaartje(coa, 'Michel maakt je plan en stuurt elke week bij.')}</div>` : '';
+  if (nu === 2) verder = open(coa);
+  return `<div class="route"><div class="rt-lab">Jouw volgende stap</div><div class="rt-kop">${kop}</div><div class="rt-lijst">${stappen.slice(0, nu + 1).map(klaar).join('')}${verder}</div>${keuze}</div>`;
 }
 function vandaagHtml(d) {
   if (!d || d.gast) return '';
