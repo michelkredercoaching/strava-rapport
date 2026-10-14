@@ -4005,7 +4005,7 @@ function coachBouw() {
     <button class="cc-fab" id="ccFab" aria-label="Vraag je coach"><span class="cc-av"><img src="/icoon-192.png" alt=""></span><span class="cc-tekst">Vraag je coach</span></button>
     <div class="cc-paneel" id="ccPaneel" role="dialog" aria-label="${CC_NAAM}">
       <div class="cc-kop"><button class="cc-terug" id="ccTerug" aria-label="Terug"><span>&#8249;</span>Terug</button><span class="cc-av"><img src="/icoon-192.png" alt=""></span>
-        <div><div class="nm">${CC_NAAM}<span class="ai">AI</span></div><div class="st">Getraind op Michels methode &middot; antwoordt direct</div></div></div>
+        <div><div class="nm">${CC_NAAM}</div><div class="st">Digitale coach &middot; antwoordt direct met Michels methode</div></div></div>
       <div class="cc-lijst" id="ccLijst"></div>
       <div class="cc-chips" id="ccChips">${CC_SNEL.map((v) => `<button>${esc(v)}</button>`).join('')}</div>
       <div class="cc-invoer" id="ccInvoer"><textarea id="ccTekst" rows="1" placeholder="Stel je vraag..."></textarea><button id="ccStuur" aria-label="Versturen">&#10148;</button></div>
@@ -4030,7 +4030,7 @@ function coachOpen(aan) {
 async function coachZet(aan) {
   $('#ccPaneel').classList.toggle('open', aan);
   if (aan) { const c = $('#ccChips'); if (c) c.innerHTML = ccSnel().map((v) => `<button>${esc(v)}</button>`).join(''); }
-  if (aan) { const st = document.querySelector('#ccPaneel .cc-kop .st'); if (st) st.textContent = ccOnbeperkt() ? 'Getraind op Michels methode \u00b7 kent jouw situatie' : 'Getraind op Michels methode \u00b7 9 jaar prof en coach'; }
+  if (aan) { const st = document.querySelector('#ccPaneel .cc-kop .st'); if (st) st.textContent = ccOnbeperkt() ? 'Digitale coach \u00b7 antwoordt direct met Michels methode' : 'Digitale coach \u00b7 antwoordt direct met Michels methode'; }
   $('#ccFab').style.display = aan ? 'none' : '';
   if (!aan) return;
   if (ccMag() && CC.berichten === null) {

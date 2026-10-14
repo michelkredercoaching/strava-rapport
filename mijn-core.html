@@ -1879,7 +1879,7 @@ function coachBouw() {
     <button class="cc-fab" id="ccFab" aria-label="Vraag je ${CC_NAAM}"><span class="cc-av">${avatarSvg()}</span><span class="cc-tekst">Vraag je coach</span></button>
     <div class="cc-paneel" id="ccPaneel" role="dialog" aria-label="${CC_NAAM}">
       <div class="cc-kop"><button class="cc-terug" id="ccTerug" aria-label="Terug"><span>&#8249;</span>Terug</button><span class="cc-av">${avatarSvg()}</span>
-        <div><div class="nm">${CC_NAAM}<span class="ai">AI</span></div><div class="st">Getraind op Michels methode &middot; antwoordt direct</div></div>
+        <div><div class="nm">${CC_NAAM}</div><div class="st">Getraind op Michels methode &middot; antwoordt direct</div></div>
         <button class="x" id="ccSluit" aria-label="Sluiten">&times;</button></div>
       <div class="cc-lijst" id="ccLijst"></div>
       <div class="cc-chips" id="ccChips">${CC_SNEL.map((v) => `<button>${esc(v)}</button>`).join('')}</div>
