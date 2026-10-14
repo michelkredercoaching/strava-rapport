@@ -1181,6 +1181,8 @@
   .an-advies { margin-top:6px; }
   .an-advies > b { font-size:16px; }
   .an-advies .knop { margin-top:10px; }
+  .plankeuze { margin:22px 0 8px; border:1px solid var(--border); border-radius:14px; padding:16px; background:var(--surface); } .plankeuze h3 { font-family:'Bebas Neue',sans-serif; font-size:26px; margin:4px 0 6px; font-weight:400; } .plankeuze p { font-size:14px; color:rgba(245,243,239,.8); margin:0 0 12px; }
+  .pk-opties { display:grid; gap:8px; } .pk-opties a { display:block; border:1px solid rgba(255,107,26,.45); border-radius:10px; padding:12px; color:inherit; text-decoration:none; } .pk-opties b { display:block; font-size:15px; } .pk-opties span { display:block; font-size:13px; color:var(--muted); margin-top:2px; } .pk-opties em { display:block; font-style:normal; font-size:12.5px; color:#4CC38A; font-weight:600; margin-top:4px; }
   .core-punten { margin:8px 0 14px; padding-left:18px; font-size:14px; } .core-punten li { margin:4px 0; }
   .binnenkort-label { display:inline-block; margin-top:12px; font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); border:1px solid rgba(255,107,26,.5); border-radius:4px; padding:6px 10px; }
   /* Lidmaatschap: per jaar of per maand */
@@ -3081,6 +3083,14 @@ function coachingPaginaHtml(d) {
 // Je route (14-10-2026): gratis, lid, schema, coaching. Wat je hebt staat afgevinkt, de volgende stap
 // staat open met wat het je oplevert, de rest zit nog op slot. Coaching is de top, die zien deze kaart niet.
 const OPEN_SLOT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>';
+// Lid worden kan ook via een plan (14-10-2026): bij een schema of coaching zit het lidmaatschap erbij.
+function planKeuzeHtml() {
+  const na = Date.now() >= 1792144800000;
+  return `<div class="plankeuze"><div class="label">Of meteen met een plan</div><h3>Lid via je schema of coaching</h3>
+    <p>Koop je een trainingsschema of start je met coaching, dan zit het MKC-lidmaatschap er gewoon bij. Apart lid worden hoeft dan niet.</p>
+    <div class="pk-opties"><a href="${SITE}/trainingsschemas/" target="_blank" rel="noopener"><b>Trainingsschema</b><span>8, 12 of 16 weken in TrainingPeaks${na ? ' &middot; vanaf &euro;59' : ''}</span><em>Lid voor de hele looptijd, plus 2 weken</em></a>
+    <a href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener"><b>1-op-1 coaching</b><span>Michel maakt je plan en stuurt elke week bij &middot; vanaf &euro;79 per maand</span><em>Lid zolang je coaching loopt</em></a></div></div>`;
+}
 function planOptie(d, naLancering) {
   const doel = d.doel && !d.doel.klaar ? d.doel.doel : null, maand = new Date().getMonth(), winter = maand >= 9 || maand <= 1;
   if (doel === 'fit') return `<a href="${SITE}/het-startpakket/" target="_blank" rel="noopener">Het Startpakket<small>4 weken rustig opbouwen</small></a>`;
@@ -3257,7 +3267,7 @@ function paginaHtml(d) {
   if (VIEW === 'lid') {
     const lid = isLid(d), tijdelijk = lid && d.lid && ['schema', 'cadeau'].includes(d.lid.bron);
     const pitch = binnenkortNu() && !d.voorverkoop ? binnenkortPitchHtml() : kanLidNu(d) ? lidPitchHtml() : '';
-    if (!lid) return appBalkHtml() + (pitch || '<p class="klein">Lid worden kan op dit moment niet.</p>') + voet;
+    if (!lid) return appBalkHtml() + (pitch || '<p class="klein">Lid worden kan op dit moment niet.</p>') + planKeuzeHtml() + voet;
     const daarna = tijdelijk ? `<details class="daarna" ${location.hash === '#lid' ? 'open' : ''}><summary><b>Daarna lid blijven</b><span>vanaf &euro;${APP_PRIJS.jaarPerMaand} per maand${binnenkortNu() && !d.voorverkoop ? ' &middot; kan vanaf 16 oktober' : ''}</span></summary>${pitch}</details>` : '';
     return appBalkHtml() + lidStatusHtml(d.lid) + lidExtraHtml(d.lid) + daarna + voet;
   }
