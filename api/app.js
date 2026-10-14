@@ -395,6 +395,12 @@ async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], 
     if (r.id === 'm25') { if (coaching) x.coaching = true; else { const tk = maakKortingToken(0, 365); x.link = tk ? `https://rapport.michelkredercoaching.nl/?korting=${tk}` : null; } }
     bel[r.id] = x; nieuweBel.push(r.id);
   }
+  let tegoedNieuw = 0;
+  if (!eerste && nieuw.length) {
+    let n = 0;
+    for (const x of nieuw) { const c = await redis(['SET', `app:tegoedmedaille:${email}:${x.id}:${x.niveau}`, '1', 'NX', 'EX', String(400 * 86400)]); if (c.ok && c.result === 'OK') n++; }
+    tegoedNieuw = await tegoedErbij(email, n, 'medaille');
+  }
   if (nieuw.length || nieuweBel.length || eerste) {
     await redis(['SET', `app:medailles:${email}`, JSON.stringify(verdiend)]);
     if (nieuweBel.length) await redis(['SET', `app:badgebeloning:${email}`, JSON.stringify(bel)]);
@@ -411,7 +417,7 @@ async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], 
   const beloningen = BELONINGEN.map((r) => ({ ...r, behaald: !!bel[r.id], ...(bel[r.id] || {}),
     ...(BELONING_SESSIES[r.id] && bel[r.id] ? { link: null, sessie: { ...BELONING_SESSIES[r.id], oefeningen: BELONING_SESSIES[r.id].oefeningen.map((id) => ({ naam: (OEFENINGEN[id] || {}).naam || id, cue: (OEFENINGEN[id] || {}).cue || '' })) } } : {}) }));
   // Bij de allereerste keer geen feestje voor alles wat er al lag.
-  return { badges: lijst, medailles: totaal, goud, maandMedailles: maandScore, maand, maandCollectie, ranglijstOpen: totaal >= RANGLIJST_VANAF, appReeks: teller.openReeks || 1, beloningen, nieuweBadges: eerste ? [] : nieuw, nieuweBeloningen: eerste ? [] : nieuweBel };
+  return { badges: lijst, medailles: totaal, goud, maandMedailles: maandScore, maand, maandCollectie, ranglijstOpen: totaal >= RANGLIJST_VANAF, appReeks: teller.openReeks || 1, beloningen, nieuweBadges: eerste ? [] : nieuw, tegoedNieuw, nieuweBeloningen: eerste ? [] : nieuweBel };
 }
 // Beheer: hoe vaak elk niveau is gehaald, wie de meeste medailles heeft, en per
 // persoon de onderbouwing (tellers, datums en beloningen), om alles na te kijken.
@@ -1268,7 +1274,7 @@ async function routeOverzicht(req, res) {
   const pushNu = await haalPush(email).catch(() => null);
   const palmares = await badgesBijwerken(email, { core, ritten, coachBerichten, doel, lidmaatschap, analyse, voornaam: (core && core.naam) || mf.FNAME || '', pushAan: !!(pushNu && pushNu.sub), profiel: bandenProfiel }).catch((e) => { console.error('badges', email, e && e.message); return { badges: [], medailles: 0, beloningen: [], nieuweBadges: [], nieuweBeloningen: [] }; });
   const badgeKorting = await redis(['GET', `app:badgekorting:${email}`]);
-  return res.status(200).json({ doel, ledenAnalyse, badges: palmares.badges, medailles: palmares.medailles, goud: palmares.goud, maandMedailles: palmares.maandMedailles, maand: palmares.maand, maandCollectie: palmares.maandCollectie, ranglijstOpen: palmares.ranglijstOpen, appReeks: palmares.appReeks, beloningen: palmares.beloningen, nieuweBadges: palmares.nieuweBadges, nieuweBeloningen: palmares.nieuweBeloningen, badgeKorting: Number(badgeKorting.ok && badgeKorting.result) || 0, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1), kracht: !!(ik.ok && ik.result === 1) }, 
+  return res.status(200).json({ doel, ledenAnalyse, badges: palmares.badges, medailles: palmares.medailles, goud: palmares.goud, maandMedailles: palmares.maandMedailles, maand: palmares.maand, maandCollectie: palmares.maandCollectie, ranglijstOpen: palmares.ranglijstOpen, appReeks: palmares.appReeks, beloningen: palmares.beloningen, tegoedNieuw: palmares.tegoedNieuw || 0, vraagTegoed: await tegoedAantal(email), nieuweBadges: palmares.nieuweBadges, nieuweBeloningen: palmares.nieuweBeloningen, badgeKorting: Number(badgeKorting.ok && badgeKorting.result) || 0, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1), kracht: !!(ik.ok && ik.result === 1) }, 
     ok: true,
     email,
     beheer: BEHEER.includes(email),
@@ -1457,6 +1463,28 @@ async function analyseBonus(email) {
 // zo'n 3 cent, een maand lid levert ex btw € 8,26 op). Redis: app:lidvragen:<email>:<jaar-week>
 const LID_PER_WEEK = 25;
 // Hoeveel vragen een lid deze week nog heeft (null voor Michel). Maandag begint de teller opnieuw.
+// Vraagtegoed (besluit Michel 14-10-2026): elke nieuwe medaille = 1 extra vraag voor de coach, voor iedereen.
+// Een maand geldig, max 10 tegelijk. Je zet het pas in als je weekvragen op zijn (de oudste eerst).
+// Redis: app:vraagtegoed:<email> (zset, score = verloopt op in ms).
+const TEGOED_MAX = 10, TEGOED_DAGEN = 30;
+async function tegoedAantal(email) {
+  const k = `app:vraagtegoed:${email}`;
+  await redis(['ZREMRANGEBYSCORE', k, '0', String(Date.now())]);
+  const r = await redis(['ZCARD', k]); return Number((r.ok && r.result) || 0);
+}
+async function tegoedErbij(email, n, waarom) {
+  if (!(n > 0)) return 0;
+  const k = `app:vraagtegoed:${email}`, nu = await tegoedAantal(email), erbij = Math.min(n, TEGOED_MAX - nu);
+  for (let i = 0; i < erbij; i++) await redis(['ZADD', k, String(Date.now() + TEGOED_DAGEN * 864e5), `${Date.now()}-${i}-${String(waarom || '').slice(0, 40)}`]);
+  if (erbij > 0) await redis(['EXPIRE', k, String((TEGOED_DAGEN + 2) * 86400)]);
+  return Math.max(0, erbij);
+}
+async function tegoedGebruik(email) {
+  const k = `app:vraagtegoed:${email}`;
+  await redis(['ZREMRANGEBYSCORE', k, '0', String(Date.now())]);
+  const r = await redis(['ZREVRANGE', k, '0', '19']); const oudste = r.ok && Array.isArray(r.result) ? r.result[r.result.length - 1] : null; if (oudste) await redis(['ZREM', k, oudste]);
+  return await tegoedAantal(email);
+}
 async function telLid(email) {
   if (BEHEER.includes(email)) return null;
   const k = `app:lidvragen:${email}:${weekSleutel()}`, n = await redis(['INCR', k]);
@@ -1474,12 +1502,13 @@ async function vraagRecht(res, t) {
   if (!email) { res.status(401).json({ ok: false, fout: 'Log opnieuw in.' }); return null; }
   if (await magSlim(email)) {
     if (BEHEER.includes(email)) return { email, lid: true };
-    if (await lidOver(email) <= 0) { res.status(429).json({ ok: false, lidOver: 0, fout: `Je hebt deze week al ${LID_PER_WEEK} vragen gesteld. Maandag kun je weer verder.` }); return null; }
+    if (await lidOver(email) <= 0) { if (await tegoedAantal(email) > 0) return { email, lid: true, tegoed: true }; res.status(429).json({ ok: false, lidOver: 0, fout: `Je hebt deze week al ${LID_PER_WEEK} vragen gesteld. Maandag kun je weer verder.` }); return null; }
     return { email, lid: true };
   }
   if (await gratisOver(email) <= 0) {
     if (await analyseBonus(email)) return { email, lid: false, bonus: true };
-    res.status(402).json({ ok: false, limiet: true, gratisOver: 0, fout: 'Je 3 gratis vragen van deze week zijn op. Maandag kun je weer, of word lid en vraag tot 25 keer per week.' });
+    if (await tegoedAantal(email) > 0) return { email, lid: false, tegoed: true };
+    res.status(402).json({ ok: false, limiet: true, gratisOver: 0, fout: 'Je 3 gratis vragen van deze week zijn op. Maandag kun je weer. Met een nieuwe medaille verdien je een extra vraag, of word lid en vraag tot 25 keer per week.' });
     return null;
   }
   return { email, lid: false };
@@ -1705,7 +1734,7 @@ async function routeBandVraag(req, res) {
     const tekst = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
     if (!tekst) throw new Error('leeg');
     const aid = await bewaarAntwoord({ email, bron: 'bandvraag', vraag, antwoord: tekst });
-    return res.status(200).json({ ok: true, antwoord: tekst, aid, gratisOver: recht.lid ? null : await telGratis(email), lidOver: recht.lid ? await telLid(email) : null, analyseBonus: !!recht.bonus });
+    return res.status(200).json({ ok: true, antwoord: tekst, aid, gratisOver: recht.lid ? null : recht.tegoed ? 0 : await telGratis(email), lidOver: recht.lid ? (recht.tegoed ? 0 : await telLid(email)) : null, vraagTegoed: recht.tegoed ? await tegoedGebruik(email) : await tegoedAantal(email), analyseBonus: !!recht.bonus });
   } catch {
     return res.status(502).json({ ok: false, fout: 'Even geen antwoord. Probeer het zo nog eens.' });
   }
@@ -1772,7 +1801,7 @@ async function routeCoach(req, res) {
     const email = leesAppToken(String(req.query?.t || ''));
     if (!email) return res.status(401).json({ ok: false, fout: 'Log opnieuw in.' });
     const lid = await magSlim(email);
-    return res.status(200).json({ ok: true, berichten: (await haalCoachBerichten(email)).slice(-30), gratisOver: lid ? null : await gratisOver(email), lidOver: lid ? await lidOver(email) : null });
+    return res.status(200).json({ ok: true, berichten: (await haalCoachBerichten(email)).slice(-30), gratisOver: lid ? null : await gratisOver(email), lidOver: lid ? await lidOver(email) : null, vraagTegoed: await tegoedAantal(email) });
   }
   const body = await leesBody(req);
   const recht = await vraagRecht(res, body.t); if (!recht) return;
@@ -1830,8 +1859,10 @@ async function routeCoach(req, res) {
       extra: core ? `Doet de Core-app: niveau ${core.week}.` : 'Doet de Core-app niet.' });
   }
   // Alleen een echt antwoord telt als gratis vraag; medisch en storingen niet.
-  const over = recht.lid ? null : (antwoord && !medisch ? await telGratis(email) : await gratisOver(email));
-  return res.status(200).json({ ok: true, berichten: nieuw.slice(-30), gratisOver: over, lidOver: recht.lid ? (antwoord && !medisch ? await telLid(email) : await lidOver(email)) : null, analyseBonus: !!recht.bonus });
+  const telt = antwoord && !medisch;
+  const vraagTegoed = recht.tegoed && telt ? await tegoedGebruik(email) : await tegoedAantal(email);
+  const over = recht.lid ? null : recht.tegoed ? await gratisOver(email) : (telt ? await telGratis(email) : await gratisOver(email));
+  return res.status(200).json({ ok: true, berichten: nieuw.slice(-30), gratisOver: over, lidOver: recht.lid ? (telt && !recht.tegoed ? await telLid(email) : await lidOver(email)) : null, vraagTegoed, analyseBonus: !!recht.bonus });
 }
 
 // ===========================================================================
