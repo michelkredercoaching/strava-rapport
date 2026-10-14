@@ -390,7 +390,7 @@ async function plaatsOpStrava(d, body, access) {
   // Tekst op Strava: ook gratis reclame in de feed van maten (besluit Michel 14-10-2026)
   const tests = (d.tests || []).filter((x) => x.score != null), eerst = tests[0], laatst = tests[tests.length - 1];
   const romp = laatst ? `\nRompscore: ${laatst.score}${eerst && laatst !== eerst && laatst.score > eerst.score ? ` (+${laatst.score - eerst.score} sinds de start)` : ''}` : '';
-  const omschrijving = `${Math.round(sec / 60)} minuten core stability voor wielrenners.${oef.length ? '\nOefeningen: ' + oef.join(', ') : ''}${romp}\n\nGetraind met de MKC Core-app van Michel Kreder Coaching\nrapport.michelkredercoaching.nl/app`;
+  const omschrijving = `${Math.round(sec / 60)} minuten core stability voor wielrenners.${oef.length ? '\nOefeningen: ' + oef.join(', ') : ''}${romp}\n\nGetraind met de MKC Core-app van Michel Kreder Coaching\nhttps://michelkredercoaching.nl/app`;
   const form = new URLSearchParams({ name: schoon('Core: ' + (body.naam || 'sessie') + ' · niveau ' + d.week, 90), sport_type: 'Workout', type: 'Workout', start_date_local: startLokaal, elapsed_time: String(sec), description: omschrijving, trainer: '1' });
   const a = await fetch('https://www.strava.com/api/v3/activities', { method: 'POST', headers: { Authorization: 'Bearer ' + access, 'Content-Type': 'application/x-www-form-urlencoded' }, body: form });
   const aj = await a.json().catch(() => ({}));
