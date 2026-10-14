@@ -1112,6 +1112,11 @@ function wisToken() { try { localStorage.removeItem(OPSLAG); } catch (e) {} try 
 // ---- Beginscherm ----
 let installPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; if (D) teken(); });
+function apparaatInfo() {
+  const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua), android = /Android/.test(ua);
+  const browser = /CriOS|Chrome/.test(ua) && !/Edg/.test(ua) ? 'Chrome' : /FxiOS|Firefox/.test(ua) ? 'Firefox' : /SamsungBrowser/.test(ua) ? 'Samsung Internet' : /Edg/.test(ua) ? 'Edge' : /Safari/.test(ua) ? 'Safari' : 'onbekend';
+  return { toestel: ios ? (/iPad/.test(ua) ? 'iPad' : 'iPhone') : android ? 'Android' : 'computer', browser, opBeginscherm: isApp() };
+}
 function isApp() { return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; }
 function appHtml() {
   let weg = false; try { weg = localStorage.getItem('mkcAppWeg') === '1'; } catch (e) {}
@@ -1121,7 +1126,7 @@ function appHtml() {
   const deel = '<svg class="deelicoon" viewBox="0 0 15 17" fill="none" stroke="#FF6B1A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 1v10M4 4.5 7.5 1 11 4.5M3 7.5H1.5v8h12v-8H12"/></svg>';
   const uitleg = installPrompt
     ? '<button class="knop" data-actie="installeer">Zet op beginscherm</button>'
-    : ios ? `<div class="stap">Tik onderaan in Safari op ${deel} en kies <b style="display:inline;color:var(--white)">Zet op beginscherm</b>.</div>`
+    : ios ? `<div class="stap">Tik onderaan in Safari op ${deel} (zie je die niet, tik dan eerst op <b style="display:inline;color:var(--white)">&bull;&bull;&bull;</b> en dan op Deel). Scroll omlaag, kies <b style="display:inline;color:var(--white)">Zet op beginscherm</b> en tik op Voeg toe.</div>`
           : '<div class="stap">Open het menu van je browser (&#8942;) en kies <b style="display:inline;color:var(--white)">Toevoegen aan startscherm</b>.</div>';
   return `<div class="appkaart"><img src="/icoon-180.png" alt="">
     <div><b>Zet MKC op je beginscherm</b><div class="stap">Dan open je alles met één tik, als app.</div>${uitleg}</div>
@@ -2721,7 +2726,7 @@ document.addEventListener('click', async (e) => {
   if (a === 'scherm') {
     if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.then((c) => { if (c && c.outcome === 'accepted') { try { localStorage.setItem('mkcBeginscherm', '1'); } catch (er) {} } installPrompt = null; teken(); }); return; }
     const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
-    modal('<h3>Zet de app op je beginscherm</h3><p>' + (ios ? 'Tik onderaan in Safari op de deel-knop en kies Zet op beginscherm.' : 'Open het menu van je browser (&#8942;) en kies Toevoegen aan startscherm.') + '</p><button type="button" class="knop" data-ew="schermklaar">Gedaan</button><button type="button" class="sb-link" data-lx="dicht">Later</button>');
+    modal('<h3>Zet de app op je beginscherm</h3><p>' + (ios ? 'Tik onderaan in Safari op de deel-knop (het vierkantje met het pijltje omhoog). Zie je die niet? Tik dan eerst op de drie puntjes en daarna op Deel. Scroll omlaag, kies Zet op beginscherm en tik op Voeg toe.' : 'Open het menu van je browser (&#8942;) en kies Toevoegen aan startscherm.') + '</p><button type="button" class="knop" data-ew="schermklaar">Gedaan</button><button type="button" class="sb-link" data-lx="dicht">Later</button>');
     return;
   }
   if (a === 'schermklaar') { try { localStorage.setItem('mkcBeginscherm', '1'); } catch (er) {} lxDicht(); return teken(); }
@@ -3746,7 +3751,7 @@ async function coachStuur(tekst) {
   coachLijst(tekst);
   let fout = '';
   try {
-    const j = await (await fetch(`${API}?actie=coach`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), tekst }) })).json();
+    const j = await (await fetch(`${API}?actie=coach`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), tekst, apparaat: apparaatInfo() }) })).json();
     if (j.ok) { CC.berichten = j.berichten; zetGratis(j.gratisOver); }
     else { fout = j.limiet ? '' : (j.fout || 'Dat lukte even niet.'); if (j.limiet) zetGratis(0); }
   } catch (e) { fout = 'Verbinding mislukt. Probeer het zo nog eens.'; }

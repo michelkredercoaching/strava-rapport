@@ -1635,7 +1635,8 @@ async function routeCoach(req, res) {
   if (COACH_MEDISCH_WOORDEN.test(tekst)) { antwoord = COACH_MEDISCH; medisch = true; }
   else if (CLAUDE_KEY) {
     try {
-      const context = await coachContext(email);
+      const ap = body.apparaat && typeof body.apparaat === 'object' ? body.apparaat : null;
+      const context = (await coachContext(email)) + (ap ? `\nToestel nu: ${String(ap.toestel || 'onbekend').slice(0, 20)}, browser ${String(ap.browser || 'onbekend').slice(0, 20)}, ${ap.opBeginscherm ? 'de app staat al op het beginscherm' : 'opent de app nu in de browser (nog niet op het beginscherm)'}.` : '');
       // De laatste paar beurten mee, zodat een vervolgvraag begrepen wordt.
       const eerder = berichten.slice(-6).map((b) => ({ role: b.van === 'ik' ? 'user' : 'assistant', content: b.tekst }));
       while (eerder.length && eerder[0].role !== 'user') eerder.shift();
