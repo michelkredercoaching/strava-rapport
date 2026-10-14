@@ -1226,8 +1226,7 @@ const PRODUCT_KNOPPEN = [
   { re: /winterprogramma/i, t: 'Bekijk het Winterprogramma', href: () => SITE + '/winterprogramma/', verkoop: true },
   { re: /trainingsschema/i, t: 'Bekijk de trainingsschema\'s', href: () => SITE + '/trainingsschemas/', verkoop: true },
   { re: /trainingsbegeleiding|1-op-1 coaching|persoonlijke begeleiding/i, t: 'Bekijk de trainingsbegeleiding', href: () => SITE + '/trainingsbegeleiding/', verkoop: true },
-  { re: /core-app/i, t: 'Open de Core-app', view: 'core' },
-  { re: /bandenspanning in de app|vandaag rijden/i, t: 'Naar je bandenspanning', view: 'rijden' }
+  { re: /vandaag rijden/i, t: 'Open Vandaag rijden', view: 'rijden' }
 ];
 function productKnoppen(t) {
   const tekst = String(t || ''), d = D && !D.gast ? zicht() : null;
