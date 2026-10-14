@@ -147,7 +147,64 @@ async function haalRecenteKopers() {
   return uit;
 }
 
+// ===== GOOGLE-REVIEWS (reviewpagina op de WordPress-site) =====
+// Cijfer, aantal en de reviews die Google teruggeeft (maximaal 5, Googles eigen
+// keuze) via de Places API. Eén keer per 12 uur ophalen en in Redis bewaren,
+// zodat het gratis tegoed van Google ruim volstaat. Sleutel: GOOGLE_PLACES_KEY
+// in Vercel, in Google Cloud beperkt tot de Places API (New).
+const GOOGLE_PLACE_ID = 'ChIJL4GVNwjOxUcRWIK_VY7woU0';
+const GOOGLE_CACHE = 'google:reviews:v1';
+
+async function haalGoogleReviews() {
+  const c = await redis(['GET', GOOGLE_CACHE]);
+  if (c.ok && c.result) {
+    try { return JSON.parse(c.result); } catch { /* kapotte cache: opnieuw ophalen */ }
+  }
+  const key = process.env.GOOGLE_PLACES_KEY;
+  if (!key) return null;
+
+  const r = await fetch(`https://places.googleapis.com/v1/places/${GOOGLE_PLACE_ID}?languageCode=nl`, {
+    headers: { 'X-Goog-Api-Key': key, 'X-Goog-FieldMask': 'rating,userRatingCount,reviews' },
+    signal: AbortSignal.timeout(8000)
+  });
+  if (!r.ok) throw new Error(`Places ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  const j = await r.json();
+
+  const uit = {
+    cijfer: j.rating || null,
+    aantal: j.userRatingCount || null,
+    // Google eist dat naam en bron zichtbaar blijven, dus die geven we mee.
+    reviews: (j.reviews || [])
+      .map(v => ({
+        naam: v.authorAttribution?.displayName || '',
+        profiel: v.authorAttribution?.uri || '',
+        sterren: v.rating || 0,
+        tekst: (v.originalText?.text || v.text?.text || '').trim(),
+        datum: (v.publishTime || '').slice(0, 10)
+      }))
+      .filter(v => v.naam && v.tekst)
+      .sort((a, b) => (a.datum < b.datum ? 1 : -1))
+  };
+  if (uit.aantal) await redis(['SET', GOOGLE_CACHE, JSON.stringify(uit), 'EX', '43200']);
+  return uit;
+}
+
 export default async function handler(req, res) {
+  // ===== GOOGLE-REVIEWS =====
+  // Mislukt het ophalen, dan een lege 200: de pagina toont dan gewoon haar
+  // eigen vaste reviews en cijfer.
+  if (req.method === 'GET' && req.query && req.query.google) {
+    zetKopersCors(req, res);
+    try {
+      const uit = await haalGoogleReviews();
+      res.setHeader('Cache-Control', 'public, max-age=600, s-maxage=3600, stale-while-revalidate=86400');
+      return res.status(200).json(uit || {});
+    } catch (e) {
+      console.error('Google-reviews ophalen mislukt:', e);
+      return res.status(200).json({});
+    }
+  }
+
   // ===== TRECHTERRAPPORT: dagcijfers per scherm uitlezen =====
   // Afgeschermd met TRECHTER_SLEUTEL (Vercel-omgevingsvariabele). Zonder die
   // sleutel in de omgeving staat de route helemaal dicht.
