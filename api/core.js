@@ -361,6 +361,15 @@ async function routeStravaPost(req, res) {
   const aj = await a.json().catch(() => ({}));
   if (!a.ok || !aj.id) { await redis(['DEL', `core:strava:post:${d.id}:${sessie.op}`]); if (a.status === 401) { await redis(['DEL', `core:strava:${d.id}`]); return res.status(200).json({ ok: false, koppel: true }); } console.error('strava post', a.status, JSON.stringify(aj).slice(0, 300)); return res.status(502).json({ ok: false, fout: 'Strava gaf een fout. Probeer het zo nog eens.' }); }
   await tel(d.email, 'core-strava').catch(() => {});
+  // Tellers voor de badges Op Strava en Strava-reeks (app:teller, zelfde plek als de andere badges)
+  try {
+    const k = `app:teller:${String(d.email).toLowerCase()}`;
+    const wk = Math.floor((Date.parse(new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }) + 'T00:00:00Z') / 864e5 + 3) / 7);
+    await redis(['HINCRBY', k, 'stravaGedeeld', '1']);
+    const t = await redis(['HMGET', k, 'stravaWeek', 'stravaReeks', 'stravaReeksMax']);
+    const [w, rks, mx] = ((t.ok && t.result) || []).map((x) => Number(x) || 0);
+    if (w !== wk) { const reeks = w === wk - 1 ? rks + 1 : 1; await redis(['HSET', k, 'stravaWeek', String(wk), 'stravaReeks', String(reeks), 'stravaReeksMax', String(Math.max(mx, reeks))]); }
+  } catch (e) { console.error('strava teller', e && e.message); }
   return res.status(200).json({ ok: true, url: 'https://www.strava.com/activities/' + aj.id });
 }
 async function metToken(req, res) {
