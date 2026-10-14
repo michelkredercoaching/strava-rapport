@@ -1259,7 +1259,14 @@ function installGidsHtml() {
   if (r === 'ios') return kop + iosDemoHtml() + '<details class="ig-lees"><summary>Liever stap voor stap lezen</summary><ol class="ig-stappen">' + stappen + '</ol>' + extra + '</details>';
   return kop + (stappen ? '<ol class="ig-stappen">' + stappen + '</ol>' : '') + extra;
 }
+function installGezien() { try { return !!(localStorage.getItem('mkcInstallGezien') || localStorage.getItem('mkcBeginscherm') === '1'); } catch (e) { return true; } }
+function installEenmaal() {
+  if (!D || D.gast || isApp() || installGezien() || ONB || document.getElementById('onb') || document.getElementById('lxModal')) return;
+  if (!window.matchMedia('(pointer: coarse)').matches || installRoute() === 'computer') return;
+  installGids(true);
+}
 function installGids(metGedaan) {
+  try { localStorage.setItem('mkcInstallGezien', String(Date.now())); } catch (e) {}
   modal(installGidsHtml() + (metGedaan ? '<button type="button" class="knop" data-ew="schermklaar" style="margin-top:12px">Gedaan</button><button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:8px auto 0">Later</button>' : '<button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:12px auto 0">Sluiten</button>'));
 }
 function appHtml() {
@@ -2767,6 +2774,7 @@ function onbHtml() {
     inhoud = kop('Dit is jouw spanning', 'Voor droog weer. Op nat wegdek pomp je iets zachter.') + (a ? `<div class="onb-sp"><div><span>Voor</span><b>${BT_LIB.nl(Math.max(min, a.voor))}</b><small>bar</small></div><div><span>Achter</span><b>${BT_LIB.nl(Math.max(min, a.achter))}</b><small>bar</small></div></div>` : '<p class="onb-sub">Rekenen lukt nu even niet. Je vindt je spanning straks onder Vandaag rijden.</p>') + '<p class="onb-sub">Je vindt hem altijd terug onder Vandaag rijden, en je deelt hem met één tik met je maten.</p>';
     knop = '<button type="button" class="knop" data-onb="verder">Verder</button>';
   } else if (o.stap === 6 && iosZonderApp()) {
+    try { localStorage.setItem('mkcInstallGezien', String(Date.now())); } catch (e) {}
     // iPhone in Safari: meldingen kunnen pas vanaf het beginscherm, dus eerst dat (14-10-2026)
     const r = installRoute(), gids = installGidsHtml();
     inhoud = kop('Zet de app op je beginscherm', 'Je zit al in de MKC-app, downloaden hoeft niet. Op een iPhone krijg je je dagelijkse tip pas als de app op je beginscherm staat.') + (r === 'ios' ? iosDemoHtml() : gids.includes('<ol') ? gids.slice(gids.indexOf('<ol'), gids.indexOf('</ol>') + 5) : '') + (r === 'ios' ? '<p class="onb-sub">Open hem daarna vanaf je beginscherm, dan zet je in de app je meldingen aan.</p>' : '');
@@ -2872,7 +2880,7 @@ document.addEventListener('click', async (e) => {
   if (a === 'spanning' || a === 'core') return naar(a === 'spanning' ? 'rijden' : 'core');
   if (a === 'doel') { DOELV = { open: true, kies: null, fout: '', bezig: false }; teken(); setTimeout(() => document.getElementById('doelvraag')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150); return; }
   if (a === 'coach') return coachOpen(true);
-  if (a === 'tip') { if (iosZonderApp()) { modal('<h3>Eerst op je beginscherm</h3><p>Op een iPhone werken meldingen pas als de app op je beginscherm staat. Tik onderaan in Safari op de deel-knop en kies Zet op beginscherm. Open de app daarna vanaf je beginscherm.</p><button type="button" class="knop" data-lx="dicht">Oké</button>'); return; } const b = document.createElement('button'); b.dataset.push = 'aan'; b.style.display = 'none'; document.body.appendChild(b); b.click(); b.remove(); setTimeout(() => teken(), 1500); return; }
+  if (a === 'tip') { if (iosZonderApp()) { installGids(false); return; } const b = document.createElement('button'); b.dataset.push = 'aan'; b.style.display = 'none'; document.body.appendChild(b); b.click(); b.remove(); setTimeout(() => teken(), 1500); return; }
   if (a === 'scherm') {
     if (installPrompt) { installPrompt.prompt(); installPrompt.userChoice.then((c) => { if (c && c.outcome === 'accepted') { try { localStorage.setItem('mkcBeginscherm', '1'); } catch (er) {} } installPrompt = null; teken(); }); return; }
     return installGids(true);
@@ -5080,7 +5088,7 @@ async function pushLaad() {
 function pushHtml() {
   const i = PUSH.inst || { aan: false, tijd: '07:00', dagen: [0, 1, 2, 3, 4, 5, 6] };
   let inhoud;
-  if (iosZonderApp()) inhoud = '<p class="klein">Zet de app eerst op je beginscherm (deel-knop, Zet op beginscherm). Daarna kun je hier je ochtendbericht aanzetten.</p>';
+  if (iosZonderApp()) inhoud = '<p class="klein">Op een iPhone werkt je ochtendbericht pas als de app op je beginscherm staat. Daarna zet je het hier aan.</p><button type="button" class="knop leeg" data-actie="installgids" style="margin-top:6px">Laat zien hoe</button>';
   else if (!pushKan()) inhoud = '<p class="klein">Je browser ondersteunt geen meldingen. Open de app vanaf je beginscherm of in Chrome.</p>';
   else if (!PUSH.key) inhoud = '<p class="klein">Het ochtendbericht gaat binnenkort open.</p>';
   else inhoud = `
@@ -5148,7 +5156,7 @@ async function laadOverzicht() {
     const r = await fetch(API + '?actie=overzicht&t=' + encodeURIComponent(t));
     const j = await r.json();
     if (!j.ok) { wisToken(); return toonLogin(j.fout, 'fout'); }
-    D = j; teken(); naarAnker(); pushLaad(); vriendKoppel(); if (NA_BETALING) naBetalingTonen(); else badgeFeest();
+    D = j; teken(); naarAnker(); pushLaad(); vriendKoppel(); if (NA_BETALING) naBetalingTonen(); else badgeFeest(); setTimeout(installEenmaal, 2500);
     if (D.beheer && BEKIJK === 'zelf' && SIM.schema && SIM.schema.includes('|')) simSchemaLaad(SIM.schema).then(teken);
     if (D.beheer && !D.schema) simSchemaLaad('opbouw-12-w|18').then(() => { if (BEKIJK === 'alles') teken(); });
     if (D.beheer && OPV.meldingen === null) opvLaad();
