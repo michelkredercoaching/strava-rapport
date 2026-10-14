@@ -303,6 +303,62 @@ function magIntern(req) {
   const cron = process.env.CRON_SECRET, auth = String(req.headers.authorization || '');
   return !!(cron && auth.startsWith('Bearer ') && vergelijkVeilig(auth.slice(7), cron));
 }
+// ---- Strava (14-10-2026): een gedane Core-sessie als activiteit op Strava ----
+// Eén keer koppelen met schrijfrechten (activity:write), daarna per sessie een knop.
+// Tokens per dossier in core:strava:<id>. Zelfde Strava-app als de analyse (zelfde domein).
+const stuurDoor = (res, url) => { res.statusCode = 302; res.setHeader('Location', url); res.end(); };
+const STRAVA_TERUG = 'https://rapport.michelkredercoaching.nl/api/core?actie=stravaterug';
+async function stravaBewaar(id, tk) { await redis(['SET', `core:strava:${id}`, JSON.stringify(tk), 'EX', String(400 * 86400)]); } // vervalt net als het dossier na 400 dagen zonder gebruik
+async function stravaToken(id) {
+  const r = await redis(['GET', `core:strava:${id}`]); if (!r.ok || !r.result) return null;
+  let tk; try { tk = JSON.parse(r.result); } catch { return null; }
+  if (tk.exp && tk.exp * 1000 > Date.now() + 120000) return tk.access;
+  const v = await fetch('https://www.strava.com/oauth/token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client_id: process.env.STRAVA_CLIENT_ID, client_secret: process.env.STRAVA_CLIENT_SECRET, grant_type: 'refresh_token', refresh_token: tk.refresh }) });
+  const j = await v.json().catch(() => ({}));
+  if (!j.access_token) { if (v.status === 400 || v.status === 401) await redis(['DEL', `core:strava:${id}`]); return null; }
+  await stravaBewaar(id, { ...tk, access: j.access_token, refresh: j.refresh_token || tk.refresh, exp: j.expires_at });
+  return j.access_token;
+}
+async function routeStravaKoppel(req, res) {
+  const t = String(req.query?.t || ''), id = leesCoreToken(t);
+  if (!id || !process.env.STRAVA_CLIENT_ID) return stuurDoor(res, '/mijn-core?t=' + encodeURIComponent(t) + '&strava=fout');
+  return stuurDoor(res, 'https://www.strava.com/oauth/authorize?' + new URLSearchParams({ client_id: process.env.STRAVA_CLIENT_ID, response_type: 'code', redirect_uri: STRAVA_TERUG, approval_prompt: 'auto', scope: 'activity:write', state: t }).toString());
+}
+async function routeStravaTerug(req, res) {
+  const t = String(req.query?.state || ''), id = leesCoreToken(t), terug = (s) => stuurDoor(res, '/mijn-core?t=' + encodeURIComponent(t) + '&strava=' + s);
+  if (!id) return stuurDoor(res, '/app');
+  if (req.query?.error || !String(req.query?.scope || '').includes('activity:write')) return terug('geweigerd');
+  const v = await fetch('https://www.strava.com/oauth/token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client_id: process.env.STRAVA_CLIENT_ID, client_secret: process.env.STRAVA_CLIENT_SECRET, code: String(req.query?.code || ''), grant_type: 'authorization_code' }) });
+  const j = await v.json().catch(() => ({}));
+  if (!j.access_token) return terug('fout');
+  await stravaBewaar(id, { access: j.access_token, refresh: j.refresh_token, exp: j.expires_at, atleet: j.athlete && j.athlete.id, op: nu() });
+  return terug('gekoppeld');
+}
+async function routeStravaPost(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const r = await metToken(req, res); if (!r) return;
+  const { d, body } = r;
+  const sessie = [...(d.sessies || [])].reverse().find((s) => s.letter === body.letter);
+  if (!sessie) return res.status(400).json({ ok: false, fout: 'Doe eerst je sessie.' });
+  const access = await stravaToken(d.id);
+  if (!access) return res.status(200).json({ ok: false, koppel: true });
+  const dubbel = await redis(['SET', `core:strava:post:${d.id}:${sessie.op}`, '1', 'NX', 'EX', String(90 * 86400)]);
+  if (!dubbel.ok || dubbel.result !== 'OK') return res.status(200).json({ ok: true, al: true });
+  const schoon = (x, n) => String(x || '').replace(/[<>]/g, '').trim().slice(0, n);
+  const sec = Math.max(300, Math.min(5400, Math.round(Number(body.sec) || 900)));
+  const oef = Array.isArray(body.oefeningen) ? body.oefeningen.slice(0, 12).map((x) => schoon(x, 50)).filter(Boolean) : [];
+  const start = new Date(Date.parse(sessie.op) - sec * 1000);
+  const lokaal = new Date(start.toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' }));
+  const p = (n) => String(n).padStart(2, '0');
+  const startLokaal = `${lokaal.getFullYear()}-${p(lokaal.getMonth() + 1)}-${p(lokaal.getDate())}T${p(lokaal.getHours())}:${p(lokaal.getMinutes())}:${p(lokaal.getSeconds())}`;
+  const form = new URLSearchParams({ name: schoon('Core: ' + (body.naam || 'sessie'), 90), sport_type: 'Workout', type: 'Workout', start_date_local: startLokaal, elapsed_time: String(sec),
+    description: `Core-sessie in de MKC Core-app, niveau ${d.week}.${oef.length ? '\n' + oef.join(', ') : ''}\nrapport.michelkredercoaching.nl/app`, trainer: '1' });
+  const a = await fetch('https://www.strava.com/api/v3/activities', { method: 'POST', headers: { Authorization: 'Bearer ' + access, 'Content-Type': 'application/x-www-form-urlencoded' }, body: form });
+  const aj = await a.json().catch(() => ({}));
+  if (!a.ok || !aj.id) { await redis(['DEL', `core:strava:post:${d.id}:${sessie.op}`]); if (a.status === 401) { await redis(['DEL', `core:strava:${d.id}`]); return res.status(200).json({ ok: false, koppel: true }); } console.error('strava post', a.status, JSON.stringify(aj).slice(0, 300)); return res.status(502).json({ ok: false, fout: 'Strava gaf een fout. Probeer het zo nog eens.' }); }
+  await tel(d.email, 'core-strava').catch(() => {});
+  return res.status(200).json({ ok: true, url: 'https://www.strava.com/activities/' + aj.id });
+}
 async function metToken(req, res) {
   const body = req.method === 'GET' ? {} : await leesBody(req);
   const t = req.method === 'GET' ? (req.query?.t || '').toString() : String(body.t || '');
@@ -572,6 +628,9 @@ export default async function handler(req, res) {
       case 'antwoord':  return await routeAntwoord(req, res);
       case 'herinner':  return await routeHerinner(req, res);
       case 'verwijder': return await routeVerwijder(req, res);
+      case 'stravakoppel': return await routeStravaKoppel(req, res);
+      case 'stravaterug': return await routeStravaTerug(req, res);
+      case 'stravapost': return await routeStravaPost(req, res);
       default:          return res.status(400).json({ ok: false, fout: 'onbekende actie' });
     }
   } catch (e) {
@@ -1194,6 +1253,7 @@ async function routeVerwijder(req, res) {
   if (!/^[0-9a-f]{16}$/.test(id)) return res.status(400).json({ ok: false, fout: 'geen geldig id' });
   const d = await haalDossier(id);
   await redis(['DEL', `core:d:${id}`]);
+  await redis(['DEL', `core:strava:${id}`]);
   await redis(['SREM', 'core:actief', id]);
   if (d?.order) await redis(['DEL', `core:order:${d.order}`]);
   return res.status(200).json({ ok: true, verwijderd: id });

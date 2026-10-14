@@ -282,6 +282,9 @@
   .reekspil { display:inline-block; margin:8px 0 0 6px; }
   .speler .balk .t { margin-right:auto; }
   .speler .spk { background:rgba(255,107,26,.1); border:1px solid rgba(255,107,26,.6); color:#FF6B1A; border-radius:99px; padding:7px 14px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; }
+  .strava-knop { display:inline-flex; align-items:center; gap:8px; margin:14px auto 0; background:#FC4C02; color:#fff; border:0; border-radius:8px; padding:10px 16px; font-weight:700; font-size:14px; cursor:pointer; }
+  .strava-knop.klaar { background:#2d2d2f; color:#fff; }
+  .strava-melding { position:fixed; left:16px; right:16px; bottom:24px; z-index:999; background:#1c1c1e; color:#fff; border:1px solid #FC4C02; border-radius:10px; padding:12px 14px; font-size:14px; text-align:center; }
   .speler .stemklap { margin-top:8px; }
   .speler .stemklap summary { list-style:none; cursor:pointer; font-size:12.5px; color:var(--muted); }
   .speler .stemklap summary::-webkit-details-marker { display:none; }
@@ -1623,6 +1626,7 @@ document.addEventListener('click', (e) => {
 function spelerKlik(e) {
   const k = e.target.closest('[data-sp]'); if (!k || !speler) return;
   const sp = speler, st = sp.stappen[sp.i];
+  if (k.dataset.sp === 'strava') { stravaPlaats(sp.stravaData, k); return; }
   if (k.dataset.sp === 'stem') {
     const keuze = k.dataset.stem;
     try { localStorage.setItem('coreStem', keuze === 'uit' ? '0' : keuze); } catch (er) {}
@@ -1658,6 +1662,32 @@ function sluitSpeler() {
   if (nieuwOpen) { teken(); const kaart = document.querySelector('.sessie.nieuwopen'); if (kaart) kaart.scrollIntoView({ behavior: 'smooth', block: 'center' }); const n = nieuwOpen; setTimeout(() => { if (nieuwOpen === n) { nieuwOpen = null; } }, 2500); }
 }
 
+// Strava (14-10-2026): sessie als activiteit op Strava. Nog niet gekoppeld? Dan eerst koppelen en daarna vanzelf plaatsen.
+const STRAVA_LOGO = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M15.4 17.9l-2.1-4.1h-3.1l5.2 10.2 5.1-10.2h-3.1zM10.2 0L3.3 13.8h4.1l2.8-5.5 2.8 5.5h4z"/></svg>';
+async function stravaPlaats(data, knop) {
+  if (!data) return;
+  if (knop) { knop.disabled = true; knop.innerHTML = STRAVA_LOGO + 'Even plaatsen...'; }
+  const r = await fetch(API + '?actie=stravapost', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: token, ...data }) });
+  const j = await r.json().catch(() => ({ ok: false }));
+  if (j.koppel) { try { localStorage.setItem('coreStravaWacht', JSON.stringify(data)); } catch (e) {} location.href = API + '?actie=stravakoppel&t=' + encodeURIComponent(token); return; }
+  if (j.ok) { if (knop) { knop.innerHTML = STRAVA_LOGO + 'Staat op Strava'; knop.classList.add('klaar'); if (j.url) knop.onclick = () => window.open(j.url, '_blank'), knop.disabled = false; } return j; }
+  if (knop) { knop.disabled = false; knop.innerHTML = STRAVA_LOGO + 'Opnieuw proberen'; }
+  stravaMelding(j.fout || 'Plaatsen op Strava lukte niet. Probeer het zo nog eens.');
+}
+function stravaMelding(tekst) {
+  const el = document.createElement('div'); el.className = 'strava-melding'; el.textContent = tekst; document.body.appendChild(el);
+  setTimeout(() => el.remove(), 5000);
+}
+// Terug van Strava: de sessie die wachtte, meteen plaatsen.
+(async () => {
+  const q = new URLSearchParams(location.search).get('strava'); if (!q) return;
+  try { history.replaceState(null, '', location.pathname + '?t=' + encodeURIComponent(token)); } catch (e) {}
+  let wacht = null; try { wacht = JSON.parse(localStorage.getItem('coreStravaWacht') || 'null'); localStorage.removeItem('coreStravaWacht'); } catch (e) {}
+  if (q === 'gekoppeld' && wacht) { const j = await stravaPlaats(wacht); if (j && j.ok) stravaMelding('Gekoppeld! Je sessie staat op Strava. Voortaan is het één tik.'); }
+  else if (q === 'gekoppeld') stravaMelding('Strava is gekoppeld.');
+  else if (q === 'geweigerd') stravaMelding('Zonder toestemming om activiteiten te maken kan ik niets op Strava zetten. Probeer het gerust nog eens.');
+  else stravaMelding('Koppelen met Strava lukte niet. Probeer het zo nog eens.');
+})();
 async function klaarSpeler() {
   const sp = speler;
   clearInterval(sp.iv); if (sp.stopAnim) sp.stopAnim();
@@ -1694,6 +1724,8 @@ async function klaarSpeler() {
     : 'Afvinken lukte niet. Probeer het straks opnieuw vanaf je pagina.';
   if (volgende) { nieuwOpen = volgende.letter; setTimeout(() => piep(1320, .18), 500); }
   if (j.ok && sp.extraRegel) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<p class="cue" style="margin-top:10px;color:#4CC38A">${sp.extraRegel}</p>`);
+  if (j.ok) { const oef = [...new Set(sp.stappen.filter((s) => s.soort === 'werk').map((s) => s.naam))]; sp.stravaData = { letter: sp.sessie.letter, naam: sp.sessie.naam, sec: Math.round(sp.echt || sp.gepland || 900), oefeningen: oef }; }
+  if (j.ok) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<button type="button" class="strava-knop" data-sp="strava">${STRAVA_LOGO}Zet op Strava</button>`);
   if (j.ok) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<p class="cue" style="margin-top:18px">Hoe voelde deze sessie?</p><div class="gevoel3"><button data-gevoel="licht">Te licht</button><button data-gevoel="goed">Goed</button><button data-gevoel="zwaar">Te zwaar</button></div>`);
   $('.bediening', sp.el).innerHTML = '<button class="hoofd" data-sp="klaar">Terug naar mijn pagina</button>';
   sp.el.addEventListener('click', async (e) => {
