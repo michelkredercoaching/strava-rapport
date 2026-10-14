@@ -2091,7 +2091,7 @@ function bhDashHtml() {
   const cel = (n, t, sub) => `<div class="bhd-cel"><b>${n}</b><span>${t}</span>${sub ? '<small>' + sub + '</small>' : ''}</div>`;
   return `<div class="bhd"><div class="bhd-rij">
     ${cel(x.accounts, 'accounts', 'iedereen die de app gebruikte')}${cel(x.vandaag, 'actief vandaag')}${cel(x.week, 'actief 7 dagen')}${cel(x.maand, 'actief 30 dagen')}</div>
-    <div class="bhd-rij">${cel(x.betaald, 'betalende leden', x.maandLeden + ' maand &middot; ' + x.jaarLeden + ' jaar' + (x.nieuwVandaag ? ' &middot; ' + x.nieuwVandaag + ' nieuw vandaag' : ''))}${cel(eur(x.mrr), 'omzet per maand', 'uit lidmaatschappen')}${cel(x.coaching, 'coaching')}${cel(x.schema, 'via schema')}</div>
+    <div class="bhd-rij">${cel(x.betaald, 'betalende leden', x.maandLeden + ' maand &middot; ' + x.jaarLeden + ' jaar' + (x.nieuwVandaag ? ' &middot; ' + x.nieuwVandaag + ' nieuw vandaag' : ''))}${cel(eur(x.mrr), 'omzet per maand', 'uit lidmaatschappen')}${x.push != null ? cel(x.push, 'meldingen aan', x.accounts ? Math.round(x.push / x.accounts * 100) + '% van de accounts' : '') : ''}${cel(x.coaching, 'coaching')}${cel(x.schema, 'via schema')}</div>
     ${x.voorLancering ? `<div class="bhd-vv"><span><b>Voorverkoop</b> lid worden in de app vóór vrijdag 12:00 &middot; ${x.voorverkoop ? '<em style="color:#4CC38A">staat aan</em>' : 'staat uit'}</span><button type="button" class="knop ${x.voorverkoop ? 'leeg' : ''}" data-bhd="voorverkoop" data-aan="${x.voorverkoop ? '0' : '1'}">${x.voorverkoop ? 'Zet uit' : 'Zet aan'}</button></div>` : ''}
     <button type="button" class="sb-link" data-bhd="ververs" style="margin:6px 0 0">Ververs</button></div>`;
 }
@@ -5173,7 +5173,9 @@ document.addEventListener('click', (e) => {
 // dus we vragen het meteen en duidelijk. Na toestemming staat alles aan
 // (ochtendbericht en Core-herinnering), uitzetten kan onderaan. Gaf iemand al
 // toestemming maar kent de server dit toestel nog niet, dan koppelen we stil.
-function pushWeg() { try { return localStorage.getItem('mkcPushVraagWeg') === '1'; } catch (e) { return false; } }
+// Meldingen vaker vragen (14-10-2026): "Nu niet" is niet voor altijd. Na 3 dagen komt de vraag terug, na drie keer elke 14 dagen.
+function pushWegStand() { try { const v = JSON.parse(localStorage.getItem('mkcPushVraagWeg') || 'null'); return v && typeof v === 'object' ? v : v === 1 ? { n: 1, op: 0 } : null; } catch (e) { return null; } }
+function pushWeg() { const v = pushWegStand(); if (!v) return false; return Date.now() - (v.op || 0) < (v.n >= 3 ? 14 : 3) * 864e5; }
 function meldVraagHtml() {
   if (!pushKan() || !PUSH.key || !PUSH.inst || PUSH.inst.aan || pushWeg()) return '';
   if (typeof DOELV !== 'undefined' && DOELV.bevestig) return '';
@@ -5258,7 +5260,7 @@ document.addEventListener('click', async (e) => {
     PUSH.inst.dagen = l.includes(d) ? l.filter((x) => x !== d) : l.concat(d);
     if (PUSH.inst.aan) await pushOpslaan({}); return sbTeken();
   }
-  if (a === 'vraagweg') { try { localStorage.setItem('mkcPushVraagWeg', '1'); } catch (er) {} return meldTeken(); }
+  if (a === 'vraagweg') { try { const v = pushWegStand() || { n: 0 }; localStorage.setItem('mkcPushVraagWeg', JSON.stringify({ n: (v.n || 0) + 1, op: Date.now() })); } catch (er) {} return meldTeken(); }
   if (a === 'aan') {
     PUSH.bezig = true; sbTeken(); meldTeken();
     try {

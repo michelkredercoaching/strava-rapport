@@ -839,13 +839,14 @@ async function routeBeheerDash(req, res) {
     redis(['ZCARD', 'app:actief']), redis(['SMEMBERS', dagen(1)[0]]), redis(['SUNION', ...dagen(7)]), redis(['SUNION', ...dagen(30)]),
     redis(['ZCOUNT', 'app:actief', String(Date.now() - 7 * 864e5), '+inf']), ledenOverzicht().catch(() => null)
   ]);
+  const pushLijst = await redis(['SMEMBERS', 'app:push:alle']);
   const zonder = (r) => ((r.ok && r.result) || []).filter((e) => !BEHEER.includes(e)).length;
   const tel = (leden && leden.tel) || {};
   return res.status(200).json({ ok: true,
     accounts: Math.max(0, (Number(acc.result) || 0) - BEHEER.length), vandaag: zonder(vandaag), week: zonder(w7), maand: zonder(w30),
     betaald: (tel['betaald-maand'] || 0) + (tel['betaald-jaar'] || 0), maandLeden: tel['betaald-maand'] || 0, jaarLeden: tel['betaald-jaar'] || 0,
     coaching: (tel['coaching-flex'] || 0) + (tel['coaching-premium'] || 0), schema: (tel.schema || 0) + (tel.cadeau || 0),
-    mrr: leden ? leden.mrr : null, nieuwVandaag: leden ? leden.nieuwVandaag : 0, voorverkoop: await voorverkoopAan(), voorLancering: Date.now() < LANCERING });
+    mrr: leden ? leden.mrr : null, nieuwVandaag: leden ? leden.nieuwVandaag : 0, voorverkoop: await voorverkoopAan(), voorLancering: Date.now() < LANCERING, push: zonder(pushLijst) });
 }
 async function routeAankondig(req, res) {
   const body = req.method === 'POST' ? await leesBody(req) : {};
@@ -1092,6 +1093,7 @@ export default async function handler(req, res) {
     if (actie === 'push') return await routePush(req, res);
     if (actie === 'pushtest') return await routePushTest(req, res);
     if (actie === 'pushcron') return await routePushCron(req, res);
+    if (actie === 'correctiesexport') return await routeCorrectiesExport(req, res);
     if (actie === 'startbonus') return await routeStartBonus(req, res);
     if (actie === 'doelenoverzicht') return await routeDoelenOverzicht(req, res);
     if (actie === 'badgeoverzicht') return await routeBadgeOverzicht(req, res);
@@ -1844,6 +1846,13 @@ async function voorbeeldenTekst(bron, vraag) {
   return '\n\nVOORBEELDEN: ZO ZOU MICHEL HET ZELF ZEGGEN (volg deze inhoud en toon als een vraag erop lijkt)\n' +
     l.map((c) => `Vraag: ${c.vraag}\nMichel: ${c.correctie}`).join('\n\n');
 }
+async function routeCorrectiesExport(req, res) {
+  const sleutel = process.env.TRECHTER_SLEUTEL || '';
+  if (!sleutel || String(req.headers?.['x-sleutel'] || '') !== sleutel) return res.status(403).json({ ok: false });
+  const [c, a, k] = await Promise.all([haalCorrecties(), redis(['LRANGE', 'app:antwoorden', '0', '199']), redis(['SCARD', 'app:nagekeken'])]);
+  const antwoorden = ((a.ok && a.result) || []).map((x) => { try { const j = JSON.parse(x); return { id: j.id, bron: j.bron, vraag: j.vraag, antwoord: j.antwoord, op: j.op }; } catch { return null; } }).filter(Boolean);
+  return res.status(200).json({ ok: true, correcties: c.map((x) => ({ id: x.id, bron: x.bron, vraag: x.vraag, origineel: x.origineel, correctie: x.correctie, op: x.op })), antwoorden, nagekeken: Number(k.result) || 0 });
+}
 async function routeAntwoorden(req, res) {
   const body = req.method === 'POST' ? await leesBody(req) : {};
   const email = leesAppToken(String(req.method === 'POST' ? body.t : req.query?.t || ''));
@@ -1995,6 +2004,15 @@ function nlNu() {
   const dag = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'].indexOf(String(v.weekday).slice(0, 2).toLowerCase());
   return { datum: `${v.year}-${v.month}-${v.day}`, minuten: Number(v.hour) * 60 + Number(v.minute), dag };
 }
+// Lancering (vr 16-10-2026 12:00): gratis gebruikers horen dat lid worden open is, wie in de
+// voorverkoop betaalde dat de Core-app open is. Coaching en schema hadden alles al: geen bericht.
+async function lanceerBericht(email) {
+  if (BEHEER.includes(email)) return null;
+  const b = lidBeeld(await haalLid(email));
+  if (b.open && b.bron && b.bron !== 'lid') return null;
+  if (b.open) return { title: 'Je Core-app is open', body: 'Vanaf nu staat je eerste Core-sessie klaar. Een kwartier, thuis op de timer.', url: '/app' };
+  return { title: 'De MKC-app is nu helemaal open', body: 'Word lid voor €9,99 per maand: je coach zonder limiet, je bandenspanning en kleding voor elke rit en de Core-app.', url: '/app#lid' };
+}
 async function routePushCron(req, res) {
   const auth = String(req.headers?.authorization || '');
   if (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`) return res.status(401).json({ ok: false });
@@ -2011,6 +2029,17 @@ async function routePushCron(req, res) {
         const rb = { title: `Je reeks van ${or} dagen loopt gevaar`, body: 'Open de app vandaag nog even, dan blijft je reeks staan.', url: '/app#palmares' };
         const rr = await stuurPush(p.sub, rb);
         if (rr.ok) { p.laatsteReeks = nu.datum; await redis(['SET', `app:push:${email}`, JSON.stringify(p)]); await logPush(email, rb); verstuurd++; }
+      }
+    }
+    if (Date.now() >= LANCERING && Date.now() - LANCERING < 90 * 60000) {
+      const lb = await lanceerBericht(email).catch(() => null);
+      if (lb) {
+        const al = await redis(['SET', `app:push:lancering:${email}`, '1', 'NX', 'EX', String(30 * 86400)]);
+        if (al.ok && al.result === 'OK') {
+          const rl = await stuurPush(p.sub, lb);
+          if (rl.weg) { await redis(['DEL', `app:push:${email}`]); await redis(['SREM', 'app:push:alle', email]); weg++; continue; }
+          if (rl.ok) { await logPush(email, lb); verstuurd++; }
+        }
       }
     }
     const [h, m] = String(p.tijd || '07:00').split(':').map(Number);
