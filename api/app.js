@@ -309,7 +309,7 @@ const BELONING_SESSIES = {
   m10: { titel: 'Herstelsessie van Michel', uitleg: 'Wat ik zelf doe na een lange of zware rit: rustig losmaken, je rug en heupen weer soepel. 6 oefeningen, elk 60 seconden, rustig ademen. Ongeveer 8 minuten.',
     oefeningen: ['kat-koe', 'draai-bovenrug', 'knie-borst', 'couch-stretch', 'bridge', 'kin-intrekken'] }
 };
-async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], doel, lidmaatschap, analyse, voornaam = '' }) {
+async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], doel, lidmaatschap, analyse, voornaam = '', pushAan = false, profiel = null }) {
   const mk = maandNu();
   // Alles wat we nodig hebben in één keer ophalen (sneller openen).
   const [t, rm, rb, mt] = await Promise.all([redis(['HGETALL', `app:teller:${email}`]), redis(['GET', `app:medailles:${email}`]), redis(['GET', `app:badgebeloning:${email}`]), redis(['HGETALL', `app:maand:${email}:${mk}`])]);
@@ -338,6 +338,7 @@ async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], 
     coreSessies: (core && core.sessiesTotaal) || 0, coreNiveaus: (core && core.afgerond) || 0, reeks: (core && core.reeks) || 0,
     rompPlus: core && core.rompscore != null && core.startScore != null ? core.rompscore - core.startScore : 0,
     maten: (lidmaatschap && lidmaatschap.vriendAantal) || 0,
+    vanStart: [!!doel, !!pushAan, (teller.coach || 0) > 0 || coachBerichten.some((b) => b.van === 'ik'), !!(core && !core.intakeNodig), !!(profiel && profiel.plaats && (profiel.fietsen || []).length)].filter(Boolean).length,
     lidMaanden: lidmaatschap && lidmaatschap.sinds && ((lidmaatschap.tot && Date.parse(lidmaatschap.tot) > Date.now()) || lidmaatschap.bron === 'coaching') ? Math.max(0, Math.floor((Date.now() - Date.parse(lidmaatschap.sinds)) / (30.44 * 864e5))) : 0
   };
   let verdiend = {}; try { verdiend = (rm.ok && rm.result && JSON.parse(rm.result)) || {}; } catch (e) {}
@@ -387,6 +388,7 @@ async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], 
     await redis(['SADD', 'app:badges:alle', email]);
   }
   await rlAutoMee(email, voornaam, totaal >= RANGLIJST_VANAF ? totaal * 100 + goud : null);
+  if (!eerste && totaal === 1 && nieuw.some((x) => x.id === 'van-start' && x.niveau === 1)) await appMelding(email, { soort: 'badge', titel: 'Je eerste medaille is binnen', tekst: 'Van start brons. Je staat nu op de ranglijst, kijk waar je staat.', link: '/app#palmares' }).catch(() => {});
   // Maandklassement: medailles (niveaus) die je déze maand haalde, goud als tiebreak.
   let maandScore = 0, maandGoud = 0;
   for (const v of Object.values(verdiend)) { if (!v || typeof v !== 'object') continue; for (const [k, op] of Object.entries(v)) { if (/^[123]$/.test(k) && String(op).slice(0, 7) === mk) { maandScore++; if (k === '3') maandGoud++; } } }
@@ -1167,7 +1169,8 @@ async function routeOverzicht(req, res) {
   let uitnodigingen = []; try { uitnodigingen = ((uitn.ok && uitn.result && JSON.parse(uitn.result)) || []).slice(0, 30); } catch (e) {}
   let uitgenodigd = null; try { const u = uitg.ok && uitg.result ? JSON.parse(uitg.result) : null; if (u && !(lidmaatschap && lidmaatschap.betaaldOoit)) uitgenodigd = { naam: u.naam || '' }; } catch (e) {}
   const ledenAnalyse = lb.open && lb.bron !== 'coaching' && !lb.coaching ? (() => { const t = maakKortingToken(LEDEN_ANALYSE, 30); return t ? `https://rapport.michelkredercoaching.nl/?korting=${t}` : null; })() : null;
-  const palmares = await badgesBijwerken(email, { core, ritten, coachBerichten, doel, lidmaatschap, analyse, voornaam: (core && core.naam) || mf.FNAME || '' }).catch((e) => { console.error('badges', email, e && e.message); return { badges: [], medailles: 0, beloningen: [], nieuweBadges: [], nieuweBeloningen: [] }; });
+  const pushNu = await haalPush(email).catch(() => null);
+  const palmares = await badgesBijwerken(email, { core, ritten, coachBerichten, doel, lidmaatschap, analyse, voornaam: (core && core.naam) || mf.FNAME || '', pushAan: !!(pushNu && pushNu.sub), profiel: bandenProfiel }).catch((e) => { console.error('badges', email, e && e.message); return { badges: [], medailles: 0, beloningen: [], nieuweBadges: [], nieuweBeloningen: [] }; });
   const badgeKorting = await redis(['GET', `app:badgekorting:${email}`]);
   return res.status(200).json({ doel, ledenAnalyse, badges: palmares.badges, medailles: palmares.medailles, goud: palmares.goud, maandMedailles: palmares.maandMedailles, maand: palmares.maand, maandCollectie: palmares.maandCollectie, ranglijstOpen: palmares.ranglijstOpen, appReeks: palmares.appReeks, beloningen: palmares.beloningen, nieuweBadges: palmares.nieuweBadges, nieuweBeloningen: palmares.nieuweBeloningen, badgeKorting: Number(badgeKorting.ok && badgeKorting.result) || 0, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1) }, 
     ok: true,

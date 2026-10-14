@@ -1266,6 +1266,7 @@ function installGidsHtml() {
 }
 function installGezien() { try { return !!(localStorage.getItem('mkcInstallGezien') || localStorage.getItem('mkcBeginscherm') === '1'); } catch (e) { return true; } }
 function installEenmaal() {
+  if (document.getElementById('lxModal') && !installGezien()) { NA_DICHT = installEenmaal; return; }
   if (!D || D.gast || isApp() || installGezien() || ONB || document.getElementById('onb') || document.getElementById('lxModal')) return;
   if (!window.matchMedia('(pointer: coarse)').matches || installRoute() === 'computer') return;
   installGids(true);
@@ -2751,7 +2752,7 @@ function onbKlaar(sla) {
   document.getElementById('onb')?.remove(); document.body.classList.remove('onb-open');
   if (!sla) statEens('welkom');
   ONB = null; VIEW = 'home'; teken(); window.scrollTo(0, 0);
-  setTimeout(installEenmaal, 700); // Android en anderen: meteen na de welkomstreeks de installatiehulp (iPhone zag hem al in stap 6)
+  laadOverzicht(); // haalt je eerste medaille (Van start) op; feestje en daarna de installatiehulp volgen vanzelf
 }
 const ONB_STAPPEN = 6;
 function onbHtml() {
@@ -3221,7 +3222,8 @@ async function wordLid(knop) {
 const OPZEG_NAMEN = { 'te-duur': 'Te duur', 'te-weinig': 'Gebruik het te weinig', winterstop: 'Even geen tijd of winterstop', 'mist-iets': 'Ik mis iets', anders: 'Iets anders', geen: 'Geen reden', 'pauze-gekozen': 'Koos pauze i.p.v. opzeggen' };
 window.addEventListener("scroll", () => { const k = scrollY > 80; if (document.body.classList.contains("fab-klein") !== k) document.body.classList.toggle("fab-klein", k); }, { passive: true });
 function modal(html) { lxDicht(); const bg = document.createElement('div'); bg.className = 'modal-bg'; bg.id = 'lxModal'; bg.innerHTML = '<div class="modal">' + html + '</div>'; bg.addEventListener('click', (e) => { if (e.target === bg) lxDicht(); }); document.body.appendChild(bg); }
-function lxDicht() { const m = document.getElementById('lxModal'); if (m) m.remove(); }
+let NA_DICHT = null;
+function lxDicht() { const m = document.getElementById('lxModal'); if (m) m.remove(); if (m && NA_DICHT) { const f = NA_DICHT; NA_DICHT = null; setTimeout(f, 400); } }
 function zegOp() {
   const l = (zicht() || {}).lid || {};
   modal(`<h3>Jammer dat je gaat</h3><p>Mag ik vragen waarom? Daar leer ik van. Je kunt alles blijven gebruiken tot het einde van wat je al betaalde.</p>
@@ -3312,6 +3314,7 @@ function vriendLijstHtml() {
 const MD_NIV = ['brons', 'zilver', 'goud'], MD_NAAM = ['Brons', 'Zilver', 'Goud'];
 const MD_KLEUR = { 4: ['#ffe2c7', '#FF6B1A', '#a0400a', '#3a1400'], 0: ['#4a4a4a', '#2c2c2c', '#171717', '#7a7a7a'], 1: ['#ffd3a3', '#cd7f32', '#6e3b0f', '#3b1d05'], 2: ['#ffffff', '#c8cdd5', '#6c7480', '#262b33'], 3: ['#fff4b8', '#f3c22c', '#a26c06', '#3d2700'] };
 const MD_IC = {
+  start: '<circle cx="12" cy="12" r="8.5"/><path d="M10 8.3l5.2 3.7-5.2 3.7z"/>',
   core: '<rect x="5" y="6" width="3.5" height="12" rx="1.2"/><rect x="15.5" y="6" width="3.5" height="12" rx="1.2"/><path d="M8.5 12h7M2.5 9.5v5M21.5 9.5v5"/>',
   omhoog: '<path d="M6 14l6-6 6 6M6 20l6-6 6 6"/>',
   grafiek: '<path d="M3 20h18M5 16l4-5 4 3 6-8"/><path d="M15 6h4v4"/>',
@@ -3724,11 +3727,21 @@ function badgeFeest() {
   setTimeout(() => {
     if (nbel.length) return beloningModal(nbel[nbel.length - 1], true);
     const m = nb.find((x) => x.maand); if (m) return maandModal(true);
+    if (nb.length === 1 && nb[0].id === 'van-start' && nb[0].niveau === 1) return eersteMedailleModal();
     const hoogste = nb.slice().sort((a, b) => b.niveau - a.niveau)[0];
     badgeModal(hoogste.id, hoogste.niveau);
   }, 600);
 }
 // Je rang, op meer plekken, met een tik naar je ladder.
+// Je allereerste medaille (14-10-2026): laat meteen zien dat er een ranglijst is.
+function eersteMedailleModal() {
+  const b = (D.badges || []).find((x) => x.id === 'van-start');
+  const naam = esc(((D.rangprofiel && D.rangprofiel.naam) || lidVoornaam() || '').trim());
+  modal(`<div class="md-modal"><div class="md-unlock">${(D.medailles || 0) <= 1 ? 'Je eerste medaille' : 'Nieuwe medaille'}</div>${b ? medailleSvg(b, 96, { niveau: 1 }) : ''}<h3 style="margin-top:6px">Van start, brons</h3>
+    <p>Mooi begin${naam ? ', ' + naam : ''}! Je staat op de ranglijst. Elke maand begint iedereen weer bij nul, dus je kunt meteen meedoen om het podium.</p>
+    <p class="klein">Volgende medaille: zet nog 2 startstappen, bijvoorbeeld meldingen aan en je eerste vraag aan de coach.</p>
+    <button type="button" class="knop" data-view="palmares">Bekijk de ranglijst</button><button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:8px auto 0">Later</button></div>`);
+}
 function palmaresChipHtml(d) {
   const pb = palmaresStand(d);
   return `<a href="#" class="rang-chip" data-view="palmares"><span>Palmares</span>${pb.l.length ? pb.m + (pb.m === 1 ? ' medaille' : ' medailles') : 'Je medailles'} <i>&rsaquo;</i></a>`;
