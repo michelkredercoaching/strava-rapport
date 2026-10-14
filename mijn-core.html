@@ -1683,7 +1683,7 @@ function stravaMelding(tekst) {
   const q = new URLSearchParams(location.search).get('strava'); if (!q) return;
   try { history.replaceState(null, '', location.pathname + '?t=' + encodeURIComponent(token)); } catch (e) {}
   let wacht = null; try { wacht = JSON.parse(localStorage.getItem('coreStravaWacht') || 'null'); localStorage.removeItem('coreStravaWacht'); } catch (e) {}
-  if (q === 'gekoppeld' && wacht) { const j = await stravaPlaats(wacht); if (j && j.ok) stravaMelding('Gekoppeld! Je sessie staat op Strava. Voortaan is het één tik.'); }
+  if (q === 'gekoppeld' && wacht) { const j = await stravaPlaats(wacht); if (j && j.ok) stravaMelding('Je sessie staat op Strava.'); }
   else if (q === 'gekoppeld') stravaMelding('Strava is gekoppeld.');
   else if (q === 'geweigerd') stravaMelding('Zonder toestemming om activiteiten te maken kan ik niets op Strava zetten. Probeer het gerust nog eens.');
   else stravaMelding('Koppelen met Strava lukte niet. Probeer het zo nog eens.');

@@ -308,7 +308,14 @@ function magIntern(req) {
 // Tokens per dossier in core:strava:<id>. Zelfde Strava-app als de analyse (zelfde domein).
 const stuurDoor = (res, url) => { res.statusCode = 302; res.setHeader('Location', url); res.end(); };
 const STRAVA_TERUG = 'https://rapport.michelkredercoaching.nl/api/core?actie=stravaterug';
-async function stravaBewaar(id, tk) { await redis(['SET', `core:strava:${id}`, JSON.stringify(tk), 'EX', String(400 * 86400)]); } // vervalt net als het dossier na 400 dagen zonder gebruik
+// Strava-capaciteit (14-10-2026): de app mag maar 10 atleten tegelijk gekoppeld hebben en deelt
+// die met de Strava-analyse (€29). Daarom ontkoppelen we na elke plaatsing, net als de analyse,
+// en bewaren we het token maar kort. Kost de renner één tik op Toestaan per keer.
+async function stravaOntkoppel(id, access) {
+  if (access) { try { await fetch('https://www.strava.com/oauth/deauthorize', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ access_token: access }) }); } catch (e) {} }
+  await redis(['DEL', `core:strava:${id}`]);
+}
+async function stravaBewaar(id, tk) { await redis(['SET', `core:strava:${id}`, JSON.stringify(tk), 'EX', '3600']); } // kort: na de plaatsing wordt er meteen ontkoppeld
 async function stravaToken(id) {
   const r = await redis(['GET', `core:strava:${id}`]); if (!r.ok || !r.result) return null;
   let tk; try { tk = JSON.parse(r.result); } catch { return null; }
@@ -322,7 +329,7 @@ async function stravaToken(id) {
 async function routeStravaKoppel(req, res) {
   const t = String(req.query?.t || ''), id = leesCoreToken(t);
   if (!id || !process.env.STRAVA_CLIENT_ID) return stuurDoor(res, '/mijn-core?t=' + encodeURIComponent(t) + '&strava=fout');
-  return stuurDoor(res, 'https://www.strava.com/oauth/authorize?' + new URLSearchParams({ client_id: process.env.STRAVA_CLIENT_ID, response_type: 'code', redirect_uri: STRAVA_TERUG, approval_prompt: 'auto', scope: 'activity:write', state: t }).toString());
+  return stuurDoor(res, 'https://www.strava.com/oauth/authorize?' + new URLSearchParams({ client_id: process.env.STRAVA_CLIENT_ID, response_type: 'code', redirect_uri: STRAVA_TERUG, approval_prompt: 'force', scope: 'activity:write', state: t }).toString());
 }
 async function routeStravaTerug(req, res) {
   const t = String(req.query?.state || ''), id = leesCoreToken(t), terug = (s) => stuurDoor(res, '/mijn-core?t=' + encodeURIComponent(t) + '&strava=' + s);
@@ -343,7 +350,7 @@ async function routeStravaPost(req, res) {
   const access = await stravaToken(d.id);
   if (!access) return res.status(200).json({ ok: false, koppel: true });
   const dubbel = await redis(['SET', `core:strava:post:${d.id}:${sessie.op}`, '1', 'NX', 'EX', String(90 * 86400)]);
-  if (!dubbel.ok || dubbel.result !== 'OK') return res.status(200).json({ ok: true, al: true });
+  if (!dubbel.ok || dubbel.result !== 'OK') { await stravaOntkoppel(d.id, access); return res.status(200).json({ ok: true, al: true }); }
   const schoon = (x, n) => String(x || '').replace(/[<>]/g, '').trim().slice(0, n);
   const sec = Math.max(300, Math.min(5400, Math.round(Number(body.sec) || 900)));
   const oef = Array.isArray(body.oefeningen) ? body.oefeningen.slice(0, 12).map((x) => schoon(x, 50)).filter(Boolean) : [];
@@ -359,7 +366,8 @@ async function routeStravaPost(req, res) {
     description: omschrijving, trainer: '1' });
   const a = await fetch('https://www.strava.com/api/v3/activities', { method: 'POST', headers: { Authorization: 'Bearer ' + access, 'Content-Type': 'application/x-www-form-urlencoded' }, body: form });
   const aj = await a.json().catch(() => ({}));
-  if (!a.ok || !aj.id) { await redis(['DEL', `core:strava:post:${d.id}:${sessie.op}`]); if (a.status === 401) { await redis(['DEL', `core:strava:${d.id}`]); return res.status(200).json({ ok: false, koppel: true }); } console.error('strava post', a.status, JSON.stringify(aj).slice(0, 300)); return res.status(502).json({ ok: false, fout: 'Strava gaf een fout. Probeer het zo nog eens.' }); }
+  if (!a.ok || !aj.id) { await redis(['DEL', `core:strava:post:${d.id}:${sessie.op}`]); if (a.status === 401) { await redis(['DEL', `core:strava:${d.id}`]); return res.status(200).json({ ok: false, koppel: true }); } console.error('strava post', a.status, JSON.stringify(aj).slice(0, 300)); await stravaOntkoppel(d.id, access); return res.status(502).json({ ok: false, fout: 'Strava gaf een fout. Probeer het zo nog eens.' }); }
+  await stravaOntkoppel(d.id, access);
   await tel(d.email, 'core-strava').catch(() => {});
   // Tellers voor de badges Op Strava en Strava-reeks (app:teller, zelfde plek als de andere badges)
   try {
