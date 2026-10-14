@@ -3295,7 +3295,7 @@ function teken() {
     <div id="doelvak">${eersteWeekHtml(d) ? '' : doelVakHtml(d)}</div>
     ${tipHtml(d)}
     ${tegelsHtml(d)}
-    ${rustigBegin(d) ? '' : `${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
+    ${rustigBegin(d) ? '' : `${appHtml() && !eersteWeekHtml(d) && !startlijstHtml(d) ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
     ${verkoopMomentHtml(d) || (routeHtml(d) ? '' : lidBalkHtml(d))}`}
     ${vriendMomentHtml(d)}
     ${rustigBegin(d) || routeHtml(d) ? '' : volgendeStapHtml(d)}
