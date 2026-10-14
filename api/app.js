@@ -785,7 +785,7 @@ async function routeNuttig(req, res) {
 }
 
 // ---- "Hou me op de hoogte" voor Afvalprogramma en pacingplan (09-10-2026) ----
-const INTERESSE = { afval: 'interesse-afvalprogramma', pacing: 'interesse-pacingplan' };
+const INTERESSE = { afval: 'interesse-afvalprogramma', pacing: 'interesse-pacingplan', kracht: 'interesse-kracht' };
 async function routeInteresse(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const body = await leesBody(req);
@@ -1240,7 +1240,7 @@ async function routeOverzicht(req, res) {
   meldActief(email);
   const [core, lid, lidmaatschap, kanLid, bandenProfiel, ritten, schemaDossier, meldingen, coachBerichten] = await Promise.all([coreVoorEmail(email), mcLid(email), haalLid(email), lidOpenApp(), haalBandenProfiel(email), haalRitten(email), haalSchema(email), haalMeldingen(email), haalCoachBerichten(email)]);
   const reviewNu = await reviewOpen(email);
-  const [ia, ip, doel] = await Promise.all([redis(['SISMEMBER', 'app:interesse:afval', email]), redis(['SISMEMBER', 'app:interesse:pacing', email]), haalDoel(email)]);
+  const [ia, ip, doel, ik] = await Promise.all([redis(['SISMEMBER', 'app:interesse:afval', email]), redis(['SISMEMBER', 'app:interesse:pacing', email]), haalDoel(email), redis(['SISMEMBER', 'app:interesse:kracht', email])]);
   // Ingelogd via de knop in de mail (zonder code) en nog geen contact? Dan
   // ook hier het gratis account aanmaken.
   if (!lid || lid.status === 'archived') await nieuwAccount(email);
@@ -1267,7 +1267,7 @@ async function routeOverzicht(req, res) {
   const pushNu = await haalPush(email).catch(() => null);
   const palmares = await badgesBijwerken(email, { core, ritten, coachBerichten, doel, lidmaatschap, analyse, voornaam: (core && core.naam) || mf.FNAME || '', pushAan: !!(pushNu && pushNu.sub), profiel: bandenProfiel }).catch((e) => { console.error('badges', email, e && e.message); return { badges: [], medailles: 0, beloningen: [], nieuweBadges: [], nieuweBeloningen: [] }; });
   const badgeKorting = await redis(['GET', `app:badgekorting:${email}`]);
-  return res.status(200).json({ doel, ledenAnalyse, badges: palmares.badges, medailles: palmares.medailles, goud: palmares.goud, maandMedailles: palmares.maandMedailles, maand: palmares.maand, maandCollectie: palmares.maandCollectie, ranglijstOpen: palmares.ranglijstOpen, appReeks: palmares.appReeks, beloningen: palmares.beloningen, nieuweBadges: palmares.nieuweBadges, nieuweBeloningen: palmares.nieuweBeloningen, badgeKorting: Number(badgeKorting.ok && badgeKorting.result) || 0, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1) }, 
+  return res.status(200).json({ doel, ledenAnalyse, badges: palmares.badges, medailles: palmares.medailles, goud: palmares.goud, maandMedailles: palmares.maandMedailles, maand: palmares.maand, maandCollectie: palmares.maandCollectie, ranglijstOpen: palmares.ranglijstOpen, appReeks: palmares.appReeks, beloningen: palmares.beloningen, nieuweBadges: palmares.nieuweBadges, nieuweBeloningen: palmares.nieuweBeloningen, badgeKorting: Number(badgeKorting.ok && badgeKorting.result) || 0, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1), kracht: !!(ik.ok && ik.result === 1) }, 
     ok: true,
     email,
     beheer: BEHEER.includes(email),
@@ -2143,6 +2143,17 @@ async function lanceerBericht(email) {
 async function routePushCron(req, res) {
   const auth = String(req.headers?.authorization || '');
   if (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`) return res.status(401).json({ ok: false });
+  // Kracht gaat open (14-10-2026): wie op de lijst stond krijgt één bericht, vanaf 9:00 op de openingsdag.
+  if (KRACHT_VOOR_LEDEN() && nlNu().minuten >= 9 * 60) {
+    const eerst = await redis(['SET', 'app:kracht:aangekondigd', '1', 'NX']);
+    if (eerst.ok && eerst.result === 'OK') {
+      const l = await redis(['SMEMBERS', 'app:interesse:kracht']);
+      for (const e of (l.ok && l.result) || []) {
+        const lid = await magSlim(e).catch(() => false);
+        await appMelding(e, { soort: 'kracht', titel: 'Kracht staat open', tekst: lid ? 'Je stond op de lijst: vanaf vandaag kies je in de app tussen Core en Kracht. Begin je eerste krachtweek.' : 'Je stond op de lijst: Kracht staat open voor leden. Bekijk wat je krijgt.', link: '/app' }).catch(() => {});
+      }
+    }
+  }
   const nu = nlNu();
   const lijst = await redis(['SMEMBERS', 'app:push:alle']);
   let verstuurd = 0, overgeslagen = 0, weg = 0;

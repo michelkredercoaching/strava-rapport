@@ -1533,8 +1533,8 @@ function nepGrafiek() {
 const BINNENKORT_IG = '<div class="bk-ig"><b>Binnenkort beschikbaar</b><span>Ik kondig de datum aan op Instagram. Hou hem daar in de gaten.</span><a class="knop leeg" href="https://www.instagram.com/michelkredercoaching/" target="_blank" rel="noopener">Volg op Instagram</a></div>';
 function opDeHoogteHtml(product) {
   const al = D && D.interesse && D.interesse[product];
-  if (al) return '<p class="klein" style="margin-top:10px;color:#7fe0a0">&#10003; Je staat op de lijst. Je hoort het als eerste als het er is.</p>';
-  return '<button type="button" class="knop" data-interesse="' + product + '" style="margin-top:10px">Hou me op de hoogte</button>';
+  if (al) return '<p class="klein" style="margin-top:10px;color:#7fe0a0">&#10003; Je staat op de lijst. ' + (product === 'kracht' ? 'Op 1 november krijg je een berichtje zodra Kracht open staat.' : 'Je hoort het als eerste als het er is.') + '</p>';
+  return '<button type="button" class="knop" data-interesse="' + product + '" style="margin-top:10px">' + (product === 'kracht' ? 'Zet me op de lijst' : 'Hou me op de hoogte') + '</button>';
 }
 document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-interesse]'); if (!k) return;
@@ -2826,7 +2826,7 @@ function tegelsHtml(d) {
   const halfNu = t.filter((x) => !x.includes('tegel breed')).length; // even? dan zou de coach alleen op een halve rij staan
   t.push(tegel({ breed: halfNu % 2 === 0, v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Lid') : '3 gratis', tagKlas: 'or' }));
   if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true }));
-  const bk = `<div class="bk-rij"><span>Binnenkort</span><button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
+  const bk = `<div class="bk-rij"><span>Binnenkort</span>${!d.kracht && Date.now() < KRACHT_OPEN_APP ? `<button type="button" data-view="kracht">${IC.kracht}Kracht &middot; 1 nov</button>` : ''}<button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
   const wissel = vorm === 'core' && d.kracht ? `<p class="klein tg-wissel">Liever kracht in de sportschool? <button type="button" class="sb-link" data-wisselvorm="kracht" style="display:inline;margin:0">Wissel naar Kracht</button></p>` : '';
   return `<div class="tegels">${t.join('')}</div>${wissel}${routeHtml(d)}${eersteWeekHtml(d) ? '' : bk}`;
 }
@@ -3239,7 +3239,8 @@ function krachtPagina(d) {
   if (!k) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><span class="tag oranje">Vanaf 1 november</span><div class="label">Kracht</div><h2>Sterker trappen komt eraan</h2>
     <p>We zijn er hard mee bezig. Vanaf 1 november kies je in de app tussen Core en Kracht: twee keer per week een uur in de sportschool, met een opbouw van 12 weken en gewichten die de app voor je uitrekent.</p>${KR_VERSCHIL}
     <ul class="core-punten"><li>Zware oefeningen die op de trapbeweging lijken: squat, step-up, deadlift op één been</li><li>Je logt je gewichten, de app zegt wanneer het zwaarder mag</li><li>In de winter opbouw, in het seizoen 1 keer per week vasthouden</li></ul>
-    <p class="klein">Kracht hoort bij het lidmaatschap, ook als je coaching of een schema hebt.${isLid(d) || (d.lid && d.lid.bron === 'coaching') ? ' Jij kunt er op 1 november meteen mee aan de slag.' : ''}</p></div></div></div>`;
+    <p class="klein">Kracht hoort bij het lidmaatschap, ook als je coaching of een schema hebt.${isLid(d) || (d.lid && d.lid.bron === 'coaching') ? ' Jij kunt er op 1 november meteen mee aan de slag.' : ''}</p>
+    ${opDeHoogteHtml('kracht')}<p class="klein" style="margin-top:6px">Sta je op de lijst, dan krijg je op 1 november een berichtje in de app${D && PUSH && PUSH.inst && PUSH.inst.aan ? ' en een pushmelding' : ''}.</p></div></div></div>`;
   if (!k.open) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht</div><h2>Sterker trappen</h2><p>Twee keer per week een uur in de sportschool, met een opbouw van 12 weken.</p>${KR_VERSCHIL}<p class="klein">Kracht zit in het lidmaatschap.</p><button type="button" class="knop" data-view="lid">Bekijk het lidmaatschap</button></div></div></div>`;
   const b = k.beeld;
   if (!b) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht</div><h2>Sterker trappen</h2>
