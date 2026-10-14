@@ -1124,6 +1124,7 @@ export default async function handler(req, res) {
     if (actie === 'pushcron') return await routePushCron(req, res);
     if (actie === 'naam') return await routeNaam(req, res);
     if (actie === 'correctiesexport') return await routeCorrectiesExport(req, res);
+    if (actie === 'correctieimport') return await routeCorrectieImport(req, res);
     if (actie === 'startbonus') return await routeStartBonus(req, res);
     if (actie === 'doelenoverzicht') return await routeDoelenOverzicht(req, res);
     if (actie === 'badgeoverzicht') return await routeBadgeOverzicht(req, res);
@@ -1891,6 +1892,22 @@ async function voorbeeldenTekst(bron, vraag) {
   if (!l.length) return '';
   return '\n\nVOORBEELDEN: ZO ZOU MICHEL HET ZELF ZEGGEN (volg deze inhoud en toon als een vraag erop lijkt)\n' +
     l.map((c) => `Vraag: ${c.vraag}\nMichel: ${c.correctie}`).join('\n\n');
+}
+// Correctie invoeren namens Michel (14-10-2026), alleen met TRECHTER_SLEUTEL: voor als Michel Claude vraagt
+// een antwoord te verbeteren. Zelfde werking als "Ja, ik schrijf het zelf" in Nakijken.
+async function routeCorrectieImport(req, res) {
+  const sleutel = process.env.TRECHTER_SLEUTEL || '';
+  if (req.method !== 'POST' || !sleutel || String(req.headers?.['x-sleutel'] || '') !== sleutel) return res.status(403).json({ ok: false });
+  const body = await leesBody(req);
+  const id = String(body.id || '').slice(0, 20), tekst = String(body.correctie || '').trim().slice(0, 1200);
+  const l = await redis(['LRANGE', 'app:antwoorden', '0', '199']);
+  const a = ((l.ok && l.result) || []).map((x) => { try { return JSON.parse(x); } catch { return null; } }).find((x) => x && x.id === id);
+  if (!a || !tekst) return res.status(404).json({ ok: false, fout: 'antwoord niet gevonden of lege correctie' });
+  let correcties = (await haalCorrecties()).filter((c) => c.id !== id);
+  correcties.unshift({ id, bron: a.bron, vraag: a.vraag, origineel: a.antwoord, correctie: tekst, op: new Date().toISOString(), door: 'claude-voor-michel' });
+  await redis(['SET', 'app:correcties', JSON.stringify(correcties.slice(0, 150))]);
+  await redis(['SADD', 'app:nagekeken', id]);
+  return res.status(200).json({ ok: true, aantal: correcties.length });
 }
 async function routeCorrectiesExport(req, res) {
   const sleutel = process.env.TRECHTER_SLEUTEL || '';
