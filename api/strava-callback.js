@@ -106,6 +106,7 @@ function cacheSet(id, html) {
 
 export default async function handler(req, res) {
   const { code, error } = req.query;
+  let tokenVoorOpruimen = null; // (14-10-2026) bij elke fout alsnog loskoppelen
 
   if (error || !code) {
     return res.redirect('/?error=strava_denied');
@@ -121,6 +122,12 @@ export default async function handler(req, res) {
   const verleendeScope = String(req.query.scope || '');
   if (verleendeScope && !verleendeScope.includes('activity:read_all')) {
     console.log('Scope zonder activity:read_all verleend:', verleendeScope);
+    // (14-10-2026) Ook dan is de sporter gekoppeld: token ophalen en meteen loskoppelen, zodat er geen plek bezet blijft.
+    try {
+      const t = await fetch('https://www.strava.com/oauth/token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client_id: process.env.STRAVA_CLIENT_ID, client_secret: process.env.STRAVA_CLIENT_SECRET, code, grant_type: 'authorization_code' }) });
+      const tj = await t.json().catch(() => ({}));
+      if (tj.access_token) await deauthorize(tj.access_token, tj.athlete && tj.athlete.id);
+    } catch (e) {}
     return res.redirect('/?error=scope_prive');
   }
 
@@ -142,6 +149,7 @@ export default async function handler(req, res) {
     }
 
     const accessToken = tokenData.access_token;
+    tokenVoorOpruimen = accessToken;
     const athlete = tokenData.athlete;
 
     // Snelle herhaling? Serveer de eerder gemaakte analyse en sla de zware
@@ -166,6 +174,7 @@ export default async function handler(req, res) {
     // is het venster incompleet en mogen we er geen rapport op bouwen.
     if (!venster.ok) {
       console.error('Strava activiteiten niet compleet (mogelijk rate limit):', venster.status, '· pagina', venster.paginas, venster.fout);
+      await deauthorize(accessToken, athlete?.id);
       return res.redirect('/?error=strava_druk');
     }
     const activiteiten = venster.activiteiten;
@@ -247,6 +256,7 @@ export default async function handler(req, res) {
       }
       const oorzaak = rateLimitGeraakt ? 'rate limit (429)' : 'token ingetrokken (401/403, parallelle run)';
       console.error(`Geen stream-data — ${oorzaak} — athleet ${athlete?.id} — rapport afgebroken i.p.v. foutieve FTP`);
+      await deauthorize(accessToken, athlete?.id);
       return res.redirect('/?error=strava_druk');
     }
 
@@ -319,6 +329,7 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error('Strava callback error:', err);
+    if (tokenVoorOpruimen) { try { await deauthorize(tokenVoorOpruimen, null); } catch (e) {} }
     res.redirect('/?error=server_error');
   }
 }
