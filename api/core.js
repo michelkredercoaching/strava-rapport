@@ -678,6 +678,8 @@ export default async function handler(req, res) {
     for (const [k, v] of new URLSearchParams(rest)) if (req.query[k] == null) req.query[k] = v;
     req.query.actie = echt;
   }
+  // De Strava-app laat ?actie=stravaterug soms helemaal weg: komt er een code en state van Strava binnen zonder actie, dan is het de terugkeer.
+  if (req.query && !req.query.actie && req.query.state && (req.query.code || req.query.error) && leesCoreToken(String(req.query.state))) req.query.actie = 'stravaterug';
   if (String(req.query?.actie || '').startsWith('strava')) console.log('core strava', req.query.actie, Object.keys(req.query || {}).join(','));
   const actie = (req.query?.actie || '').toString();
   try { LID_OPEN = await lidOpen(); } catch { LID_OPEN = false; }
