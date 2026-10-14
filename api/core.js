@@ -326,11 +326,15 @@ async function stravaToken(id) {
   await stravaBewaar(id, { ...tk, access: j.access_token, refresh: j.refresh_token || tk.refresh, exp: j.expires_at });
   return j.access_token;
 }
+// Op de telefoon via de Strava-app zelf (mobile/authorize): daar is iedereen ingelogd.
 async function routeStravaKoppel(req, res) {
   const t = String(req.query?.t || ''), id = leesCoreToken(t);
   if (!id || !process.env.STRAVA_CLIENT_ID) return stuurDoor(res, '/mijn-core?t=' + encodeURIComponent(t) + '&strava=fout');
-  return stuurDoor(res, 'https://www.strava.com/oauth/authorize?' + new URLSearchParams({ client_id: process.env.STRAVA_CLIENT_ID, response_type: 'code', redirect_uri: STRAVA_TERUG, approval_prompt: 'force', scope: 'activity:write', state: t }).toString());
+  const basis = req.query?.m === '1' ? 'https://www.strava.com/oauth/mobile/authorize?' : 'https://www.strava.com/oauth/authorize?';
+  return stuurDoor(res, basis + new URLSearchParams({ client_id: process.env.STRAVA_CLIENT_ID, response_type: 'code', redirect_uri: STRAVA_TERUG, approval_prompt: 'force', scope: 'activity:write', state: t }).toString());
 }
+// Terug van Strava: de wachtende sessie meteen hier op de server plaatsen en ontkoppelen.
+// Werkt ook als de renner in een andere browser terugkomt dan waar hij begon.
 async function routeStravaTerug(req, res) {
   const t = String(req.query?.state || ''), id = leesCoreToken(t), terug = (s) => stuurDoor(res, '/mijn-core?t=' + encodeURIComponent(t) + '&strava=' + s);
   if (!id) return stuurDoor(res, '/app');
@@ -338,19 +342,20 @@ async function routeStravaTerug(req, res) {
   const v = await fetch('https://www.strava.com/oauth/token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client_id: process.env.STRAVA_CLIENT_ID, client_secret: process.env.STRAVA_CLIENT_SECRET, code: String(req.query?.code || ''), grant_type: 'authorization_code' }) });
   const j = await v.json().catch(() => ({}));
   if (!j.access_token) return terug('fout');
-  await stravaBewaar(id, { access: j.access_token, refresh: j.refresh_token, exp: j.expires_at, atleet: j.athlete && j.athlete.id, op: nu() });
-  return terug('gekoppeld');
+  const w = await redis(['GET', `core:strava:wacht:${id}`]);
+  let wacht = null; try { wacht = w.ok && w.result ? JSON.parse(w.result) : null; } catch {}
+  const d = wacht ? await haalDossier(id) : null;
+  if (!wacht || !d) { await stravaOntkoppel(id, j.access_token); return terug('verlopen'); } // nooit een plek bezet houden
+  await redis(['DEL', `core:strava:wacht:${id}`]);
+  const uit = await plaatsOpStrava(d, wacht, j.access_token);
+  return terug(uit.ok ? 'geplaatst' : 'fout');
 }
-async function routeStravaPost(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ ok: false });
-  const r = await metToken(req, res); if (!r) return;
-  const { d, body } = r;
+// Een gedane sessie als Workout op Strava zetten, daarna altijd ontkoppelen (zie stravaOntkoppel).
+async function plaatsOpStrava(d, body, access) {
   const sessie = [...(d.sessies || [])].reverse().find((s) => s.letter === body.letter);
-  if (!sessie) return res.status(400).json({ ok: false, fout: 'Doe eerst je sessie.' });
-  const access = await stravaToken(d.id);
-  if (!access) return res.status(200).json({ ok: false, koppel: true });
+  if (!sessie) { await stravaOntkoppel(d.id, access); return { ok: false, fout: 'Doe eerst je sessie.' }; }
   const dubbel = await redis(['SET', `core:strava:post:${d.id}:${sessie.op}`, '1', 'NX', 'EX', String(90 * 86400)]);
-  if (!dubbel.ok || dubbel.result !== 'OK') { await stravaOntkoppel(d.id, access); return res.status(200).json({ ok: true, al: true }); }
+  if (!dubbel.ok || dubbel.result !== 'OK') { await stravaOntkoppel(d.id, access); return { ok: true, al: true }; }
   const schoon = (x, n) => String(x || '').replace(/[<>]/g, '').trim().slice(0, n);
   const sec = Math.max(300, Math.min(5400, Math.round(Number(body.sec) || 900)));
   const oef = Array.isArray(body.oefeningen) ? body.oefeningen.slice(0, 12).map((x) => schoon(x, 50)).filter(Boolean) : [];
@@ -362,12 +367,16 @@ async function routeStravaPost(req, res) {
   const tests = (d.tests || []).filter((x) => x.score != null), eerst = tests[0], laatst = tests[tests.length - 1];
   const romp = laatst ? `\nRompscore: ${laatst.score}${eerst && laatst !== eerst && laatst.score > eerst.score ? ` (+${laatst.score - eerst.score} sinds de start)` : ''}` : '';
   const omschrijving = `${Math.round(sec / 60)} minuten core stability voor wielrenners.${oef.length ? '\nOefeningen: ' + oef.join(', ') : ''}${romp}\n\nGetraind met de MKC Core-app van Michel Kreder Coaching\nrapport.michelkredercoaching.nl/app`;
-  const form = new URLSearchParams({ name: schoon('Core: ' + (body.naam || 'sessie') + ' · niveau ' + d.week, 90), sport_type: 'Workout', type: 'Workout', start_date_local: startLokaal, elapsed_time: String(sec),
-    description: omschrijving, trainer: '1' });
+  const form = new URLSearchParams({ name: schoon('Core: ' + (body.naam || 'sessie') + ' · niveau ' + d.week, 90), sport_type: 'Workout', type: 'Workout', start_date_local: startLokaal, elapsed_time: String(sec), description: omschrijving, trainer: '1' });
   const a = await fetch('https://www.strava.com/api/v3/activities', { method: 'POST', headers: { Authorization: 'Bearer ' + access, 'Content-Type': 'application/x-www-form-urlencoded' }, body: form });
   const aj = await a.json().catch(() => ({}));
-  if (!a.ok || !aj.id) { await redis(['DEL', `core:strava:post:${d.id}:${sessie.op}`]); if (a.status === 401) { await redis(['DEL', `core:strava:${d.id}`]); return res.status(200).json({ ok: false, koppel: true }); } console.error('strava post', a.status, JSON.stringify(aj).slice(0, 300)); await stravaOntkoppel(d.id, access); return res.status(502).json({ ok: false, fout: 'Strava gaf een fout. Probeer het zo nog eens.' }); }
   await stravaOntkoppel(d.id, access);
+  if (!a.ok || !aj.id) {
+    await redis(['DEL', `core:strava:post:${d.id}:${sessie.op}`]);
+    if (a.status === 401) return { ok: false, koppel: true };
+    console.error('strava post', a.status, JSON.stringify(aj).slice(0, 300));
+    return { ok: false, fout: 'Strava gaf een fout. Probeer het zo nog eens.' };
+  }
   await tel(d.email, 'core-strava').catch(() => {});
   // Tellers voor de badges Op Strava en Strava-reeks (app:teller, zelfde plek als de andere badges)
   try {
@@ -378,7 +387,22 @@ async function routeStravaPost(req, res) {
     const [w, rks, mx] = ((t.ok && t.result) || []).map((x) => Number(x) || 0);
     if (w !== wk) { const reeks = w === wk - 1 ? rks + 1 : 1; await redis(['HSET', k, 'stravaWeek', String(wk), 'stravaReeks', String(reeks), 'stravaReeksMax', String(Math.max(mx, reeks))]); }
   } catch (e) { console.error('strava teller', e && e.message); }
-  return res.status(200).json({ ok: true, url: 'https://www.strava.com/activities/' + aj.id });
+  return { ok: true, url: 'https://www.strava.com/activities/' + aj.id };
+}
+async function routeStravaPost(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const r = await metToken(req, res); if (!r) return;
+  const { d, body } = r;
+  if (![...(d.sessies || [])].some((s) => s.letter === body.letter)) return res.status(400).json({ ok: false, fout: 'Doe eerst je sessie.' });
+  const access = await stravaToken(d.id);
+  if (!access) {
+    // Nog geen toestemming: onthoud welke sessie erop moet, de server plaatst hem na het toestaan.
+    const schoon = (x, n) => String(x || '').replace(/[<>]/g, '').trim().slice(0, n);
+    await redis(['SET', `core:strava:wacht:${d.id}`, JSON.stringify({ letter: body.letter, naam: schoon(body.naam, 60), sec: Number(body.sec) || 900, oefeningen: Array.isArray(body.oefeningen) ? body.oefeningen.slice(0, 12).map((x) => schoon(x, 50)) : [] }), 'EX', '3600']);
+    return res.status(200).json({ ok: false, koppel: true });
+  }
+  const uit = await plaatsOpStrava(d, body, access);
+  return res.status(uit.ok || uit.koppel ? 200 : 502).json(uit);
 }
 async function metToken(req, res) {
   const body = req.method === 'GET' ? {} : await leesBody(req);

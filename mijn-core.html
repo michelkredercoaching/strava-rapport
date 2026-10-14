@@ -283,6 +283,10 @@
   .speler .balk .t { margin-right:auto; }
   .speler .spk { background:rgba(255,107,26,.1); border:1px solid rgba(255,107,26,.6); color:#FF6B1A; border-radius:99px; padding:7px 14px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; }
   .strava-knop { display:inline-flex; align-items:center; gap:8px; margin:14px auto 0; background:#FC4C02; color:#fff; border:0; border-radius:8px; padding:10px 16px; font-weight:700; font-size:14px; cursor:pointer; }
+  .deel-rij { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:14px; }
+  .deel-rij .strava-knop { margin:0; }
+  .plaatje-knop { display:inline-flex; align-items:center; gap:6px; background:none; border:1px solid rgba(255,107,26,.6); color:#FF6B1A; border-radius:8px; padding:10px 16px; font-weight:700; font-size:14px; cursor:pointer; }
+  .strava-melding .plaatje-knop { display:block; margin:10px auto 0; }
   .strava-knop.klaar { background:#2d2d2f; color:#fff; }
   .strava-melding { position:fixed; left:16px; right:16px; bottom:24px; z-index:999; background:#1c1c1e; color:#fff; border:1px solid #FC4C02; border-radius:10px; padding:12px 14px; font-size:14px; text-align:center; }
   .speler .stemklap { margin-top:8px; }
@@ -1627,6 +1631,7 @@ function spelerKlik(e) {
   const k = e.target.closest('[data-sp]'); if (!k || !speler) return;
   const sp = speler, st = sp.stappen[sp.i];
   if (k.dataset.sp === 'strava') { stravaPlaats(sp.stravaData, k); return; }
+  if (k.dataset.sp === 'plaatje') { deelPlaatje(); return; }
   if (k.dataset.sp === 'stem') {
     const keuze = k.dataset.stem;
     try { localStorage.setItem('coreStem', keuze === 'uit' ? '0' : keuze); } catch (er) {}
@@ -1669,22 +1674,58 @@ async function stravaPlaats(data, knop) {
   if (knop) { knop.disabled = true; knop.innerHTML = STRAVA_LOGO + 'Even plaatsen...'; }
   const r = await fetch(API + '?actie=stravapost', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: token, ...data }) });
   const j = await r.json().catch(() => ({ ok: false }));
-  if (j.koppel) { try { localStorage.setItem('coreStravaWacht', JSON.stringify(data)); } catch (e) {} location.href = API + '?actie=stravakoppel&t=' + encodeURIComponent(token); return; }
+  if (j.koppel) { try { localStorage.setItem('coreStravaWacht', JSON.stringify(data)); } catch (e) {} const mob = /iPhone|iPad|iPod|Android/.test(navigator.userAgent) ? '&m=1' : ''; location.href = API + '?actie=stravakoppel&t=' + encodeURIComponent(token) + mob; return; }
   if (j.ok) { if (knop) { knop.innerHTML = STRAVA_LOGO + 'Staat op Strava'; knop.classList.add('klaar'); if (j.url) knop.onclick = () => window.open(j.url, '_blank'), knop.disabled = false; } return j; }
   if (knop) { knop.disabled = false; knop.innerHTML = STRAVA_LOGO + 'Opnieuw proberen'; }
   stravaMelding(j.fout || 'Plaatsen op Strava lukte niet. Probeer het zo nog eens.');
 }
-function stravaMelding(tekst) {
-  const el = document.createElement('div'); el.className = 'strava-melding'; el.textContent = tekst; document.body.appendChild(el);
-  setTimeout(() => el.remove(), 5000);
+function stravaMelding(tekst, metPlaatje) {
+  const el = document.createElement('div'); el.className = 'strava-melding'; el.textContent = tekst;
+  if (metPlaatje) { const b = document.createElement('button'); b.type = 'button'; b.className = 'plaatje-knop'; b.textContent = 'Maak je deelplaatje'; b.onclick = () => { el.remove(); deelPlaatje(); }; el.appendChild(b); }
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), metPlaatje ? 15000 : 5000);
 }
+// Deelplaatje (14-10-2026): het mannetje van wat je trainde, met je sessie, voor bij je activiteit op Strava.
+// Strava laat apps geen foto's toevoegen; de renner zet het plaatje er zelf bij.
+function laadBeeld(src) { return new Promise((ok, mis) => { const i = new Image(); i.onload = () => ok(i); i.onerror = mis; i.src = src; }); }
+async function deelPlaatje() {
+  let x = null; try { x = JSON.parse(localStorage.getItem('coreLaatsteDeel') || 'null'); } catch (e) {}
+  const K = window.CoreSpierkaart; if (!x || !K) return stravaMelding('Doe eerst een sessie, dan maak ik je plaatje.');
+  try { await document.fonts.ready; } catch (e) {}
+  const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H; const g = c.getContext('2d');
+  g.fillStyle = '#0b0b0b'; g.fillRect(0, 0, W, H);
+  const gr = g.createRadialGradient(W / 2, 520, 50, W / 2, 520, 700); gr.addColorStop(0, 'rgba(255,107,26,.18)'); gr.addColorStop(1, 'rgba(255,107,26,0)'); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  try { const logo = await laadBeeld('/icoon-192.png'); g.save(); g.beginPath(); g.arc(110, 110, 46, 0, Math.PI * 2); g.clip(); g.drawImage(logo, 64, 64, 92, 92); g.restore(); } catch (e) {}
+  g.fillStyle = '#FF6B1A'; g.font = '600 26px "DM Sans", sans-serif'; g.fillText('MKC CORE-APP', 176, 102);
+  g.fillStyle = 'rgba(245,243,239,.6)'; g.font = '400 24px "DM Sans", sans-serif'; g.fillText('Core stability voor wielrenners', 176, 136);
+  g.fillStyle = '#F5F3EF'; g.font = '84px "Bebas Neue", sans-serif'; g.fillText(String(x.naam || 'Core-sessie').toUpperCase().slice(0, 26), 64, 270);
+  g.fillStyle = '#FF6B1A'; g.font = '600 34px "DM Sans", sans-serif'; g.fillText('Niveau ' + x.niveau + '  ·  ' + x.min + ' minuten', 64, 326);
+  const kaart = K.vanSessie(x.ids || []);
+  try {
+    const svg = K.svg(kaart, { labels: true });
+    const img = await laadBeeld('data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg));
+    const bw = 720, bh = bw * 268 / 260; g.drawImage(img, (W - bw) / 2, 370, bw, bh);
+  } catch (e) {}
+  const n = K.namenLijst(kaart);
+  let y = 1255;
+  if (n.hoofd.length) { g.fillStyle = '#F5F3EF'; g.font = '600 32px "DM Sans", sans-serif'; g.fillText('Getraind: ' + n.hoofd.slice(0, 4).join(', '), 64, y - 60); }
+  if (x.romp != null) { g.fillStyle = '#4CC38A'; g.font = '600 30px "DM Sans", sans-serif'; g.fillText('Rompscore ' + x.romp + (x.plus ? '  (+' + x.plus + ' sinds de start)' : ''), 64, y - 14); }
+  g.fillStyle = 'rgba(245,243,239,.55)'; g.font = '400 26px "DM Sans", sans-serif'; g.fillText('rapport.michelkredercoaching.nl/app', 64, H - 48);
+  const blob = await new Promise((ok) => c.toBlob(ok, 'image/png'));
+  const file = new File([blob], 'mkc-core-' + (x.naam || 'sessie').toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.png', { type: 'image/png' });
+  try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return plaatjeUitleg(); } } catch (e) { if (e && e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+  plaatjeUitleg();
+}
+function plaatjeUitleg() { stravaMelding('Bewaar het plaatje. Open daarna je activiteit in Strava, tik op het potlood en kies Foto toevoegen.'); }
 // Terug van Strava: de sessie die wachtte, meteen plaatsen.
 (async () => {
   const q = new URLSearchParams(location.search).get('strava'); if (!q) return;
   try { history.replaceState(null, '', location.pathname + '?t=' + encodeURIComponent(token)); } catch (e) {}
   let wacht = null; try { wacht = JSON.parse(localStorage.getItem('coreStravaWacht') || 'null'); localStorage.removeItem('coreStravaWacht'); } catch (e) {}
-  if (q === 'gekoppeld' && wacht) { const j = await stravaPlaats(wacht); if (j && j.ok) stravaMelding('Je sessie staat op Strava.'); }
-  else if (q === 'gekoppeld') stravaMelding('Strava is gekoppeld.');
+  if (q === 'geplaatst') stravaMelding('Je sessie staat op Strava. Zet je deelplaatje erbij?', true);
+  else if (q === 'gekoppeld' && wacht) { const j = await stravaPlaats(wacht); if (j && j.ok) stravaMelding('Je sessie staat op Strava.'); }
+  else if (q === 'verlopen') stravaMelding('Dat duurde even. Tik nog een keer op Zet op Strava.');
   else if (q === 'geweigerd') stravaMelding('Zonder toestemming om activiteiten te maken kan ik niets op Strava zetten. Probeer het gerust nog eens.');
   else stravaMelding('Koppelen met Strava lukte niet. Probeer het zo nog eens.');
 })();
@@ -1724,8 +1765,10 @@ async function klaarSpeler() {
     : 'Afvinken lukte niet. Probeer het straks opnieuw vanaf je pagina.';
   if (volgende) { nieuwOpen = volgende.letter; setTimeout(() => piep(1320, .18), 500); }
   if (j.ok && sp.extraRegel) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<p class="cue" style="margin-top:10px;color:#4CC38A">${sp.extraRegel}</p>`);
-  if (j.ok) { const oef = [...new Set(sp.stappen.filter((s) => s.soort === 'werk').map((s) => s.naam))]; sp.stravaData = { letter: sp.sessie.letter, naam: sp.sessie.naam, sec: Math.round(sp.echt || sp.gepland || 900), oefeningen: oef }; }
-  if (j.ok) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<button type="button" class="strava-knop" data-sp="strava">${STRAVA_LOGO}Zet op Strava</button>`);
+  if (j.ok) { const werk = sp.stappen.filter((s) => s.soort === 'werk'); const oef = [...new Set(werk.map((s) => s.naam))]; sp.stravaData = { letter: sp.sessie.letter, naam: sp.sessie.naam, sec: Math.round(sp.echt || sp.gepland || 900), oefeningen: oef };
+    const t = (S.tests || []).filter((x) => x.score != null);
+    try { localStorage.setItem('coreLaatsteDeel', JSON.stringify({ naam: sp.sessie.naam, niveau: S.week, min: Math.round((sp.echt || sp.gepland || 900) / 60), ids: [...new Set(werk.map((s) => s.id))], oef, romp: t.length ? t[t.length - 1].score : null, plus: t.length > 1 && t[t.length - 1].score > t[0].score ? t[t.length - 1].score - t[0].score : 0, op: Date.now() })); } catch (e) {} }
+  if (j.ok) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<div class="deel-rij"><button type="button" class="strava-knop" data-sp="strava">${STRAVA_LOGO}Zet op Strava</button><button type="button" class="plaatje-knop" data-sp="plaatje">Maak je deelplaatje</button></div>`);
   if (j.ok) $('.midden', sp.el).insertAdjacentHTML('beforeend', `<p class="cue" style="margin-top:18px">Hoe voelde deze sessie?</p><div class="gevoel3"><button data-gevoel="licht">Te licht</button><button data-gevoel="goed">Goed</button><button data-gevoel="zwaar">Te zwaar</button></div>`);
   $('.bediening', sp.el).innerHTML = '<button class="hoofd" data-sp="klaar">Terug naar mijn pagina</button>';
   sp.el.addEventListener('click', async (e) => {
