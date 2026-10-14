@@ -343,7 +343,7 @@
   .vr-st { font-size:11.5px; font-weight:700; padding:3px 8px; border-radius:20px; background:rgba(255,255,255,.08); color:var(--muted); white-space:nowrap; }
   .vr-st.half { background:rgba(255,107,26,.15); color:var(--accent); } .vr-st.aan { background:var(--accent); color:#0a0a0a; }
   .vr-nog { grid-column:1 / -1; justify-self:start; background:none; border:0; color:var(--accent); font-size:12.5px; padding:0; cursor:pointer; text-decoration:underline; }
-  .rang-plek { margin:14px 0 4px; display:flex; flex-wrap:wrap; gap:8px; }
+  .rang-plek { margin:14px 0 4px; display:flex; flex-wrap:nowrap; gap:6px; } .rang-plek .rang-chip { min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:12px; gap:6px; padding:4px 9px 4px 4px; } .rang-plek .rang-chip span { padding:3px 7px; font-size:10.5px; flex-shrink:0; }
   .rang-chip { display:inline-flex; align-items:center; gap:8px; font-size:12.5px; color:var(--muted); text-decoration:none; border:1px solid rgba(255,107,26,.4); border-radius:20px; padding:4px 12px 4px 4px; }
   .rang-chip span { background:var(--accent); color:#0a0a0a; font-weight:800; font-size:11px; letter-spacing:.06em; text-transform:uppercase; padding:3px 9px; border-radius:20px; }
   .rang-chip i { font-style:normal; color:var(--accent); }
@@ -2761,7 +2761,6 @@ function tegelsHtml(d) {
   const halfNu = t.filter((x) => !x.includes('tegel breed')).length; // even? dan zou de coach alleen op een halve rij staan
   t.push(tegel({ breed: halfNu % 2 === 0, v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Lid') : '3 gratis', tagKlas: 'or' }));
   if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true }));
-  if (false) { const pb = palmaresStand(d); t.push(tegel({ v: 'palmares', ic: 'palmares', nm: 'Je palmares', sub: !pb.l.length ? 'Medailles verdienen met wat je doet' : pb.m + (pb.m === 1 ? ' medaille' : ' medailles') + (pb.volgendeBel ? ' &middot; beloning bij ' + pb.volgendeBel.n : ''), tag: pb.m ? String(pb.m) : '', tagKlas: 'or', breed: true })); }
   const bk = `<div class="bk-rij"><span>Binnenkort</span><button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
   return `<div class="tegels">${t.join('')}</div>${routeHtml(d)}${eersteWeekHtml(d) ? '' : bk}`;
 }
@@ -3925,12 +3924,12 @@ function eersteMedailleModal() {
 }
 function palmaresChipHtml(d) {
   const pb = palmaresStand(d);
-  return `<a href="#" class="rang-chip" data-view="palmares"><span>Palmares</span>${pb.l.length ? pb.m + (pb.m === 1 ? ' medaille' : ' medailles') + (pb.volgendeBel ? ' &middot; beloning bij ' + pb.volgendeBel.n : '') : 'Verdien je eerste medaille'} <i>&rsaquo;</i></a>`;
+  return `<a href="#" class="rang-chip" data-view="palmares"><span>Palmares</span>${pb.l.length ? pb.m + (pb.m === 1 ? ' medaille' : ' medailles') : 'Je medailles'} <i>&rsaquo;</i></a>`;
 }
 function rangChipHtml(d) {
   const l = vriendLid(d); if (!l) return '';
   const n = l.vriendAantal || 0, rang = VR_RANG.find(([m]) => n >= m)[1];
-  return `<a href="#" class="rang-chip" data-actie="naarmaten"><span>${rang}</span>${n ? n + (n === 1 ? ' maat' : ' maten') : 'Nodig je maten uit'} <i>&rsaquo;</i></a>`;
+  return `<a href="#" class="rang-chip" data-actie="naarmaten"><span>${rang}</span>${n ? n + (n === 1 ? ' maat' : ' maten') : 'Maten uitnodigen'} <i>&rsaquo;</i></a>`;
 }
 // Overstappen naar een jaar (13-10-2026)
 function jaarBesparing(l) { const p = l.prijs || {}; return Math.floor(Number(p.maand || 9.99) * 12 - Number(p.jaar || 89)); }
