@@ -1674,7 +1674,12 @@ async function stravaPlaats(data, knop) {
   if (knop) { knop.disabled = true; knop.innerHTML = 'Even plaatsen...'; }
   const r = await fetch(API + '?actie=stravapost', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: token, ...data }) });
   const j = await r.json().catch(() => ({ ok: false }));
-  if (j.koppel) { try { localStorage.setItem('coreStravaWacht', JSON.stringify(data)); } catch (e) {} const mob = /iPhone|iPad|iPod|Android/.test(navigator.userAgent) ? '&m=1' : ''; location.href = API + '?actie=stravakoppel&t=' + encodeURIComponent(token) + mob; return; }
+  if (j.koppel) {
+    try { localStorage.setItem('coreStravaWacht', JSON.stringify(data)); } catch (e) {}
+    // Op de telefoon gaat de toestemming via de Strava-app; de terugkeer opent vaak in de browser.
+    // Kom je terug in deze app, dan kijken we of hij er al op staat (geen nieuwe omweg naar Strava).
+    if (knop) { knop.innerHTML = 'Geef toestemming in Strava...'; const kijk = async () => { if (document.visibilityState !== 'visible') return; document.removeEventListener('visibilitychange', kijk); await new Promise((r) => setTimeout(r, 1500)); const st = await fetch(API + '?actie=stravapost', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: token, ...data, alleenStatus: true }) }).then((r) => r.json()).catch(() => ({})); if (st.ok) { knop.innerHTML = 'Staat op Strava'; knop.classList.add('klaar'); stravaMelding('Je sessie staat op Strava. Zet je deelplaatje erbij?', true); } else { knop.disabled = false; knop.innerHTML = 'Zet op Strava'; } }; setTimeout(() => document.addEventListener('visibilitychange', kijk), 800); }
+    const mob = /iPhone|iPad|iPod|Android/.test(navigator.userAgent) ? '&m=1' : ''; location.href = API + '?actie=stravakoppel&t=' + encodeURIComponent(token) + mob; return; }
   if (j.ok) { if (knop) { knop.innerHTML = 'Staat op Strava'; knop.classList.add('klaar'); if (j.url) knop.onclick = () => window.open(j.url, '_blank'), knop.disabled = false; } return j; }
   if (knop) { knop.disabled = false; knop.innerHTML = 'Opnieuw proberen'; }
   stravaMelding(j.fout || 'Plaatsen op Strava lukte niet. Probeer het zo nog eens.');

@@ -417,7 +417,11 @@ async function routeStravaPost(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const r = await metToken(req, res); if (!r) return;
   const { d, body } = r;
-  if (![...(d.sessies || [])].some((s) => s.letter === body.letter)) return res.status(400).json({ ok: false, fout: 'Doe eerst je sessie.' });
+  const laatste = [...(d.sessies || [])].reverse().find((s) => s.letter === body.letter);
+  if (!laatste) return res.status(400).json({ ok: false, fout: 'Doe eerst je sessie.' });
+  const al = await redis(['GET', `core:strava:post:${d.id}:${laatste.op}`]);
+  if (al.ok && al.result) return res.status(200).json({ ok: true, al: true });
+  if (body.alleenStatus) return res.status(200).json({ ok: false, nogNiet: true });
   const access = await stravaToken(d.id);
   if (!access) {
     // Nog geen toestemming: onthoud welke sessie erop moet, de server plaatst hem na het toestaan.
