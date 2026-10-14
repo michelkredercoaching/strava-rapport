@@ -1668,6 +1668,13 @@ async function coachContext(email) {
   } else regels.push('Core-app: niet gestart.');
   if ((lid && (lid.tags || []).some((t) => t.name === 'power-profile-koper'))) {
     regels.push(`Strava-analyse (${mf.RAPDAT || 'datum onbekend'}): ${mf.MEETMETH === 'hartslag' ? `omslagpunt ${mf.KOOPOMS || mf.OMSLAG || '?'} bpm` : `FTP ${mf.KOOPFTP || mf.FTP || '?'} W`}, renner-type ${mf.RENTYPE || '?'}, geadviseerd schema ${mf.ADVSCHEMA || '?'}.`);
+    // Het actieplan uit zijn rapport (14-10-2026, na Steven): de coach mag het rapport niet tegenspreken.
+    if (mf.BIJPIJN === 'decoupling-zwak') regels.push(`Uit zijn analyse: aerobe decoupling ${mf.DECOUPLTXT || ''} (zwak, doel 0 tot 5%). Het actieplan in zijn rapport: eerst 4 tot 6 weken puur duurvermogen. Eén keer per week zijn langste rit 20 tot 30 minuten verlengen op rustig tempo, en als enige kwaliteit een tempo-controleblok net boven duurtempo (3x15 minuten, ruim onder de drempel). Géén sweetspot, drempel of VO2max in die weken. Volg dit in je advies, ook bij vragen over bergen of een doel later; daarna komen drempel en VO2max terug.`);
+    else if (mf.BIJPIJN === 'decoupling-sterk') regels.push(`Uit zijn analyse: aerobe basis sterk (decoupling ${mf.DECOUPLTXT || ''}). Drempel- en VO2max-werk passen bij hem.`);
+    if (mf.PIJN === 'grijs') regels.push(`Uit zijn analyse: ${mf.PIJNPCT || 'veel'}% van zijn tijd zit in het grijze gebied (tempo en sweetspot). Zijn grootste winst: rustige ritten echt rustig, en harde trainingen gericht.`);
+    else if (mf.PIJN === 'duur') regels.push(`Uit zijn analyse: te weinig echt rustige kilometers (${mf.PIJNPCT || '?'}% rustig, doel 75% of meer).`);
+    else if (mf.PIJN === 'interval') regels.push('Uit zijn analyse: hij deed de afgelopen 90 dagen geen VO2max-werk.');
+    regels.push('Zijn FTP of omslagpunt uit de Strava-analyse is berekend uit zijn eigen ritten. Noem het geen schatting en raad geen extra test aan, tenzij hij er zelf naar vraagt of zijn schema met een test begint.');
   } else regels.push('Strava-analyse: niet gedaan.');
   if (banden && banden.fietsen && banden.fietsen.length) {
     regels.push(`Gewicht: ${banden.gewicht || '?'} kg. Fietsen: ${banden.fietsen.map((f) => `${f.naam} (${f.type === 'gravel' ? 'gravel' : 'racefiets'}, ${f.breedte} mm, ${f.tubeless ? 'tubeless' : 'binnenband'}${f.hookless ? ', hookless' : ''})`).join('; ')}.`);
