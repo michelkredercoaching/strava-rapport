@@ -692,6 +692,11 @@
   .ig-ic svg { width:20px; height:20px; }
   .ig-ic:empty { display:none; }
   .ig-t b { color:var(--white); }
+  .tp-uitleg { position:relative; border:1px solid rgba(255,107,26,.45); background:rgba(255,107,26,.06); border-radius:12px; padding:14px; margin-bottom:16px; }
+  .tp-uitleg > b { display:block; font-size:15px; margin-bottom:6px; padding-right:24px; }
+  .tp-uitleg p { display:flex; gap:8px; font-size:13.5px; margin:5px 0; line-height:1.45; }
+  .tp-uitleg p i { font-style:normal; color:#4CC38A; font-weight:800; flex-shrink:0; }
+  .tp-uitleg .knop { width:auto; display:inline-block; margin-top:8px; padding:8px 14px 6px; font-size:16px; }
   .appkaart { display:flex; gap:14px; align-items:flex-start; background:var(--surface); border:1px solid rgba(255,107,26,.4); border-radius:8px; padding:14px; margin-bottom:18px; position:relative; }
   .appkaart img { width:52px; height:52px; border-radius:12px; flex-shrink:0; }
   .appkaart b { display:block; margin-bottom:2px; }
@@ -2950,6 +2955,17 @@ function vdRij(ic, label, tekst, doel) {
   if (doel.doel) return `<button type="button" class="vd-rij" data-doel="wijzig">${bin}</button>`;
   return `<button type="button" class="vd-rij" data-view="${doel.view}">${bin}</button>`;
 }
+// Coaching (14-10-2026): klanten dachten dat hun trainingen in de app zouden komen. Eén duidelijke uitleg bovenaan.
+function tpUitlegHtml(d) {
+  if (!d || !(d.lid && d.lid.bron === 'coaching')) return '';
+  try { if (localStorage.getItem('mkcTpUitlegWeg') === '1') return ''; } catch (e) {}
+  return `<div class="tp-uitleg"><button type="button" class="welkom-x" data-actie="tpuitlegweg" aria-label="Sluiten">&times;</button>
+    <b>Zo werkt de app naast TrainingPeaks</b>
+    <p><i>&#10003;</i><span>Je <b>trainingen blijven in TrainingPeaks</b>, daar zet ik ze voor je klaar. Daar verandert niets.</span></p>
+    <p><i>&#10003;</i><span>Je <b>core doe je hier</b>, in de Core-app. Die past zich aan op jouw niveau en houdt je Rompscore bij.</span></p>
+    <p><i>&#10003;</i><span>Verder: je bandenspanning, kleding en voeding voor elke rit, en een coach voor je vragen.</span></p>
+    <a class="knop leeg" href="https://app.trainingpeaks.com/" target="_blank" rel="noopener">Open TrainingPeaks</a></div>`;
+}
 function vandaagHtml(d) {
   if (!d || d.gast) return '';
   const coaching = !!(d.lid && d.lid.bron === 'coaching');
@@ -2962,7 +2978,7 @@ function vandaagHtml(d) {
     else rijen.push(vdRij('schema', 'Training &middot; week ' + s.week, 'Rust vandaag' + (s.volgende ? '. ' + (s.volgende.overDagen === 1 ? 'Morgen' : esc(datumKort(s.volgende.datum)).replace(/^./, (c) => c.toUpperCase())) + ': ' + esc(s.volgende.titel) : ''), { view: 'schema' }));
   } else if (s && s.status === 'voor') rijen.push(vdRij('schema', 'Training', 'Je schema start ' + esc(datumKort(s.start)), { view: 'schema' }));
   else if (s && s.status === 'klaar') rijen.push(vdRij('schema', 'Training', 'Schema afgerond. Kies je vervolg', { href: SITE + '/trainingsschema-vervolg/', extern: true }));
-  else if (coaching) rijen.push(vdRij('schema', 'Training', 'Staat in TrainingPeaks, Michel zet hem voor je klaar', { href: 'https://app.trainingpeaks.com/', extern: true }));
+  else if (coaching) rijen.push(vdRij('schema', 'Training', 'Je trainingen staan in TrainingPeaks, open ze daar', { href: 'https://app.trainingpeaks.com/', extern: true }));
   // Core
   const c = d.core;
   if (c && c.intakeNodig) rijen.push(vdRij('core', 'Core', 'Start je intake, 1 minuut', { href: c.link + '#vandaag' }));
@@ -3127,7 +3143,7 @@ function teken() {
       <li><span>2</span>${binnenkortNu() ? 'Rechtsonder zit <em>Vraag je coach</em>: stel elke week 3 vragen gratis, over training, voeding, banden of herstel.' : 'Start je gratis week in de Core-app: korte sessies thuis, op de timer.'}</li>
       <li><span>3</span>${binnenkortNu() ? 'Zet de app op je beginscherm, dan heb je je bandenspanning altijd bij de hand.' : d.lidOpen ? 'Meer nodig? Als lid krijg je je eigen coach, de slimme bandenspanning en de Core-app doorlopend, voor &euro;' + APP_PRIJS.maand + ' per maand.' : 'Rechtsonder zit <em>Vraag je coach</em>: je eigen coach die je analyse en je plan kent, straks voor leden.'}</li></ol></div>`
       : isLid(d) || (d.lid && d.lid.bron === 'coaching') ? '' : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}${eersteWeekHtml(d) ? '</div>' : ''}
-    ${vandaagHtml(d)}
+    ${tpUitlegHtml(d)}${vandaagHtml(d)}
     <div id="startlijst">${startlijstHtml(d)}</div>
     ${schemaEindeHtml(d)}
     <div id="doelvak">${doelVakHtml(d)}</div>
@@ -3185,6 +3201,7 @@ document.addEventListener('click', (e) => {
   if (actie === 'opzeggen') zegOp(k);
   if (actie === 'uitloggen') { wisToken(); D = null; CC.berichten = null; document.getElementById('ccFab')?.remove(); document.getElementById('ccPaneel')?.remove(); toonLogin('Je bent uitgelogd.'); }
   if (actie === 'installgids') return installGids(false);
+  if (actie === 'tpuitlegweg') { try { localStorage.setItem('mkcTpUitlegWeg', '1'); } catch (e) {} return teken(); }
   if (actie === 'appweg') { try { localStorage.setItem('mkcAppWeg', '1'); } catch (e) {} teken(); }
   if (actie === 'vrweg') { try { localStorage.setItem('mkcVrWeg', String(Math.floor((Date.now() / 864e5 + 3) / 7))); } catch (e) {} teken(); }
   if (actie === 'welkomweg') { try { localStorage.setItem('mkcWelkomBlokWeg', '1'); } catch (e) {} teken(); }
