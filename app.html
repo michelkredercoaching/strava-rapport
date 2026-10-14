@@ -1185,6 +1185,7 @@
   .pk-opties { display:grid; gap:8px; } .pk-opties a { display:block; border:1px solid rgba(255,107,26,.45); border-radius:10px; padding:12px; color:inherit; text-decoration:none; } .pk-opties b { display:block; font-size:15px; } .pk-opties span { display:block; font-size:13px; color:var(--muted); margin-top:2px; } .pk-opties em { display:block; font-style:normal; font-size:12.5px; color:#4CC38A; font-weight:600; margin-top:4px; }
   .an-nudge { position:relative; } .an-nudge > b { padding-right:24px; }
   .an-coach { margin:16px 0; border:1px solid rgba(255,107,26,.5); background:rgba(255,107,26,.07); border-radius:12px; padding:14px; } .an-coach b { display:block; font-size:15px; } .an-coach span { display:block; font-size:13px; color:rgba(245,243,239,.78); margin:3px 0 8px; } .an-coach button { display:block; width:100%; text-align:left; background:var(--surface); border:1px solid var(--border); color:inherit; font-family:inherit; font-size:14px; border-radius:10px; padding:10px 12px; margin-top:6px; cursor:pointer; }
+  .kr-kies { display:grid; gap:10px; margin-top:12px; } .kr-kies button { text-align:left; border:1px solid rgba(255,107,26,.5); background:var(--surface); color:inherit; border-radius:14px; padding:14px; font-family:inherit; cursor:pointer; } .kr-kies-ic { display:inline-flex; width:34px; height:34px; border-radius:10px; background:rgba(255,107,26,.12); color:#FF6B1A; align-items:center; justify-content:center; } .kr-kies-ic svg { width:19px; height:19px; } .kr-kies b { display:block; font-size:17px; margin:8px 0 2px; } .kr-kies span { display:block; font-size:13.5px; color:rgba(245,243,239,.8); line-height:1.45; } .kr-kies em { display:inline-block; margin-top:8px; font-style:normal; font-size:12px; font-weight:700; color:#FF6B1A; }
   .kr-verschil { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 0; } .kr-verschil div { border:1px solid var(--border); border-radius:10px; padding:10px; } .kr-verschil b { display:block; font-size:14px; color:var(--accent); } .kr-verschil span { display:block; font-size:12.5px; color:rgba(245,243,239,.8); margin-top:3px; line-height:1.4; }
   .kr-keuze { margin:12px 0; } .kr-keuze b { display:block; font-size:14px; margin-bottom:6px; } .kr-keuze label { display:flex; gap:8px; align-items:center; font-size:14px; padding:8px 0; border-bottom:1px solid var(--border); } .kr-keuze input { accent-color:#FF6B1A; }
   .kr-week { display:flex; gap:8px; margin:10px 0; } .kr-week span { flex:1; text-align:center; border:1px solid var(--border); border-radius:8px; padding:7px; font-size:13px; font-weight:600; } .kr-week span.ok { border-color:#4CC38A; color:#4CC38A; }
@@ -1412,7 +1413,7 @@ function appHtml() {
 // Twee stappen: mailadres, dan de code uit de mail. Nieuw adres = gratis account.
 const LOGIN_PUNTEN = [
   ['band', 'Bandenspanning voor elke rit, afgestemd op het weer'],
-  ['core', 'Core-training die met je meebeweegt'],
+  ['core', 'Core thuis of kracht in de sportschool, op jouw niveau'],
   ['kleding', 'Kledingadvies en een ochtendbericht voor je rit'],
   ['coach', 'Je vragen beantwoord met de kennis van Michel']
 ];
@@ -2783,6 +2784,7 @@ const KOPPEN = {
   schema: ['MKC-Schema', 'Je training van vandaag'],
   core: ['MKC-Core', 'Core stability voor wielrenners'],
   kracht: ['MKC-Kracht', 'Sterker trappen, 2x per week met gewichten'],
+  kiestraining: ['MKC-Training', 'Core of kracht, kies wat bij je past'],
   analyse: ['MKC-Analyse', 'Je FTP, zones en plan uit je eigen ritten'],
   afval: ['MKC-Afval', 'Lichter worden zonder watts te verliezen'],
   pacing: ['MKC-Pacing', 'Je grote tocht slim ingedeeld'],
@@ -2810,16 +2812,20 @@ function tegelsHtml(d) {
   if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: schemaTegelSub(d.schema), tag: d.schema.status === 'klaar' ? 'Afgerond' : 'Actief', tagKlas: 'gr', breed: true }));
   if (coaching) t.push(tegel({ v: 'coaching', ic: 'coach', nm: 'Jouw coaching', sub: 'Waar je wat vindt, de TrainingPeaks-app en hoe je mij bereikt', tag: 'Michel', tagKlas: 'or', breed: true }));
   t.push(tegel({ v: 'rijden', ic: 'rijden', nm: 'Vandaag rijden', sub: slim ? 'Je bandenspanning, kleding, voeding en wind voor je rit' : mijnSp ? 'Jouw spanning: ' + mijnSp + ' &middot; plus wind en groepsrit' : 'Je bandenspanning en windadvies, en plan een groepsrit', tag: slim ? (inbegrepen ? 'Inbegrepen' : 'Lid') : 'Gratis', tagKlas: slim ? 'or' : 'gr', breed: true }));
-  if (d.core && d.core.nogDicht) t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Opent vrijdag 16 oktober om 12:00', tag: 'Vrijdag', tagKlas: 'or' }));
+  const vorm = trainingsvorm(d), krOpen = !!(d.kracht);
+  if (krOpen && !vorm) t.push(tegel({ v: 'kiestraining', ic: 'core', nm: 'Core of kracht?', sub: 'Kies je training: thuis 10 tot 20 min, of 2x per week in de sportschool', tag: 'Kies', tagKlas: 'or', breed: true }));
+  else if (vorm === 'kracht') { /* kracht-tegel volgt hieronder */ }
+  else if (d.core && d.core.nogDicht) t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Opent vrijdag 16 oktober om 12:00', tag: 'Vrijdag', tagKlas: 'or' }));
   else if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
   else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Thuis, 10 tot 20 min, 2 tot 4x per week', tag: binnenkortNu() ? 'Binnenkort' : lid ? 'Inbegrepen' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
-  if (d.kracht && d.kracht.open) { const kb = d.kracht.beeld; t.push(tegel({ v: 'kracht', ic: 'kracht', nm: 'Kracht', sub: !kb ? 'Sportschool, 2x per week een uur, met gewichten' : kb.seizoen ? (kb.volgende ? 'Seizoen &middot; onderhoud, ongeveer ' + kb.volgende.minuten + ' min' : 'Seizoen &middot; onderhoud deze week gedaan') : kb.volgende ? 'Week ' + kb.week + ' &middot; sessie ' + kb.volgende.letter + ', ongeveer ' + kb.volgende.minuten + ' min' : 'Week ' + kb.week + ' rond, volgende week staat klaar', tag: kb ? (kb.volgende ? 'Start' : 'Klaar') : 'Nieuw', tagKlas: kb && kb.volgende ? 'gr' : 'or' })); }
+  if (d.kracht && d.kracht.open && vorm === 'kracht') { const kb = d.kracht.beeld; t.push(tegel({ v: 'kracht', ic: 'kracht', nm: 'Kracht', sub: !kb ? 'Sportschool, 2x per week een uur, met gewichten' : kb.seizoen ? (kb.volgende ? 'Seizoen &middot; onderhoud, ongeveer ' + kb.volgende.minuten + ' min' : 'Seizoen &middot; onderhoud deze week gedaan') : kb.volgende ? 'Week ' + kb.week + ' &middot; sessie ' + kb.volgende.letter + ', ongeveer ' + kb.volgende.minuten + ' min' : 'Week ' + kb.week + ' rond, volgende week staat klaar', tag: kb ? (kb.volgende ? 'Start' : 'Klaar') : 'Nieuw', tagKlas: kb && kb.volgende ? 'gr' : 'or' })); }
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Tijd voor een nieuwe' : 'Jouw uitslag') : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' }));
   const halfNu = t.filter((x) => !x.includes('tegel breed')).length; // even? dan zou de coach alleen op een halve rij staan
   t.push(tegel({ breed: halfNu % 2 === 0, v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Lid') : '3 gratis', tagKlas: 'or' }));
   if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true }));
   const bk = `<div class="bk-rij"><span>Binnenkort</span><button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
-  return `<div class="tegels">${t.join('')}</div>${routeHtml(d)}${eersteWeekHtml(d) ? '' : bk}`;
+  const wissel = vorm === 'core' && d.kracht ? `<p class="klein tg-wissel">Liever kracht in de sportschool? <button type="button" class="sb-link" data-wisselvorm="kracht" style="display:inline;margin:0">Wissel naar Kracht</button></p>` : '';
+  return `<div class="tegels">${t.join('')}</div>${wissel}${routeHtml(d)}${eersteWeekHtml(d) ? '' : bk}`;
 }
 // Laatst berekende gratis spanning (btReken bewaart hem), om op de tegel te tonen.
 function laatsteSpanning() { try { return localStorage.getItem('mkcLaatsteSpanning') || ''; } catch (e) { return ''; } }
@@ -3186,6 +3192,33 @@ function routeHtml(d) {
 const KR = { actief: null, sets: {}, timer: null, eind: 0, bezig: false, fout: '' };
 const KR_PLANNING = '<p class="klein"><b>Zo past het in je week:</b> doe kracht liefst op een dag zonder harde rit. Moet het op dezelfde dag, fiets dan eerst en houd minstens 3 tot 6 uur ertussen. Na een zware krachtsessie 1 tot 2 dagen geen harde training. In het seizoen is 1 sessie per week genoeg om je kracht vast te houden.</p>';
 const KR_VERSCHIL = `<div class="kr-verschil"><div><b>Core</b><span>Thuis, zonder gewichten. 10 tot 20 minuten, 2 tot 4 keer per week. Voor een stabiele romp op de fiets.</span></div><div><b>Kracht</b><span>In de sportschool, met gewichten. Ongeveer een uur, 2 keer per week. Voor meer kracht in je benen: sterker bergop, aanzetten en sprinten.</span></div></div>`;
+function trainingsvorm(d) {
+  if (!d) return null;
+  if (d.programma === 'kracht' || d.programma === 'core') return d.programma;
+  if (d.kracht && d.kracht.beeld) return 'kracht';
+  if (d.core) return 'core';
+  return null;
+}
+function krKiesHtml(d) {
+  const kOpen = d.kracht && d.kracht.open;
+  return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Je training</div><h2>Core of kracht?</h2>
+    <p>Kies wat bij je past. Je doet er één tegelijk, wisselen kan altijd.</p>
+    <div class="kr-kies">
+      <button type="button" data-kiesvorm="core"><span class="kr-kies-ic">${IC.core}</span><b>Core</b><span>Thuis, zonder gewichten. 10 tot 20 minuten, 2 tot 4 keer per week. Voor een stabiele romp op de fiets.</span><em>${isLid(d) || (d.lid && d.lid.bron === 'coaching') ? 'Inbegrepen' : 'Week 1 gratis'}</em></button>
+      <button type="button" data-kiesvorm="kracht"><span class="kr-kies-ic">${IC.kracht}</span><b>Kracht</b><span>In de sportschool, met gewichten. Ongeveer een uur, 2 keer per week. Voor meer kracht in je benen. Het beste naast ongeveer 2 keer per week een uur fietsen.</span><em>${kOpen ? 'Inbegrepen' : 'Met lidmaatschap'}</em></button>
+    </div></div></div></div>`;
+}
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-kiesvorm], [data-wisselvorm]'); if (!k) return;
+  const vorm = k.dataset.kiesvorm || k.dataset.wisselvorm, d = zicht();
+  if (k.dataset.wisselvorm && !confirm(vorm === 'kracht' ? 'Wisselen naar Kracht? Je Core-voortgang blijft bewaard en je Core-herinneringen stoppen.' : 'Wisselen naar Core? Je krachtvoortgang blijft bewaard.')) return;
+  if (vorm === 'kracht' && !(d.kracht && d.kracht.open)) { return naar('lid'); }
+  try { await fetch(API + '?actie=kracht', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), programma: vorm }) }); } catch (er) {}
+  if (D) D.programma = vorm;
+  if (vorm === 'kracht') return naar('kracht');
+  if (d.core && d.core.link) { location.href = d.core.link + '#vandaag'; return; }
+  return naar('core');
+});
 function krSetsVoor(o) {
   const kg = o.kg != null ? o.kg : o.vorige ? o.vorige.kg : '';
   return Array.from({ length: o.sets }, () => ({ kg: o.gewichtloos ? 0 : kg, reps: o.hoog, klaar: false }));
@@ -3199,7 +3232,8 @@ function krachtPagina(d) {
     <p class="klein">Het beste werkt het als je daarnaast ongeveer 2 keer per week een uur fietst.</p>${KR_PLANNING}
     <div class="kr-keuze"><b>Hoeveel ervaring heb je met krachttraining?</b><label><input type="radio" name="krErv" value="nieuw" checked> Nieuw of lang geleden</label><label><input type="radio" name="krErv" value="ervaren"> Ik doe het al regelmatig</label></div>
     <div class="kr-keuze"><b>Waar train je?</b><label><input type="radio" name="krWaar" value="sportschool" checked> In de sportschool</label><label><input type="radio" name="krWaar" value="thuis"> Thuis, met dumbbells en een bank</label></div>
-    <button type="button" class="knop" data-kr="start" ${KR.bezig ? 'disabled' : ''}>Start mijn krachtprogramma</button>${KR.fout ? '<p class="klein" style="color:#ff8a5c">' + esc(KR.fout) + '</p>' : ''}</div></div></div>`;
+    <button type="button" class="knop" data-kr="start" ${KR.bezig ? 'disabled' : ''}>Start mijn krachtprogramma</button>${KR.fout ? '<p class="klein" style="color:#ff8a5c">' + esc(KR.fout) + '</p>' : ''}
+    <p class="klein" style="margin-top:12px">Liever kort thuis trainen? <button type="button" class="sb-link" data-wisselvorm="core" style="display:inline;margin:0">Kies Core</button></p></div></div></div>`;
   if (KR.actief) return krSessieHtml(b, b.sessies[KR.actief]);
   const v = b.volgende;
   const lijst = (ss) => ss.oefeningen.map((o) => `<li><b>${esc(o.naam)}</b><span>${o.sets} x ${o.laag === o.hoog ? o.laag : o.laag + '-' + o.hoog}${o.perKant ? ' per kant' : ''}${o.gewichtloos ? '' : o.kg != null ? ' &middot; ' + String(o.kg).replace('.', ',') + ' kg' : ' &middot; kies je gewicht'}</span></li>`).join('');
@@ -3212,7 +3246,8 @@ function krachtPagina(d) {
     ${v ? `<div class="kr-volgende"><div class="dash-lab">Volgende</div><b>${v.letter === 'O' ? esc(v.naam) : 'Sessie ' + v.letter + ': ' + esc(v.naam)}</b><small>Ongeveer ${v.minuten} minuten, met 10 minuten warming-up</small><ul class="kr-lijst">${lijst(v)}</ul><button type="button" class="knop breed" data-kr="begin" data-l="${v.letter}">${v.letter === 'O' ? 'Start je onderhoud' : 'Start sessie ' + v.letter}</button></div>`
       : `<p>${b.seizoen ? 'Je onderhoud van deze week zit erop. Volgende week staat de volgende klaar.' : 'Deze week is rond. Je volgende week staat klaar zodra je weer begint.'}</p>`}
     <details class="klap" style="margin-top:14px"><summary><b>Waarom kracht naast het fietsen?</b><span>en hoe het in je week past</span></summary><div class="klap-in">${KR_VERSCHIL}${KR_PLANNING}<p class="klein">Zware krachttraining (4 tot 10 herhalingen, niet tot falen) maakt je zuiniger op de fiets en geeft je meer vermogen aan het einde van een lange rit. Doe je ook Core, dan niet op dezelfde dag als zware beenoefeningen.</p></div></details>
-    <button type="button" class="sb-link" data-kr="stop" style="margin-top:10px">Stoppen met kracht</button></div></div></div>`;
+    <p class="klein" style="margin-top:12px">Liever kort thuis trainen? <button type="button" class="sb-link" data-wisselvorm="core" style="display:inline;margin:0">Wissel naar Core</button></p>
+    <button type="button" class="sb-link" data-kr="stop" style="margin-top:4px">Stoppen met kracht</button></div></div></div>`;
 }
 function krSessieHtml(b, ss) {
   const rij = (o) => { const sets = KR.sets[o.id] || (KR.sets[o.id] = krSetsVoor(o));
@@ -3302,7 +3337,7 @@ function vandaagHtml(d) {
   else if (s && s.status === 'klaar') rijen.push(vdRij('schema', 'Training', 'Schema afgerond. Kies je vervolg', { href: SITE + '/trainingsschema-vervolg/', extern: true }));
   else if (coaching) rijen.push(vdRij('schema', 'Training', 'Je trainingen staan in TrainingPeaks, open ze daar', { href: 'https://app.trainingpeaks.com/', extern: true }));
   // Core
-  const kb = d.kracht && d.kracht.beeld;
+  const kb = trainingsvorm(d) === 'kracht' && d.kracht && d.kracht.beeld;
   if (kb && kb.volgende) rijen.push(vdRij('kracht', kb.seizoen ? 'Kracht &middot; seizoen' : 'Kracht &middot; week ' + kb.week, (kb.seizoen ? '' : 'Sessie ' + kb.volgende.letter + ': ') + esc(kb.volgende.naam) + ' &middot; ongeveer ' + kb.volgende.minuten + ' min', { view: 'kracht' }));
   const c = d.core;
   if (c && c.intakeNodig) rijen.push(vdRij('core', 'Core', 'Start je intake, 1 minuut', { href: c.link + '#vandaag' }));
@@ -3427,6 +3462,7 @@ function paginaHtml(d) {
   if (VIEW === 'schema') return appBalkHtml('Mijn schema') + `<div class="kaarten">${schemaKaart(d)}</div>` + voet;
   if (VIEW === 'core') return appBalkHtml('Core-app') + `<div class="kaarten">${coreKaart(dz.core)}</div>` + voet;
   if (VIEW === 'kracht') return appBalkHtml() + krachtPagina(dz) + voet;
+  if (VIEW === 'kiestraining') return appBalkHtml() + krKiesHtml(dz) + voet;
   if (VIEW === 'analyse') return appBalkHtml('Strava-analyse') + (dz.analyse ? (dz.analyse.datum ? `<p class="klein" style="margin:14px 0 -4px">Gemeten op ${esc(dz.analyse.datum)}${analyseWeken(dz.analyse) >= 1 ? ' &middot; ' + analyseWeken(dz.analyse) + (analyseWeken(dz.analyse) === 1 ? ' week' : ' weken') + ' geleden' : ''}</p>` : '') + analyseBlok(dz.analyse, true) + analyseCoachHtml(dz) + naAnalyseHtml(dz) + (inCoaching() ? '<p class="klein" style="margin-top:14px">Een nieuwe meting regelt Michel binnen je coaching.</p>' : `<a class="knop ${analyseWeken(dz.analyse) >= 8 ? '' : 'leeg'}" href="${analyseKoop()}" style="margin-top:14px">${analyseWeken(dz.analyse) >= 8 ? 'Tijd voor een nieuwe meting' : 'Doe een nieuwe analyse'}${analysePrijs() < 29 ? ' &middot; &euro;' + analysePrijs() : ''}</a><p class="klein">Na een paar weken gericht trainen zie je met een nieuwe analyse of je vooruit bent gegaan.</p>`) : `<div class="kaarten">${analyseKaart(null)}</div>`) + voet;
   if (VIEW === 'afval') return appBalkHtml('Afvalprogramma') + `<div class="kaarten">${afvalKaart()}</div>` + voet;
   if (VIEW === 'pacing') return appBalkHtml('Pacingplan') + `<div class="kaarten">${pacingKaart()}</div>` + voet;

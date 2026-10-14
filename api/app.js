@@ -482,8 +482,11 @@ async function rlAutoMee(email, voornaam, score) {
 //   POST kracht { t, start: {ervaring, waar} } | { t, log: {sessie, oef} } | { t, stop: true }
 // Redis: app:kracht:<email> (JSON)
 // ===========================================================================
-const KRACHT_VOOR_LEDEN = false;
-async function magKracht(email) { if (BEHEER.includes(email)) return true; return KRACHT_VOOR_LEDEN && await magSlim(email); }
+// Besluit Michel 14-10-2026: Kracht gaat voor leden (ook coaching en schema) open op de lancering, vr 16-10 12:00.
+const KRACHT_VOOR_LEDEN = () => Date.now() >= LANCERING;
+async function magKracht(email) { if (BEHEER.includes(email)) return true; return KRACHT_VOOR_LEDEN() && await magSlim(email); }
+// Core óf Kracht (besluit Michel 14-10-2026): één trainingsvorm tegelijk, wisselen kan altijd.
+async function haalProgramma(email) { const r = await redis(['GET', `app:programma:${email}`]); return (r.ok && r.result) || null; }
 async function haalKracht(email) { const r = await redis(['GET', `app:kracht:${email}`]); try { return (r.ok && r.result && JSON.parse(r.result)) || null; } catch { return null; } }
 async function routeKracht(req, res) {
   const body = req.method === 'POST' ? await leesBody(req) : {};
@@ -493,8 +496,10 @@ async function routeKracht(req, res) {
   let s = await haalKracht(email);
   if (req.method === 'POST') {
     if (!open) return res.status(403).json({ ok: false, fout: 'Kracht zit in het lidmaatschap.' });
-    if (body.stop) { await redis(['DEL', `app:kracht:${email}`]); return res.status(200).json({ ok: true, open, kracht: null }); }
+    if (body.programma === 'core' || body.programma === 'kracht') { await redis(['SET', `app:programma:${email}`, body.programma]); return res.status(200).json({ ok: true, open, programma: body.programma, kracht: krachtBeeld(s) }); }
+    if (body.stop) { await redis(['DEL', `app:kracht:${email}`]); await redis(['SET', `app:programma:${email}`, 'core']); return res.status(200).json({ ok: true, open, kracht: null, programma: 'core' }); }
     if (body.start) {
+      await redis(['SET', `app:programma:${email}`, 'kracht']);
       s = { start: new Date().toISOString(), ervaring: body.start.ervaring === 'ervaren' ? 'ervaren' : 'nieuw', waar: body.start.waar === 'thuis' ? 'thuis' : 'sportschool', week: body.start.ervaring === 'ervaren' ? 4 : 1, gedaan: [], laatste: {} };
     } else if (body.modus) {
       if (!s) return res.status(400).json({ ok: false, fout: 'Start eerst je krachtprogramma.' });
@@ -1278,7 +1283,8 @@ async function routeOverzicht(req, res) {
     automatisch: await incassoKlaar(),
     naam: (core && core.naam) || mf.FNAME || '',
     core,
-    kracht: (await magKracht(email)) ? { open: true, beeld: krachtBeeld(await haalKracht(email)) } : null,
+    kracht: (await magKracht(email)) ? { open: true, beeld: krachtBeeld(await haalKracht(email)) } : (Date.now() >= LANCERING ? { open: false, beeld: null } : null),
+    programma: await haalProgramma(email),
     analyse,
     banden: heeftTag(lid, 'bandenspanning-pdf'),
     // Slimme bandenspanning: leden (en Michel) krijgen hun bewaarde fietsen mee.
@@ -1720,6 +1726,7 @@ async function coachContext(email) {
     if (core.disbalans) regels.push('Disbalans uit de romptest: ' + Object.entries(core.disbalans).map(([k, x]) => `${k} ${x.pct}% zwakker ${x.kant.toLowerCase()}`).join(', ') + '. De Core-app laat die kant eerst gaan en langer werken.');
   } else regels.push('Core-app: niet gestart.');
   if (kr) regels.push(krachtContext(krachtBeeld(kr)));
+  if (Date.now() >= LANCERING) regels.push('In de app kiest een lid tussen Core (thuis, zonder gewichten, 10 tot 20 min, 2 tot 4x per week) en Kracht (sportschool, met gewichten, ongeveer een uur, 2x per week, in het seizoen 1x). Eén tegelijk; wisselen kan onder de tegels op het beginscherm of op de Kracht-pagina. Vraagt iemand naar krachttraining, verwijs dan naar de tegel Kracht (KNOP: kracht).');
   if ((lid && (lid.tags || []).some((t) => t.name === 'power-profile-koper'))) {
     regels.push(`Strava-analyse (${mf.RAPDAT || 'datum onbekend'}): ${mf.MEETMETH === 'hartslag' ? `omslagpunt ${mf.KOOPOMS || mf.OMSLAG || '?'} bpm` : `FTP ${mf.KOOPFTP || mf.FTP || '?'} W`}, renner-type ${mf.RENTYPE || '?'}, geadviseerd schema ${mf.ADVSCHEMA || '?'}.`);
     // Het actieplan uit zijn rapport (14-10-2026, na Steven): de coach mag het rapport niet tegenspreken.

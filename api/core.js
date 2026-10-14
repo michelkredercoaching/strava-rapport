@@ -892,6 +892,7 @@ async function routeHerinnerDag(req, res) {
   for (const id of (ids.ok && ids.result) || []) {
     const d = await haalDossier(id);
     if (!d || !d.herinner || d.status !== 'actief' || opSlotNu(d)) continue;
+    { const pg = await redis(['GET', `app:programma:${String(d.email || '').toLowerCase()}`]); if (pg.ok && pg.result === 'kracht') continue; } // koos Kracht in plaats van Core (14-10-2026)
     const [h, m] = d.herinner.tijd.split(':').map(Number), doelMin = h * 60 + m;
     if (!d.herinner.dagen.includes(dag) || minuten < doelMin || minuten - doelMin >= 30 || d.herinner.laatste === datum) continue;
     const b = klantBeeld(d);
@@ -1357,6 +1358,7 @@ async function routeHerinner(req, res) {
     const d = await haalDossier(id);
     // Proefdeelnemers krijgen hun mails uit de Mailchimp-journey, niet van hier.
     if (!d || d.status !== 'actief' || !isBetaald(d)) { overgeslagen++; continue; }
+    { const pg = await redis(['GET', `app:programma:${String(d.email || '').toLowerCase()}`]); if (pg.ok && pg.result === 'kracht') { overgeslagen++; continue; } }
     const laatste = (d.sessies || []).slice(-1)[0];
     if (laatste && Date.now() - new Date(laatste.op) > 14 * 864e5) { overgeslagen++; continue; }
     // 09-10-2026 (besluit Michel): geen mail meer, maar een melding in de app
