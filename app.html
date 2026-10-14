@@ -2840,7 +2840,8 @@ function tegelsHtml(d) {
   const analyseT = tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP en zones uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Nieuwe?' : 'Open') : SLOT + ' €' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' });
   const derde = coaching ? tegel({ v: 'coaching', ic: 'schema', nm: 'Jouw coaching', sub: 'TrainingPeaks en hoe je mij bereikt', tag: 'Michel', tagKlas: 'or' }) : analyseT;
   const gvo = gratisOver(), lvo = lidOverNu();
-  const coach = tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: (gvo === 0 || lvo === 0) && tegoedNu() ? tegoedTekst(tegoedNu()) : gvo != null ? (gvo > 0 ? 'Nog ' + gvo + ' van ' + ((D && D.gratisMax) || 3) + ' gratis deze week' : 'Op tot maandag') : lvo != null ? (lvo > 0 ? 'Nog ' + lvo + ' vragen deze week' : 'Op tot maandag') : 'Antwoord met Michels kennis', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Lid') : '3 gratis', tagKlas: 'or' });
+  const tgv = tegoedNu(), wkMax = gvo != null ? ((D && D.gratisMax) || 3) : ((D && D.lidMax) || 25), wk = gvo != null ? gvo : lvo;
+  const coach = tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: wk != null ? '<b>' + wk + '/' + wkMax + '</b> deze week' + (tgv ? '<br>+' + tgv + ' extra deze maand' : '') : 'Antwoord met Michels kennis', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Lid') : '3 gratis', tagKlas: 'or' });
   const t = [trein, banden, derde, coach];
   if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: schemaTegelSub(d.schema), tag: d.schema.status === 'klaar' ? 'Afgerond' : 'Actief', tagKlas: 'gr', breed: true }));
   // Michel ziet Kracht tot de opening altijd als voorbeeld, ook als hij zelf Core doet.
@@ -4332,7 +4333,7 @@ function zetGratis(n, l, tg) { if (!D) return; if (tg != null) D.vraagTegoed = t
 // Leden: hoeveel vragen er deze week nog zijn (14-10-2026). Niet in Michels voorbeeldweergave.
 function tegoedNu() { return D && !D.gast && !(D.beheer && BEKIJK === 'alles') ? (D.vraagTegoed || 0) : 0; }
 const tegoedTekst = (n) => n + ' extra ' + (n === 1 ? 'vraag' : 'vragen') + ' in je tegoed';
-function lidOverNu() { const d = zicht(); return d && D && D.lidOver != null && ccOnbeperkt() && !(D.beheer) ? D.lidOver : null; }
+function lidOverNu() { const d = zicht(); if (D && D.beheer) return BEKIJK === 'klant' && d && isLid(d) ? (D.lidMax || 25) : null; return d && D && D.lidOver != null && ccOnbeperkt() ? D.lidOver : null; }
 function gratisTellerHtml(id) {
   const over = gratisOver();
   if (over == null) { const lo = lidOverNu(), lm = (D && D.lidMax) || 25; if (lo == null) return `<span id="${id}"></span>`;
