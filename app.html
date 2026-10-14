@@ -3425,7 +3425,7 @@ function pmIntroHtml() {
   if (pmIntroWeg()) return '';
   return `<div class="kaart actief pm-intro"><div class="kaart-in"><div class="label">Zo werkt je palmares</div><h2>Verdien je medailles</h2>
     <ol class="pm-stappen"><li><b>Brons, zilver en goud</b><span>Elke badge heeft drie medailles. Je verdient ze met wat je echt doet: Core, ritten, groepsritten, maten en elke dag de app openen.</span></li>
-    <li><b>Beloningen</b><span>Elke paar medailles speel je iets vrij: nieuwe spullen voor je renner, een gouden week, een gratis analyse en verder zelfs een rit met Michel.</span></li>
+    <li><b>Beloningen</b><span>Elke paar medailles speel je iets vrij: nieuwe spullen voor je renner, een gouden week, een gratis analyse en uiteindelijk een renner in brons, zilver of goud.</span></li>
     <li><b>Je renner en het podium</b><span>Je staat op de ranglijst met je eigen renner. Elke maand begint de maandstand opnieuw, dus iedereen maakt kans op het podium.</span></li></ol>
     <button type="button" class="knop" data-pmintro="weg">Begrepen, laat zien</button></div></div>`;
 }
@@ -3450,7 +3450,7 @@ function palmaresHtml(d) {
   const belKaart = (r) => {
     const nog = Math.max(0, r.n - m), goudNog = Math.max(0, (r.goud || 0) - ((d && d.goud) || 0));
     const kort = lidNu ? String(r.kort).replace(/, plus .*$/, '.') : r.kort;
-    const knop = !r.behaald ? '' : r.binnenkort ? '<p class="klein" style="margin:6px 0 0">Verdiend! Je krijgt hem zodra het pacingplan er is.</p>' : r.handmatig ? '<p class="klein" style="margin:6px 0 0">Verdiend! Michel neemt contact met je op om dit te regelen.</p>' : r.renner || r.id === 'm20' ? `<button type="button" class="knop" data-view="palmares" data-kk="1">Naar je kleedkamer</button>` : r.sessie ? `<button type="button" class="knop" data-beloning="${r.id}">Bekijk de sessie</button>` : r.coaching ? '<p class="klein" style="margin:6px 0 0">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">Start je analyse</a>` : '';
+    const knop = !r.behaald ? '' : r.binnenkort ? '<p class="klein" style="margin:6px 0 0">Verdiend! Je krijgt hem zodra het pacingplan er is.</p>' : r.handmatig ? '<p class="klein" style="margin:6px 0 0">Verdiend! Michel neemt contact met je op om dit te regelen.</p>' : r.renner || r.metaal || r.id === 'm20' ? `<button type="button" class="knop" data-view="palmares" data-kk="1">Naar je kleedkamer</button>` : r.sessie ? `<button type="button" class="knop" data-beloning="${r.id}">Bekijk de sessie</button>` : r.coaching ? '<p class="klein" style="margin:6px 0 0">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">Start je analyse</a>` : '';
     return `<div class="bel${r.behaald ? ' aan' : ''}"><div class="bel-n"><b>${r.n}</b><small>medailles</small>${r.goud ? '<em>+' + r.goud + ' goud</em>' : ''}</div><div class="bel-tekst"><b>${r.behaald ? '&#10003; ' : ''}${esc(r.titel)}</b><span>${esc(kort)}</span>${r.behaald ? (r.lidKorting ? '<span class="bel-extra">Je €' + r.lidKorting + ' lidmaatschapskorting staat klaar bij Mijn lidmaatschap.</span>' : '') + (r.vragen ? '<span class="bel-extra">Je 2 extra coachvragen staan klaar.</span>' : '') : `<span class="bel-nog">${nog ? 'Nog ' + nog + ' ' + (nog === 1 ? 'medaille' : 'medailles') : ''}${nog && goudNog ? ' en ' : ''}${goudNog ? (nog ? '' : 'Nog ') + goudNog + ' gouden ' + (goudNog === 1 ? 'medaille' : 'medailles') : ''}${r.binnenkort ? ' &middot; binnenkort' : ''}</span>`}${knop}</div>${r.behaald ? '' : '<div class="bel-slot">' + medailleSlot() + '</div>'}</div>`;
   };
   const gratisHaal = l.filter((b) => !b.lid && !b.binnenkort).length;
@@ -3478,11 +3478,13 @@ const RL_IC = {
 };
 // Renner-tekening: kop en schouders (klein, voor de lijst) en de hele renner op de fiets.
 const RN_HUID = { h1: '#f2c9a5', h2: '#d9a171', h3: '#a86b43', h4: '#6b4228' };
-const RN_SCHOEN = { wit: '#f2f2f2', zwart: '#1a1a1a', oranje: '#FF6B1A', fluor: '#d7f53a', goud: '#f3c22c' };
-const RN_TRUI = { goud: ['#f3c22c', '#7a5a00'], mkc: ['#FF6B1A', '#111'], zwart: ['#151515', '#FF6B1A'], wit: ['#f2f2f2', '#FF6B1A'], streep: ['#1E88E5', '#fff'], bolletjes: ['#ffffff', '#E53935'], groen: ['#2EAD4B', '#fff'], geel: ['#FFD21F', '#111'], regenboog: ['#ffffff', '#111'] };
-const RN_HELM = { wit: '#f4f4f4', zwart: '#1a1a1a', oranje: '#FF6B1A', aero: '#E53935', goud: '#f3c22c' };
-const RN_BRIL = { geen: null, zwart: '#111', spiegel: 'url(#rnSp)', oranje: '#FF8A3D', goud: '#f3c22c' };
-const RN_FIETS = { oranje: '#FF6B1A', rood: '#D32F2F', blauw: '#1E63D6', groen: '#2E9E4F', grijs: '#8a9099', wit: '#f1f1f1', zwart: '#1b1b1b', goud: '#e2b228' };
+const RN_SCHOEN = { wit: '#f2f2f2', zwart: '#1a1a1a', oranje: '#FF6B1A', fluor: '#d7f53a', goud: '#f3c22c', zilver: '#c9ced3', brons: '#b87333' };
+const RN_TRUI = { goud: ['#f3c22c', '#7a5a00'], zilver: ['#c9ced3', '#4a4f55'], brons: ['#b87333', '#4a2608'], mkc: ['#FF6B1A', '#111'], zwart: ['#151515', '#FF6B1A'], wit: ['#f2f2f2', '#FF6B1A'], streep: ['#1E88E5', '#fff'], bolletjes: ['#ffffff', '#E53935'], groen: ['#2EAD4B', '#fff'], geel: ['#FFD21F', '#111'], regenboog: ['#ffffff', '#111'] };
+const RN_HELM = { wit: '#f4f4f4', zwart: '#1a1a1a', oranje: '#FF6B1A', aero: '#E53935', goud: '#f3c22c', zilver: '#c9ced3', brons: '#b87333' };
+const RN_BRIL = { geen: null, zwart: '#111', spiegel: 'url(#rnSp)', oranje: '#FF8A3D', goud: '#f3c22c', zilver: '#c9ced3', brons: '#b87333' };
+const RN_FIETS = { oranje: '#FF6B1A', rood: '#D32F2F', blauw: '#1E63D6', groen: '#2E9E4F', grijs: '#8a9099', wit: '#f1f1f1', zwart: '#1b1b1b', goud: '#e2b228', zilver: '#b9bfc6', brons: '#a8652a' };
+// Eigen renner in metaal (beloning 50/60/69 of gouden week); de kleedkamer blijft je eigen keuze tonen.
+function rlMetaal(x) { const m = x && x.metaal; return m ? { ...x.profiel, trui: m, helm: m, bril: m, schoenen: m, fiets: m, wielen: 'disc' } : x.profiel; }
 function rnDefs(id) { return `<defs><linearGradient id="rnSp" x1="0" x2="1"><stop offset="0" stop-color="#7fd3ff"/><stop offset=".5" stop-color="#d08bff"/><stop offset="1" stop-color="#ffb35c"/></linearGradient>
   <pattern id="${id}b" width="7" height="7" patternUnits="userSpaceOnUse"><rect width="7" height="7" fill="#fff"/><circle cx="3.5" cy="3.5" r="1.6" fill="#E53935"/></pattern>
   <linearGradient id="${id}r" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".38" stop-color="#fff"/><stop offset=".38" stop-color="#1E63D6"/><stop offset=".46" stop-color="#1E63D6"/><stop offset=".46" stop-color="#E53935"/><stop offset=".54" stop-color="#E53935"/><stop offset=".54" stop-color="#111"/><stop offset=".62" stop-color="#111"/><stop offset=".62" stop-color="#FFD21F"/><stop offset=".7" stop-color="#FFD21F"/><stop offset=".7" stop-color="#2EAD4B"/><stop offset=".78" stop-color="#2EAD4B"/><stop offset=".78" stop-color="#fff"/></linearGradient></defs>`; }
@@ -3617,9 +3619,9 @@ function ranglijstHtml(d) {
   const r1 = x.rijen[0], r2 = x.rijen[1], r3 = x.rijen[2];
   const opPodium = x.rijen.some((r) => r.ik);
   const nogNaar3 = r3 && x.ik ? Math.max(1, r3.medailles - x.ik.medailles + (r3.medailles === x.ik.medailles ? 1 : 0)) : 0;
-  const mijnPlek = !opPodium && x.ik ? `<div class="pd-ik">${avatarSvg(x.profiel, 44)}<div><b>Jouw plek: #${x.ik.plek}</b><small>${x.ik.medailles} ${x.ik.medailles === 1 ? 'medaille' : 'medailles'}${x.ik.goud ? ' &middot; ' + x.ik.goud + ' goud' : ''}${nogNaar3 ? ' &middot; nog ' + nogNaar3 + (nogNaar3 === 1 ? ' medaille' : ' medailles') + ' tot het podium' : ''}</small></div></div>` : '';
+  const mijnPlek = !opPodium && x.ik ? `<div class="pd-ik">${avatarSvg(rlMetaal(x), 44)}<div><b>Jouw plek: #${x.ik.plek}</b><small>${x.ik.medailles} ${x.ik.medailles === 1 ? 'medaille' : 'medailles'}${x.ik.goud ? ' &middot; ' + x.ik.goud + ' goud' : ''}${nogNaar3 ? ' &middot; nog ' + nogNaar3 + (nogNaar3 === 1 ? ' medaille' : ' medailles') + ' tot het podium' : ''}</small></div></div>` : '';
   return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in">
-    <div class="rl-kop"><div><div class="label">Ranglijst</div><h2>${opPodium ? 'Jij staat op het podium!' : 'Het podium'}</h2><p class="klein" style="margin:2px 0 0">Op medailles, bij gelijke stand telt goud.</p></div><div class="rl-ik">${x.profiel.trui ? rennerFiets(x.profiel, 110) : avatarSvg(x.profiel, 54)}<small>${esc(x.profiel.naam)}</small></div></div>
+    <div class="rl-kop"><div><div class="label">Ranglijst</div><h2>${opPodium ? 'Jij staat op het podium!' : 'Het podium'}</h2><p class="klein" style="margin:2px 0 0">Op medailles, bij gelijke stand telt goud.</p></div><div class="rl-ik">${x.profiel.trui ? rennerFiets(rlMetaal(x), 110) : avatarSvg(x.profiel, 54)}<small>${esc(x.profiel.naam)}</small></div></div>
     ${x.profiel.auto ? `<div class="rl-auto">Je doet mee als <b>${esc(x.profiel.naam)}</b>. Andere naam of een eigen renner? <button type="button" class="sb-link" data-rl="wijzig" style="display:inline;margin:0">Naar je kleedkamer</button></div>` : ''}
     <div class="rl-tabs"><button type="button" data-rlper="maand" class="${RL.periode === 'maand' ? 'aan' : ''}">Deze maand</button><button type="button" data-rlper="alles" class="${RL.periode === 'alles' ? 'aan' : ''}">Aller tijden</button></div>
     ${RL.periode === 'maand' ? '<p class="klein rl-uitleg">Elke maand begint iedereen weer bij nul. Medailles die je deze maand haalt, tellen.</p>' : ''}
@@ -3747,7 +3749,7 @@ function badgeModal(id, nieuwNiveau) {
 function beloningModal(id, nieuw) {
   const r = ((zicht() || {}).beloningen || []).find((x) => x.id === id); if (!r) return;
   const sessie = r.sessie ? `<ol class="ms-lijst">${r.sessie.oefeningen.map((o) => `<li><b>${esc(o.naam)}</b><span>${esc(o.cue)}</span></li>`).join('')}</ol>` : '';
-  const actie = r.handmatig ? '<p class="klein">Michel neemt contact met je op om dit te regelen.</p>' : r.renner || r.id === 'm20' ? '<button type="button" class="knop" data-view="palmares" data-kk="1">Naar je kleedkamer</button>' : r.sessie ? '' : r.coaching ? '<p class="klein">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">Start je gratis analyse</a>` : '';
+  const actie = r.handmatig ? '<p class="klein">Michel neemt contact met je op om dit te regelen.</p>' : r.renner || r.metaal || r.id === 'm20' ? '<button type="button" class="knop" data-view="palmares" data-kk="1">Naar je kleedkamer</button>' : r.sessie ? '' : r.coaching ? '<p class="klein">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">Start je gratis analyse</a>` : '';
   modal(`<div class="md-modal">${nieuw ? '<div class="md-unlock">Beloning ontgrendeld!</div>' : ''}<div class="bel-groot"><b>${r.n}</b><small>medailles</small></div><h3>${esc(r.sessie ? r.sessie.titel : r.titel)}</h3>
     <p>${esc(r.sessie ? r.sessie.uitleg : r.kort)}</p>${sessie}${r.vragen ? '<p class="klein">Plus: 2 extra gratis coachvragen deze week.</p>' : ''}${r.lidKorting ? `<p class="klein">Plus: €${r.lidKorting} korting op je eerste lidmaatschap, die zie je bij het betalen.</p>` : ''}${actie}
     <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">Sluiten</button></div>`);

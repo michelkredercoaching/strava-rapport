@@ -381,6 +381,7 @@ async function badgesBijwerken(email, { core, ritten = [], coachBerichten = [], 
     if (r.id === 'm10') { if (!lid && !coaching && !(lidmaatschap && lidmaatschap.betaaldOoit)) { await redis(['SET', `app:badgekorting:${email}`, '5']); x.lidKorting = 5; } }
     if (r.id === 'm30') { x.binnenkort = true; }
     if (r.id === 'legende') await redis(['SET', `app:legende:${email}`, '1']);
+    if (r.metaal && r.metaal !== 'goud') { const nu2 = await redis(['GET', `app:metaal:${email}`]); if (!(nu2.ok && nu2.result === 'zilver' && r.metaal === 'brons')) await redis(['SET', `app:metaal:${email}`, r.metaal]); x.metaal = r.metaal; }
     if (r.handmatig) {
       x.handmatig = true;
       await redis(['SADD', 'app:beloningen:teregelen', `${email}|${r.id}|${nu}`]);
@@ -516,8 +517,10 @@ async function routeRangBeheer(req, res) {
   for (let i = 0; i < l.length; i += 2) { const p = await rlProfiel(l[i]); rijen.push({ email: l[i], naam: p ? p.naam : '(geen profiel)', medailles: Math.floor((Number(l[i + 1]) || 0) / 100) }); }
   return res.status(200).json({ ok: true, rijen });
 }
-const GOUDEN_RENNER = { trui: 'goud', helm: 'goud', bril: 'goud', schoenen: 'goud', fiets: 'goud', wielen: 'disc' };
-async function metGoudweek(email, p) { if (!p) return p; const [g, l] = await Promise.all([redis(['GET', `app:goudweek:${email}`]), redis(['GET', `app:legende:${email}`])]); const leg = !!(l.ok && l.result); return leg || (g.ok && g.result) ? { ...p, ...GOUDEN_RENNER, goudweek: true, legende: leg } : p; }
+// Metalen renner: goud bij Legende of in de gouden week, anders blijvend brons (50) of zilver (60).
+const METAAL_RENNER = (m) => ({ trui: m, helm: m, bril: m, schoenen: m, fiets: m, wielen: 'disc' });
+async function rennerMetaal(email) { const [g, l, m] = await Promise.all([redis(['GET', `app:goudweek:${email}`]), redis(['GET', `app:legende:${email}`]), redis(['GET', `app:metaal:${email}`])]); const leg = !!(l.ok && l.result); return { leg, metaal: leg || (g.ok && g.result) ? 'goud' : m.ok && ['brons', 'zilver'].includes(m.result) ? m.result : '' }; }
+async function metGoudweek(email, p) { if (!p) return p; const { leg, metaal } = await rennerMetaal(email); return metaal ? { ...p, ...METAAL_RENNER(metaal), metaal, goudweek: metaal === 'goud', legende: leg } : p; }
 async function routeRanglijst(req, res) {
   const email = leesAppToken(String(req.query?.t || ''));
   if (!email) return res.status(401).json({ ok: false });
@@ -529,12 +532,12 @@ async function routeRanglijst(req, res) {
   for (let i = 0; i < l.length; i += 2) {
     const p = await metGoudweek(l[i], await rlProfiel(l[i])); if (!p) continue;
     const sc = Number(l[i + 1]) || 0;
-    rijen.push({ plek: rijen.length + 1, naam: p.naam, kleur: p.kleur, icoon: p.icoon, huid: p.huid, trui: p.trui, helm: p.helm, bril: p.bril, schoenen: p.schoenen, fiets: p.fiets, wielen: p.wielen, goudweek: !!p.goudweek, legende: !!p.legende, medailles: Math.floor(sc / 100), goud: sc % 100, ik: l[i] === email });
+    rijen.push({ plek: rijen.length + 1, naam: p.naam, kleur: p.kleur, icoon: p.icoon, huid: p.huid, trui: p.trui, helm: p.helm, bril: p.bril, schoenen: p.schoenen, fiets: p.fiets, wielen: p.wielen, goudweek: !!p.goudweek, legende: !!p.legende, metaal: p.metaal || '', medailles: Math.floor(sc / 100), goud: sc % 100, ik: l[i] === email });
   }
   const sc = Number(mijnScore.ok && mijnScore.result) || 0;
   const weg = await redis(['GET', `app:rangweg:${email}`]);
-  const goudIk = await redis(['GET', `app:goudweek:${email}`]);
-  return res.status(200).json({ ok: true, periode: req.query?.periode === 'alles' ? 'alles' : 'maand', rijen, profiel: mijn, goudweek: !!(goudIk.ok && goudIk.result), weg: !!(weg.ok && weg.result),
+  const goudIk = await redis(['GET', `app:goudweek:${email}`]), ikMetaal = await rennerMetaal(email);
+  return res.status(200).json({ ok: true, periode: req.query?.periode === 'alles' ? 'alles' : 'maand', rijen, profiel: mijn, goudweek: !!(goudIk.ok && goudIk.result), metaal: ikMetaal.metaal, legende: ikMetaal.leg, weg: !!(weg.ok && weg.result),
     ik: mijnRang.ok && mijnRang.result != null ? { plek: Number(mijnRang.result) + 1, medailles: Math.floor(sc / 100), goud: sc % 100 } : null,
     kleuren: RL_KLEUREN, iconen: RL_ICONEN, renner: RENNER });
 }
