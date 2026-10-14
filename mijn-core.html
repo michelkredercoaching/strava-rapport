@@ -227,6 +227,29 @@
   .cc-terug span { color:var(--accent); font-size:22px; line-height:1; }
 
   /* ===== Speler ===== */
+  .dash { margin:4px 0 22px; }
+  .dash-vandaag { border:2px solid #FF6B1A; border-radius:14px; padding:16px; background:rgba(255,107,26,.06); }
+  .dash-lab { font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:#FF6B1A; font-weight:700; }
+  .dash-kop { font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1.05; margin:4px 0 2px; }
+  .dash-sub { font-size:13.5px; color:var(--muted); margin-bottom:12px; }
+  .dash-cijfers { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px; }
+  .dash-cel { background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:10px; padding:10px 6px; text-align:center; }
+  .dash-cel b { display:block; font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1; color:#F5F3EF; }
+  .dash-cel b small { font-size:15px; color:var(--muted); font-family:'DM Sans',sans-serif; font-weight:600; margin-left:1px; }
+  .dash-cel span { display:block; font-size:11px; color:var(--muted); margin-top:3px; }
+  .dash-cel em { display:block; font-style:normal; font-size:11px; color:#4CC38A; font-weight:700; margin-top:1px; }
+  .dash-balk { height:7px; border-radius:4px; background:rgba(255,255,255,.08); margin-top:12px; overflow:hidden; }
+  .dash-balk i { display:block; height:100%; background:#FF6B1A; border-radius:4px; }
+  .dash-balktekst { font-size:12px; color:var(--muted); margin-top:5px; }
+  .dash-sec { font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); font-weight:700; margin:18px 0 6px; }
+  .dash-rij { display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:none; border:0; border-bottom:1px solid var(--border); color:inherit; padding:11px 2px; font-family:inherit; font-size:14.5px; cursor:pointer; }
+  .dash-rij:disabled { cursor:default; opacity:.6; }
+  .dash-nr { width:28px; height:28px; border-radius:50%; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; font-family:'Bebas Neue',sans-serif; font-size:17px; flex-shrink:0; }
+  .dash-naam { flex:1; } .dash-naam small { display:block; font-size:12px; color:var(--muted); }
+  .dash-st { font-size:12px; font-weight:700; white-space:nowrap; } .dash-st.ok { color:#4CC38A; } .dash-st.nu { color:#FF6B1A; } .dash-st.slot { color:var(--muted); }
+  .dash-extra { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .dash-extra button { text-align:left; background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:10px; padding:11px 12px; color:inherit; font-family:inherit; cursor:pointer; }
+  .dash-extra b { display:block; font-size:14px; } .dash-extra span { display:block; font-size:12px; color:var(--muted); margin-top:2px; }
   .speler, .speler button, .speler a { touch-action:manipulation; }
   .speler { overscroll-behavior:contain; -webkit-user-select:none; user-select:none; }
   .speler { position:fixed; inset:0; background:#050505; z-index:50; display:flex; flex-direction:column; padding:max(14px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); }
@@ -422,7 +445,9 @@ function teken() {
   else {
     h += appHtml();
     const testEerst = d.testNodig === 0 && (d.gedaanDezeWeek.length > 0 || d.afgerond > 0);
-    if (testEerst) h += testHtml(d, true);
+    const metDash = !d.opSlot && !d.klaar && d.sessies.length;
+    if (metDash) h += dashHtml(d);
+    if (testEerst && !metDash) h += testHtml(d, true);
     const meterLater = d.meterNodig != null && !d.afgerond && d.sessies.length;
     if (d.meterNodig != null && !meterLater) h += meterHtml(d);
     if (d.testNodig != null && d.testNodig !== 0) h += testHtml(d, false);
@@ -434,9 +459,9 @@ function teken() {
       if (d.kracht == null && d.week > 1) h += krachtVraagHtml();
       h += rustDagHtml(d);
       h += hervatHtml(d);
-      if (d.sessies.length) h += sessiesHtml(d);
+      if (d.sessies.length) h += metDash ? klap('sessies', 'Oefeningen per sessie', 'met het mannetje en de uitleg', sessiesHtml(d), false) : sessiesHtml(d);
       if (meterLater) h += meterHtml(d);
-      if (d.testNodig === 0 && !testEerst) h += testHtml(d, true);
+      if (d.testNodig === 0 && (!testEerst || metDash)) h += metDash ? '<div id="testklap">' + klap('test', 'Je starttest', 'nog doen &middot; 15 min', testHtml(d, true), false) + '</div>' : testHtml(d, true);
       h += fietstipHtml(d);
       h += klap('tips', 'Tip bij dit niveau', '', tipsHtml(d), d.week === 1);
     }
@@ -621,6 +646,36 @@ function spierHtml(oefeningen) {
   const n = K.namenLijst(kaart);
   if (!n.hoofd.length && !n.mee.length) return '';
   return `<div class="spierblok"><div>${K.svg(kaart)}</div><div><div class="spierkop">Dit train je</div>${n.hoofd.map((x) => `<span class="spier">${esc(x)}</span>`).join('')}${n.mee.length ? `<div class="helpt">Helpt mee: ${n.mee.map(esc).join(', ').toLowerCase()}</div>` : ''}</div></div>`;
+}
+// Dashboard (14-10-2026): bovenaan wat je vandaag doet, je cijfers, je week en de extra's.
+function dashHtml(d) {
+  const K = window.CoreSpierkaart, wib = d.weekInBlok || d.week, blok = d.blok || 1;
+  const t = (d.tests || []).filter((x) => x.score != null), romp = t.length ? t[t.length - 1].score : null, plus = t.length > 1 ? t[t.length - 1].score - t[0].score : 0;
+  const slot = d.testNodig === 0 && (d.gedaanDezeWeek.length > 0 || d.afgerond > 0);
+  const volgende = d.sessies.find((x) => !d.gedaanDezeWeek.includes(x.letter));
+  const spieren = (x) => { try { return K ? K.namenLijst(K.vanSessie(x.oefeningen.map((o) => o.id))).hoofd.slice(0, 3).join(', ') : ''; } catch (e) { return ''; } };
+  const kaart = (kop, sub, knop) => `<div class="dash-vandaag"><div class="dash-lab">Vandaag</div><div class="dash-kop">${kop}</div><div class="dash-sub">${sub}</div>${knop}</div>`;
+  let vandaag;
+  if (slot) vandaag = kaart('Eerst je starttest', '15 minuten · je nulmeting, daar vergelijk je straks alles mee', '<button class="knop breed" data-actie="starttest">Start de starttest</button>');
+  else if (d.weekRond || !volgende) vandaag = kaart('Dit niveau zit erop', d.gedaanDezeWeek.length + ' van ' + d.frequentie + ' sessies gedaan. Vertel hoe het ging, dan gaat je volgende niveau open.', '<button class="knop breed" data-actie="naarweekklaar">Rond niveau ' + wib + ' af</button>');
+  else vandaag = kaart('Sessie ' + NR[volgende.letter] + ': ' + esc(volgende.naam), volgende.minuten + ' min' + (spieren(volgende) ? ' · ' + esc(spieren(volgende)) : ''), `<button class="knop breed" data-actie="start" data-letter="${volgende.letter}">Start sessie ${NR[volgende.letter]}</button>`);
+  const cel = (n, max, lab, extra) => `<div class="dash-cel"><b>${n}${max ? '<small>/' + max + '</small>' : ''}</b><span>${lab}</span>${extra ? '<em>' + extra + '</em>' : ''}</div>`;
+  const nodig = d.nodigVoorWeek || d.frequentie || 1, pct = Math.min(100, Math.round(d.gedaanDezeWeek.length / nodig * 100));
+  const nog = Math.max(0, nodig - d.gedaanDezeWeek.length);
+  const rijen = d.sessies.map((x, i) => {
+    const klaar = d.gedaanDezeWeek.includes(x.letter), eerste = d.sessies.findIndex((y) => !d.gedaanDezeWeek.includes(y.letter)), opslot = !klaar && eerste >= 0 && i > eerste;
+    const st = klaar ? '<span class="dash-st ok">&#10003; Gedaan</span>' : opslot ? '<span class="dash-st slot">Op slot</span>' : slot ? '<span class="dash-st slot">Na je test</span>' : '<span class="dash-st nu">Vandaag</span>';
+    return `<button type="button" class="dash-rij" ${!opslot && !slot ? `data-actie="start" data-letter="${x.letter}"` : 'disabled'}><span class="dash-nr">${NR[x.letter]}</span><span class="dash-naam">${esc(x.naam)}<small>${x.minuten} min</small></span>${st}</button>`;
+  }).join('');
+  const testLab = d.testNodig === 0 ? 'Starttest' : 'Romptest', testSub = d.testNodig === 0 && !slot ? 'Vóór sessie 2' : d.testNodig != null ? 'Nu doen' : t.length ? 'Laatste: ' + romp + '/100' : 'Later';
+  return `<div class="dash">${vandaag}
+    <div class="dash-cijfers">${cel(wib, 12, 'Niveau', blok > 1 ? 'blok ' + blok : '')}${cel(romp != null ? romp : '&ndash;', 100, 'Rompscore', plus > 0 ? '+' + plus : '')}${cel(d.gedaanDezeWeek.length, nodig, 'Deze week')}${cel(d.reeks || 0, '', (d.reeks || 0) === 1 ? 'week op rij' : 'weken op rij')}</div>
+    <div class="dash-balk"><i style="width:${pct}%"></i></div><div class="dash-balktekst">${nog ? 'Nog ' + nog + (nog === 1 ? ' sessie' : ' sessies') + ', dan kun je niveau ' + wib + ' afronden' : 'Klaar om niveau ' + wib + ' af te ronden'}</div>
+    <div class="dash-sec">Deze week</div><div class="dash-rijen">${rijen}</div>
+    <div class="dash-sec">Extra</div><div class="dash-extra">
+      <button type="button" data-actie="${d.testNodig != null ? 'starttest' : 'naartest'}"><b>${testLab}</b><span>${testSub}</span></button>
+      ${d.mobiliteit ? '<button type="button" data-actie="mobiliteit"><b>Mobiliteit</b><span>Rustdag of stijf na een rit</span></button>' : ''}
+    </div></div>`;
 }
 function sessiesHtml(d) {
   const slot = d.testNodig === 0 && (d.gedaanDezeWeek.length > 0 || d.afgerond > 0);
@@ -952,6 +1007,9 @@ document.addEventListener('click', async (e) => {
     const open = k.nextElementSibling.classList.toggle('open');
     k.textContent = open ? 'Verberg de uitleg' : 'Bekijk de oefeningen';
   }
+  if (actie === 'naarweekklaar') { const w = document.getElementById('weekklaar'); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  if (actie === 'naartest') { const w = document.getElementById('test') || document.getElementById('testklap'); if (w) { const dt = w.querySelector('details'); if (dt) dt.open = true; w.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
+  if (actie === 'mobiliteit' && S.mobiliteit) { zegWakker(); return startSpeler(S.mobiliteit); }
   if (actie === 'start') zegWakker();
   if (actie === 'start') startMetCheck(S.sessies.find((s) => s.letter === k.dataset.letter));
   if (actie === 'doel' || actie === 'doelwis') {
@@ -1470,7 +1528,7 @@ async function startSpeler(sessie, hervat) {
   const stappen = bouwStappen(sessie);
   const totaal = stappen.reduce((n, s) => n + s.sec, 0);
   const el = document.createElement('div'); el.className = 'speler';
-  el.innerHTML = `<div class="balk"><div class="t">Sessie ${NR[sessie.letter]} &middot; ${esc(sessie.naam)}</div><button class="spk" data-sp="pijn">Pijn?</button><button class="spk" data-sp="stop">Stoppen</button></div>
+  el.innerHTML = `<div class="balk"><div class="t">${NR[sessie.letter] ? 'Sessie ' + NR[sessie.letter] + ' &middot; ' : ''}${esc(sessie.naam)}</div><button class="spk" data-sp="pijn">Pijn?</button><button class="spk" data-sp="stop">Stoppen</button></div>
     <details class="stemklap"><summary>${stemSamen()}</summary><div class="stemkeuze" role="radiogroup" aria-label="Stem"><span>Stem</span>${['vrouw', 'man', 'uit'].map((x) => `<button type="button" data-sp="stem" data-stem="${x}" class="${stemKeuze() === x ? 'aan' : ''}" role="radio">${{ vrouw: 'Vrouw', man: 'Man', uit: 'Uit' }[x]}</button>`).join('')}</div><div class="stemhint"></div></details>
     <div class="voortgang"><i></i></div>
     <div class="midden"><div class="soort"></div><div class="naam"></div><div class="kant"></div><div class="beeld"></div><div class="spieren"></div><div class="klok"></div><div class="cue"></div><div class="straks"></div><div class="uitleg"></div></div>
@@ -1765,7 +1823,7 @@ async function klaarSpeler() {
   piep(660, .15); setTimeout(() => piep(880, .15), 160); setTimeout(() => piep(1100, .3), 320);
   zeg('Goed gedaan. Sessie klaar.');
   const finisher = sp.finisherSec;
-  $('.midden', sp.el).innerHTML = `<div class="soort">Sessie ${NR[sp.sessie.letter]} klaar</div><div class="naam" style="font-size:52px">Goed gedaan</div>
+  $('.midden', sp.el).innerHTML = `<div class="soort">${NR[sp.sessie.letter] ? 'Sessie ' + NR[sp.sessie.letter] + ' klaar' : esc(sp.sessie.naam || 'Klaar')}</div><div class="naam" style="font-size:52px">Goed gedaan</div>
     ${finisher ? `<p class="cue">Je finisher: <b>${finisher} seconden</b> plank.</p>` : ''}
     <p class="cue" style="margin-top:8px">Sessie afvinken...</p>`;
   $('.bediening', sp.el).innerHTML = '';
