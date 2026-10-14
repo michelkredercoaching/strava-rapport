@@ -1678,7 +1678,7 @@ function sbKeuze() { try { return JSON.parse(localStorage.getItem(SB_KEUZE) || '
 function sbBewaarKeuze(k) { try { localStorage.setItem(SB_KEUZE, JSON.stringify({ ...sbKeuze(), ...k })); } catch (e) {} }
 const SB_GROND = {
   weg: [['asfalt', 'Gewoon asfalt', 0], ['ruw', 'Klinkers of kasseien', -0.5], ['glad', 'Vers glad asfalt', 0.3]],
-  gravel: [['gemengd', 'Gemengd', 0], ['los', 'Los grind of zand', -0.3], ['asfalt', 'Veel asfalt', 0.3], ['tassen', 'Met tassen', 0.4]]
+  gravel: [['gemengd', 'Gemengd', 0], ['los', 'Los grind of zand', -0.3], ['ruw', 'Ruw onverhard of bospad', -0.5], ['asfalt', 'Veel asfalt', 0.3], ['tassen', 'Met tassen', 0.4]]
 };
 const ATM = 1.013;
 function sbFiets() {
