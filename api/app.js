@@ -469,6 +469,32 @@ async function rlAutoMee(email, voornaam, score) {
   await redis(['SET', `app:rangprofiel:${email}`, JSON.stringify(prof)]);
   if (score != null) await rlZet('app:ranglijst', score, email);
 }
+// Voornaam opgeven in de app (14-10-2026): nieuwe accounts uit Instagram hebben er geen. Bewaard in Redis
+// en Mailchimp; een automatische ranglijstnaam "Renner 7" wordt meteen je voornaam.
+async function routeNaam(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email) return res.status(401).json({ ok: false });
+  const naam = String(body.naam || '').replace(/[^\p{L} '-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 30);
+  if (naam.length < 2) return res.status(200).json({ ok: false, fout: 'Vul je voornaam in.' });
+  const vn = naam.charAt(0).toUpperCase() + naam.slice(1);
+  await redis(['SET', `app:naam:${email}`, vn]);
+  if (MC_KEY && MC_LIST) {
+    try {
+      const dc = MC_KEY.split('-')[1], hash = crypto.createHash('md5').update(email).digest('hex');
+      await fetch(`https://${dc}.api.mailchimp.com/3.0/lists/${MC_LIST}/members/${hash}`, { method: 'PATCH', headers: { Authorization: 'Basic ' + Buffer.from('any:' + MC_KEY).toString('base64'), 'Content-Type': 'application/json' }, body: JSON.stringify({ merge_fields: { FNAME: vn } }), signal: AbortSignal.timeout(8000) });
+    } catch (e) { /* naam staat in Redis, Mailchimp volgt later */ }
+  }
+  const p = await rlProfiel(email);
+  if (p && p.auto && /^Renner( \d+)?$/.test(p.naam || '')) {
+    const basis = rlNaam(vn.split(' ')[0]) || 'Renner';
+    let nieuw = basis;
+    for (let i = 2; i < 200 && !(await rlNaamClaim(nieuw, email, p.naam)); i++) nieuw = rlNaam(basis.slice(0, 13) + ' ' + i);
+    await redis(['SET', `app:rangprofiel:${email}`, JSON.stringify({ ...p, naam: nieuw })]);
+  }
+  return res.status(200).json({ ok: true, naam: vn });
+}
 async function rlProfiel(email) { const r = await redis(['GET', `app:rangprofiel:${email}`]); try { return (r.ok && r.result && JSON.parse(r.result)) || null; } catch (e) { return null; } }
 async function routeRangProfiel(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
@@ -1093,6 +1119,7 @@ export default async function handler(req, res) {
     if (actie === 'push') return await routePush(req, res);
     if (actie === 'pushtest') return await routePushTest(req, res);
     if (actie === 'pushcron') return await routePushCron(req, res);
+    if (actie === 'naam') return await routeNaam(req, res);
     if (actie === 'correctiesexport') return await routeCorrectiesExport(req, res);
     if (actie === 'startbonus') return await routeStartBonus(req, res);
     if (actie === 'doelenoverzicht') return await routeDoelenOverzicht(req, res);
@@ -1173,6 +1200,7 @@ async function routeOverzicht(req, res) {
   if (!lid || lid.status === 'archived') await nieuwAccount(email);
   await tel(email, 'open');
   const mf = (lid && lid.merge_fields) || {};
+  if (!mf.FNAME) { const an = await redis(['GET', `app:naam:${email}`]); if (an.ok && an.result) mf.FNAME = an.result; }
   // Strava-analyse: de KOOP*-velden zijn de echte (betaalde) uitslag; FTP/OMSLAG
   // kunnen door een later afgehaakte funnelpoging overschreven zijn (lib/lever-rapport.js).
   const analyse = heeftTag(lid, 'power-profile-koper') ? {
@@ -1620,6 +1648,7 @@ async function haalCoachBerichten(email) {
 async function coachContext(email) {
   const [core, lid, banden, schemaDossier, lidm, doel] = await Promise.all([coreVoorEmail(email), mcLid(email), haalBandenProfiel(email), haalSchema(email), haalLid(email), haalDoel(email)]);
   const mf = (lid && lid.merge_fields) || {};
+  if (!mf.FNAME) { const an = await redis(['GET', `app:naam:${email}`]); if (an.ok && an.result) mf.FNAME = an.result; }
   const regels = [];
   if (doelContext(doel)) regels.push(doelContext(doel));
   if (lidm && lidm.coaching) regels.push(`BELANGRIJK: deze renner zit in persoonlijke coaching bij Michel (${lidm.coaching === 'premium' ? 'Premium' : 'Flexibel'}). Michel maakt zijn trainingsplan zelf, persoonlijk in TrainingPeaks. Pas dat plan nooit aan en schuif geen trainingen: bij vragen over zijn plan, zijn trainingen of zijn opbouw zeg je vriendelijk dat hij dat even met Michel kortsluit, via TrainingPeaks of de mail, omdat Michel zijn plan zo heeft opgebouwd. Algemene vragen over voeding, herstel, materiaal, kleding, banden en techniek beantwoord je gewoon. Geef hem vooral toepasbare tips: iets wat hij vandaag of deze week zelf kan doen rond zijn trainingen, zoals wat hij eet en drinkt, hoe hij herstelt en slaapt, hoe hij zijn training in een drukke week inpast, zijn materiaal, kleding, techniek en hoe hij het mentaal volhoudt. Leg geen trainingsinhoud uit zoals zones, intervallen, opbouw of hoeveel uur hij moet fietsen: dat stemt Michel met hem af. Raad hem nooit een Strava-analyse, een trainingsschema of een pacingplan aan: dat regelt Michel binnen zijn coaching.`);

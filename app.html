@@ -2259,7 +2259,7 @@ function lidKopHtml(d) {
 function lidGebruikHtml(d) {
   const dagen = spDagen(), max = (d && d.gratisMax) || 3, over = d && d.gratisOver != null ? d.gratisOver : max, vragen = Math.max(0, max - over);
   const stukken = [];
-  if (dagen) stukken.push('je checkte je spanning al op ' + dagen + (dagen === 1 ? ' dag' : ' dagen'));
+  if (dagen) stukken.push(dagen === 1 ? 'je checkte je spanning al' : 'je checkte je spanning al op ' + dagen + ' dagen');
   if (vragen) stukken.push('je stelde ' + vragen + (vragen === 1 ? ' vraag' : ' vragen') + ' aan je coach deze week');
   if (d && d.core && d.core.rompscore != null) stukken.push('je Rompscore staat op ' + d.core.rompscore);
   if (!stukken.length) return '';
@@ -2817,7 +2817,7 @@ function onbHtml() {
   let inhoud = '', knop = '';
   if (o.stap === 0) {
     inhoud = `<div class="onb-welkom"><img src="/icoon-192.png" alt=""><div>${kop((nm ? 'Welkom ' + esc(nm) : 'Welkom') + '.', 'Ik ben Michel Kreder. 9 jaar profwielrenner en nu coach. Meer dan 1000 renners trainen met mijn schema&rsquo;s. In deze app zit wat ik hen meegeef: je bandenspanning, je eigen coach, Core die met je meebeweegt en elke dag een tip.')}</div></div>
-      <p class="onb-sub">Ik stel je een paar korte vragen. Dan staat de app helemaal op jou ingesteld. Duurt een halve minuut.</p>`;
+      <p class="onb-sub">Ik stel je een paar korte vragen. Dan staat de app helemaal op jou ingesteld. Duurt een halve minuut.</p>${nm ? '' : `<label class="onb-l" for="onbVoornaam">Hoe mag ik je noemen?</label><input id="onbVoornaam" maxlength="30" autocomplete="given-name" placeholder="Je voornaam" value="${esc(o.voornaam || '')}">`}${o.fout ? `<p class="onb-sub" style="color:#ff8a5c">${esc(o.fout)}</p>` : ''}`;
     knop = '<button type="button" class="knop" data-onb="verder">Laten we beginnen</button>';
   } else if (o.stap === 1) {
     inhoud = kop('Waar train je voor?', 'Dan stem ik je tips en meldingen daarop af.') + `<div class="onb-opties">${Object.entries(DOEL_NAMEN).map(([w, n]) => `<button type="button" data-onb="doel" data-w="${w}" class="${o.doel === w ? 'aan' : ''}">${n}</button>`).join('')}</div>`;
@@ -2832,6 +2832,7 @@ function onbHtml() {
     inhoud = kop('Je gewicht en je band', 'Alleen voor je bandenspanning. Het blijft op je telefoon.') + `<label class="onb-l" for="onbGewicht">Je gewicht (kg)</label><input id="onbGewicht" type="number" inputmode="numeric" min="40" max="150" placeholder="bijv. 78" value="${esc(o.gewicht)}">
       <label class="onb-l" for="onbBreedte">Bandbreedte</label><select id="onbBreedte">${BT_BREEDTES[o.type].map((b) => `<option value="${b}" ${Number(o.breedte) === b ? 'selected' : ''}>${b} mm</option>`).join('')}</select>
       <div class="onb-opties twee" style="margin-top:12px"><button type="button" data-onb="tubeless" data-w="false" class="${!o.tubeless ? 'aan' : ''}">Binnenband</button><button type="button" data-onb="tubeless" data-w="true" class="${o.tubeless ? 'aan' : ''}">Tubeless</button></div>`;
+    if (o.fout) inhoud += `<p class="onb-sub" style="color:#ff8a5c;margin-top:10px">${esc(o.fout)}</p>`;
     knop = '<button type="button" class="knop" data-onb="reken">Bekijk mijn spanning</button>';
   } else if (o.stap === 5) {
     const a = BT_LIB && BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: o.type, gewicht: o.gewicht, breedte: o.breedte, tubeless: o.tubeless ? 'tubeless' : 'binnenband' }));
@@ -2846,7 +2847,7 @@ function onbHtml() {
     knop = '<button type="button" class="knop" data-onb="pushnee">Naar mijn app</button>';
   } else if (o.stap === 6) {
     const kan = pushKan() && PUSH.key && !iosZonderApp();
-    inhoud = kop('Zet je pushberichten aan voor je eerste week?', 'Dan krijg je elke ochtend een waardevolle tip van mij, afgestemd op jouw doel. Kort, praktisch, en uitzetten kan altijd.') + `<div class="onb-push"><div class="lp-kop"><img src="/icoon-192.png" alt=""><b>MKC</b><span>07:30</span></div><b>Tip van Michel</b><p>${esc((tipVanDag({ doel: o.doel ? { doel: o.doel } : null }) || { k: 'Rustig is echt rustig.' }).k)}</p></div>`
+    inhoud = kop('Zal ik je elke ochtend een tip sturen?', 'Dan krijg je elke ochtend een waardevolle tip van mij, afgestemd op jouw doel. Kort, praktisch, en uitzetten kan altijd.') + `<div class="onb-push"><div class="lp-kop"><img src="/icoon-192.png" alt=""><b>MKC</b><span>07:30</span></div><b>Tip van Michel</b><p>${esc((tipVanDag({ doel: o.doel ? { doel: o.doel } : null }) || { k: 'Rustig is echt rustig.' }).k)}</p></div>`
       + (iosZonderApp() ? '<p class="onb-sub">Op een iPhone zet je de app eerst op je beginscherm (deel-knop, Zet op beginscherm). Daarna kun je meldingen aanzetten.</p>' : '')
       + (o.fout ? `<p class="onb-sub" style="color:#ff8a5c">${esc(o.fout)}</p>` : '');
     knop = kan ? `<button type="button" class="knop" data-onb="pushja" ${o.bezig ? 'disabled' : ''}>${o.bezig ? 'Even toestemming vragen...' : 'Ja, stuur me elke dag een tip'}</button><button type="button" class="onb-nee" data-onb="pushnee">Liever niet</button>` : '<button type="button" class="knop" data-onb="pushnee">Naar mijn app</button>';
@@ -2876,6 +2877,13 @@ document.addEventListener('click', async (e) => {
   const a = k.dataset.onb; ONB.fout = '';
   if (a === 'sla') return onbKlaar(true);
   if (a === 'terug') { ONB.stap = ONB.stap === 3 && ONB.doel !== 'evenement' ? 1 : ONB.stap - 1; return onbTeken(); }
+  if (a === 'verder' && ONB.stap === 0 && document.getElementById('onbVoornaam')) {
+    const v = String(document.getElementById('onbVoornaam').value || '').trim();
+    if (v.length < 2) { ONB.fout = 'Vul je voornaam in, dan weet ik hoe ik je mag noemen.'; onbTeken(); document.getElementById('onbVoornaam')?.focus(); return; }
+    ONB.voornaam = v; k.disabled = true;
+    try { const j = await (await fetch(API + '?actie=naam', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: v }) })).json(); if (j.ok && D) D.naam = j.naam; else if (!j.ok) { ONB.fout = j.fout || 'Bewaren lukte niet.'; k.disabled = false; return onbTeken(); } } catch (er) { if (D) D.naam = v; }
+    ONB.stap++; return onbTeken();
+  }
   if (a === 'verder') { ONB.stap++; return onbTeken(); }
   if (a === 'doel') {
     ONB.doel = k.dataset.w;
@@ -2893,7 +2901,7 @@ document.addEventListener('click', async (e) => {
   if (a === 'tubeless') { ONB.tubeless = k.dataset.w === 'true'; return onbTeken(); }
   if (a === 'reken') {
     const g = Number(ONB.gewicht);
-    if (!(g >= 40 && g <= 150)) { ONB.fout = 'Vul een gewicht tussen 40 en 150 kg in.'; const el = document.getElementById('onbGewicht'); if (el) { el.focus(); el.classList.add('fout'); } return; }
+    if (!(g >= 40 && g <= 150)) { ONB.fout = 'Vul een gewicht tussen 40 en 150 kg in.'; onbTeken(); const el = document.getElementById('onbGewicht'); if (el) { el.focus(); el.classList.add('fout'); } return; }
     await sbLaadLib();
     btBewaar({ ...btLees(), type: ONB.type, gewicht: g, breedte: ONB.breedte, tubeless: ONB.tubeless });
     const r = BT_LIB && BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: ONB.type, gewicht: g, breedte: ONB.breedte, tubeless: ONB.tubeless ? 'tubeless' : 'binnenband' }));
