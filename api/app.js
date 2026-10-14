@@ -496,6 +496,9 @@ async function routeKracht(req, res) {
     if (body.stop) { await redis(['DEL', `app:kracht:${email}`]); return res.status(200).json({ ok: true, open, kracht: null }); }
     if (body.start) {
       s = { start: new Date().toISOString(), ervaring: body.start.ervaring === 'ervaren' ? 'ervaren' : 'nieuw', waar: body.start.waar === 'thuis' ? 'thuis' : 'sportschool', week: body.start.ervaring === 'ervaren' ? 4 : 1, gedaan: [], laatste: {} };
+    } else if (body.modus) {
+      if (!s) return res.status(400).json({ ok: false, fout: 'Start eerst je krachtprogramma.' });
+      s.modus = ['auto', 'opbouw', 'seizoen'].includes(body.modus) ? body.modus : 'auto';
     } else if (body.log) {
       if (!s) return res.status(400).json({ ok: false, fout: 'Start eerst je krachtprogramma.' });
       try { s = krachtLog(s, body.log); } catch (e) { return res.status(400).json({ ok: false, fout: e.message }); }

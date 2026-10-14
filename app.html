@@ -1188,12 +1188,14 @@
   .kr-verschil { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 0; } .kr-verschil div { border:1px solid var(--border); border-radius:10px; padding:10px; } .kr-verschil b { display:block; font-size:14px; color:var(--accent); } .kr-verschil span { display:block; font-size:12.5px; color:rgba(245,243,239,.8); margin-top:3px; line-height:1.4; }
   .kr-keuze { margin:12px 0; } .kr-keuze b { display:block; font-size:14px; margin-bottom:6px; } .kr-keuze label { display:flex; gap:8px; align-items:center; font-size:14px; padding:8px 0; border-bottom:1px solid var(--border); } .kr-keuze input { accent-color:#FF6B1A; }
   .kr-week { display:flex; gap:8px; margin:10px 0; } .kr-week span { flex:1; text-align:center; border:1px solid var(--border); border-radius:8px; padding:7px; font-size:13px; font-weight:600; } .kr-week span.ok { border-color:#4CC38A; color:#4CC38A; }
+  .kr-modus { display:flex; align-items:center; gap:6px; margin:6px 0 2px; flex-wrap:wrap; } .kr-modus span { font-size:12px; color:var(--muted); margin-right:2px; } .kr-modus button { border:1px solid var(--border); background:none; color:inherit; border-radius:16px; padding:5px 10px; font-size:12.5px; font-family:inherit; cursor:pointer; } .kr-modus button.aan { border-color:#FF6B1A; color:#FF6B1A; font-weight:700; } .kr-modusuitleg { margin:2px 0 6px; }
   .kr-volgende { border:2px solid #FF6B1A; border-radius:14px; padding:14px; margin-top:12px; background:rgba(255,107,26,.06); } .kr-volgende > b { display:block; font-size:17px; margin-top:2px; } .kr-volgende > small { display:block; color:var(--muted); font-size:12.5px; margin:2px 0 8px; }
   .kr-lijst { list-style:none; padding:0; margin:0 0 12px; } .kr-lijst li { display:flex; justify-content:space-between; gap:8px; padding:7px 0; border-bottom:1px solid var(--border); font-size:13.5px; } .kr-lijst li span { color:var(--muted); text-align:right; }
   .kr-oef { border-top:1px solid var(--border); padding:12px 0; } .kr-oefkop b { display:block; font-size:15px; } .kr-oefkop span { display:block; font-size:12.5px; color:var(--muted); } .kr-vorige { display:block; font-size:12px; color:#4CC38A; margin:4px 0; }
   .kr-hoe summary { font-size:12.5px; color:var(--accent); cursor:pointer; margin:4px 0; } .kr-hoe ul { font-size:13px; margin:4px 0 6px; padding-left:18px; color:rgba(245,243,239,.85); }
   .kr-set { display:flex; align-items:center; gap:8px; margin-top:6px; } .kr-set > span { width:42px; font-size:12.5px; color:var(--muted); } .kr-set label { display:flex; align-items:center; gap:4px; font-size:13px; color:var(--muted); } .kr-set input { width:64px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:inherit; font-size:15px; } .kr-set button { margin-left:auto; border:1px solid rgba(255,107,26,.6); background:none; color:var(--accent); border-radius:8px; padding:8px 12px; font-weight:700; font-family:inherit; cursor:pointer; } .kr-set.klaar button { background:#4CC38A; border-color:#4CC38A; color:#0b0b0b; } .kr-set.klaar input { opacity:.7; }
   .kr-rust { position:fixed; left:12px; right:12px; bottom:max(14px, env(safe-area-inset-bottom)); z-index:70; max-width:520px; margin:0 auto; background:#FF6B1A; color:#0b0b0b; border-radius:12px; padding:12px 14px; font-weight:700; display:flex; align-items:center; gap:8px; box-shadow:0 8px 24px rgba(0,0,0,.4); } .kr-rust b { font-size:20px; } .kr-rust button { margin-left:auto; background:rgba(0,0,0,.15); border:0; border-radius:8px; padding:6px 10px; font-weight:700; font-family:inherit; color:#0b0b0b; }
+  .dk { display:grid; grid-template-columns:90px 1fr; gap:8px; } .dk select { width:100%; padding:12px 10px; border-radius:10px; border:1px solid var(--border); background:var(--surface); color:inherit; font-size:16px; font-family:inherit; } .dk-tekst { grid-column:1 / -1; font-size:13px; color:var(--accent); }
   .core-punten { margin:8px 0 14px; padding-left:18px; font-size:14px; } .core-punten li { margin:4px 0; }
   .binnenkort-label { display:inline-block; margin-top:12px; font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); border:1px solid rgba(255,107,26,.5); border-radius:4px; padding:6px 10px; }
   /* Lidmaatschap: per jaar of per maand */
@@ -2719,7 +2721,7 @@ function doelHtml(d) {
   const k = DOELV.kies;
   return `<div class="doelkaart" id="doelvraag"><b>${dl && dl.klaar ? 'Wat is je volgende doel?' : 'Waar train je voor?'}</b><p>Dan stemt de app je tips en meldingen daarop af.</p>
     <div class="doel-opties">${Object.entries(DOEL_NAMEN).map(([w, n]) => `<button type="button" data-doel="kies" data-w="${w}" class="${k === w ? 'aan' : ''}" ${DOELV.bezig ? 'disabled' : ''}>${n}</button>`).join('')}</div>
-    ${k === 'evenement' ? `<div class="doel-ev">${doelTochtHtml(dl)}<div><label for="doelDatum">Wanneer?</label><input id="doelDatum" type="date" value="${esc((dl && dl.datum) || '')}"></div><button type="button" class="knop" data-doel="bewaar" ${DOELV.bezig ? 'disabled' : ''}>${DOELV.bezig ? 'Even bewaren...' : 'Bewaar mijn doel'}</button></div>` : ''}
+    ${k === 'evenement' ? `<div class="doel-ev">${doelTochtHtml(dl)}<div><label for="doelDatum">Wanneer?</label>${datumKiezer('doelDatum', (dl && dl.datum) || '')}</div><button type="button" class="knop" data-doel="bewaar" ${DOELV.bezig ? 'disabled' : ''}>${DOELV.bezig ? 'Even bewaren...' : 'Bewaar mijn doel'}</button></div>` : ''}
     ${DOELV.fout ? `<p class="klein" style="color:#ff8a5c">${esc(DOELV.fout)}</p>` : ''}
     <button type="button" class="doel-later" data-doel="later">${DOELV.open ? 'Annuleer' : 'Later'}</button></div>`;
 }
@@ -2811,7 +2813,7 @@ function tegelsHtml(d) {
   if (d.core && d.core.nogDicht) t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Opent vrijdag 16 oktober om 12:00', tag: 'Vrijdag', tagKlas: 'or' }));
   else if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
   else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Thuis, 10 tot 20 min, 2 tot 4x per week', tag: binnenkortNu() ? 'Binnenkort' : lid ? 'Inbegrepen' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
-  if (d.kracht && d.kracht.open) { const kb = d.kracht.beeld; t.push(tegel({ v: 'kracht', ic: 'kracht', nm: 'Kracht', sub: !kb ? 'Sportschool, 2x per week een uur, met gewichten' : kb.volgende ? 'Week ' + kb.week + ' &middot; sessie ' + kb.volgende.letter + ', ongeveer ' + kb.volgende.minuten + ' min' : 'Week ' + kb.week + ' rond, volgende week staat klaar', tag: kb ? (kb.volgende ? 'Start' : 'Klaar') : 'Nieuw', tagKlas: kb && kb.volgende ? 'gr' : 'or' })); }
+  if (d.kracht && d.kracht.open) { const kb = d.kracht.beeld; t.push(tegel({ v: 'kracht', ic: 'kracht', nm: 'Kracht', sub: !kb ? 'Sportschool, 2x per week een uur, met gewichten' : kb.seizoen ? (kb.volgende ? 'Seizoen &middot; onderhoud, ongeveer ' + kb.volgende.minuten + ' min' : 'Seizoen &middot; onderhoud deze week gedaan') : kb.volgende ? 'Week ' + kb.week + ' &middot; sessie ' + kb.volgende.letter + ', ongeveer ' + kb.volgende.minuten + ' min' : 'Week ' + kb.week + ' rond, volgende week staat klaar', tag: kb ? (kb.volgende ? 'Start' : 'Klaar') : 'Nieuw', tagKlas: kb && kb.volgende ? 'gr' : 'or' })); }
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Tijd voor een nieuwe' : 'Jouw uitslag') : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' }));
   const halfNu = t.filter((x) => !x.includes('tegel breed')).length; // even? dan zou de coach alleen op een halve rij staan
   t.push(tegel({ breed: halfNu % 2 === 0, v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Lid') : '3 gratis', tagKlas: 'or' }));
@@ -2895,7 +2897,7 @@ function onbHtml() {
   } else if (o.stap === 2) {
     inhoud = kop('Welke tocht of wedstrijd?', 'Dan tel ik met je af en bouwt je Core af naar die dag.') + `<label class="onb-l" for="onbTocht">Je tocht</label><select id="onbTocht"><option value="">Kies je tocht</option>${TOCHT_GROEPEN.map(([g, l]) => `<optgroup label="${esc(g)}">${l.map((t) => `<option ${o.tocht === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}</optgroup>`).join('')}<optgroup label="Staat je tocht er niet bij?"><option value="__anders" ${o.tocht === '__anders' ? 'selected' : ''}>Anders, namelijk:</option></optgroup></select>
       ${o.tocht === '__anders' ? `<input id="onbNaam" maxlength="60" placeholder="Naam van je tocht" value="${esc(o.naam || '')}">` : ''}
-      <label class="onb-l" for="onbDatum">Wanneer?</label><input id="onbDatum" type="date" value="${esc(o.datum)}">`;
+      <label class="onb-l" for="onbDatum">Wanneer?</label>${datumKiezer('onbDatum', o.datum)}${o.fout ? `<p class="onb-sub" style="color:#ff8a5c">${esc(o.fout)}</p>` : ''}`;
     knop = '<button type="button" class="knop" data-onb="tochtok">Verder</button>';
   } else if (o.stap === 3) {
     inhoud = kop('Wat rij je vooral?', 'Dan reken ik je spanning uit voor de juiste fiets.') + `<div class="onb-opties twee"><button type="button" data-onb="type" data-w="weg" class="${o.type === 'weg' ? 'aan' : ''}">Racefiets</button><button type="button" data-onb="type" data-w="gravel" class="${o.type === 'gravel' ? 'aan' : ''}">Gravel</button></div>`;
@@ -3182,6 +3184,7 @@ function routeHtml(d) {
 // Server: api/app.js actie=kracht, motor: lib/kracht.js. Eerst alleen zichtbaar voor Michel.
 // ===========================================================================
 const KR = { actief: null, sets: {}, timer: null, eind: 0, bezig: false, fout: '' };
+const KR_PLANNING = '<p class="klein"><b>Zo past het in je week:</b> doe kracht liefst op een dag zonder harde rit. Moet het op dezelfde dag, fiets dan eerst en houd minstens 3 tot 6 uur ertussen. Na een zware krachtsessie 1 tot 2 dagen geen harde training. In het seizoen is 1 sessie per week genoeg om je kracht vast te houden.</p>';
 const KR_VERSCHIL = `<div class="kr-verschil"><div><b>Core</b><span>Thuis, zonder gewichten. 10 tot 20 minuten, 2 tot 4 keer per week. Voor een stabiele romp op de fiets.</span></div><div><b>Kracht</b><span>In de sportschool, met gewichten. Ongeveer een uur, 2 keer per week. Voor meer kracht in je benen: sterker bergop, aanzetten en sprinten.</span></div></div>`;
 function krSetsVoor(o) {
   const kg = o.kg != null ? o.kg : o.vorige ? o.vorige.kg : '';
@@ -3193,7 +3196,7 @@ function krachtPagina(d) {
   if (!b) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht</div><h2>Sterker trappen</h2>
     <p>Twee keer per week een uur in de sportschool. Je bouwt in 12 weken op van wennen naar zware kracht en snelkracht, en de app rekent je gewichten uit.</p>
     ${KR_VERSCHIL}
-    <p class="klein">Het beste werkt het als je daarnaast ongeveer 2 keer per week een uur fietst. Plan je krachtsessie niet de dag voor je zwaarste rit.</p>
+    <p class="klein">Het beste werkt het als je daarnaast ongeveer 2 keer per week een uur fietst.</p>${KR_PLANNING}
     <div class="kr-keuze"><b>Hoeveel ervaring heb je met krachttraining?</b><label><input type="radio" name="krErv" value="nieuw" checked> Nieuw of lang geleden</label><label><input type="radio" name="krErv" value="ervaren"> Ik doe het al regelmatig</label></div>
     <div class="kr-keuze"><b>Waar train je?</b><label><input type="radio" name="krWaar" value="sportschool" checked> In de sportschool</label><label><input type="radio" name="krWaar" value="thuis"> Thuis, met dumbbells en een bank</label></div>
     <button type="button" class="knop" data-kr="start" ${KR.bezig ? 'disabled' : ''}>Start mijn krachtprogramma</button>${KR.fout ? '<p class="klein" style="color:#ff8a5c">' + esc(KR.fout) + '</p>' : ''}</div></div></div>`;
@@ -3201,12 +3204,14 @@ function krachtPagina(d) {
   const v = b.volgende;
   const lijst = (ss) => ss.oefeningen.map((o) => `<li><b>${esc(o.naam)}</b><span>${o.sets} x ${o.laag === o.hoog ? o.laag : o.laag + '-' + o.hoog}${o.perKant ? ' per kant' : ''}${o.gewichtloos ? '' : o.kg != null ? ' &middot; ' + String(o.kg).replace('.', ',') + ' kg' : ' &middot; kies je gewicht'}</span></li>`).join('');
   return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in">
-    <div class="label">Kracht &middot; fase ${b.fase}: ${esc(b.faseNaam)}${b.blok > 1 ? ' &middot; blok ' + b.blok : ''}</div><h2>Week ${b.week}</h2>
+    <div class="label">Kracht &middot; ${b.seizoen ? 'seizoen, 1x per week onderhoud' : 'fase ' + b.fase + ': ' + esc(b.faseNaam) + (b.blok > 1 ? ' &middot; blok ' + b.blok : '')}</div><h2>${b.seizoen ? 'Kracht vasthouden' : 'Week ' + b.week}</h2>
     <p class="klein">${esc(b.voel)}</p>
-    <div class="kr-week"><span class="${b.gedaanDezeWeek.includes('A') ? 'ok' : ''}">${b.gedaanDezeWeek.includes('A') ? '&#10003; ' : ''}Sessie A</span><span class="${b.gedaanDezeWeek.includes('B') ? 'ok' : ''}">${b.gedaanDezeWeek.includes('B') ? '&#10003; ' : ''}Sessie B</span></div>
-    ${v ? `<div class="kr-volgende"><div class="dash-lab">Volgende</div><b>Sessie ${v.letter}: ${esc(v.naam)}</b><small>Ongeveer ${v.minuten} minuten, met 10 minuten warming-up</small><ul class="kr-lijst">${lijst(v)}</ul><button type="button" class="knop breed" data-kr="begin" data-l="${v.letter}">Start sessie ${v.letter}</button></div>`
-      : '<p>Deze week is rond. Je volgende week staat klaar zodra je weer begint.</p>'}
-    <details class="klap" style="margin-top:14px"><summary><b>Waarom kracht naast het fietsen?</b><span>en hoe het in je week past</span></summary><div class="klap-in">${KR_VERSCHIL}<p class="klein">Doe kracht op een dag met een rustige rit of zonder rit, niet de dag voor je zwaarste training. Doe je ook Core, dan niet op dezelfde dag als zware beenoefeningen.</p></div></details>
+    <div class="kr-week">${(b.seizoen ? ['O'] : ['A', 'B']).map((L) => `<span class="${b.gedaanDezeWeek.includes(L) ? 'ok' : ''}">${b.gedaanDezeWeek.includes(L) ? '&#10003; ' : ''}${L === 'O' ? 'Onderhoud deze week' : 'Sessie ' + L}</span>`).join('')}</div>
+    <div class="kr-modus"><span>Periode</span>${[['auto', 'Automatisch'], ['opbouw', 'Opbouw 2x'], ['seizoen', 'Seizoen 1x']].map(([w, t]) => `<button type="button" data-kr="modus" data-w="${w}" class="${b.modus === w ? 'aan' : ''}">${t}</button>`).join('')}</div>
+    <p class="klein kr-modusuitleg">${b.modus === 'auto' ? 'Automatisch: van oktober tot en met maart opbouw met 2 sessies per week, van april tot en met september 1 onderhoudssessie per week.' : b.seizoen ? 'Seizoen: 1 zware sessie per week houdt je kracht vast zonder je fietsen in de weg te zitten.' : 'Opbouw: 2 sessies per week, zo word je echt sterker.'}</p>
+    ${v ? `<div class="kr-volgende"><div class="dash-lab">Volgende</div><b>${v.letter === 'O' ? esc(v.naam) : 'Sessie ' + v.letter + ': ' + esc(v.naam)}</b><small>Ongeveer ${v.minuten} minuten, met 10 minuten warming-up</small><ul class="kr-lijst">${lijst(v)}</ul><button type="button" class="knop breed" data-kr="begin" data-l="${v.letter}">${v.letter === 'O' ? 'Start je onderhoud' : 'Start sessie ' + v.letter}</button></div>`
+      : `<p>${b.seizoen ? 'Je onderhoud van deze week zit erop. Volgende week staat de volgende klaar.' : 'Deze week is rond. Je volgende week staat klaar zodra je weer begint.'}</p>`}
+    <details class="klap" style="margin-top:14px"><summary><b>Waarom kracht naast het fietsen?</b><span>en hoe het in je week past</span></summary><div class="klap-in">${KR_VERSCHIL}${KR_PLANNING}<p class="klein">Zware krachttraining (4 tot 10 herhalingen, niet tot falen) maakt je zuiniger op de fiets en geeft je meer vermogen aan het einde van een lange rit. Doe je ook Core, dan niet op dezelfde dag als zware beenoefeningen.</p></div></details>
     <button type="button" class="sb-link" data-kr="stop" style="margin-top:10px">Stoppen met kracht</button></div></div></div>`;
 }
 function krSessieHtml(b, ss) {
@@ -3216,7 +3221,7 @@ function krSessieHtml(b, ss) {
       <details class="kr-hoe"><summary>Hoe doe je hem?</summary><ul>${o.cue.map((c) => '<li>' + esc(c) + '</li>').join('')}</ul></details>
       ${sets.map((x, i) => `<div class="kr-set ${x.klaar ? 'klaar' : ''}"><span>Set ${i + 1}</span>${o.gewichtloos ? '' : `<label><input type="number" inputmode="decimal" step="0.5" min="0" value="${x.kg}" data-krkg="${o.id}" data-i="${i}"> kg</label>`}<label><input type="number" inputmode="numeric" min="0" value="${x.reps}" data-krreps="${o.id}" data-i="${i}"> x</label><button type="button" data-kr="set" data-id="${o.id}" data-i="${i}" data-rust="${o.rust}" aria-label="Set klaar">${x.klaar ? '&#10003;' : 'Klaar'}</button></div>`).join('')}</div>`; };
   const rust = KR.eind > Date.now() ? `<div class="kr-rust" id="krRust">Rust: <b id="krRustTijd">${Math.ceil((KR.eind - Date.now()) / 1000)}</b> s <button type="button" data-kr="rustweg">Overslaan</button></div>` : '';
-  return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht &middot; week ${b.week} &middot; ${esc(b.faseNaam)}</div><h2>Sessie ${ss.letter}: ${esc(ss.naam)}</h2>
+  return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht &middot; week ${b.week} &middot; ${esc(b.faseNaam)}</div><h2>${ss.letter === 'O' ? esc(ss.naam) : 'Sessie ' + ss.letter + ': ' + esc(ss.naam)}</h2>
     <p class="klein">Begin met 10 minuten warming-up: rustig fietsen of roeien, en per oefening een lichte set. ${esc(b.voel)}</p>
     ${ss.oefeningen.map(rij).join('')}
     <button type="button" class="knop breed" data-kr="klaar" ${KR.bezig ? 'disabled' : ''}>Sessie klaar, opslaan</button>
@@ -3249,7 +3254,39 @@ document.addEventListener('click', async (e) => {
     if (j) { KR.actief = null; KR.sets = {}; KR.eind = 0; teken(); window.scrollTo(0, 0); modal('<h3>Sessie opgeslagen</h3><p>' + (j.kracht && j.kracht.volgende ? 'Volgende: sessie ' + j.kracht.volgende.letter + '. De app heeft je gewichten alvast bijgewerkt.' : 'Deze week is rond. Volgende week gaat het een stapje verder.') + '</p><button type="button" class="knop" data-lx="dicht">Top</button>'); } else teken();
     return;
   }
+  if (a === 'modus') { await krPost({ modus: k.dataset.w }); return teken(); }
   if (a === 'stop') { if (!confirm('Stoppen met kracht? Je voortgang wordt gewist.')) return; await krPost({ stop: true }); return teken(); }
+});
+// Datum van je tocht kiezen (14-10-2026): twee keuzelijsten (dag en maand) in plaats van de lastige
+// datumkiezer van de telefoon. Het jaar rekent de app zelf uit: de eerstvolgende keer dat die dag komt.
+// Het verborgen veld met het id houdt de datum als JJJJ-MM-DD, zodat de bestaande code gewoon werkt.
+const DK_MAANDEN = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+function dkIso(dag, maand) {
+  if (!dag || !maand) return '';
+  const nu = new Date(), vandaag = new Date(nu.getFullYear(), nu.getMonth(), nu.getDate());
+  let j = nu.getFullYear(); const dim = (y) => new Date(y, maand, 0).getDate();
+  let d = new Date(j, maand - 1, Math.min(dag, dim(j)));
+  if (d < vandaag) { j += 1; d = new Date(j, maand - 1, Math.min(dag, dim(j))); }
+  return `${j}-${String(maand).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function dkTekst(iso) {
+  if (!iso) return 'Kies de dag en de maand';
+  const d = new Date(iso + 'T12:00:00'), nog = Math.round((d - new Date(new Date().toDateString())) / 864e5);
+  return d.toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) + (nog >= 0 ? ' &middot; nog ' + (nog === 0 ? 'vandaag' : nog + (nog === 1 ? ' dag' : ' dagen')) : '');
+}
+function datumKiezer(id, waarde) {
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(waarde || '') ? new Date(waarde + 'T12:00:00') : null;
+  const dag = d ? d.getDate() : '', maand = d ? d.getMonth() + 1 : '';
+  return `<div class="dk" data-dk="${id}"><select data-dkdag aria-label="Dag"><option value="">Dag</option>${Array.from({ length: 31 }, (_, i) => `<option ${dag === i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}</select>
+    <select data-dkmaand aria-label="Maand"><option value="">Maand</option>${DK_MAANDEN.map((m, i) => `<option value="${i + 1}" ${maand === i + 1 ? 'selected' : ''}>${m}</option>`).join('')}</select>
+    <input type="hidden" id="${id}" value="${esc(waarde || '')}"><small class="dk-tekst">${dkTekst(waarde)}</small></div>`;
+}
+document.addEventListener('change', (e) => {
+  const box = e.target.closest && e.target.closest('[data-dk]'); if (!box) return;
+  const dag = Number(box.querySelector('[data-dkdag]').value), maand = Number(box.querySelector('[data-dkmaand]').value);
+  const iso = dkIso(dag, maand), inp = box.querySelector('input[type=hidden]');
+  inp.value = iso; box.querySelector('.dk-tekst').innerHTML = dkTekst(iso);
+  inp.dispatchEvent(new Event('input', { bubbles: true }));
 });
 function vandaagHtml(d) {
   if (!d || d.gast) return '';
@@ -3266,7 +3303,7 @@ function vandaagHtml(d) {
   else if (coaching) rijen.push(vdRij('schema', 'Training', 'Je trainingen staan in TrainingPeaks, open ze daar', { href: 'https://app.trainingpeaks.com/', extern: true }));
   // Core
   const kb = d.kracht && d.kracht.beeld;
-  if (kb && kb.volgende) rijen.push(vdRij('kracht', 'Kracht &middot; week ' + kb.week, 'Sessie ' + kb.volgende.letter + ': ' + esc(kb.volgende.naam) + ' &middot; ongeveer ' + kb.volgende.minuten + ' min', { view: 'kracht' }));
+  if (kb && kb.volgende) rijen.push(vdRij('kracht', kb.seizoen ? 'Kracht &middot; seizoen' : 'Kracht &middot; week ' + kb.week, (kb.seizoen ? '' : 'Sessie ' + kb.volgende.letter + ': ') + esc(kb.volgende.naam) + ' &middot; ongeveer ' + kb.volgende.minuten + ' min', { view: 'kracht' }));
   const c = d.core;
   if (c && c.intakeNodig) rijen.push(vdRij('core', 'Core', 'Start je intake, 1 minuut', { href: c.link + '#vandaag' }));
   else if (c && c.nogDicht) { /* Core opent bij de lancering */ }

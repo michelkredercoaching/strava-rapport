@@ -101,6 +101,7 @@
   .datum:focus-within { border-color:var(--accent); }
   textarea { min-height:90px; resize:vertical; }
   .rij2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .dk2 { display:grid; grid-template-columns:64px 1fr; gap:6px; } .dk2 select { width:100%; min-height:46px; padding:10px 8px; background:var(--surface2); border:1px solid rgba(255,255,255,.14); border-radius:5px; color:var(--white); font-size:16px; font-family:inherit; } .dk2-tekst { grid-column:1 / -1; font-size:12px; color:#FF6B1A; }
   /* Sessies */
   .sessies { display:grid; gap:12px; }
   .sessie { background:var(--surface); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
@@ -504,10 +505,28 @@ function datumTekst(v) {
   const d = new Date(v + 'T12:00:00');
   return isNaN(d) ? v : d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
 }
-function datumVeld(attr, waarde) {
-  const icoon = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF6B1A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
-  return `<label class="datum"><span class="tekst ${waarde ? '' : 'leeg'}">${datumTekst(waarde)}</span>${icoon}<input type="date" ${attr} value="${waarde || ''}" min="${new Date().toISOString().slice(0, 10)}"></label>`;
+// Dag en maand kiezen (14-10-2026): soepeler dan de datumkiezer van de telefoon. Het jaar rekent de
+// app uit (de eerstvolgende keer dat die dag komt); het verborgen veld houdt JJJJ-MM-DD.
+const DK_MND = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+function dkIso(dag, maand) {
+  if (!dag || !maand) return '';
+  const nu = new Date(), vandaag = new Date(nu.getFullYear(), nu.getMonth(), nu.getDate());
+  let j = nu.getFullYear(); const dim = (y) => new Date(y, maand, 0).getDate();
+  let d = new Date(j, maand - 1, Math.min(dag, dim(j)));
+  if (d < vandaag) { j += 1; d = new Date(j, maand - 1, Math.min(dag, dim(j))); }
+  return j + '-' + String(maand).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
+function datumVeld(attr, waarde) {
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(waarde || '') ? new Date(waarde + 'T12:00:00') : null;
+  const dag = d ? d.getDate() : '', maand = d ? d.getMonth() + 1 : '';
+  return `<div class="dk2"><select data-dkdag aria-label="Dag"><option value="">Dag</option>${Array.from({ length: 31 }, (_, i) => `<option ${dag === i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}</select><select data-dkmaand aria-label="Maand"><option value="">Maand</option>${DK_MND.map((m, i) => `<option value="${i + 1}" ${maand === i + 1 ? 'selected' : ''}>${m}</option>`).join('')}</select><input type="hidden" ${attr} value="${waarde || ''}"><small class="dk2-tekst">${waarde ? datumTekst(waarde) : 'Datum'}</small></div>`;
+}
+document.addEventListener('change', (e) => {
+  const box = e.target.closest && e.target.closest('.dk2'); if (!box) return;
+  const iso = dkIso(Number(box.querySelector('[data-dkdag]').value), Number(box.querySelector('[data-dkmaand]').value));
+  const inp = box.querySelector('input[type=hidden]'); inp.value = iso; box.querySelector('.dk2-tekst').textContent = iso ? datumTekst(iso) : 'Datum';
+  inp.dispatchEvent(new Event('input', { bubbles: true }));
+});
 document.addEventListener('input', (e) => {
   if (e.target.matches('.datum input')) {
     const t = e.target.parentElement.querySelector('.tekst');
