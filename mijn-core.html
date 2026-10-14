@@ -448,7 +448,7 @@ function teken() {
 
     h += vraagHtml(d);
   }
-  h += `<p class="klein muted" style="margin-top:30px">Voel je pijn tijdens een oefening (niet hetzelfde als vermoeidheid)? Stop die oefening en sla hem over. Laat het Michel weten via de vraagknop.</p>`;
+  h += `<p class="klein muted" style="margin-top:30px">Voel je pijn tijdens een oefening (niet hetzelfde als vermoeidheid)? Tik in de speler op <b>Pijn?</b>. Dan maak je hem lichter of sla je hem over, en Michel krijgt een seintje.</p>`;
   $('#app').innerHTML = h;
   if (d.intakeNodig) intakeStappen();
   else setTimeout(() => { if (!document.querySelector('.speler')) faseIntro(d); }, 400);
