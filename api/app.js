@@ -1210,7 +1210,7 @@ async function routeOverzicht(req, res) {
   const analyse = heeftTag(lid, 'power-profile-koper') ? {
     datum: mf.RAPDAT || '', ftp: mf.KOOPFTP || mf.FTP || '', meet: mf.MEETMETH || '', type: mf.RENTYPE || '',
     omslag: mf.KOOPOMS || mf.OMSLAG || '', advies: mf.ADVSCHEMA || '', score: mf.SCORE || '',
-    decoupling: mf.MEETMETH === 'hartslag' ? (mf.KOOPDCHR || '') : (mf.KOOPDEC || ''),
+    decoupling: mf.MEETMETH === 'hartslag' ? (mf.KOOPDCHR || '') : (mf.KOOPDEC || ''), pijn: mf.PIJN || '', basis: mf.BIJPIJN === 'decoupling-zwak' ? 'zwak' : mf.BIJPIJN === 'decoupling-sterk' ? 'sterk' : '',
     ...adviesBedragen(mf), deadline: mf.DEADLINE || '',
     tegoedLink: mf.PPTOKEN ? `https://michelkredercoaching.nl/trainingsschemas/?pp=${encodeURIComponent(mf.PPTOKEN)}` : ''
   } : null;
@@ -1675,6 +1675,7 @@ async function coachContext(email) {
     if (mf.PIJN === 'grijs') regels.push(`Uit zijn analyse: ${mf.PIJNPCT || 'veel'}% van zijn tijd zit in het grijze gebied (tempo en sweetspot). Zijn grootste winst: rustige ritten echt rustig, en harde trainingen gericht.`);
     else if (mf.PIJN === 'duur') regels.push(`Uit zijn analyse: te weinig echt rustige kilometers (${mf.PIJNPCT || '?'}% rustig, doel 75% of meer).`);
     else if (mf.PIJN === 'interval') regels.push('Uit zijn analyse: hij deed de afgelopen 90 dagen geen VO2max-werk.');
+    if (mf.ADVSCHEMA && mf.ADVTEGOED && Number(mf.ADVTEGOED) > 0) regels.push(`Bij zijn analyse hoort een tegoed van ${mf.ADVTEGOED} euro op een schema${mf.DEADLINE ? ' (geldig tot ' + mf.DEADLINE + ')' : ''}; zijn rapport adviseert het ${mf.ADVSCHEMA}. Heeft hij nog geen schema of coaching en vraagt hij hoe hij verder moet, noem dan dit schema en dat zijn tegoed meetelt.`);
     regels.push('Zijn FTP of omslagpunt uit de Strava-analyse is berekend uit zijn eigen ritten. Noem het geen schatting en raad geen extra test aan, tenzij hij er zelf naar vraagt of zijn schema met een test begint.');
   } else regels.push('Strava-analyse: niet gedaan.');
   if (banden && banden.fietsen && banden.fietsen.length) {

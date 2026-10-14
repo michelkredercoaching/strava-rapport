@@ -253,6 +253,8 @@ export default async function handler(req, res) {
     await markeerVerstuurd(id);
     // Badge "Gemeten" in de MKC-app (13-10-2026): analyses tellen per mailadres.
     if (m.email) { try { await redis(['HINCRBY', `app:teller:${String(m.email).trim().toLowerCase()}`, 'analyses', '1']); } catch (e) {} }
+    // In de app (14-10-2026): je analyse staat klaar, stel je coach je eerste vraag erover.
+    if (m.email) { try { const { appMelding } = await import('../lib/app-melding.js'); await appMelding(String(m.email).trim().toLowerCase(), { soort: 'analyse', titel: 'Je analyse staat in de app', tekst: 'Je zones en je actieplan staan klaar. Vraag je coach wat je cijfers voor jouw training betekenen.', link: '/app#analyse' }); } catch (e) {} }
 
     // 3b) Meta Conversion API: aankoop server-side naar Meta melden (fail-safe:
     //     het rapport is al geleverd en de betaling al gemarkeerd, dus een
