@@ -695,11 +695,27 @@
   .tp-uitleg { position:relative; border:1px solid rgba(255,107,26,.45); background:rgba(255,107,26,.06); border-radius:12px; padding:14px; margin-bottom:16px; }
   .tp-uitleg > b { display:block; font-size:15px; margin-bottom:6px; padding-right:24px; }
   .tp-uitleg p { display:flex; gap:8px; font-size:13.5px; margin:5px 0; line-height:1.45; }
+  .route { margin:18px 0 6px; border:1px solid var(--border); border-radius:14px; padding:16px; background:var(--surface); }
+  .rt-lab { font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); font-weight:700; }
+  .rt-kop { font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1.05; margin:4px 0 10px; }
+  .rt-lijst { position:relative; } .rt-lijst::before { content:''; position:absolute; left:13px; top:14px; bottom:14px; width:2px; background:var(--border); }
+  .rt-stap { position:relative; display:flex; align-items:center; gap:12px; padding:8px 0; }
+  .rt-stap > b { flex:1; font-size:14px; } .rt-stap > em { font-style:normal; font-size:12px; color:var(--muted); font-weight:600; }
+  .rt-bol { position:relative; z-index:1; width:28px; height:28px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800; background:var(--surface); border:2px solid var(--border); color:var(--muted); } .rt-bol svg { width:14px; height:14px; }
+  .rt-stap.klaar .rt-bol, .rt-stap.nu .rt-bol { background:#4CC38A; border-color:#4CC38A; color:#0b0b0b; } .rt-stap.nu > em { color:#4CC38A; }
+  .rt-stap.dicht { opacity:.55; }
+  .rt-stap.open { align-items:flex-start; } .rt-stap.open .rt-bol { border-color:var(--accent); color:var(--accent); box-shadow:0 0 0 4px rgba(255,107,26,.15); animation:rtPuls 2.4s ease-in-out infinite; }
+  @keyframes rtPuls { 50% { box-shadow:0 0 0 7px rgba(255,107,26,.05); } }
+  .rt-in { flex:1; border:1px solid rgba(255,107,26,.5); background:rgba(255,107,26,.06); border-radius:12px; padding:12px; }
+  .rt-in b { display:block; font-size:15px; } .rt-in p { font-size:13.5px; margin:4px 0 6px; line-height:1.45; } .rt-in small { display:block; font-size:12px; color:var(--muted); margin-bottom:10px; }
+  .rt-in .knop { margin:0; }
+  @media (prefers-reduced-motion: reduce) { .rt-stap.open .rt-bol { animation:none; } }
   .cp-michel { border-color:rgba(255,107,26,.6); background:rgba(255,107,26,.06); }
   .cp-knoppen { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; } .cp-knoppen .knop { width:auto; flex:1 1 140px; margin:0; text-align:center; }
-  .cp-plek { display:flex; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); } .cp-plek:last-child { border-bottom:0; }
+  .cp-plek { display:flex; align-items:center; gap:12px; width:100%; padding:13px 2px; border:0; border-bottom:1px solid var(--border); background:none; color:inherit; font-family:inherit; text-align:left; text-decoration:none; cursor:pointer; } .cp-plek:last-child { border-bottom:0; } .cp-plek:active { background:rgba(255,255,255,.04); }
+  .cp-tk { flex:1; min-width:0; } .cp-pijl { font-style:normal; font-size:22px; color:var(--muted); flex-shrink:0; }
   .cp-ic { width:34px; height:34px; flex-shrink:0; border-radius:10px; background:rgba(255,107,26,.12); color:#FF6B1A; display:flex; align-items:center; justify-content:center; } .cp-ic svg { width:19px; height:19px; }
-  .cp-plek b { display:block; font-size:14.5px; } .cp-plek span { display:block; font-size:13px; color:var(--muted); line-height:1.45; margin-top:2px; } .cp-plek .sb-link { display:inline-block; margin:6px 0 0; padding:0; }
+  .cp-plek .cp-tk b { display:block; font-size:14.5px; } .cp-plek .cp-tk span { display:block; font-size:13px; color:var(--muted); line-height:1.45; margin-top:2px; }
   .cp-vraag { border-bottom:1px solid var(--border); padding:10px 0; } .cp-vraag summary { cursor:pointer; font-weight:600; font-size:14px; } .cp-vraag p { font-size:13.5px; color:var(--muted); margin:8px 0 2px; line-height:1.5; }
   .tp-uitleg p i { font-style:normal; color:#4CC38A; font-weight:800; flex-shrink:0; }
   .tp-uitleg .knop { width:auto; display:inline-block; margin-top:8px; padding:8px 14px 6px; font-size:16px; }
@@ -2706,7 +2722,7 @@ function tegelsHtml(d) {
   if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true }));
   if (!d.gast) { const pb = palmaresStand(d); t.push(tegel({ v: 'palmares', ic: 'palmares', nm: 'Je palmares', sub: !pb.l.length ? 'Medailles verdienen met wat je doet' : pb.m + (pb.m === 1 ? ' medaille' : ' medailles') + (pb.volgendeBel ? ' &middot; beloning bij ' + pb.volgendeBel.n : ''), tag: pb.m ? String(pb.m) : '', tagKlas: 'or', breed: true })); }
   const bk = `<div class="bk-rij"><span>Binnenkort</span><button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
-  return `<div class="tegels">${t.join('')}</div>${bk}`;
+  return `<div class="tegels">${t.join('')}</div>${routeHtml(d)}${bk}`;
 }
 // Laatst berekende gratis spanning (btReken bewaart hem), om op de tegel te tonen.
 function laatsteSpanning() { try { return localStorage.getItem('mkcLaatsteSpanning') || ''; } catch (e) { return ''; } }
@@ -2981,7 +2997,7 @@ function coachingPaginaHtml(d) {
   const vn = esc(String((d && d.naam) || '').trim().split(' ')[0]);
   const ua = navigator.userAgent || '', ios = /iPhone|iPad|iPod/.test(ua), android = /Android/.test(ua);
   const wa = 'https://wa.me/31639771314?text=' + encodeURIComponent('Hoi Michel, ');
-  const plek = (ic, kop, tekst, knop) => `<div class="cp-plek"><span class="cp-ic">${IC[ic] || ''}</span><div><b>${kop}</b><span>${tekst}</span>${knop || ''}</div></div>`;
+  const plek = (ic, kop, tekst, doel) => { const bin = `<span class="cp-ic">${IC[ic] || ''}</span><span class="cp-tk"><b>${kop}</b><span>${tekst}</span></span><i class="cp-pijl">&#8250;</i>`; return doel.href ? `<a class="cp-plek" href="${esc(doel.href)}"${doel.extern ? ' target="_blank" rel="noopener"' : ''}>${bin}</a>` : `<button type="button" class="cp-plek" data-view="${doel.view}">${bin}</button>`; };
   const vraag = (v, a) => `<details class="cp-vraag"><summary>${v}</summary><p>${a}</p></details>`;
   const winkel = ios ? `<a class="knop" href="${TP_IOS}" target="_blank" rel="noopener">Download voor iPhone</a>` : android ? `<a class="knop" href="${TP_ANDROID}" target="_blank" rel="noopener">Download voor Android</a>` : `<a class="knop" href="${TP_IOS}" target="_blank" rel="noopener">iPhone</a><a class="knop" href="${TP_ANDROID}" target="_blank" rel="noopener">Android</a>`;
   return `<div class="kaarten cp">
@@ -2992,11 +3008,11 @@ function coachingPaginaHtml(d) {
     </div></div>
     <div class="kaart"><div class="kaart-in">
       <h2>Waar vind je wat</h2>
-      ${plek('schema', 'Je trainingen: TrainingPeaks', 'Daar zet ik ze voor je klaar en stuur ik bij op wat je rijdt en hoe je je voelt. Daar verandert niets.', '<a class="sb-link" href="https://app.trainingpeaks.com/" target="_blank" rel="noopener">Open TrainingPeaks</a>')}
-      ${plek('core', 'Je core: de Core-app', 'Korte sessies thuis op de timer. Ze passen zich aan op je niveau en je Rompscore laat zien dat je sterker wordt.', d && d.core && d.core.link ? `<a class="sb-link" href="${esc(d.core.link)}#vandaag">Naar de Core-app</a>` : '')}
-      ${plek('rijden', 'Voor je rit: Vandaag rijden', 'Je bandenspanning, kleding, voeding en de wind voor de rit van vandaag.', '<button type="button" class="sb-link" data-view="rijden">Naar Vandaag rijden</button>')}
-      ${plek('coach', 'Snelle vraag: Vraag je coach', 'Een algemene vraag over voeding, materiaal of herstel, ook om 23:00. Hij antwoordt met mijn kennis. Gaat het over jouw planning of hoe je je voelt, dan liever direct naar mij.', '<button type="button" class="sb-link" data-view="coach">Stel een vraag</button>')}
-      ${plek('palmares', 'Je medailles: Palmares', 'Wat je doet levert medailles en beloningen op, en je renner op de ranglijst.', '<button type="button" class="sb-link" data-view="palmares">Naar je palmares</button>')}
+      ${plek('schema', 'Je trainingen in TrainingPeaks', 'Daar zet ik ze klaar en stuur ik bij op wat je rijdt en hoe je je voelt.', { href: 'https://app.trainingpeaks.com/', extern: true })}
+      ${plek('core', 'Je core in de Core-app', 'Korte sessies thuis op de timer, op jouw niveau. Je Rompscore laat zien dat je sterker wordt.', d && d.core && d.core.link ? { href: d.core.link + '#vandaag' } : { view: 'core' })}
+      ${plek('rijden', 'Bandenspanning en je rit', 'Je bandenspanning, kleding, voeding en de wind voor de rit van vandaag.', { view: 'rijden' })}
+      ${plek('coach', 'Snelle vraag aan je coach', 'Over voeding, materiaal of herstel, ook om 23:00. Gaat het over je planning of hoe je je voelt, dan liever direct naar mij.', { view: 'coach' })}
+      ${plek('palmares', 'Je medailles en de ranglijst', 'Wat je doet levert medailles en beloningen op, en een renner op de ranglijst.', { view: 'palmares' })}
     </div></div>
     <div class="kaart"><div class="kaart-in">
       <h2>De TrainingPeaks-app</h2>
@@ -3013,6 +3029,29 @@ function coachingPaginaHtml(d) {
       ${vraag('Wie leest mijn berichten?', 'Ik. Berichten via WhatsApp en TrainingPeaks lees en beantwoord ik zelf. Alleen Vraag je coach in de app antwoordt automatisch, met mijn kennis.')}
     </div></div>
   </div>`;
+}
+// Je route (14-10-2026): gratis, lid, schema, coaching. Wat je hebt staat afgevinkt, de volgende stap
+// staat open met wat het je oplevert, de rest zit nog op slot. Coaching is de top, die zien deze kaart niet.
+const OPEN_SLOT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>';
+function routeHtml(d) {
+  if (!d || d.gast || (d.lid && d.lid.bron === 'coaching')) return '';
+  const schema = !!(d.schema || (d.lid && d.lid.bron === 'schema'));
+  const nu = schema ? 2 : isLid(d) ? 1 : 0;
+  const naLancering = Date.now() >= 1792144800000;
+  const stappen = [
+    { nm: 'Gratis account', wat: 'Bandenspanning, wind en 3 coachvragen per week' },
+    { nm: 'MKC-lid', wat: 'Slimme bandenspanning, kleding en voeding voor elke rit, je coach zonder limiet en de Core-app.', prijs: '&euro;' + APP_PRIJS.maand + ' per maand, altijd opzegbaar', knop: `<button type="button" class="knop" data-view="lid">${kanLidNu(d) ? 'Word lid' : 'Bekijk wat je krijgt'}</button>` },
+    { nm: 'Trainingsschema', wat: 'Een plan van 8, 12 of 16 weken in TrainingPeaks. Hier in de app zie je elke dag je training, met uitleg.', prijs: naLancering ? 'Vanaf &euro;59, lidmaatschap inbegrepen' : 'Je lidmaatschap loopt mee zolang je schema loopt', knop: `<a class="knop" href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Kies je schema</a>` },
+    { nm: '1-op-1 coaching', wat: 'Michel maakt je plan en stuurt elke week bij op wat je rijdt en hoe je je voelt.', prijs: 'Vanaf &euro;79 per maand, app inbegrepen', knop: `<a class="knop" href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener">Bekijk coaching</a>` }
+  ];
+  const kop = ['Haal meer uit elke rit', 'Klaar voor een echt plan?', 'Train met Michel zelf'][nu];
+  const rij = (st, i) => {
+    if (i < nu) return `<div class="rt-stap klaar"><span class="rt-bol">&#10003;</span><b>${st.nm}</b><em>Heb je</em></div>`;
+    if (i === nu) return `<div class="rt-stap nu"><span class="rt-bol">&#10003;</span><b>${st.nm}</b><em>Jij nu</em></div>`;
+    if (i === nu + 1) return `<div class="rt-stap open"><span class="rt-bol">${OPEN_SLOT}</span><div class="rt-in"><b>${st.nm}</b><p>${st.wat}</p><small>${st.prijs}</small>${st.knop}</div></div>`;
+    return `<div class="rt-stap dicht"><span class="rt-bol">${SLOT}</span><b>${st.nm}</b><em>Op slot</em></div>`;
+  };
+  return `<div class="route"><div class="rt-lab">Jouw volgende stap</div><div class="rt-kop">${kop}</div><div class="rt-lijst">${stappen.map(rij).join('')}</div></div>`;
 }
 function vandaagHtml(d) {
   if (!d || d.gast) return '';
