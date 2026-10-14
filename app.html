@@ -31,6 +31,7 @@
   .uit { font-size:12.5px; color:var(--muted); background:none; border:0; text-decoration:underline; cursor:pointer; font-family:inherit; }
   .groet { font-family:'Bebas Neue',sans-serif; font-size:clamp(40px,11vw,56px); line-height:.92; text-transform:uppercase; margin-bottom:8px; }
   .groet em { font-style:normal; color:var(--accent); }
+  .groet.kort { font-size:clamp(30px,8.5vw,40px); margin-bottom:2px; }
   .intro { font-size:15px; color:var(--muted); margin-bottom:24px; }
   .label { display:inline-flex; align-items:center; gap:8px; font-size:10.5px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); margin-bottom:10px; }
   .label::before { content:''; width:16px; height:1px; background:var(--accent); }
@@ -701,6 +702,7 @@
   .tp-uitleg > b { display:block; font-size:15px; margin-bottom:6px; padding-right:24px; }
   .tp-uitleg p { display:flex; gap:8px; font-size:13.5px; margin:5px 0; line-height:1.45; }
   .route { position:relative; margin:18px 0 6px; border:1px solid var(--border); border-radius:14px; padding:16px; background:var(--surface); }
+  .rt-klap > summary { list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; } .rt-klap > summary::-webkit-details-marker { display:none; } .rt-klap > summary > div { flex:1; } .rt-klap .rt-kop { margin-bottom:2px; } .rt-sum { font-size:12.5px; color:var(--muted); } .rt-klap[open] > summary { margin-bottom:10px; }
   .rt-lab { font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); font-weight:700; }
   .rt-kop { font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1.05; margin:4px 0 10px; }
   .rt-lijst { position:relative; } .rt-lijst::before { content:''; position:absolute; left:13px; top:14px; bottom:14px; width:2px; background:var(--border); }
@@ -1080,6 +1082,7 @@
   details.start .start-kop { align-items:center; }
   details.start .start-kop span { margin-left:auto; font-size:12.5px; color:var(--muted); }
   .start-pijl { width:9px; height:9px; border-right:2px solid var(--accent); border-bottom:2px solid var(--accent); transform:rotate(45deg); margin:0 4px 4px 4px; transition:transform .2s; flex-shrink:0; }
+  .rt-klap[open] .start-pijl { transform:rotate(-135deg); margin-bottom:-2px; }
   details.start[open] .start-pijl { transform:rotate(-135deg); margin-bottom:-2px; }
   details.start:not([open]) { padding-bottom:16px; }
   details.start[open] > summary { margin-bottom:10px; }
@@ -2751,9 +2754,10 @@ function tegelsHtml(d) {
   else if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
   else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Core stability voor wielrenners, op de timer', tag: binnenkortNu() ? 'Binnenkort' : lid ? 'Inbegrepen' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Tijd voor een nieuwe' : 'Jouw uitslag') : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' }));
-  t.push(tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Lid') : '3 gratis', tagKlas: 'or' }));
+  const halfNu = t.filter((x) => !x.includes('tegel breed')).length; // even? dan zou de coach alleen op een halve rij staan
+  t.push(tegel({ breed: halfNu % 2 === 0, v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Lid') : '3 gratis', tagKlas: 'or' }));
   if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true }));
-  if (!d.gast) { const pb = palmaresStand(d); t.push(tegel({ v: 'palmares', ic: 'palmares', nm: 'Je palmares', sub: !pb.l.length ? 'Medailles verdienen met wat je doet' : pb.m + (pb.m === 1 ? ' medaille' : ' medailles') + (pb.volgendeBel ? ' &middot; beloning bij ' + pb.volgendeBel.n : ''), tag: pb.m ? String(pb.m) : '', tagKlas: 'or', breed: true })); }
+  if (false) { const pb = palmaresStand(d); t.push(tegel({ v: 'palmares', ic: 'palmares', nm: 'Je palmares', sub: !pb.l.length ? 'Medailles verdienen met wat je doet' : pb.m + (pb.m === 1 ? ' medaille' : ' medailles') + (pb.volgendeBel ? ' &middot; beloning bij ' + pb.volgendeBel.n : ''), tag: pb.m ? String(pb.m) : '', tagKlas: 'or', breed: true })); }
   const bk = `<div class="bk-rij"><span>Binnenkort</span><button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
   return `<div class="tegels">${t.join('')}</div>${routeHtml(d)}${eersteWeekHtml(d) ? '' : bk}`;
 }
@@ -3075,6 +3079,12 @@ function coachingPaginaHtml(d) {
 // Je route (14-10-2026): gratis, lid, schema, coaching. Wat je hebt staat afgevinkt, de volgende stap
 // staat open met wat het je oplevert, de rest zit nog op slot. Coaching is de top, die zien deze kaart niet.
 const OPEN_SLOT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>';
+function planOptie(d, naLancering) {
+  const doel = d.doel && !d.doel.klaar ? d.doel.doel : null, maand = new Date().getMonth(), winter = maand >= 9 || maand <= 1;
+  if (doel === 'fit') return `<a href="${SITE}/het-startpakket/" target="_blank" rel="noopener">Het Startpakket<small>4 weken rustig opbouwen</small></a>`;
+  if (winter && doel !== 'evenement' && !(d.analyse && d.analyse.meet === 'hartslag')) return `<a href="${SITE}/winterprogramma/" target="_blank" rel="noopener">Winterprogramma<small>12 weken op je trainer</small></a>`;
+  return `<a href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Trainingsschema<small>${naLancering ? 'vanaf &euro;59' : '8, 12 of 16 weken'}</small></a>`;
+}
 function routeHtml(d) {
   if (!d || d.gast || (d.lid && d.lid.bron === 'coaching')) return '';
   const schema = !!(d.schema || (d.lid && d.lid.bron === 'schema'));
@@ -3093,11 +3103,13 @@ function routeHtml(d) {
   const kaartje = (st, kort) => `<div class="rt-in"><b>${st.nm}</b><p>${kort}</p><small>${st.prijs}</small>${st.knop}</div>`;
   const [sch, coa] = [stappen[2], stappen[3]];
   let verder = '';
-  if (nu === 0) verder = open(stappen[1]) + `<div class="rt-stap of"><span class="rt-bol">${OPEN_SLOT}</span><div class="rt-of"><b>Of meteen met een plan</b><div><a href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Trainingsschema<small>${naLancering ? 'vanaf &euro;59' : '8, 12 of 16 weken'}</small></a><a href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener">1-op-1 coaching<small>vanaf &euro;79 p/m</small></a></div><span>Het lidmaatschap zit er dan bij in.</span></div></div>`;
+  if (nu === 0) verder = open(stappen[1]) + `<div class="rt-stap of"><span class="rt-bol">${OPEN_SLOT}</span><div class="rt-of"><b>Of meteen met een plan</b><div>${planOptie(d, naLancering)}<a href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener">1-op-1 coaching<small>vanaf &euro;79 p/m</small></a></div><span>Het lidmaatschap zit er dan bij in.</span></div></div>`;
   const keuze = nu === 1 ? `<div class="rt-kies">${OPEN_SLOT}Kies wat bij je past</div><div class="rt-keuze">${kaartje(sch, '8, 12 of 16 weken in TrainingPeaks, met elke dag uitleg in de app.')}${kaartje(coa, 'Michel maakt je plan en stuurt elke week bij.')}</div>` : '';
   if (nu === 2) verder = open(coa);
   try { if (Date.now() - Number(localStorage.getItem('mkcRouteWeg') || 0) < 14 * 864e5) return ''; } catch (e) {}
-  return `<div class="route"><button type="button" class="welkom-x" data-actie="routeweg" aria-label="Verbergen">&times;</button><div class="rt-lab">Jouw volgende stap</div><div class="rt-kop">${kop}</div><div class="rt-lijst">${stappen.slice(0, nu + 1).map(klaar).join('')}${verder}</div>${keuze}</div>`;
+  const binnen = `<div class="rt-lijst">${stappen.slice(0, nu + 1).map(klaar).join('')}${verder}</div>${keuze}`;
+  if (nu > 0) return `<details class="route rt-klap" data-klap="route" ${klapOpen('route', false) ? 'open' : ''}><summary><div><div class="rt-lab">Jouw volgende stap</div><div class="rt-kop">${kop}</div><small class="rt-sum">${nu === 1 ? 'Een trainingsschema of 1-op-1 coaching' : '1-op-1 coaching met Michel'}</small></div><i class="start-pijl"></i></summary>${binnen}</details>`;
+  return `<div class="route"><button type="button" class="welkom-x" data-actie="routeweg" aria-label="Verbergen">&times;</button><div class="rt-lab">Jouw volgende stap</div><div class="rt-kop">${kop}</div>${binnen}</div>`;
 }
 function vandaagHtml(d) {
   if (!d || d.gast) return '';
@@ -3265,7 +3277,7 @@ function teken() {
   const d = zicht(), voornaam = String(d.naam || '').trim().split(' ')[0];
   $('#app').innerHTML = `${appBalkHtml()}
     ${beheerHtml(d)}${d.beheer ? `<details class="bh-groep" data-klap="beheer" ${klapOpen('beheer', true) ? 'open' : ''}><summary><b>Beheer</b><span>${bhDashKort()}</span></summary><div id="bhdash">${bhDashHtml()}</div><div class="bh-sec">Te doen</div>${opvolgHtml()}${nakijkHtml()}<div class="bh-sec">Mensen</div>${ledenHtml()}${doelenBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}<div class="bh-sec">Groei en gebruik</div>${gebruikHtml()}${badgeBeheerHtml()}<div class="bh-sec">Berichten versturen</div>${aankondigHtml()}${pushOpnieuwHtml()}</details>` : ''}
-    <div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
+    <div class="groet${welkomNu() ? '' : ' kort'}">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Hoi.')}</div>
     ${welkomNu() ? '<p class="welkom-michel">' + (eersteWeekHtml(d) ? 'Begin hieronder met je eerste week.' : startlijstHtml(d) ? 'Begin hieronder met je startlijst, dan staat de app helemaal goed.' : '') + ' Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
     ${!d.gast ? '<div class="rang-plek">' + palmaresChipHtml(d) + rangChipHtml(d) + '</div>' : ''}
     ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${vriendActief() ? '<a href="#" data-actie="naarlid">' + (vriendDoor() ? esc(vriendDoor()) + ' gaf je' : 'je maat gaf je') + ' korting op je lidmaatschap</a>' : kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
@@ -3276,7 +3288,7 @@ function teken() {
       <ol><li><span>1</span>Tik op Vandaag rijden en vul je gewicht en band in: je ziet meteen wat je pompt. Gratis, voor elke rit.</li>
       <li><span>2</span>${binnenkortNu() ? 'Rechtsonder zit <em>Vraag je coach</em>: stel elke week 3 vragen gratis, over training, voeding, banden of herstel.' : 'Start je gratis week in de Core-app: korte sessies thuis, op de timer.'}</li>
       <li><span>3</span>${binnenkortNu() ? 'Zet de app op je beginscherm, dan heb je je bandenspanning altijd bij de hand.' : d.lidOpen ? 'Meer nodig? Als lid krijg je je eigen coach, de slimme bandenspanning en de Core-app doorlopend, voor &euro;' + APP_PRIJS.maand + ' per maand.' : 'Rechtsonder zit <em>Vraag je coach</em>: je eigen coach die je analyse en je plan kent, straks voor leden.'}</li></ol></div>`
-      : isLid(d) || (d.lid && d.lid.bron === 'coaching') ? '' : '<p class="intro">Je programma\'s, je analyse en je tools. Wat op slot zit, ontgrendel je wanneer jij eraan toe bent.</p>'}${eersteWeekHtml(d) ? '</div>' : ''}
+      : ''}${eersteWeekHtml(d) ? '</div>' : ''}
     ${tpUitlegHtml(d)}${vandaagHtml(d)}
     <div id="startlijst">${startlijstHtml(d)}</div>
     ${schemaEindeHtml(d)}
@@ -3284,9 +3296,9 @@ function teken() {
     ${tipHtml(d)}
     ${tegelsHtml(d)}
     ${rustigBegin(d) ? '' : `${appHtml() ? `<div style="margin-top:16px">${appHtml()}</div>` : ''}
-    ${verkoopMomentHtml(d) || lidBalkHtml(d)}`}
+    ${verkoopMomentHtml(d) || (routeHtml(d) ? '' : lidBalkHtml(d))}`}
     ${vriendMomentHtml(d)}
-    ${rustigBegin(d) ? '' : volgendeStapHtml(d)}
+    ${rustigBegin(d) || routeHtml(d) ? '' : volgendeStapHtml(d)}
     <div id="meldinst">${meldInstHtml()}</div>
     ${feedbackHtml()}
     <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a> &middot; <a href="#" data-actie="uitloggen">Uitloggen</a> &middot; <a href="#" data-lx="verwijder">Account verwijderen</a></div>`;
@@ -3901,7 +3913,7 @@ function eersteMedailleModal() {
 }
 function palmaresChipHtml(d) {
   const pb = palmaresStand(d);
-  return `<a href="#" class="rang-chip" data-view="palmares"><span>Palmares</span>${pb.l.length ? pb.m + (pb.m === 1 ? ' medaille' : ' medailles') : 'Je medailles'} <i>&rsaquo;</i></a>`;
+  return `<a href="#" class="rang-chip" data-view="palmares"><span>Palmares</span>${pb.l.length ? pb.m + (pb.m === 1 ? ' medaille' : ' medailles') + (pb.volgendeBel ? ' &middot; beloning bij ' + pb.volgendeBel.n : '') : 'Verdien je eerste medaille'} <i>&rsaquo;</i></a>`;
 }
 function rangChipHtml(d) {
   const l = vriendLid(d); if (!l) return '';
