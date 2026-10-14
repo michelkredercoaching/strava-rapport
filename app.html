@@ -309,6 +309,9 @@
   .md-rijen li { display:grid; grid-template-columns:30px 1fr auto; gap:10px; align-items:center; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:10px; padding:6px 10px; }
   .md-rijen li.aan { border-color:rgba(255,107,26,.4); } .md-rijen b { display:block; font-size:13.5px; } .md-rijen span { font-size:12px; color:var(--muted); } .md-rijen small { font-size:11.5px; color:var(--muted); white-space:nowrap; }
   .ms-lijst { text-align:left; margin:8px 0 12px; padding-left:20px; display:grid; gap:8px; } .ms-lijst b { display:block; font-size:14px; } .ms-lijst span { font-size:12.5px; color:var(--muted); }
+  .voorverkoop { border:1px solid rgba(255,107,26,.5); background:rgba(255,107,26,.08); border-radius:12px; padding:12px 14px; margin-bottom:14px; }
+  .voorverkoop b { display:block; color:var(--accent); font-size:12px; letter-spacing:.14em; text-transform:uppercase; }
+  .voorverkoop p { font-size:13.5px; margin:4px 0 0; }
   .naarjaar { border:1px solid rgba(255,107,26,.45); background:rgba(255,107,26,.06); border-radius:12px; padding:14px; margin:12px 0; }
   .naarjaar b { display:block; font-size:15px; }
   .naarjaar p { font-size:13px; color:var(--muted); margin:4px 0 10px; }
@@ -318,6 +321,8 @@
   .bhd-cel b { display:block; font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1; color:var(--accent); }
   .bhd-cel span { display:block; font-size:11.5px; font-weight:700; margin-top:2px; }
   .bhd-cel small { display:block; font-size:10.5px; color:var(--muted); line-height:1.3; margin-top:2px; }
+  .bhd-vv { display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid rgba(255,107,26,.4); border-radius:10px; padding:10px; margin:6px 0; font-size:13px; }
+  .bhd-vv .knop { width:auto; padding:8px 14px 6px; font-size:16px; margin:0; }
   .bh-sec { font-size:10.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin:16px 0 6px; padding-top:10px; border-top:1px solid rgba(255,255,255,.08); }
   @media (max-width:420px) { .bhd-rij { grid-template-columns:repeat(2, 1fr); } }
   .bh-nakijk { margin-top:10px; padding:10px; border:1px solid rgba(255,255,255,.12); border-radius:8px; }
@@ -1370,6 +1375,7 @@ function coreKaart(c) {
         <div class="slotje">${SLOT}<b>${binnenkortNu() ? 'Binnenkort' : inb ? 'Zo ziet je voortgang eruit' : 'Week 1 is gratis'}</b></div></div></details></div></div>`;
   }
   const K = window.CoreSpierkaart;
+  if (c.nogDicht) return `<div class="kaart"><div class="kaart-in"><span class="tag oranje">Vrijdag 12:00</span><div class="label">Core-app</div><h2>Je Core-app opent vrijdag</h2><p>Op vrijdag 16 oktober om 12:00 gaat hij open. Dan doe je een korte intake en staat je eerste sessie meteen klaar.</p></div></div>`;
   if (c.intakeNodig) {
     return `<div class="kaart actief"><div class="kaart-in"><span class="tag open">Open</span><div class="label">Core-app</div>
       <h2>Je plan staat klaar</h2><p>Begin met een paar korte vragen over je klachten, dan stem ik je oefeningen af.</p>
@@ -2052,9 +2058,10 @@ function bhDashHtml() {
   return `<div class="bhd"><div class="bhd-rij">
     ${cel(x.accounts, 'accounts', 'iedereen die de app gebruikte')}${cel(x.vandaag, 'actief vandaag')}${cel(x.week, 'actief 7 dagen')}${cel(x.maand, 'actief 30 dagen')}</div>
     <div class="bhd-rij">${cel(x.betaald, 'betalende leden', x.maandLeden + ' maand &middot; ' + x.jaarLeden + ' jaar' + (x.nieuwVandaag ? ' &middot; ' + x.nieuwVandaag + ' nieuw vandaag' : ''))}${cel(eur(x.mrr), 'omzet per maand', 'uit lidmaatschappen')}${cel(x.coaching, 'coaching')}${cel(x.schema, 'via schema')}</div>
+    ${x.voorLancering ? `<div class="bhd-vv"><span><b>Voorverkoop</b> lid worden in de app vóór vrijdag 12:00 &middot; ${x.voorverkoop ? '<em style="color:#4CC38A">staat aan</em>' : 'staat uit'}</span><button type="button" class="knop ${x.voorverkoop ? 'leeg' : ''}" data-bhd="voorverkoop" data-aan="${x.voorverkoop ? '0' : '1'}">${x.voorverkoop ? 'Zet uit' : 'Zet aan'}</button></div>` : ''}
     <button type="button" class="sb-link" data-bhd="ververs" style="margin:6px 0 0">Ververs</button></div>`;
 }
-document.addEventListener('click', (e) => { if (e.target.closest('[data-bhd]')) { BHD = null; const el = document.getElementById('bhdash'); if (el) el.innerHTML = bhDashHtml(); } });
+document.addEventListener('click', async (e) => { const vv = e.target.closest('[data-bhd="voorverkoop"]'); if (vv) { vv.disabled = true; try { await fetch(API + '?actie=voorverkoop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), aan: vv.dataset.aan === '1' }) }); } catch (er) {} BHD = null; const el = document.getElementById('bhdash'); if (el) el.innerHTML = bhDashHtml(); return laadOverzicht(); } if (e.target.closest('[data-bhd]')) { BHD = null; const el = document.getElementById('bhdash'); if (el) el.innerHTML = bhDashHtml(); } });
 function beheerHtml(d) {
   if (!d.beheer) return '';
   const ai = d.aiGebruik;
@@ -2403,7 +2410,7 @@ document.addEventListener('change', (e) => { if (e.target.id === 'lfLand') { lid
 // €9,99 x 12 = €119,88, jaar €89: bijna €31 voordeel, ruim 3 maanden.
 function lidPitchHtml() {
   const d = zicht();
-  return `<div class="lidblok">${vriendUitnodigHtml()}${lidKopHtml(d)}
+  return `<div class="lidblok">${D && D.voorverkoop ? '<div class="voorverkoop"><b>Voorverkoop</b><p>Word nu al lid: je eerste maand gaat pas in op vrijdag 16 oktober. Je coach zonder limiet, de slimme bandenspanning, kleding en voeding heb je meteen. De Core-app opent vrijdag om 12:00.</p></div>' : ''}${vriendUitnodigHtml()}${lidKopHtml(d)}
     ${vriendCodeVeld()}
     ${lidGebruikHtml(d)}${lidStapelHtml(d)}${LID_BEWIJS_KORT}
     ${plannenHtml(false)}
@@ -2515,7 +2522,7 @@ function simHtml() {
 // Nog niets gekocht of gestart: dan tonen we de korte uitleg bovenaan.
 function binnenkortNu() { const d = zicht(); return !!(d && d.voorLancering && !(d.beheer && BEKIJK === 'alles')); }
 // Mag de lid-knop getoond worden? Pas na de lancering (Michel in "Alles open" altijd).
-function kanLidNu(d) { d = d || zicht(); return !!(d && (d.lidOpen || d.beheer) && !binnenkortNu()); }
+function kanLidNu(d) { d = d || zicht(); return !!(d && (d.lidOpen || d.beheer) && (!binnenkortNu() || d.voorverkoop)); }
 const BINNENKORT = '<span class="binnenkort-label">Binnenkort beschikbaar</span>';
 function isNieuw(d) { return !d.core && !d.analyse && !isLid(d); }
 // ---- Navigatie (11-10-2026) ----
@@ -2676,7 +2683,8 @@ function tegelsHtml(d) {
   const mijnSp = !slim ? laatsteSpanning() : '';
   t.push(tegel({ v: 'rijden', ic: 'rijden', nm: 'Vandaag rijden', sub: slim ? 'Je bandenspanning, kleding, voeding en wind voor je rit' : mijnSp ? 'Jouw spanning: ' + mijnSp + ' &middot; plus wind en groepsrit' : 'Je bandenspanning en windadvies, en plan een groepsrit', tag: slim ? 'Lid' : 'Gratis', tagKlas: slim ? 'or' : 'gr', breed: true }));
   if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: schemaTegelSub(d.schema), tag: d.schema.status === 'klaar' ? 'Afgerond' : 'Actief', tagKlas: 'gr' }));
-  if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
+  if (d.core && d.core.nogDicht) t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Opent vrijdag 16 oktober om 12:00', tag: 'Vrijdag', tagKlas: 'or' }));
+  else if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
   else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Core stability voor wielrenners, op de timer', tag: binnenkortNu() ? 'Binnenkort' : lid ? 'Inbegrepen' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Tijd voor een nieuwe' : 'Jouw uitslag') : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' }));
   t.push(tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? 'Lid' : '3 gratis', tagKlas: 'or' }));
@@ -2957,6 +2965,7 @@ function vandaagHtml(d) {
   // Core
   const c = d.core;
   if (c && c.intakeNodig) rijen.push(vdRij('core', 'Core', 'Start je intake, 1 minuut', { href: c.link + '#vandaag' }));
+  else if (c && c.nogDicht) { /* Core opent bij de lancering */ }
   else if (c && !c.opSlot && !c.klaar) {
     const cd = s && s.status === 'loopt' ? coreDagen(s, coreAantal(d)) : [];
     const vandaagCore = !cd.length || cd.some((x) => x.vandaag);
@@ -3035,7 +3044,7 @@ document.addEventListener('click', (e) => { const k = e.target.closest('[data-vk
 function lidBalkHtml(d) {
   if (isLid(d) || (d.lid && d.lid.bron === 'coaching')) return '';
   if (!binnenkortNu() && !kanLidNu(d)) return '';
-  return `<button type="button" class="lidbalk" data-view="lid"><span><b>Word lid van de MKC-app</b><em>${binnenkortNu() ? 'Open vanaf vrijdag 16 oktober &middot; bekijk wat je krijgt' : '&euro;' + APP_PRIJS.maand + ' per maand &middot; alles ontgrendeld'}</em></span><i>&#8250;</i></button>`;
+  return `<button type="button" class="lidbalk" data-view="lid"><span><b>Word lid van de MKC-app</b><em>${d.voorverkoop ? 'Voorverkoop &middot; je eerste maand start pas vrijdag 16 oktober' : binnenkortNu() ? 'Open vanaf vrijdag 16 oktober &middot; bekijk wat je krijgt' : '&euro;' + APP_PRIJS.maand + ' per maand &middot; alles ontgrendeld'}</em></span><i>&#8250;</i></button>`;
 }
 // Na je analyse (12-10-2026): heb je nog geen schema of coaching, dan onderaan
 // de twee manieren om op je analyse te trainen. Je tegoed uit de analyse telt mee.
@@ -3082,9 +3091,9 @@ function paginaHtml(d) {
   if (VIEW === 'palmares') return appBalkHtml() + palmaresHtml(d) + voet;
   if (VIEW === 'lid') {
     const lid = isLid(d), tijdelijk = lid && d.lid && ['schema', 'cadeau'].includes(d.lid.bron);
-    const pitch = binnenkortNu() ? binnenkortPitchHtml() : kanLidNu(d) ? lidPitchHtml() : '';
+    const pitch = binnenkortNu() && !d.voorverkoop ? binnenkortPitchHtml() : kanLidNu(d) ? lidPitchHtml() : '';
     if (!lid) return appBalkHtml() + (pitch || '<p class="klein">Lid worden kan op dit moment niet.</p>') + voet;
-    const daarna = tijdelijk ? `<details class="daarna" ${location.hash === '#lid' ? 'open' : ''}><summary><b>Daarna lid blijven</b><span>vanaf &euro;${APP_PRIJS.jaarPerMaand} per maand${binnenkortNu() ? ' &middot; kan vanaf 16 oktober' : ''}</span></summary>${pitch}</details>` : '';
+    const daarna = tijdelijk ? `<details class="daarna" ${location.hash === '#lid' ? 'open' : ''}><summary><b>Daarna lid blijven</b><span>vanaf &euro;${APP_PRIJS.jaarPerMaand} per maand${binnenkortNu() && !d.voorverkoop ? ' &middot; kan vanaf 16 oktober' : ''}</span></summary>${pitch}</details>` : '';
     return appBalkHtml() + lidStatusHtml(d.lid) + lidExtraHtml(d.lid) + daarna + voet;
   }
   return null;
@@ -3255,7 +3264,7 @@ document.addEventListener('click', (e) => {
 // Zelfde mijlpalen als VRIEND_MIJLPALEN in api/lid.js.
 // Wie ziet de uitnodigkaart: leden (ook coaching/schema) en gratis accounts. Niet vóór de lancering.
 function vriendLid(d) {
-  if (!d || d.gast || (binnenkortNu() && !d.beheer)) return null;
+  if (!d || d.gast || (binnenkortNu() && !d.beheer && !d.voorverkoop)) return null;
   if (d.lid && d.lid.vriendKan) return d.lid;
   if (!isLid(d) && !(d.lid && d.lid.bron === 'coaching')) return Object.assign({}, d.lid || {}, { gratis: true, vriendBeloning: true, bron: 'gratis' });
   return null;
@@ -3738,7 +3747,7 @@ function naarJaarHtml(l) {
 }
 function lidExtraHtml(l) {
   if (!l) return '';
-  return `<div class="lid-extra">${naarJaarHtml(l)}${l.vriendKan && (!binnenkortNu() || (D && D.beheer)) ? vriendKaartHtml(l) : ''}
+  return `<div class="lid-extra">${naarJaarHtml(l)}${l.vriendKan && (!binnenkortNu() || (D && (D.beheer || D.voorverkoop))) ? vriendKaartHtml(l) : ''}
     ${l.facturen ? '<button type="button" class="lid-link" data-lx="facturen">Mijn facturen</button>' : ''}</div>`;
 }
 document.addEventListener('click', async (e) => {
@@ -4958,13 +4967,13 @@ function startlijstStappen(d) {
     { k: 'doel', t: 'Kies waar je voor traint', klaar: !!d.doel, actie: 'doel' },
     { k: 'fiets', t: 'Zet je fiets en woonplaats erin', klaar: !!(prof.plaats && (prof.fietsen || []).length), actie: 'fiets' },
     { k: 'push', t: 'Zet meldingen aan', klaar: !!(PUSH.inst && PUSH.inst.aan), actie: 'push' },
-    { k: 'core', t: !d.core || d.core.intakeNodig ? 'Start je Core-app (intake van een minuut)' : 'Doe je Core-starttest', klaar: !!(d.core && !d.core.intakeNodig && d.core.rompscore != null), actie: 'core' },
+    ...(binnenkortNu() || (d.core && d.core.nogDicht) ? [] : [{ k: 'core', t: !d.core || d.core.intakeNodig ? 'Start je Core-app (intake van een minuut)' : 'Doe je Core-starttest', klaar: !!(d.core && !d.core.intakeNodig && d.core.rompscore != null), actie: 'core' }]),
     { k: 'coach', t: 'Stel je eerste vraag aan de coach', klaar: !!d.coachGesteld, actie: 'coach' }
   ];
 }
 function startlijstWeg() { try { return localStorage.getItem('mkcStartlijstWeg') === '1'; } catch (e) { return false; } }
 function startlijstHtml(d) {
-  if (!d || !isLid(d) || binnenkortNu() || startlijstWeg()) return '';
+  if (!d || !isLid(d) || (binnenkortNu() && !d.voorverkoop) || startlijstWeg()) return '';
   const st = startlijstStappen(d), klaar = st.filter((x) => x.klaar).length;
   if (klaar === st.length) return '';
   return `<details class="start" data-klap="startlijst" ${klapOpen('startlijst', true) ? 'open' : ''}><summary class="start-kop"><b>Haal alles uit je app</b><span>${klaar} van ${st.length}</span><i class="start-pijl"></i></summary>
@@ -5170,7 +5179,7 @@ function naBetalingTonen() {
   if (!NA_BETALING || !D || D.gast) return;
   const soort = NA_BETALING; NA_BETALING = null;
   if (soort === 'welkom') return modal(`<div class="md-modal"><div class="md-unlock">Welkom als lid</div><h3 style="margin-top:8px">Je hebt nu alles</h3><p>Fijn dat je erbij bent. Met deze drie stappen staat je app helemaal goed:</p>
-    <ol class="pm-stappen" style="text-align:left"><li><b>Zet je fiets erin</b><span>Bij Vandaag rijden: dan zie je elke dag je spanning, kleding en voeding.</span></li><li><b>Start de Core-app</b><span>Een korte intake van een minuut, dan staat je eerste sessie klaar.</span></li><li><b>Zet je ochtendbericht aan</b><span>Elke ochtend om 7:00 alles voor je rit op je telefoon.</span></li></ol>
+    <ol class="pm-stappen" style="text-align:left"><li><b>Zet je fiets erin</b><span>Bij Vandaag rijden: dan zie je elke dag je spanning, kleding en voeding.</span></li><li><b>Start de Core-app</b><span>${D && D.voorLancering ? 'Gaat open op vrijdag 16 oktober om 12:00. Je eerste maand begint ook pas dan.' : 'Een korte intake van een minuut, dan staat je eerste sessie klaar.'}</span></li><li><b>Zet je ochtendbericht aan</b><span>Elke ochtend om 7:00 alles voor je rit op je telefoon.</span></li></ol>
     <button type="button" class="knop" data-view="rijden">Begin met je fiets</button><button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:8px auto 0">Later</button></div>`);
   modal(`<h3>Je betaling is nog niet binnen</h3><p>Dat kan gebeuren als je de betaling hebt afgebroken, of als je bank er even over doet. Zonder geslaagde betaling wordt er niets afgeschreven.</p><p class="klein">Kwam de betaling wel door? Dan staat je lidmaatschap er binnen een paar minuten. Ververs de app dan even.</p><button type="button" class="knop" data-view="lid">Opnieuw proberen</button><button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:8px auto 0">Sluiten</button>`);
 }

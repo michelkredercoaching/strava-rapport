@@ -51,7 +51,10 @@ import { appMelding } from '../lib/app-melding.js';
 import { tel } from '../lib/stat.js';
 // Kringverwijzing met lid.js (die gebruikt zetLidmaatschap van hier). Mag, want
 // beide gebruiken elkaars functies pas binnen een aanvraag, niet bij het laden.
-import { lidOpen, haalLid as haalLidmaatschap, haalSchema } from './lid.js';
+import { lidOpen, haalLid as haalLidmaatschap, haalSchema, LANCERING } from './lid.js';
+// Voorverkoop (14-10-2026): nieuwe leden kunnen al betalen, de Core-app opent pas bij de lancering.
+const CORE_BEHEER = ['michel.kredercoaching@gmail.com', 'michel.kreder@gmail.com'];
+const coreNogDicht = (d) => Date.now() < LANCERING && d.bron === 'lid' && !CORE_BEHEER.includes(String(d.email || '').toLowerCase());
 import { meld as meldActief } from '../lib/app-opruimen.js';
 import { reviewMoment } from '../lib/review.js';
 
@@ -379,7 +382,7 @@ function klantBeeld(d) {
   const doel = d.doel ? { ...d.doel, ...(besteStart(d.doel.datum) || {}) } : null;
 
   return {
-    naam: d.naam || '', status: d.status,
+    naam: d.naam || '', status: d.status, nogDicht: coreNogDicht(d), opent: LANCERING,
     betaald: isBetaald(d),
     // Proefweek: week 1 mag, vanaf week 2 op slot tot er betaald is.
     opSlot: opSlotNu(d),
@@ -480,7 +483,7 @@ export async function coreVoorEmail(email) {
   const b = klantBeeld(d);
   const tests = b.tests || [];
   return {
-    link: linkVoor(d.id), naam: b.naam,
+    link: linkVoor(d.id), naam: b.naam, nogDicht: b.nogDicht,
     betaald: b.betaald, opSlot: b.opSlot, intakeNodig: b.intakeNodig, klaar: b.klaar,
     week: b.week, blok: b.blok, weekInBlok: b.weekInBlok, fase: b.fase, faseNaam: b.faseNaam, magDoorlopen: b.magDoorlopen,
     gedaan: b.gedaanDezeWeek.length, frequentie: b.frequentie, afgerond: b.afgerond,

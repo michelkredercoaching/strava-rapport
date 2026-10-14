@@ -403,6 +403,7 @@ async function laad() {
 function teken() {
   const d = S;
   let h = kopHtml(d);
+  if (d.nogDicht) { $('#app').innerHTML = h.replace(/Eerst een paar korte vragen[^<]*/, 'Je bent erbij. Vrijdag gaan we beginnen.') + '<div class="blok kaart accent"><h2>Je Core-app opent vrijdag om 12:00</h2><p>Fijn dat je er al bij bent. Op vrijdag 16 oktober om 12:00 gaat de Core-app open. Dan begin je met een korte intake en staat je eerste sessie meteen klaar.</p><p class="klein muted" style="margin-top:10px">Tot die tijd heb je in de MKC-app al je coach, je bandenspanning, kleding en voeding.</p><a class="knop" href="/app" style="margin-top:14px;display:inline-block">Naar de MKC-app</a></div>'; return; }
   if (d.intakeNodig) h += intakeHtml();
   else if (d.geblokkeerd) h += `<div class="blok kaart accent"><h2>Eerst even laten checken</h2>
       <p>Je gaf aan dat je pijn hebt die uitstraalt, tintelingen of nachtelijke pijn, of dat je kort geleden een operatie of blessure had. Laat dat eerst checken door je huisarts of fysiotherapeut.</p>

@@ -668,6 +668,11 @@ async function incassoKlaar() {
 }
 // Lid worden kan na de lancering, ook zonder incasso (dan met iDEAL per periode).
 async function lidOpen() { return !voorLancering() && !!MOLLIE_KEY; }
+// Voorverkoop (14-10-2026): vóór de lancering kan lid worden alvast in de app,
+// als Michel de schakelaar in Beheer aanzet. Homepage, /core/ en checkout blijven
+// op lidOpen() wachten. De eerste periode begint pas bij de lancering.
+async function voorverkoopAan() { const r = await redis(['GET', 'lid:voorverkoop']); return r.ok && r.result === '1'; }
+async function lidOpenApp() { if (!MOLLIE_KEY) return false; if (!voorLancering()) return true; return voorverkoopAan(); }
 
 // ---- Routes ----------------------------------------------------------------------
 export default async function handler(req, res) {
@@ -718,7 +723,7 @@ async function routeStart(req, res) {
 
   let lid = await haalLid(email) || {};
   if (lid.status === 'actief' && lid.subscriptionId) return res.status(200).json({ ok: true, alLid: true });
-  if (!(BEHEER_LID.includes(email) ? !!MOLLIE_KEY : await lidOpen())) return res.status(503).json({ ok: false, fout: 'Lid worden kan binnenkort. Houd Instagram in de gaten.' });
+  if (!(BEHEER_LID.includes(email) ? !!MOLLIE_KEY : await lidOpenApp())) return res.status(503).json({ ok: false, fout: 'Lid worden kan binnenkort. Houd Instagram in de gaten.' });
   // Akkoord met directe toegang (afstand bedenktijd) en voorwaarden, verplicht
   // en vastgelegd met tijdstip (09-10-2026).
   if (body.akkoord !== true) return res.status(400).json({ ok: false, fout: 'Vink eerst aan dat je direct toegang wil en akkoord gaat met de voorwaarden.' });
@@ -846,7 +851,9 @@ async function verwerkBetaald(req, res, p, id, lidEmail) {
       // Loopt er nog een betaalde of cadeauperiode, dan begint de nieuwe pas daarna (13-10-2026).
       // Met een abonnement zit er speling in tot, zonder (schema, iDEAL, cadeau) niet.
       const nogTot = lid.tot && Date.parse(lid.tot) > Date.now() ? Date.parse(lid.tot) - (lid.subscriptionId ? SPELING_DAGEN * 864e5 : 0) : 0;
-      const vanaf = soort === 'lid-herstel' && lid.mislukt && lid.mislukt.periodeStart ? new Date(lid.mislukt.periodeStart) : nogTot > Date.parse(betaaldOp) ? new Date(nogTot) : new Date(betaaldOp);
+      const vanaf0 = soort === 'lid-herstel' && lid.mislukt && lid.mislukt.periodeStart ? new Date(lid.mislukt.periodeStart) : nogTot > Date.parse(betaaldOp) ? new Date(nogTot) : new Date(betaaldOp);
+      // Voorverkoop: wie vóór de lancering betaalt, begint pas op de lanceerdag.
+      const vanaf = soort === 'lid-herstel' ? vanaf0 : new Date(Math.max(vanaf0.getTime(), LANCERING));
       periodeVanaf = vanaf;
       lid.mislukt = null;
       if (p.metadata && p.metadata.vriend && !lid.vriendVan) { lid.vriendVan = p.metadata.vriend; lid.vriendKlaar = plan === 'jaar'; naBewaren.push(() => beloonVriend(p.metadata.vriend, lidEmail, lid.naam, plan === 'jaar')); }
@@ -904,7 +911,7 @@ async function verwerkBetaald(req, res, p, id, lidEmail) {
     // Vanaf hier is de betaling verwerkt: een herhaalde webhook doet niets dubbel.
     await redis(['SET', `lid:betaling:${id}`, '1', 'EX', String(60 * 60 * 24 * 400)]);
     for (const f of naBewaren) { try { await f(); } catch (e) { console.error('Maat-beloning mislukt:', id, e && e.message); await meldIntern(`MAAT-BELONING MISLUKT - ${lidEmail}`, `Na betaling ${id} lukte de maat-beloning niet: ${e && e.message}. Kijk het even na.`); } }
-    await zetLidmaatschap({ email: lidEmail, naam: lid.naam, tot: lid.tot });
+    await zetLidmaatschap({ email: lidEmail, naam: lid.naam, tot: lid.tot, stil: voorLancering() }); // voorverkoop: geen Core-mail, Core opent bij de lancering
     await mcTag(lidEmail, 'mkc-lid');
     // Welkomstmail van Michel (09-10-2026), één keer per lid.
     if ((soort === 'lid-eerste' || soort === 'lid-periode') && !lid.welkomGemaild) {
@@ -1405,4 +1412,4 @@ export async function geefToegang({ email, naam = '', soort, tot, plan, start })
   return { ok: true, lid: await lidZoek(email) };
 }
 
-export { lidOpen, lidBeeld, haalLid, incassoKlaar, haalSchema };
+export { lidOpenApp, voorverkoopAan, lidOpen, lidBeeld, haalLid, incassoKlaar, haalSchema };
