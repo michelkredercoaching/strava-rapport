@@ -1743,7 +1743,7 @@ document.addEventListener('click', async (e) => {
   try {
     const j = await (await fetch(`${API}?actie=bandvraag`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), vraag: BTV.vraag, context: ctx }) })).json();
     BTV.antwoord = j.ok ? j.antwoord : (j.fout || 'Even geen antwoord.'); BTV.aid = j.aid || null; BTV.nuttig = null;
-    if (j.ok) { if (j.analyseBonus && D) D.analyseBonus = true; zetGratis(j.gratisOver); BTV.vraag = ''; } else if (j.limiet) zetGratis(0);
+    if (j.ok) { if (j.analyseBonus && D) D.analyseBonus = true; zetGratis(j.gratisOver, j.lidOver); BTV.vraag = ''; } else if (j.limiet) zetGratis(0);
   } catch (er) { BTV.antwoord = 'Verbinding mislukt. Probeer het zo nog eens.'; }
   BTV.bezig = false; teken();
 });
@@ -2837,7 +2837,8 @@ function tegelsHtml(d) {
   const banden = tegel({ v: 'rijden', ic: 'rijden', nm: 'Bandenspanning', sub: mijnSp ? 'Jouw spanning: ' + mijnSp : slim ? 'Check je spanning, kleding en voeding' : 'Check je spanning voor vandaag', tag: slim ? (inbegrepen ? 'Inbegrepen' : 'Lid') : 'Gratis', tagKlas: slim ? 'or' : 'gr' });
   const analyseT = tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP en zones uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Nieuwe?' : 'Open') : SLOT + ' €' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' });
   const derde = coaching ? tegel({ v: 'coaching', ic: 'schema', nm: 'Jouw coaching', sub: 'TrainingPeaks en hoe je mij bereikt', tag: 'Michel', tagKlas: 'or' }) : analyseT;
-  const coach = tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Lid') : '3 gratis', tagKlas: 'or' });
+  const gvo = gratisOver(), lvo = lidOverNu();
+  const coach = tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: gvo != null ? (gvo > 0 ? 'Nog ' + gvo + ' van ' + ((D && D.gratisMax) || 3) + ' gratis deze week' : 'Op tot maandag') : lvo != null ? (lvo > 0 ? 'Nog ' + lvo + ' vragen deze week' : 'Op tot maandag') : 'Antwoord met Michels kennis', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Lid') : '3 gratis', tagKlas: 'or' });
   const t = [trein, banden, derde, coach];
   if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: schemaTegelSub(d.schema), tag: d.schema.status === 'klaar' ? 'Afgerond' : 'Actief', tagKlas: 'gr', breed: true }));
   // Michel ziet Kracht tot de opening altijd als voorbeeld, ook als hij zelf Core doet.
@@ -4322,11 +4323,15 @@ const ccOnbeperkt = () => { const d = zicht(); return !!(d && d.bandenSlim && (i
 const ccMag = () => !!D;
 // Hoeveel gratis vragen er deze week nog over zijn (null = onbeperkt).
 function gratisOver() { if (ccOnbeperkt()) return null; const d = zicht(); return d && d.gratisOver != null ? d.gratisOver : (D && D.gratisMax) || 3; }
-function zetGratis(n) { if (n == null || !D) return; D.gratisOver = n; const t = document.getElementById('btVraagTeller'); if (t) t.outerHTML = gratisTellerHtml('btVraagTeller'); }
+function zetGratis(n, l) { if (!D) return; if (l != null) D.lidOver = l; if (n != null) D.gratisOver = n; const t = document.getElementById('btVraagTeller'); if (t) t.outerHTML = gratisTellerHtml('btVraagTeller'); }
+// Leden: hoeveel vragen er deze week nog zijn (14-10-2026). Niet in Michels voorbeeldweergave.
+function lidOverNu() { const d = zicht(); return d && D && D.lidOver != null && ccOnbeperkt() && !(D.beheer) ? D.lidOver : null; }
 function gratisTellerHtml(id) {
-  const over = gratisOver(); if (over == null) return `<span id="${id}"></span>`;
+  const over = gratisOver();
+  if (over == null) { const lo = lidOverNu(), lm = (D && D.lidMax) || 25; if (lo == null) return `<span id="${id}"></span>`;
+    return `<p class="klein gratis-teller" id="${id}">${lo > 0 ? `Nog <b>${lo}</b> van ${lm} vragen deze week &middot; maandag weer ${lm}` : `Je ${lm} vragen van deze week zijn op &middot; maandag kun je weer`}</p>`; }
   const max = (D && D.gratisMax) || 3;
-  return `<p class="klein gratis-teller" id="${id}">${over > 0 ? (D && D.analyseBonus ? `Nog ${over} ${over === 1 ? 'vraag' : 'vragen'} deze week &middot; 2 extra omdat je net je analyse deed` : `Nog ${over} van ${max} gratis vragen deze week`) : 'Je gratis vragen van deze week zijn op'}${kanLidNu() ? ' &middot; <a href="#" data-actie="naarlid">onbeperkt als lid</a>' : ''}</p>`;
+  return `<p class="klein gratis-teller" id="${id}">${over > 0 ? (D && D.analyseBonus ? `Nog ${over} ${over === 1 ? 'vraag' : 'vragen'} deze week &middot; 2 extra omdat je net je analyse deed` : `Nog <b>${over}</b> van ${max} gratis vragen deze week &middot; maandag weer ${max}`) : 'Je gratis vragen van deze week zijn op &middot; maandag weer ' + max}${kanLidNu() ? ' &middot; <a href="#" data-actie="naarlid">25 per week als lid</a>' : ''}</p>`;
 }
 function gratisOpHtml() {
   return `<div class="cc-slotkaart"><div class="label">Je gratis vragen zijn op</div><h3>Wil je verder vragen?</h3>
@@ -4370,7 +4375,7 @@ async function coachZet(aan) {
   if (ccMag() && CC.berichten === null) {
     CC.berichten = [];
     coachLijst();
-    try { const j = await (await fetch(`${API}?actie=coach&t=${encodeURIComponent(leesToken())}`)).json(); if (j.ok) { CC.berichten = j.berichten; zetGratis(j.gratisOver); } } catch (e) {}
+    try { const j = await (await fetch(`${API}?actie=coach&t=${encodeURIComponent(leesToken())}`)).json(); if (j.ok) { CC.berichten = j.berichten; zetGratis(j.gratisOver, j.lidOver); } } catch (e) {}
   }
   coachLijst();
   if (ccMag()) setTimeout(() => $('#ccTekst').focus(), 50);
@@ -4395,7 +4400,7 @@ function coachLijst(typen) {
       ? `<div style="align-self:flex-end;max-width:86%;text-align:right"><div class="cc-b ik" style="max-width:100%">${esc(b.tekst)}</div><div class="cc-tijd">${tijd(b.op)}</div></div>`
       : `<div style="align-self:flex-start;max-width:86%"><div class="cc-b coach ${b.medisch ? 'let' : ''}" style="max-width:100%">${opmaak(b.tekst)}</div><div class="cc-tijd">${CC_NAAM} &middot; ${tijd(b.op)}</div>${nuttigHtml(b.aid, b.nuttig)}</div>`).join('')
     + (typen ? `<div class="cc-b ik" style="align-self:flex-end">${esc(typen)}</div><div class="cc-typen"><i></i><i></i><i></i></div>` : '')
-    + (over === 0 && !typen ? gratisOpHtml() : over != null && !typen ? gratisTellerHtml('ccTeller') : '');
+    + (over === 0 && !typen ? gratisOpHtml() : (over != null || lidOverNu() != null) && !typen ? gratisTellerHtml('ccTeller') : '');
   $('#ccChips').style.display = lijst.length || typen || over === 0 ? 'none' : '';
   l.scrollTop = l.scrollHeight;
 }
@@ -4407,7 +4412,7 @@ async function coachStuur(tekst) {
   let fout = '';
   try {
     const j = await (await fetch(`${API}?actie=coach`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), tekst, apparaat: apparaatInfo() }) })).json();
-    if (j.ok) { if (j.analyseBonus && D) D.analyseBonus = true; CC.berichten = j.berichten; zetGratis(j.gratisOver); }
+    if (j.ok) { if (j.analyseBonus && D) D.analyseBonus = true; CC.berichten = j.berichten; zetGratis(j.gratisOver, j.lidOver); }
     else { fout = j.limiet ? '' : (j.fout || 'Dat lukte even niet.'); if (j.limiet) zetGratis(0); }
   } catch (e) { fout = 'Verbinding mislukt. Probeer het zo nog eens.'; }
   CC.bezig = false; $('#ccStuur').disabled = false;

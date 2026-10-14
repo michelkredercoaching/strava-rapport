@@ -1294,6 +1294,8 @@ async function routeOverzicht(req, res) {
     bandenProfiel: (BEHEER.includes(email) || lidBeeld(lidmaatschap).open) ? (bandenProfiel || schoonProfiel({})) : null,
     bandenRitten: (BEHEER.includes(email) || lidBeeld(lidmaatschap).open) ? ritten : [],
     gratisOver: (BEHEER.includes(email) || lidBeeld(lidmaatschap).open) ? null : await gratisOver(email),
+    lidOver: (!BEHEER.includes(email) && lidBeeld(lidmaatschap).open) ? await lidOver(email) : null,
+    lidMax: LID_PER_WEEK,
     gratisMax: GRATIS_PER_WEEK,
     aiGebruik: BEHEER.includes(email) ? await aiGebruik() : null,
     // Schema in de app: wat er vandaag op het schema staat (lib/schema-app.js).
@@ -1454,15 +1456,25 @@ async function analyseBonus(email) {
 // Leden: eerlijk gebruik, max LID_PER_WEEK vragen per week (besluit Michel 14-10-2026; een vraag kost
 // zo'n 3 cent, een maand lid levert ex btw € 8,26 op). Redis: app:lidvragen:<email>:<jaar-week>
 const LID_PER_WEEK = 25;
+// Hoeveel vragen een lid deze week nog heeft (null voor Michel). Maandag begint de teller opnieuw.
+async function telLid(email) {
+  if (BEHEER.includes(email)) return null;
+  const k = `app:lidvragen:${email}:${weekSleutel()}`, n = await redis(['INCR', k]);
+  if (n.ok && n.result === 1) await redis(['EXPIRE', k, String(8 * 86400)]);
+  return Math.max(0, LID_PER_WEEK - Number((n.ok && n.result) || 0));
+}
+async function lidOver(email) {
+  if (BEHEER.includes(email)) return null;
+  const r = await redis(['GET', `app:lidvragen:${email}:${weekSleutel()}`]);
+  return Math.max(0, LID_PER_WEEK - Number((r.ok && r.result) || 0));
+}
 // Ingelogd? Leden mogen tot de weeklimiet, Michel altijd, anderen zolang er gratis vragen over zijn.
 async function vraagRecht(res, t) {
   const email = leesAppToken(String(t || ''));
   if (!email) { res.status(401).json({ ok: false, fout: 'Log opnieuw in.' }); return null; }
   if (await magSlim(email)) {
     if (BEHEER.includes(email)) return { email, lid: true };
-    const k = `app:lidvragen:${email}:${weekSleutel()}`, n = await redis(['INCR', k]);
-    if (n.ok && n.result === 1) await redis(['EXPIRE', k, String(8 * 86400)]);
-    if (n.ok && n.result > LID_PER_WEEK) { await redis(['DECR', k]); res.status(429).json({ ok: false, fout: `Je hebt deze week al ${LID_PER_WEEK} vragen gesteld. Maandag kun je weer verder.` }); return null; }
+    if (await lidOver(email) <= 0) { res.status(429).json({ ok: false, lidOver: 0, fout: `Je hebt deze week al ${LID_PER_WEEK} vragen gesteld. Maandag kun je weer verder.` }); return null; }
     return { email, lid: true };
   }
   if (await gratisOver(email) <= 0) {
@@ -1693,7 +1705,7 @@ async function routeBandVraag(req, res) {
     const tekst = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
     if (!tekst) throw new Error('leeg');
     const aid = await bewaarAntwoord({ email, bron: 'bandvraag', vraag, antwoord: tekst });
-    return res.status(200).json({ ok: true, antwoord: tekst, aid, gratisOver: recht.lid ? null : await telGratis(email), analyseBonus: !!recht.bonus });
+    return res.status(200).json({ ok: true, antwoord: tekst, aid, gratisOver: recht.lid ? null : await telGratis(email), lidOver: recht.lid ? await telLid(email) : null, analyseBonus: !!recht.bonus });
   } catch {
     return res.status(502).json({ ok: false, fout: 'Even geen antwoord. Probeer het zo nog eens.' });
   }
@@ -1760,7 +1772,7 @@ async function routeCoach(req, res) {
     const email = leesAppToken(String(req.query?.t || ''));
     if (!email) return res.status(401).json({ ok: false, fout: 'Log opnieuw in.' });
     const lid = await magSlim(email);
-    return res.status(200).json({ ok: true, berichten: (await haalCoachBerichten(email)).slice(-30), gratisOver: lid ? null : await gratisOver(email) });
+    return res.status(200).json({ ok: true, berichten: (await haalCoachBerichten(email)).slice(-30), gratisOver: lid ? null : await gratisOver(email), lidOver: lid ? await lidOver(email) : null });
   }
   const body = await leesBody(req);
   const recht = await vraagRecht(res, body.t); if (!recht) return;
@@ -1819,7 +1831,7 @@ async function routeCoach(req, res) {
   }
   // Alleen een echt antwoord telt als gratis vraag; medisch en storingen niet.
   const over = recht.lid ? null : (antwoord && !medisch ? await telGratis(email) : await gratisOver(email));
-  return res.status(200).json({ ok: true, berichten: nieuw.slice(-30), gratisOver: over, analyseBonus: !!recht.bonus });
+  return res.status(200).json({ ok: true, berichten: nieuw.slice(-30), gratisOver: over, lidOver: recht.lid ? (antwoord && !medisch ? await telLid(email) : await lidOver(email)) : null, analyseBonus: !!recht.bonus });
 }
 
 // ===========================================================================
