@@ -1185,6 +1185,15 @@
   .pk-opties { display:grid; gap:8px; } .pk-opties a { display:block; border:1px solid rgba(255,107,26,.45); border-radius:10px; padding:12px; color:inherit; text-decoration:none; } .pk-opties b { display:block; font-size:15px; } .pk-opties span { display:block; font-size:13px; color:var(--muted); margin-top:2px; } .pk-opties em { display:block; font-style:normal; font-size:12.5px; color:#4CC38A; font-weight:600; margin-top:4px; }
   .an-nudge { position:relative; } .an-nudge > b { padding-right:24px; }
   .an-coach { margin:16px 0; border:1px solid rgba(255,107,26,.5); background:rgba(255,107,26,.07); border-radius:12px; padding:14px; } .an-coach b { display:block; font-size:15px; } .an-coach span { display:block; font-size:13px; color:rgba(245,243,239,.78); margin:3px 0 8px; } .an-coach button { display:block; width:100%; text-align:left; background:var(--surface); border:1px solid var(--border); color:inherit; font-family:inherit; font-size:14px; border-radius:10px; padding:10px 12px; margin-top:6px; cursor:pointer; }
+  .kr-verschil { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:12px 0; } .kr-verschil div { border:1px solid var(--border); border-radius:10px; padding:10px; } .kr-verschil b { display:block; font-size:14px; color:var(--accent); } .kr-verschil span { display:block; font-size:12.5px; color:rgba(245,243,239,.8); margin-top:3px; line-height:1.4; }
+  .kr-keuze { margin:12px 0; } .kr-keuze b { display:block; font-size:14px; margin-bottom:6px; } .kr-keuze label { display:flex; gap:8px; align-items:center; font-size:14px; padding:8px 0; border-bottom:1px solid var(--border); } .kr-keuze input { accent-color:#FF6B1A; }
+  .kr-week { display:flex; gap:8px; margin:10px 0; } .kr-week span { flex:1; text-align:center; border:1px solid var(--border); border-radius:8px; padding:7px; font-size:13px; font-weight:600; } .kr-week span.ok { border-color:#4CC38A; color:#4CC38A; }
+  .kr-volgende { border:2px solid #FF6B1A; border-radius:14px; padding:14px; margin-top:12px; background:rgba(255,107,26,.06); } .kr-volgende > b { display:block; font-size:17px; margin-top:2px; } .kr-volgende > small { display:block; color:var(--muted); font-size:12.5px; margin:2px 0 8px; }
+  .kr-lijst { list-style:none; padding:0; margin:0 0 12px; } .kr-lijst li { display:flex; justify-content:space-between; gap:8px; padding:7px 0; border-bottom:1px solid var(--border); font-size:13.5px; } .kr-lijst li span { color:var(--muted); text-align:right; }
+  .kr-oef { border-top:1px solid var(--border); padding:12px 0; } .kr-oefkop b { display:block; font-size:15px; } .kr-oefkop span { display:block; font-size:12.5px; color:var(--muted); } .kr-vorige { display:block; font-size:12px; color:#4CC38A; margin:4px 0; }
+  .kr-hoe summary { font-size:12.5px; color:var(--accent); cursor:pointer; margin:4px 0; } .kr-hoe ul { font-size:13px; margin:4px 0 6px; padding-left:18px; color:rgba(245,243,239,.85); }
+  .kr-set { display:flex; align-items:center; gap:8px; margin-top:6px; } .kr-set > span { width:42px; font-size:12.5px; color:var(--muted); } .kr-set label { display:flex; align-items:center; gap:4px; font-size:13px; color:var(--muted); } .kr-set input { width:64px; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:inherit; font-size:15px; } .kr-set button { margin-left:auto; border:1px solid rgba(255,107,26,.6); background:none; color:var(--accent); border-radius:8px; padding:8px 12px; font-weight:700; font-family:inherit; cursor:pointer; } .kr-set.klaar button { background:#4CC38A; border-color:#4CC38A; color:#0b0b0b; } .kr-set.klaar input { opacity:.7; }
+  .kr-rust { position:fixed; left:12px; right:12px; bottom:max(14px, env(safe-area-inset-bottom)); z-index:70; max-width:520px; margin:0 auto; background:#FF6B1A; color:#0b0b0b; border-radius:12px; padding:12px 14px; font-weight:700; display:flex; align-items:center; gap:8px; box-shadow:0 8px 24px rgba(0,0,0,.4); } .kr-rust b { font-size:20px; } .kr-rust button { margin-left:auto; background:rgba(0,0,0,.15); border:0; border-radius:8px; padding:6px 10px; font-weight:700; font-family:inherit; color:#0b0b0b; }
   .core-punten { margin:8px 0 14px; padding-left:18px; font-size:14px; } .core-punten li { margin:4px 0; }
   .binnenkort-label { display:inline-block; margin-top:12px; font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); border:1px solid rgba(255,107,26,.5); border-radius:4px; padding:6px 10px; }
   /* Lidmaatschap: per jaar of per maand */
@@ -1226,7 +1235,7 @@ function opmaak(t) {
 const CC_KNOPPEN = {
   rijden: ['Naar je bandenspanning', { tab: 'banden' }], kleding: ['Naar je kleding', { tab: 'kleding' }], voeding: ['Naar je ritvoeding', { tab: 'voeding' }],
   groepsrit: ['Plan een groepsrit', { tab: 'groep' }], ochtend: ['Naar je ochtendbericht', { tab: 'banden', klap: 'ochtend' }],
-  schema: ['Naar je schema', {}], core: ['Open de Core-app', {}], analyse: ['Naar je Strava-analyse', {}], palmares: ['Naar je palmares', {}],
+  schema: ['Naar je schema', {}], core: ['Open de Core-app', {}], kracht: ['Naar Kracht', {}], analyse: ['Naar je Strava-analyse', {}], palmares: ['Naar je palmares', {}],
   kleedkamer: ['Naar je kleedkamer', {}], doel: ['Pas je doel aan', {}], lid: ['Naar je lidmaatschap', {}], coaching: ['Naar Jouw coaching', {}], meldingen: ['Naar je meldingen', {}],
   startpakket: ['Bekijk Het Startpakket', { href: '/het-startpakket/', verkoop: true }], schemas: ['Bekijk de trainingsschema\'s', { href: '/trainingsschemas/', verkoop: true }],
   winter: ['Bekijk het Winterprogramma', { href: '/winterprogramma/', verkoop: true }], begeleiding: ['Bekijk de trainingsbegeleiding', { href: '/trainingsbegeleiding/', verkoop: true }]
@@ -2661,6 +2670,7 @@ const IC = {
   palmares: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="9" r="6"/><path d="M8.5 14 7 22l5-3 5 3-1.5-8"/><path d="m12 6 .9 1.9 2.1.3-1.5 1.4.4 2-1.9-1-1.9 1 .4-2L9 8.2l2.1-.3z"/></svg>',
   rijden: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17" r="3.5"/><circle cx="18.5" cy="17" r="3.5"/><path d="M15 6h2l3 11M5.5 17l4-8h7l-5 8M9 9l-1.5-3H5"/></svg>',
   schema: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h3M8 17h6"/></svg>',
+  kracht: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 9.5V7.5a3.5 3.5 0 0 1 7 0v2"/><circle cx="12" cy="15" r="6"/></svg>',
   core: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="6" width="3.5" height="12" rx="1.2"/><rect x="15.5" y="6" width="3.5" height="12" rx="1.2"/><path d="M2.5 9.5v5M21.5 9.5v5M8.5 12h7"/></svg>',
   analyse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M6 16l4-5 3 3 5-7"/></svg>',
   coach: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
@@ -2770,6 +2780,7 @@ const KOPPEN = {
   rijden: ['MKC-Rijden', 'Banden, kleding, voeding en wind voor je rit'],
   schema: ['MKC-Schema', 'Je training van vandaag'],
   core: ['MKC-Core', 'Core stability voor wielrenners'],
+  kracht: ['MKC-Kracht', 'Sterker trappen, 2x per week met gewichten'],
   analyse: ['MKC-Analyse', 'Je FTP, zones en plan uit je eigen ritten'],
   afval: ['MKC-Afval', 'Lichter worden zonder watts te verliezen'],
   pacing: ['MKC-Pacing', 'Je grote tocht slim ingedeeld'],
@@ -2799,7 +2810,8 @@ function tegelsHtml(d) {
   t.push(tegel({ v: 'rijden', ic: 'rijden', nm: 'Vandaag rijden', sub: slim ? 'Je bandenspanning, kleding, voeding en wind voor je rit' : mijnSp ? 'Jouw spanning: ' + mijnSp + ' &middot; plus wind en groepsrit' : 'Je bandenspanning en windadvies, en plan een groepsrit', tag: slim ? (inbegrepen ? 'Inbegrepen' : 'Lid') : 'Gratis', tagKlas: slim ? 'or' : 'gr', breed: true }));
   if (d.core && d.core.nogDicht) t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Opent vrijdag 16 oktober om 12:00', tag: 'Vrijdag', tagKlas: 'or' }));
   else if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
-  else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Core stability voor wielrenners, op de timer', tag: binnenkortNu() ? 'Binnenkort' : lid ? 'Inbegrepen' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
+  else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Thuis, 10 tot 20 min, 2 tot 4x per week', tag: binnenkortNu() ? 'Binnenkort' : lid ? 'Inbegrepen' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
+  if (d.kracht && d.kracht.open) { const kb = d.kracht.beeld; t.push(tegel({ v: 'kracht', ic: 'kracht', nm: 'Kracht', sub: !kb ? 'Sportschool, 2x per week een uur, met gewichten' : kb.volgende ? 'Week ' + kb.week + ' &middot; sessie ' + kb.volgende.letter + ', ongeveer ' + kb.volgende.minuten + ' min' : 'Week ' + kb.week + ' rond, volgende week staat klaar', tag: kb ? (kb.volgende ? 'Start' : 'Klaar') : 'Nieuw', tagKlas: kb && kb.volgende ? 'gr' : 'or' })); }
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Tijd voor een nieuwe' : 'Jouw uitslag') : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' }));
   const halfNu = t.filter((x) => !x.includes('tegel breed')).length; // even? dan zou de coach alleen op een halve rij staan
   t.push(tegel({ breed: halfNu % 2 === 0, v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Lid') : '3 gratis', tagKlas: 'or' }));
@@ -3165,6 +3177,80 @@ function routeHtml(d) {
   if (nu > 0) return `<details class="route rt-klap" data-klap="route" ${klapOpen('route', false) ? 'open' : ''}><summary><div><div class="rt-lab">Jouw volgende stap</div><div class="rt-kop">${kop}</div><small class="rt-sum">${nu === 1 ? 'Een trainingsschema of 1-op-1 coaching' : '1-op-1 coaching met Michel'}</small></div><i class="start-pijl"></i></summary>${binnen}</details>`;
   return `<div class="route"><button type="button" class="welkom-x" data-actie="routeweg" aria-label="Verbergen">&times;</button><div class="rt-lab">Jouw volgende stap</div><div class="rt-kop">${kop}</div>${binnen}</div>`;
 }
+// ===========================================================================
+// KRACHT (14-10-2026). Anders dan Core: in de sportschool, 2x per week ongeveer een uur, met gewichten.
+// Server: api/app.js actie=kracht, motor: lib/kracht.js. Eerst alleen zichtbaar voor Michel.
+// ===========================================================================
+const KR = { actief: null, sets: {}, timer: null, eind: 0, bezig: false, fout: '' };
+const KR_VERSCHIL = `<div class="kr-verschil"><div><b>Core</b><span>Thuis, zonder gewichten. 10 tot 20 minuten, 2 tot 4 keer per week. Voor een stabiele romp op de fiets.</span></div><div><b>Kracht</b><span>In de sportschool, met gewichten. Ongeveer een uur, 2 keer per week. Voor meer kracht in je benen: sterker bergop, aanzetten en sprinten.</span></div></div>`;
+function krSetsVoor(o) {
+  const kg = o.kg != null ? o.kg : o.vorige ? o.vorige.kg : '';
+  return Array.from({ length: o.sets }, () => ({ kg: o.gewichtloos ? 0 : kg, reps: o.hoog, klaar: false }));
+}
+function krachtPagina(d) {
+  const k = d && d.kracht; if (!k || !k.open) return `<div class="kaarten"><div class="kaart"><div class="kaart-in"><div class="label">Kracht</div><h2>Binnenkort</h2>${KR_VERSCHIL}</div></div></div>`;
+  const b = k.beeld;
+  if (!b) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht</div><h2>Sterker trappen</h2>
+    <p>Twee keer per week een uur in de sportschool. Je bouwt in 12 weken op van wennen naar zware kracht en snelkracht, en de app rekent je gewichten uit.</p>
+    ${KR_VERSCHIL}
+    <p class="klein">Het beste werkt het als je daarnaast ongeveer 2 keer per week een uur fietst. Plan je krachtsessie niet de dag voor je zwaarste rit.</p>
+    <div class="kr-keuze"><b>Hoeveel ervaring heb je met krachttraining?</b><label><input type="radio" name="krErv" value="nieuw" checked> Nieuw of lang geleden</label><label><input type="radio" name="krErv" value="ervaren"> Ik doe het al regelmatig</label></div>
+    <div class="kr-keuze"><b>Waar train je?</b><label><input type="radio" name="krWaar" value="sportschool" checked> In de sportschool</label><label><input type="radio" name="krWaar" value="thuis"> Thuis, met dumbbells en een bank</label></div>
+    <button type="button" class="knop" data-kr="start" ${KR.bezig ? 'disabled' : ''}>Start mijn krachtprogramma</button>${KR.fout ? '<p class="klein" style="color:#ff8a5c">' + esc(KR.fout) + '</p>' : ''}</div></div></div>`;
+  if (KR.actief) return krSessieHtml(b, b.sessies[KR.actief]);
+  const v = b.volgende;
+  const lijst = (ss) => ss.oefeningen.map((o) => `<li><b>${esc(o.naam)}</b><span>${o.sets} x ${o.laag === o.hoog ? o.laag : o.laag + '-' + o.hoog}${o.perKant ? ' per kant' : ''}${o.gewichtloos ? '' : o.kg != null ? ' &middot; ' + String(o.kg).replace('.', ',') + ' kg' : ' &middot; kies je gewicht'}</span></li>`).join('');
+  return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in">
+    <div class="label">Kracht &middot; fase ${b.fase}: ${esc(b.faseNaam)}${b.blok > 1 ? ' &middot; blok ' + b.blok : ''}</div><h2>Week ${b.week}</h2>
+    <p class="klein">${esc(b.voel)}</p>
+    <div class="kr-week"><span class="${b.gedaanDezeWeek.includes('A') ? 'ok' : ''}">${b.gedaanDezeWeek.includes('A') ? '&#10003; ' : ''}Sessie A</span><span class="${b.gedaanDezeWeek.includes('B') ? 'ok' : ''}">${b.gedaanDezeWeek.includes('B') ? '&#10003; ' : ''}Sessie B</span></div>
+    ${v ? `<div class="kr-volgende"><div class="dash-lab">Volgende</div><b>Sessie ${v.letter}: ${esc(v.naam)}</b><small>Ongeveer ${v.minuten} minuten, met 10 minuten warming-up</small><ul class="kr-lijst">${lijst(v)}</ul><button type="button" class="knop breed" data-kr="begin" data-l="${v.letter}">Start sessie ${v.letter}</button></div>`
+      : '<p>Deze week is rond. Je volgende week staat klaar zodra je weer begint.</p>'}
+    <details class="klap" style="margin-top:14px"><summary><b>Waarom kracht naast het fietsen?</b><span>en hoe het in je week past</span></summary><div class="klap-in">${KR_VERSCHIL}<p class="klein">Doe kracht op een dag met een rustige rit of zonder rit, niet de dag voor je zwaarste training. Doe je ook Core, dan niet op dezelfde dag als zware beenoefeningen.</p></div></details>
+    <button type="button" class="sb-link" data-kr="stop" style="margin-top:10px">Stoppen met kracht</button></div></div></div>`;
+}
+function krSessieHtml(b, ss) {
+  const rij = (o) => { const sets = KR.sets[o.id] || (KR.sets[o.id] = krSetsVoor(o));
+    return `<div class="kr-oef"><div class="kr-oefkop"><b>${esc(o.naam)}</b><span>${o.sets} x ${o.laag === o.hoog ? o.laag : o.laag + '-' + o.hoog}${o.perKant ? ' per kant' : ''} &middot; rust ${o.rust >= 60 ? Math.round(o.rust / 60 * 10) / 10 + ' min' : o.rust + ' s'}</span></div>
+      ${o.vorige && !o.gewichtloos ? `<small class="kr-vorige">Vorige keer: ${String(o.vorige.kg).replace('.', ',')} kg, ${o.vorige.reps.join(' / ')} herhalingen${o.kg != null && o.kg > o.vorige.kg ? ' &middot; nu iets zwaarder' : ''}</small>` : !o.gewichtloos ? '<small class="kr-vorige">Eerste keer: kies een gewicht dat goed voelt, de app onthoudt het.</small>' : ''}
+      <details class="kr-hoe"><summary>Hoe doe je hem?</summary><ul>${o.cue.map((c) => '<li>' + esc(c) + '</li>').join('')}</ul></details>
+      ${sets.map((x, i) => `<div class="kr-set ${x.klaar ? 'klaar' : ''}"><span>Set ${i + 1}</span>${o.gewichtloos ? '' : `<label><input type="number" inputmode="decimal" step="0.5" min="0" value="${x.kg}" data-krkg="${o.id}" data-i="${i}"> kg</label>`}<label><input type="number" inputmode="numeric" min="0" value="${x.reps}" data-krreps="${o.id}" data-i="${i}"> x</label><button type="button" data-kr="set" data-id="${o.id}" data-i="${i}" data-rust="${o.rust}" aria-label="Set klaar">${x.klaar ? '&#10003;' : 'Klaar'}</button></div>`).join('')}</div>`; };
+  const rust = KR.eind > Date.now() ? `<div class="kr-rust" id="krRust">Rust: <b id="krRustTijd">${Math.ceil((KR.eind - Date.now()) / 1000)}</b> s <button type="button" data-kr="rustweg">Overslaan</button></div>` : '';
+  return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht &middot; week ${b.week} &middot; ${esc(b.faseNaam)}</div><h2>Sessie ${ss.letter}: ${esc(ss.naam)}</h2>
+    <p class="klein">Begin met 10 minuten warming-up: rustig fietsen of roeien, en per oefening een lichte set. ${esc(b.voel)}</p>
+    ${ss.oefeningen.map(rij).join('')}
+    <button type="button" class="knop breed" data-kr="klaar" ${KR.bezig ? 'disabled' : ''}>Sessie klaar, opslaan</button>
+    <button type="button" class="sb-link" data-kr="annuleer" style="margin-top:8px">Annuleren</button>${KR.fout ? '<p class="klein" style="color:#ff8a5c">' + esc(KR.fout) + '</p>' : ''}</div></div></div>${rust}`;
+}
+async function krPost(body) {
+  KR.bezig = true; KR.fout = ''; teken();
+  try { const j = await (await fetch(API + '?actie=kracht', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), ...body }) })).json();
+    if (j.ok) { if (D) D.kracht = { open: j.open, beeld: j.kracht }; return j; } KR.fout = j.fout || 'Dat lukte niet.'; }
+  catch (e) { KR.fout = 'Verbinding mislukt.'; }
+  finally { KR.bezig = false; }
+  return null;
+}
+function krRustTik() { clearInterval(KR.timer); KR.timer = setInterval(() => { const el = document.getElementById('krRustTijd'); const over = Math.ceil((KR.eind - Date.now()) / 1000); if (over <= 0) { clearInterval(KR.timer); KR.eind = 0; try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (e) {} const r = document.getElementById('krRust'); if (r) r.remove(); return; } if (el) el.textContent = over; }, 500); }
+document.addEventListener('input', (e) => { const t = e.target; if (t.dataset && (t.dataset.krkg || t.dataset.krreps)) { const id = t.dataset.krkg || t.dataset.krreps, i = Number(t.dataset.i); const set = (KR.sets[id] || [])[i]; if (set) set[t.dataset.krkg ? 'kg' : 'reps'] = Number(String(t.value).replace(',', '.')) || 0;
+    // Gewicht bij een set ingevuld? Dan nemen de lege sets erna het over.
+    if (t.dataset.krkg && set) (KR.sets[id] || []).forEach((x, j) => { if (j > i && !x.klaar && !x.kg) { x.kg = set.kg; const el = document.querySelector(`[data-krkg="${id}"][data-i="${j}"]`); if (el) el.value = set.kg; } }); } });
+document.addEventListener('click', async (e) => {
+  const k = e.target.closest('[data-kr]'); if (!k) return;
+  const a = k.dataset.kr;
+  if (a === 'start') { const erv = document.querySelector('input[name=krErv]:checked')?.value, waar = document.querySelector('input[name=krWaar]:checked')?.value; await krPost({ start: { ervaring: erv, waar } }); return teken(); }
+  if (a === 'begin') { KR.actief = k.dataset.l; KR.sets = {}; KR.fout = ''; teken(); window.scrollTo(0, 0); return; }
+  if (a === 'annuleer') { if (!confirm('Sessie annuleren? Wat je invulde wordt niet bewaard.')) return; KR.actief = null; KR.sets = {}; KR.eind = 0; return teken(); }
+  if (a === 'set') { const set = (KR.sets[k.dataset.id] || [])[Number(k.dataset.i)]; if (!set) return; set.klaar = !set.klaar; if (set.klaar) { KR.eind = Date.now() + Number(k.dataset.rust || 90) * 1000; krRustTik(); } const y = window.scrollY; teken(); window.scrollTo(0, y); return; }
+  if (a === 'rustweg') { KR.eind = 0; clearInterval(KR.timer); document.getElementById('krRust')?.remove(); return; }
+  if (a === 'klaar') {
+    const oef = {}; for (const [id, sets] of Object.entries(KR.sets)) oef[id] = sets.filter((x) => x.klaar).map((x) => ({ kg: x.kg, reps: x.reps }));
+    if (!Object.values(oef).some((l) => l.length)) { KR.fout = 'Vink eerst je sets af met Klaar.'; return teken(); }
+    const j = await krPost({ log: { sessie: KR.actief, oef } });
+    if (j) { KR.actief = null; KR.sets = {}; KR.eind = 0; teken(); window.scrollTo(0, 0); modal('<h3>Sessie opgeslagen</h3><p>' + (j.kracht && j.kracht.volgende ? 'Volgende: sessie ' + j.kracht.volgende.letter + '. De app heeft je gewichten alvast bijgewerkt.' : 'Deze week is rond. Volgende week gaat het een stapje verder.') + '</p><button type="button" class="knop" data-lx="dicht">Top</button>'); } else teken();
+    return;
+  }
+  if (a === 'stop') { if (!confirm('Stoppen met kracht? Je voortgang wordt gewist.')) return; await krPost({ stop: true }); return teken(); }
+});
 function vandaagHtml(d) {
   if (!d || d.gast) return '';
   const coaching = !!(d.lid && d.lid.bron === 'coaching');
@@ -3179,6 +3265,8 @@ function vandaagHtml(d) {
   else if (s && s.status === 'klaar') rijen.push(vdRij('schema', 'Training', 'Schema afgerond. Kies je vervolg', { href: SITE + '/trainingsschema-vervolg/', extern: true }));
   else if (coaching) rijen.push(vdRij('schema', 'Training', 'Je trainingen staan in TrainingPeaks, open ze daar', { href: 'https://app.trainingpeaks.com/', extern: true }));
   // Core
+  const kb = d.kracht && d.kracht.beeld;
+  if (kb && kb.volgende) rijen.push(vdRij('kracht', 'Kracht &middot; week ' + kb.week, 'Sessie ' + kb.volgende.letter + ': ' + esc(kb.volgende.naam) + ' &middot; ongeveer ' + kb.volgende.minuten + ' min', { view: 'kracht' }));
   const c = d.core;
   if (c && c.intakeNodig) rijen.push(vdRij('core', 'Core', 'Start je intake, 1 minuut', { href: c.link + '#vandaag' }));
   else if (c && c.nogDicht) { /* Core opent bij de lancering */ }
@@ -3301,6 +3389,7 @@ function paginaHtml(d) {
   if (VIEW === 'rijden') return appBalkHtml('Vandaag rijden') + `<div class="kaarten">${bandenKaart(d)}${toonSlim(d) ? '' : windKaartHtml()}</div>` + voet;
   if (VIEW === 'schema') return appBalkHtml('Mijn schema') + `<div class="kaarten">${schemaKaart(d)}</div>` + voet;
   if (VIEW === 'core') return appBalkHtml('Core-app') + `<div class="kaarten">${coreKaart(dz.core)}</div>` + voet;
+  if (VIEW === 'kracht') return appBalkHtml() + krachtPagina(dz) + voet;
   if (VIEW === 'analyse') return appBalkHtml('Strava-analyse') + (dz.analyse ? (dz.analyse.datum ? `<p class="klein" style="margin:14px 0 -4px">Gemeten op ${esc(dz.analyse.datum)}${analyseWeken(dz.analyse) >= 1 ? ' &middot; ' + analyseWeken(dz.analyse) + (analyseWeken(dz.analyse) === 1 ? ' week' : ' weken') + ' geleden' : ''}</p>` : '') + analyseBlok(dz.analyse, true) + analyseCoachHtml(dz) + naAnalyseHtml(dz) + (inCoaching() ? '<p class="klein" style="margin-top:14px">Een nieuwe meting regelt Michel binnen je coaching.</p>' : `<a class="knop ${analyseWeken(dz.analyse) >= 8 ? '' : 'leeg'}" href="${analyseKoop()}" style="margin-top:14px">${analyseWeken(dz.analyse) >= 8 ? 'Tijd voor een nieuwe meting' : 'Doe een nieuwe analyse'}${analysePrijs() < 29 ? ' &middot; &euro;' + analysePrijs() : ''}</a><p class="klein">Na een paar weken gericht trainen zie je met een nieuwe analyse of je vooruit bent gegaan.</p>`) : `<div class="kaarten">${analyseKaart(null)}</div>`) + voet;
   if (VIEW === 'afval') return appBalkHtml('Afvalprogramma') + `<div class="kaarten">${afvalKaart()}</div>` + voet;
   if (VIEW === 'pacing') return appBalkHtml('Pacingplan') + `<div class="kaarten">${pacingKaart()}</div>` + voet;

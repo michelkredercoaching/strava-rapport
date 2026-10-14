@@ -52,6 +52,7 @@ import { meldMedisch } from '../lib/meld-medisch.js';
 import { meld as meldActief, opruimen, wisPersoon } from '../lib/app-opruimen.js';
 import { ruimReeksenOp } from '../lib/reeks.js';
 import { tipVoor } from '../lib/tips.js';
+import { krachtBeeld, krachtLog, krachtContext } from '../lib/kracht.js';
 import { reviewMoment, reviewOpen, reviewKeuze, REVIEW_LINK } from '../lib/review.js';
 import { kledingAdvies, kledingBijstel, kledingKort } from '../lib/kleding.js';
 import { bandenAdvies, leesInvoer, nl, HOOKLESS_MAX } from '../lib/bandendruk.js';
@@ -473,6 +474,37 @@ async function rlAutoMee(email, voornaam, score) {
 }
 // Voornaam opgeven in de app (14-10-2026): nieuwe accounts uit Instagram hebben er geen. Bewaard in Redis
 // en Mailchimp; een automatische ranglijstnaam "Renner 7" wordt meteen je voornaam.
+// ===========================================================================
+// KRACHT (14-10-2026): krachttraining in de sportschool, 2x per week ongeveer een uur.
+// Eerst alleen voor Michel (beheer) om de opbouw goed te keuren; daarna voor leden,
+// coaching en schema (KRACHT_VOOR_LEDEN = true).
+//   GET  kracht ?t=                          -> { open, kracht }
+//   POST kracht { t, start: {ervaring, waar} } | { t, log: {sessie, oef} } | { t, stop: true }
+// Redis: app:kracht:<email> (JSON)
+// ===========================================================================
+const KRACHT_VOOR_LEDEN = false;
+async function magKracht(email) { if (BEHEER.includes(email)) return true; return KRACHT_VOOR_LEDEN && await magSlim(email); }
+async function haalKracht(email) { const r = await redis(['GET', `app:kracht:${email}`]); try { return (r.ok && r.result && JSON.parse(r.result)) || null; } catch { return null; } }
+async function routeKracht(req, res) {
+  const body = req.method === 'POST' ? await leesBody(req) : {};
+  const email = leesAppToken(String(req.method === 'POST' ? body.t : req.query?.t || ''));
+  if (!email) return res.status(401).json({ ok: false, fout: 'Log opnieuw in.' });
+  const open = await magKracht(email);
+  let s = await haalKracht(email);
+  if (req.method === 'POST') {
+    if (!open) return res.status(403).json({ ok: false, fout: 'Kracht zit in het lidmaatschap.' });
+    if (body.stop) { await redis(['DEL', `app:kracht:${email}`]); return res.status(200).json({ ok: true, open, kracht: null }); }
+    if (body.start) {
+      s = { start: new Date().toISOString(), ervaring: body.start.ervaring === 'ervaren' ? 'ervaren' : 'nieuw', waar: body.start.waar === 'thuis' ? 'thuis' : 'sportschool', week: body.start.ervaring === 'ervaren' ? 4 : 1, gedaan: [], laatste: {} };
+    } else if (body.log) {
+      if (!s) return res.status(400).json({ ok: false, fout: 'Start eerst je krachtprogramma.' });
+      try { s = krachtLog(s, body.log); } catch (e) { return res.status(400).json({ ok: false, fout: e.message }); }
+      await tel(email, 'kracht').catch(() => {});
+    }
+    await redis(['SET', `app:kracht:${email}`, JSON.stringify(s)]);
+  }
+  return res.status(200).json({ ok: true, open, kracht: krachtBeeld(s) });
+}
 async function routeNaam(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const body = await leesBody(req);
@@ -1123,6 +1155,7 @@ export default async function handler(req, res) {
     if (actie === 'pushtest') return await routePushTest(req, res);
     if (actie === 'pushcron') return await routePushCron(req, res);
     if (actie === 'naam') return await routeNaam(req, res);
+    if (actie === 'kracht') return await routeKracht(req, res);
     if (actie === 'correctiesexport') return await routeCorrectiesExport(req, res);
     if (actie === 'correctieimport') return await routeCorrectieImport(req, res);
     if (actie === 'startbonus') return await routeStartBonus(req, res);
@@ -1242,6 +1275,7 @@ async function routeOverzicht(req, res) {
     automatisch: await incassoKlaar(),
     naam: (core && core.naam) || mf.FNAME || '',
     core,
+    kracht: (await magKracht(email)) ? { open: true, beeld: krachtBeeld(await haalKracht(email)) } : null,
     analyse,
     banden: heeftTag(lid, 'bandenspanning-pdf'),
     // Slimme bandenspanning: leden (en Michel) krijgen hun bewaarde fietsen mee.
@@ -1665,7 +1699,7 @@ async function haalCoachBerichten(email) {
 }
 
 async function coachContext(email) {
-  const [core, lid, banden, schemaDossier, lidm, doel] = await Promise.all([coreVoorEmail(email), mcLid(email), haalBandenProfiel(email), haalSchema(email), haalLid(email), haalDoel(email)]);
+  const [core, lid, banden, schemaDossier, lidm, doel, kr] = await Promise.all([coreVoorEmail(email), mcLid(email), haalBandenProfiel(email), haalSchema(email), haalLid(email), haalDoel(email), haalKracht(email)]);
   const mf = (lid && lid.merge_fields) || {};
   if (!mf.FNAME) { const an = await redis(['GET', `app:naam:${email}`]); if (an.ok && an.result) mf.FNAME = an.result; }
   const regels = [];
@@ -1682,6 +1716,7 @@ async function coachContext(email) {
     if (core.kracht && core.kracht !== 'nee') regels.push(`Doet ook krachttraining in de sportschool, ${core.kracht} per week. Adviseer: geen core op een zware beendag, sportschool niet de dag voor de zwaarste intervaltraining.`);
     if (core.disbalans) regels.push('Disbalans uit de romptest: ' + Object.entries(core.disbalans).map(([k, x]) => `${k} ${x.pct}% zwakker ${x.kant.toLowerCase()}`).join(', ') + '. De Core-app laat die kant eerst gaan en langer werken.');
   } else regels.push('Core-app: niet gestart.');
+  if (kr) regels.push(krachtContext(krachtBeeld(kr)));
   if ((lid && (lid.tags || []).some((t) => t.name === 'power-profile-koper'))) {
     regels.push(`Strava-analyse (${mf.RAPDAT || 'datum onbekend'}): ${mf.MEETMETH === 'hartslag' ? `omslagpunt ${mf.KOOPOMS || mf.OMSLAG || '?'} bpm` : `FTP ${mf.KOOPFTP || mf.FTP || '?'} W`}, renner-type ${mf.RENTYPE || '?'}, geadviseerd schema ${mf.ADVSCHEMA || '?'}.`);
     // Het actieplan uit zijn rapport (14-10-2026, na Steven): de coach mag het rapport niet tegenspreken.
