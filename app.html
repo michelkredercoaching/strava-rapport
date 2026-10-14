@@ -2159,7 +2159,7 @@ function skTraining(w, meet, sleutel) {
   const tekst = (w.tekst || '').trim(), lang = tekst.length > 240, open = SK.open[sleutel];
   const notitie = (w.notitie || '').replace(/\*+/g, '').trim();
   return `<div class="sk-tr">${w.melding ? `<div class="sk-tip" style="margin:0 0 12px">${esc(w.melding)}</div>` : ''}<h3>${esc(w.titel)}</h3>
-    <div class="sk-meta">${skUren(w.duur)}${w.tss ? ' &middot; TSS ' + Math.round(w.tss) : ''}${w.blokken ? ' &middot; ' + (meet === 'hartslag' ? '% van je omslagpunt' : '% van je FTP') : ''}</div>
+    <div class="sk-meta">${skUren(w.duur)}${w.tss ? ' &middot; TSS ' + Math.round(w.tss) : ''}${w.blokken ? ' &middot; ' + (meet === 'hartslag' ? 'grafiek in % van je omslagpunt' : 'grafiek in % van je FTP') : ''}</div>
     ${skGrafiek(w.blokken)}${skBlokken(w.blokken, meet)}
     ${tekst ? `<div class="sk-tekst${lang && !open ? ' dicht' : ''}">${opmaak(tekst)}</div>${lang ? `<button class="sk-meer" data-sk="meer" data-k="${sleutel}">${open ? 'Minder' : 'Lees de hele uitleg'}</button>` : ''}` : ''}
     ${notitie ? `<div class="sk-tip">${opmaak(notitie)}</div>` : ''}</div>`;
@@ -2741,16 +2741,17 @@ function tegelsHtml(d) {
   if (d.beheer && BEKIJK === 'alles') d = voorbeeldData(d);
   const coaching = !!(d.lid && d.lid.bron === 'coaching');
   const lid = isLid(d), slim = toonSlim(d);
+  const inbegrepen = coaching || !!(d.lid && ['schema', 'cadeau'].includes(d.lid.bron));
   const t = [];
   const mijnSp = !slim ? laatsteSpanning() : '';
+  if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: schemaTegelSub(d.schema), tag: d.schema.status === 'klaar' ? 'Afgerond' : 'Actief', tagKlas: 'gr', breed: true }));
   if (coaching) t.push(tegel({ v: 'coaching', ic: 'coach', nm: 'Jouw coaching', sub: 'Waar je wat vindt, de TrainingPeaks-app en hoe je mij bereikt', tag: 'Michel', tagKlas: 'or', breed: true }));
-  t.push(tegel({ v: 'rijden', ic: 'rijden', nm: 'Vandaag rijden', sub: slim ? 'Je bandenspanning, kleding, voeding en wind voor je rit' : mijnSp ? 'Jouw spanning: ' + mijnSp + ' &middot; plus wind en groepsrit' : 'Je bandenspanning en windadvies, en plan een groepsrit', tag: slim ? 'Lid' : 'Gratis', tagKlas: slim ? 'or' : 'gr', breed: true }));
-  if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: schemaTegelSub(d.schema), tag: d.schema.status === 'klaar' ? 'Afgerond' : 'Actief', tagKlas: 'gr' }));
+  t.push(tegel({ v: 'rijden', ic: 'rijden', nm: 'Vandaag rijden', sub: slim ? 'Je bandenspanning, kleding, voeding en wind voor je rit' : mijnSp ? 'Jouw spanning: ' + mijnSp + ' &middot; plus wind en groepsrit' : 'Je bandenspanning en windadvies, en plan een groepsrit', tag: slim ? (inbegrepen ? 'Inbegrepen' : 'Lid') : 'Gratis', tagKlas: slim ? 'or' : 'gr', breed: true }));
   if (d.core && d.core.nogDicht) t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Opent vrijdag 16 oktober om 12:00', tag: 'Vrijdag', tagKlas: 'or' }));
   else if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
   else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Core stability voor wielrenners, op de timer', tag: binnenkortNu() ? 'Binnenkort' : lid ? 'Inbegrepen' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Tijd voor een nieuwe' : 'Jouw uitslag') : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' }));
-  t.push(tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? 'Lid' : '3 gratis', tagKlas: 'or' }));
+  t.push(tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Lid') : '3 gratis', tagKlas: 'or' }));
   if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true }));
   if (!d.gast) { const pb = palmaresStand(d); t.push(tegel({ v: 'palmares', ic: 'palmares', nm: 'Je palmares', sub: !pb.l.length ? 'Medailles verdienen met wat je doet' : pb.m + (pb.m === 1 ? ' medaille' : ' medailles') + (pb.volgendeBel ? ' &middot; beloning bij ' + pb.volgendeBel.n : ''), tag: pb.m ? String(pb.m) : '', tagKlas: 'or', breed: true })); }
   const bk = `<div class="bk-rij"><span>Binnenkort</span><button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
@@ -3139,7 +3140,7 @@ function vandaagHtml(d) {
   }
   // Bijna binnen: de volgende medaille, de sterkste reden om vandaag iets te doen
   { const bn = (d.badges || []).filter((b) => b.volgende && !b.binnenkort && !b.goudLid && !b.goudKlaar && b.waarde > 0 && !(b.id === 'gemeten' && d.lid && d.lid.bron === 'coaching')).sort((a, b) => (b.waarde / b.volgende) - (a.waarde / a.volgende))[0];
-    if (bn) { const nog = bn.volgende - bn.waarde, e = bn.eenheid; rijen.push(vdRij('palmares', 'Bijna binnen', esc(bn.naam) + ' ' + ['brons', 'zilver', 'goud'][bn.niveau] + ' &middot; nog ' + nog + (e ? ' ' + esc(nog === 1 ? e[0] : e[1]) : ''), { view: 'palmares' })); } }
+    if (bn) { const nog = bn.volgende - bn.waarde, e = bn.eenheid; rijen.push(vdRij('palmares', 'Bijna binnen', esc(bn.naam) + ' ' + ['brons', 'zilver', 'goud'][bn.niveau] + ' &middot; ' + bn.waarde + ' van ' + bn.volgende + (e ? ' ' + esc(bn.volgende === 1 ? e[0] : e[1]) : ''), { view: 'palmares' })); } }
   // Je week in één regel: wat je al deed, zodat je ziet dat het opbouwt
   const wk = [];
   if (c && !c.intakeNodig && c.frequentie) wk.push(c.gedaan >= c.frequentie ? '<span class="ok">&#10003; Core deze week rond</span>' : 'Core deze week <b>' + c.gedaan + ' van ' + c.frequentie + '</b>');
