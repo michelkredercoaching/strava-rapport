@@ -1725,6 +1725,7 @@ function plaatjeUitleg() { stravaMelding('Bewaar het plaatje. Open daarna je act
   let wacht = null; try { wacht = JSON.parse(localStorage.getItem('coreStravaWacht') || 'null'); localStorage.removeItem('coreStravaWacht'); } catch (e) {}
   if (q === 'geplaatst') stravaMelding('Je sessie staat op Strava. Zet je deelplaatje erbij?', true);
   else if (q === 'gekoppeld' && wacht) { const j = await stravaPlaats(wacht); if (j && j.ok) stravaMelding('Je sessie staat op Strava.'); }
+  else if (q === 'druk') stravaMelding('Strava is even druk. Probeer het over een minuutje nog eens.');
   else if (q === 'verlopen') stravaMelding('Dat duurde even. Tik nog een keer op Zet op Strava.');
   else if (q === 'geweigerd') stravaMelding('Zonder toestemming om activiteiten te maken kan ik niets op Strava zetten. Probeer het gerust nog eens.');
   else stravaMelding('Koppelen met Strava lukte niet. Probeer het zo nog eens.');

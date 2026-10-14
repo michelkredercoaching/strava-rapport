@@ -311,7 +311,25 @@ const STRAVA_TERUG = 'https://rapport.michelkredercoaching.nl/api/core?actie=str
 // Strava-capaciteit (14-10-2026): de app mag maar 10 atleten tegelijk gekoppeld hebben en deelt
 // die met de Strava-analyse (€29). Daarom ontkoppelen we na elke plaatsing, net als de analyse,
 // en bewaren we het token maar kort. Kost de renner één tik op Toestaan per keer.
+// Rem (14-10-2026): de Core-knop gebruikt hooguit 3 van de 10 Strava-plekken tegelijk en hooguit
+// 30 delingen per kwartier, zodat de analyse altijd ruimte houdt (plekken en verzoeken worden gedeeld).
+const CORE_MAX_TEGELIJK = 3, CORE_MAX_KWARTIER = 30;
+async function stravaRuimte(id) {
+  const nu = Date.now(), k = 'core:strava:bezig';
+  await redis(['ZREMRANGEBYSCORE', k, '0', String(nu - 5 * 60000)]); // een poging telt 5 minuten mee, of tot hij ontkoppeld is
+  const al = await redis(['ZSCORE', k, id]);
+  if (!(al.ok && al.result)) {
+    const n = await redis(['ZCARD', k]);
+    if (n.ok && Number(n.result) >= CORE_MAX_TEGELIJK) return false;
+    const kw = `core:strava:kwartier:${Math.floor(nu / 900000)}`;
+    const t = await redis(['INCR', kw]); await redis(['EXPIRE', kw, '1000']);
+    if (t.ok && Number(t.result) > CORE_MAX_KWARTIER) return false;
+  }
+  await redis(['ZADD', k, String(nu), id]);
+  return true;
+}
 async function stravaOntkoppel(id, access) {
+  await redis(['ZREM', 'core:strava:bezig', id]);
   if (access) { try { await fetch('https://www.strava.com/oauth/deauthorize', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ access_token: access }) }); } catch (e) {} }
   await redis(['DEL', `core:strava:${id}`]);
 }
@@ -330,6 +348,7 @@ async function stravaToken(id) {
 async function routeStravaKoppel(req, res) {
   const t = String(req.query?.t || ''), id = leesCoreToken(t);
   if (!id || !process.env.STRAVA_CLIENT_ID) return stuurDoor(res, '/mijn-core?t=' + encodeURIComponent(t) + '&strava=fout');
+  if (!(await stravaRuimte(id))) return stuurDoor(res, '/mijn-core?t=' + encodeURIComponent(t) + '&strava=druk');
   const basis = req.query?.m === '1' ? 'https://www.strava.com/oauth/mobile/authorize?' : 'https://www.strava.com/oauth/authorize?';
   return stuurDoor(res, basis + new URLSearchParams({ client_id: process.env.STRAVA_CLIENT_ID, response_type: 'code', redirect_uri: STRAVA_TERUG, approval_prompt: 'force', scope: 'activity:write', state: t }).toString());
 }
@@ -338,10 +357,10 @@ async function routeStravaKoppel(req, res) {
 async function routeStravaTerug(req, res) {
   const t = String(req.query?.state || ''), id = leesCoreToken(t), terug = (s) => stuurDoor(res, '/mijn-core?t=' + encodeURIComponent(t) + '&strava=' + s);
   if (!id) return stuurDoor(res, '/app');
-  if (req.query?.error || !String(req.query?.scope || '').includes('activity:write')) return terug('geweigerd');
+  if (req.query?.error || !String(req.query?.scope || '').includes('activity:write')) { await redis(['ZREM', 'core:strava:bezig', id]); return terug('geweigerd'); }
   const v = await fetch('https://www.strava.com/oauth/token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client_id: process.env.STRAVA_CLIENT_ID, client_secret: process.env.STRAVA_CLIENT_SECRET, code: String(req.query?.code || ''), grant_type: 'authorization_code' }) });
   const j = await v.json().catch(() => ({}));
-  if (!j.access_token) return terug('fout');
+  if (!j.access_token) { await redis(['ZREM', 'core:strava:bezig', id]); return terug('fout'); }
   const w = await redis(['GET', `core:strava:wacht:${id}`]);
   let wacht = null; try { wacht = w.ok && w.result ? JSON.parse(w.result) : null; } catch {}
   const d = wacht ? await haalDossier(id) : null;
