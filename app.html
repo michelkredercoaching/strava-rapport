@@ -600,6 +600,85 @@
   .lid-akkoord a { color:#FF6B1A; }
   .lid-akkoord.fout { background:rgba(255,107,26,.18); outline:1px solid #FF6B1A; }
   /* Beginscherm-kaart */
+
+  /* Installatie-demo iPhone (14-10-2026): zelfgemaakte schermpjes als filmpje in een lus, 12 s */
+  .igd { display:flex; flex-direction:column; align-items:center; margin:6px 0 10px; }
+  .igd-tel { position:relative; width:184px; height:340px; border-radius:30px; background:#000; border:3px solid #3a3a3c; box-shadow:0 10px 30px rgba(0,0,0,.5); overflow:hidden; }
+  .igd-tel::before { content:''; position:absolute; top:8px; left:50%; transform:translateX(-50%); width:58px; height:16px; border-radius:10px; background:#000; z-index:9; }
+  .igd-sc { position:absolute; inset:0; opacity:0; animation:12s infinite; }
+  .igd-s1 { animation-name:igdS1; } .igd-s2 { animation-name:igdS2; } .igd-s3 { animation-name:igdS3; } .igd-s4 { animation-name:igdS4; } .igd-s5 { animation-name:igdS5; }
+  @keyframes igdS1 { 0%,30% { opacity:1; } 31%,100% { opacity:0; } }
+  @keyframes igdS2 { 0%,13% { opacity:0; } 14%,30% { opacity:1; } 31%,100% { opacity:0; } }
+  @keyframes igdS3 { 0%,30% { opacity:0; } 31%,58% { opacity:1; } 59%,100% { opacity:0; } }
+  @keyframes igdS4 { 0%,58% { opacity:0; } 59%,76% { opacity:1; } 77%,100% { opacity:0; } }
+  @keyframes igdS5 { 0%,76% { opacity:0; } 77%,99% { opacity:1; } 100% { opacity:0; } }
+  /* Safari-pagina met de app */
+  .igd-pag { position:absolute; inset:0; background:#0b0b0b; padding:34px 10px 0; }
+  .igd-kop { display:flex; align-items:center; gap:6px; margin-bottom:10px; }
+  .igd-kop img { width:22px; height:22px; border-radius:50%; }
+  .igd-kop b { font-family:'Bebas Neue',sans-serif; font-size:15px; color:#fff; letter-spacing:.04em; }
+  .igd-kaart { height:44px; border-radius:8px; background:#1c1c1e; border:1px solid rgba(255,107,26,.35); margin-bottom:7px; }
+  .igd-kaart.k2 { height:62px; border-color:#2c2c2e; } .igd-kaart.k3 { height:36px; border-color:#2c2c2e; }
+  .igd-balk { position:absolute; left:0; right:0; bottom:0; height:46px; background:rgba(28,28,30,.97); display:flex; align-items:center; gap:6px; padding:0 8px 6px; }
+  .igd-adres { flex:1; height:26px; border-radius:13px; background:#3a3a3c; color:#ddd; font-size:8.5px; display:flex; align-items:center; justify-content:center; white-space:nowrap; overflow:hidden; }
+  .igd-knop { width:26px; height:26px; border-radius:50%; background:#3a3a3c; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; letter-spacing:1px; }
+  /* menu na ••• */
+  .igd-menu { position:absolute; right:8px; bottom:52px; width:128px; border-radius:12px; background:rgba(44,44,46,.98); overflow:hidden; font-size:10px; color:#fff; transform-origin:bottom right; animation:igdPop 12s infinite; }
+  @keyframes igdPop { 0%,13% { transform:scale(.6); opacity:0; } 16%,30% { transform:scale(1); opacity:1; } 100% { opacity:1; } }
+  .igd-menu div { padding:8px 10px; border-top:1px solid rgba(255,255,255,.08); display:flex; justify-content:space-between; }
+  .igd-menu div:first-child { border-top:0; }
+  .igd-aan { background:rgba(255,107,26,.28); }
+  /* deelmenu */
+  .igd-blad { position:absolute; left:0; right:0; bottom:0; height:250px; border-radius:16px 16px 0 0; background:#1c1c1e; padding:12px 10px; animation:igdOmhoog 12s infinite; }
+  @keyframes igdOmhoog { 0%,31% { transform:translateY(100%); } 35%,100% { transform:translateY(0); } }
+  .igd-blad .igd-ttl { display:flex; align-items:center; gap:7px; margin-bottom:10px; color:#fff; font-size:9.5px; }
+  .igd-blad .igd-ttl img { width:26px; height:26px; border-radius:6px; }
+  .igd-apps { display:flex; gap:8px; margin-bottom:10px; } .igd-apps i { width:30px; height:30px; border-radius:8px; background:#3a3a3c; }
+  .igd-rij { background:#2c2c2e; border-radius:9px; overflow:hidden; margin-bottom:7px; }
+  .igd-rij div { padding:8px 10px; font-size:9.5px; color:#fff; border-top:1px solid rgba(255,255,255,.07); display:flex; justify-content:space-between; align-items:center; }
+  .igd-rij div:first-child { border-top:0; }
+  .igd-rij .igd-doel { animation:igdLicht 12s infinite; }
+  @keyframes igdLicht { 0%,44% { background:transparent; } 46%,58% { background:rgba(255,107,26,.32); } 100% { background:transparent; } }
+  .igd-plus { width:13px; height:13px; border:1.3px solid #fff; border-radius:3px; display:inline-flex; align-items:center; justify-content:center; font-size:10px; line-height:1; }
+  /* Zet op beginscherm */
+  .igd-zet { position:absolute; inset:0; background:#1c1c1e; padding:34px 10px; color:#fff; }
+  .igd-zet-kop { display:flex; justify-content:space-between; align-items:center; font-size:10px; margin-bottom:16px; }
+  .igd-zet-kop b { color:#0a84ff; font-weight:700; padding:3px 6px; border-radius:6px; animation:igdVoeg 12s infinite; }
+  @keyframes igdVoeg { 0%,66% { background:transparent; } 68%,76% { background:rgba(10,132,255,.25); } 100% { background:transparent; } }
+  .igd-zet-rij { display:flex; gap:10px; align-items:center; background:#2c2c2e; border-radius:10px; padding:10px; }
+  .igd-zet-rij img { width:40px; height:40px; border-radius:10px; }
+  .igd-zet-rij span { font-size:11px; } .igd-zet-rij small { display:block; color:#8e8e93; font-size:8px; margin-top:2px; }
+  /* beginscherm */
+  .igd-home { position:absolute; inset:0; background:linear-gradient(160deg,#2b1a10,#0b0b0b 60%); padding:44px 14px; display:grid; grid-template-columns:repeat(4,1fr); gap:14px 10px; align-content:start; }
+  .igd-home i { width:32px; height:32px; border-radius:9px; background:rgba(255,255,255,.14); justify-self:center; }
+  .igd-home .igd-mkc { justify-self:center; text-align:center; animation:igdMkc 12s infinite; }
+  .igd-home .igd-mkc img { width:32px; height:32px; border-radius:9px; display:block; box-shadow:0 0 0 2px rgba(255,107,26,.6); }
+  .igd-home .igd-mkc small { font-size:7px; color:#fff; }
+  @keyframes igdMkc { 0%,79% { transform:scale(0); } 83% { transform:scale(1.25); } 86%,100% { transform:scale(1); } }
+  .igd-klaar { position:absolute; left:0; right:0; bottom:40px; text-align:center; font-family:'Bebas Neue',sans-serif; font-size:24px; color:#FF6B1A; animation:igdMkc 12s infinite; }
+  /* vinger */
+  .igd-tik { position:absolute; width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,.55); border:2px solid #fff; box-shadow:0 0 0 6px rgba(255,255,255,.18); z-index:8; pointer-events:none; animation:igdTik 12s infinite; opacity:0; }
+  @keyframes igdTik {
+    0%,4% { opacity:0; right:8px; bottom:13px; transform:scale(1); }
+    7% { opacity:1; right:8px; bottom:13px; } 10% { transform:scale(.7); } 12%,13% { opacity:1; transform:scale(1); right:8px; bottom:13px; }
+    18% { opacity:1; right:59px; bottom:120px; } 22% { transform:scale(.7); right:59px; bottom:120px; } 26%,30% { opacity:1; transform:scale(1); right:59px; bottom:120px; }
+    31%,40% { opacity:0; right:76px; bottom:61px; } 44% { opacity:1; right:76px; bottom:61px; transform:scale(1); } 49% { transform:scale(.7); } 54%,58% { opacity:1; transform:scale(1); right:76px; bottom:61px; }
+    59%,62% { opacity:0; right:20px; bottom:269px; } 65% { opacity:1; right:20px; bottom:269px; transform:scale(1); } 69% { transform:scale(.7); } 73%,76% { opacity:1; transform:scale(1); right:20px; bottom:269px; }
+    77%,100% { opacity:0; }
+  }
+  /* ondertitel per stap */
+  .igd-tekst { position:relative; height:38px; width:100%; margin-top:10px; }
+  .igd-tekst span { position:absolute; inset:0; text-align:center; font-size:13.5px; font-weight:700; color:#fff; opacity:0; animation:12s infinite; }
+  .igd-tekst span em { font-style:normal; color:var(--accent); }
+  .igd-t1 { animation-name:igdT1 !important; } .igd-t2 { animation-name:igdT2 !important; } .igd-t3 { animation-name:igdT3 !important; } .igd-t4 { animation-name:igdT4 !important; } .igd-t5 { animation-name:igdT5 !important; }
+  @keyframes igdT1 { 0%,13% { opacity:1; } 14%,100% { opacity:0; } }
+  @keyframes igdT2 { 0%,13% { opacity:0; } 14%,30% { opacity:1; } 31%,100% { opacity:0; } }
+  @keyframes igdT3 { 0%,30% { opacity:0; } 31%,58% { opacity:1; } 59%,100% { opacity:0; } }
+  @keyframes igdT4 { 0%,58% { opacity:0; } 59%,76% { opacity:1; } 77%,100% { opacity:0; } }
+  @keyframes igdT5 { 0%,76% { opacity:0; } 77%,100% { opacity:1; } }
+  @media (prefers-reduced-motion: reduce) { .igd-sc, .igd-tik, .igd-tekst span, .igd-menu, .igd-blad { animation-duration:24s; } }
+  .ig-lees summary { cursor:pointer; font-size:13px; color:var(--accent); font-weight:700; text-align:center; list-style:none; margin-top:2px; }
+  .ig-lees summary::-webkit-details-marker { display:none; }
   .ig-stappen { list-style:none; padding:0; margin:12px 0 8px; text-align:left; }
   .ig-stappen li { display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid rgba(255,255,255,.08); font-size:14px; line-height:1.4; }
   .ig-stappen li:first-child { border-top:0; }
@@ -1138,6 +1217,24 @@ const IG_DEEL = '<svg viewBox="0 0 15 17" fill="none" stroke="currentColor" stro
 const IG_PUNT = '<svg viewBox="0 0 20 6" fill="currentColor"><circle cx="3" cy="3" r="2.2"/><circle cx="10" cy="3" r="2.2"/><circle cx="17" cy="3" r="2.2"/></svg>';
 const IG_PLUS = '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="1.5" y="1.5" width="15" height="15" rx="3.5"/><path d="M9 5.5v7M5.5 9h7"/></svg>';
 const IG_MENU = '<svg viewBox="0 0 6 20" fill="currentColor"><circle cx="3" cy="3" r="2.2"/><circle cx="3" cy="10" r="2.2"/><circle cx="3" cy="17" r="2.2"/></svg>';
+// iPhone-demo: zelfgemaakte schermpjes als filmpje (14-10-2026)
+function iosDemoHtml() {
+  const ic = '<img src="/icoon-180.png" alt="">';
+  const pagina = `<div class="igd-pag"><div class="igd-kop">${ic}<b>MKC-APP</b></div><div class="igd-kaart"></div><div class="igd-kaart k2"></div><div class="igd-kaart k3"></div><div class="igd-kaart k2"></div></div>
+    <div class="igd-balk"><span class="igd-knop">&#8249;</span><span class="igd-adres">&#128274; rapport.michelkreder...</span><span class="igd-knop">&bull;&bull;&bull;</span></div>`;
+  return `<div class="igd" aria-label="Filmpje: zo zet je de app op je beginscherm"><div class="igd-tel">
+    <div class="igd-sc igd-s1">${pagina}</div>
+    <div class="igd-sc igd-s2">${pagina}<div class="igd-menu"><div class="igd-aan">Deel <span>&#8679;</span></div><div>Voeg bladwijzer toe</div><div>Zoek op pagina</div></div></div>
+    <div class="igd-sc igd-s3">${pagina}<div class="igd-blad"><div class="igd-ttl">${ic}<span>MKC-app<br><small style="color:#8e8e93">rapport.michelkredercoaching.nl</small></span></div>
+      <div class="igd-apps"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="igd-rij"><div>Kopieer <span>&#10697;</span></div><div>Voeg toe aan leeslijst <span>&#9711;</span></div></div>
+      <div class="igd-rij"><div class="igd-doel">Zet op beginscherm <span class="igd-plus">+</span></div><div>Voeg bladwijzer toe <span>&#9734;</span></div></div></div></div>
+    <div class="igd-sc igd-s4"><div class="igd-zet"><div class="igd-zet-kop"><span style="color:#0a84ff">Annuleer</span><span>Zet op beginscherm</span><b>Voeg toe</b></div>
+      <div class="igd-zet-rij">${ic}<span>MKC<small>rapport.michelkredercoaching.nl</small></span></div></div></div>
+    <div class="igd-sc igd-s5"><div class="igd-home"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><span class="igd-mkc">${ic}<small>MKC</small></span></div><div class="igd-klaar">Klaar!</div></div>
+    <div class="igd-tik"></div></div>
+    <div class="igd-tekst"><span class="igd-t1">1. Tik onderaan op <em>&bull;&bull;&bull;</em> of het deel-icoon</span><span class="igd-t2">2. Tik op <em>Deel</em></span><span class="igd-t3">3. Scroll omlaag: <em>Zet op beginscherm</em></span><span class="igd-t4">4. Tik op <em>Voeg toe</em></span><span class="igd-t5">Open de app voortaan met <em>één tik</em></span></div></div>`;
+}
 function installGidsHtml() {
   const r = installRoute();
   const stap = (n, ic, tekst) => `<li><span class="ig-n">${n}</span><span class="ig-ic">${ic || ''}</span><span class="ig-t">${tekst}</span></li>`;
@@ -1159,6 +1256,7 @@ function installGidsHtml() {
     stappen = stap(1, '', 'Pak je telefoon en open <b>rapport.michelkredercoaching.nl/app</b>.') + stap(2, '', 'Log in met hetzelfde mailadres.') + stap(3, IG_PLUS, 'Zet hem daar op je beginscherm. De stappen staan dan ook in de app.');
     kop = '<h3>Zet de app op je telefoon</h3><p>De MKC-app werkt het best op je telefoon. Je hoeft niets te downloaden uit de App Store.</p>';
   }
+  if (r === 'ios') return kop + iosDemoHtml() + '<details class="ig-lees"><summary>Liever stap voor stap lezen</summary><ol class="ig-stappen">' + stappen + '</ol>' + extra + '</details>';
   return kop + (stappen ? '<ol class="ig-stappen">' + stappen + '</ol>' : '') + extra;
 }
 function installGids(metGedaan) {
@@ -2671,7 +2769,7 @@ function onbHtml() {
   } else if (o.stap === 6 && iosZonderApp()) {
     // iPhone in Safari: meldingen kunnen pas vanaf het beginscherm, dus eerst dat (14-10-2026)
     const r = installRoute(), gids = installGidsHtml();
-    inhoud = kop('Zet de app op je beginscherm', 'Je zit al in de MKC-app, downloaden hoeft niet. Op een iPhone krijg je je dagelijkse tip pas als de app op je beginscherm staat.') + (gids.includes('<ol') ? gids.slice(gids.indexOf('<ol'), gids.indexOf('</ol>') + 5) : '') + (r === 'ios' ? '<p class="onb-sub">Open hem daarna vanaf je beginscherm, dan zet je in de app je meldingen aan.</p>' : '');
+    inhoud = kop('Zet de app op je beginscherm', 'Je zit al in de MKC-app, downloaden hoeft niet. Op een iPhone krijg je je dagelijkse tip pas als de app op je beginscherm staat.') + (r === 'ios' ? iosDemoHtml() : gids.includes('<ol') ? gids.slice(gids.indexOf('<ol'), gids.indexOf('</ol>') + 5) : '') + (r === 'ios' ? '<p class="onb-sub">Open hem daarna vanaf je beginscherm, dan zet je in de app je meldingen aan.</p>' : '');
     knop = '<button type="button" class="knop" data-onb="pushnee">Naar mijn app</button>';
   } else if (o.stap === 6) {
     const kan = pushKan() && PUSH.key && !iosZonderApp();
