@@ -482,8 +482,9 @@ async function rlAutoMee(email, voornaam, score) {
 //   POST kracht { t, start: {ervaring, waar} } | { t, log: {sessie, oef} } | { t, stop: true }
 // Redis: app:kracht:<email> (JSON)
 // ===========================================================================
-// Besluit Michel 14-10-2026: Kracht gaat voor leden (ook coaching en schema) open op zo 1 november 2026.
-const KRACHT_OPEN = Date.parse('2026-11-01T00:00:00+01:00');
+// Besluit Michel 14-10-2026 (avond): Kracht schuift door naar verwacht eind 2027, nog zonder datum.
+// Zet hier de echte openingsdatum zodra die er is; tot dan alleen de Preview voor beheer.
+const KRACHT_OPEN = Infinity;
 const KRACHT_VOOR_LEDEN = () => Date.now() >= KRACHT_OPEN;
 async function magKracht(email) { if (BEHEER.includes(email)) return true; return KRACHT_VOOR_LEDEN() && await magSlim(email); }
 // Core óf Kracht (besluit Michel 14-10-2026): één trainingsvorm tegelijk, wisselen kan altijd.
@@ -945,7 +946,7 @@ async function routeAankondig(req, res) {
         <p>Je 3 vragen gelden voor de coach en de bandencoach samen. Elke maandag krijg je er weer 3 bij.</p>
         <p style="margin:22px 0 26px"><a href="${link}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Stel je eerste vraag</a></p>
         <p>Sportieve groet,<br>Michel</p>
-        <p style="color:#555;font-size:14px">P.S. Vrijdag 16 oktober gaat de MKC-app helemaal open. Als lid vraag je dan zoveel je wilt.</p>
+        <p style="color:#555;font-size:14px">P.S. Vrijdag 16 oktober gaat de MKC-app helemaal open. Als lid vraag je dan wanneer je wilt.</p>
         <p style="color:#888;font-size:12px">Je krijgt deze mail omdat je een account hebt in de MKC-app.</p></div>`;
       try {
         const m = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: p.email, reply_to: 'info@michelkredercoaching.nl', subject: 'Vanaf nu: 3 gratis vragen per week aan je coach', html }), signal: AbortSignal.timeout(10000) });
@@ -1450,14 +1451,23 @@ async function analyseBonus(email) {
   await tel(email, 'analysebonus').catch(() => {});
   return true;
 }
-// Ingelogd? Leden en Michel mogen altijd, anderen zolang er gratis vragen over zijn.
+// Leden: eerlijk gebruik, max LID_PER_WEEK vragen per week (besluit Michel 14-10-2026; een vraag kost
+// zo'n 3 cent, een maand lid levert ex btw € 8,26 op). Redis: app:lidvragen:<email>:<jaar-week>
+const LID_PER_WEEK = 25;
+// Ingelogd? Leden mogen tot de weeklimiet, Michel altijd, anderen zolang er gratis vragen over zijn.
 async function vraagRecht(res, t) {
   const email = leesAppToken(String(t || ''));
   if (!email) { res.status(401).json({ ok: false, fout: 'Log opnieuw in.' }); return null; }
-  if (await magSlim(email)) return { email, lid: true };
+  if (await magSlim(email)) {
+    if (BEHEER.includes(email)) return { email, lid: true };
+    const k = `app:lidvragen:${email}:${weekSleutel()}`, n = await redis(['INCR', k]);
+    if (n.ok && n.result === 1) await redis(['EXPIRE', k, String(8 * 86400)]);
+    if (n.ok && n.result > LID_PER_WEEK) { await redis(['DECR', k]); res.status(429).json({ ok: false, fout: `Je hebt deze week al ${LID_PER_WEEK} vragen gesteld. Maandag kun je weer verder.` }); return null; }
+    return { email, lid: true };
+  }
   if (await gratisOver(email) <= 0) {
     if (await analyseBonus(email)) return { email, lid: false, bonus: true };
-    res.status(402).json({ ok: false, limiet: true, gratisOver: 0, fout: 'Je 3 gratis vragen van deze week zijn op. Maandag kun je weer, of word lid en vraag zoveel je wilt.' });
+    res.status(402).json({ ok: false, limiet: true, gratisOver: 0, fout: 'Je 3 gratis vragen van deze week zijn op. Maandag kun je weer, of word lid en vraag tot 25 keer per week.' });
     return null;
   }
   return { email, lid: false };
@@ -2138,7 +2148,7 @@ async function lanceerBericht(email) {
   const b = lidBeeld(await haalLid(email));
   if (b.open && b.bron && b.bron !== 'lid') return null;
   if (b.open) return { title: 'Je Core-app is open', body: 'Vanaf nu staat je eerste Core-sessie klaar. Een kwartier, thuis op de timer.', url: '/app' };
-  return { title: 'De MKC-app is nu helemaal open', body: 'Word lid voor €9,99 per maand: je coach zonder limiet, je bandenspanning en kleding voor elke rit en de Core-app.', url: '/app#lid' };
+  return { title: 'De MKC-app is nu helemaal open', body: 'Word lid voor €9,99 per maand: je eigen coach, je bandenspanning en kleding voor elke rit en de Core-app.', url: '/app#lid' };
 }
 async function routePushCron(req, res) {
   const auth = String(req.headers?.authorization || '');

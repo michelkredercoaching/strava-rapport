@@ -1414,7 +1414,7 @@ function appHtml() {
 // Twee stappen: mailadres, dan de code uit de mail. Nieuw adres = gratis account.
 const LOGIN_PUNTEN = [
   ['band', 'Bandenspanning voor elke rit, afgestemd op het weer'],
-  ['core', Date.now() >= Date.parse('2026-11-01T00:00:00+01:00') ? 'Core thuis of kracht in de sportschool, op jouw niveau' : 'Core-training die met je meebeweegt'],
+  ['core', 'Core-training die met je meebeweegt'],
   ['kleding', 'Kledingadvies en een ochtendbericht voor je rit'],
   ['coach', 'Je vragen beantwoord met de kennis van Michel']
 ];
@@ -1534,7 +1534,7 @@ function nepGrafiek() {
 const BINNENKORT_IG = '<div class="bk-ig"><b>Binnenkort beschikbaar</b><span>Ik kondig de datum aan op Instagram. Hou hem daar in de gaten.</span><a class="knop leeg" href="https://www.instagram.com/michelkredercoaching/" target="_blank" rel="noopener">Volg op Instagram</a></div>';
 function opDeHoogteHtml(product) {
   const al = D && D.interesse && D.interesse[product];
-  if (al) return '<p class="klein" style="margin-top:10px;color:#7fe0a0">&#10003; Je staat op de lijst. ' + (product === 'kracht' ? 'Op 1 november krijg je een berichtje zodra Kracht open staat.' : 'Je hoort het als eerste als het er is.') + '</p>';
+  if (al) return '<p class="klein" style="margin-top:10px;color:#7fe0a0">&#10003; Je staat op de lijst. ' + 'Je hoort het als eerste als het er is.' + '</p>';
   return '<button type="button" class="knop" data-interesse="' + product + '" style="margin-top:10px">' + (product === 'kracht' ? 'Zet me op de lijst' : 'Hou me op de hoogte') + '</button>';
 }
 document.addEventListener('click', async (e) => {
@@ -1545,7 +1545,7 @@ document.addEventListener('click', async (e) => {
   k.disabled = false;
 });
 function afvalKaart() {
-  return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Binnenkort</span>
+  return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Verwacht begin 2027</span>
     <div class="label">Afvalprogramma</div><h2>Lichter, zonder in te leveren</h2>
     <p>Je eigen richtlijn per dag, wekelijkse bijsturing en je gewicht in een grafiek. Afvallen zonder dat je watts zakken.</p><p class="klein" style="margin-top:-4px">Leden van de MKC-app krijgen &euro;${LEDEN.afvalKorting} korting.</p>
     <div class="wazig"><div class="achter"><div class="cijfers"><div class="cijfer"><span>Rustdag</span><b>1950</b></div><div class="cijfer"><span>Trainingsdag</span><b>2850</b></div><div class="cijfer"><span>Deze week</span><b>-0,4</b></div></div>${nepGrafiek()}</div>
@@ -1628,7 +1628,7 @@ function analyseKaart(a) {
 }
 
 function pacingKaart() {
-  return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Binnenkort</span>
+  return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Verwacht eind 2026</span>
     <div class="label">Pacingplan</div><h2>Je grote tocht, slim ingedeeld</h2>
     <p>Hoe hard je per klim, per strook en per uur kunt rijden zonder stuk te gaan, berekend uit je eigen ritten. Voor granfondo's, gravelfondo's en toertochten zoals de Amstel Gold Race of Luik-Bastenaken-Luik.</p><p class="klein" style="margin-top:-4px">&euro;29 eenmalig, voor leden van de MKC-app &euro;${LEDEN.pacing}.</p>${BINNENKORT_IG}${opDeHoogteHtml('pacing')}</div></div>`;
 }
@@ -2303,7 +2303,7 @@ document.addEventListener('click', (e) => {
 
 // ---- Lidmaatschap MKC-app: €9,99 per maand of €89 per jaar via Mollie (sinds 09-10-2026, was €19/€149) ----
 const APP_PRIJS = { maand: '9,99', jaar: '89', jaarPerMaand: '7,42', half: '5', jaarMaat: '84' };
-const LID_LIJST = ['De Core-app (core stability voor wielrenners) die met je meebeweegt: gaat het makkelijk, dan ga je sneller', 'Slimme bandenspanning: je fietsen, het weer van vandaag en een geheugen', 'Kledingadvies voor je rit, plus een ochtendbericht met weer, spanning en kleding', 'Onbeperkt vragen aan je eigen coach, met Michels kennis uit 9 jaar prof en zijn coachervaring', 'Ledenprijzen: je Strava-analyse en straks het pacingplan voor &euro;19 in plaats van &euro;29, en &euro;20 korting op het Afvalprogramma', 'Per maand, altijd opzegbaar, of voordelig per jaar'];
+const LID_LIJST = ['De Core-app (core stability voor wielrenners) die met je meebeweegt: gaat het makkelijk, dan ga je sneller', 'Slimme bandenspanning: je fietsen, het weer van vandaag en een geheugen', 'Kledingadvies voor je rit, plus een ochtendbericht met weer, spanning en kleding', 'Vragen aan je eigen coach wanneer je wilt (tot 25 per week), met Michels kennis uit 9 jaar prof en zijn coachervaring', 'Ledenprijzen: je Strava-analyse en straks het pacingplan voor &euro;19 in plaats van &euro;29, en &euro;20 korting op het Afvalprogramma', 'Per maand, altijd opzegbaar, of voordelig per jaar'];
 // ---- Verkopen zonder proef (12-10-2026) ----
 // De lidpagina laat zien wat je krijgt, op jou afgestemd: je doel, wat je al
 // gebruikte, hoe je ochtend eruitziet als lid. Kiezen gaat eerst, je gegevens daarna.
@@ -2405,7 +2405,7 @@ function coachBankHtml(d) {
     <p class="klein bank-onder">Als lid kent je coach ook je fietsen, je doel en je Core-voortgang. Daardoor krijg je antwoord op jouw situatie, niet een algemeen verhaal.</p></div>`;
 }
 const LID_VOORDELEN = [
-  ['Je eigen coach, onbeperkt', 'Zoveel vragen als je wilt, op jouw situatie.'],
+  ['Je eigen coach', 'Tot 25 vragen per week, op jouw situatie.'],
   ['De hele Core-app', '12 niveaus van 10 tot 15 minuten, thuis en zonder gewichten.'],
   ['Elke ochtend je ritadvies', 'Spanning, kleding en wind voor jouw rit, met het weer van vandaag.'],
   ['Slimme bandenspanning', 'Je fietsen onthouden, nat wegdek en kou meegerekend.'],
@@ -2432,7 +2432,7 @@ function lidStapelHtml(d) {
   return `<div class="lid-stapel"><div class="rv-sub" style="margin-top:4px">Wat je krijgt</div>
     ${rij('ochtend', 'Nooit meer twijfelen voor je rit', 'Elke ochtend om 7:00 je spanning, kleding en wind', lidOchtendHtml())}
     ${rij('core', 'Een romp die het volhoudt tot de finish', '10 tot 15 minuten thuis, en hij beweegt mee naar je doel', coreMeeHtml(d))}
-    ${rij('coach', 'Michel in je broekzak', 'Onbeperkt vragen, direct antwoord op jouw situatie', coachBankHtml(d))}
+    ${rij('coach', 'Michel in je broekzak', 'Vraag wanneer je wilt, direct antwoord op jouw situatie', coachBankHtml(d))}
     ${rij('goud', 'Goud en de grote beloningen', (() => { const k = ((d && d.badges) || []).filter((b) => b.goudKlaar).length; return k ? '<b style="color:var(--accent)">' + k + (k === 1 ? ' gouden medaille staat' : ' gouden medailles staan') + ' al voor je klaar.</b> ' : ''; })() + 'Alle badges en goud, plus een gratis analyse en pacingplan als beloning', '<p class="klein" style="margin:0">Als gratis gebruiker haal je brons en zilver. Als lid ook goud, de Core- en ritbadges, en de beloningen bij 15 en 25 medailles: een gratis Strava-analyse en straks een gratis pacingplan. Goud dat al klaarstaat, krijg je meteen.</p>')}
     ${rij('prijs', 'Goedkoper verder', 'Strava-analyse &euro;19 in plaats van &euro;29, &euro;20 korting op het Afvalprogramma', '<p class="klein" style="margin:0">Ook het pacingplan voor je tocht krijg je straks voor &euro;19. E&eacute;n analyse en je eerste maand is al voor de helft terugverdiend.</p>')}</div>`;
 }
@@ -2786,7 +2786,7 @@ const KOPPEN = {
   core: ['MKC-Core', 'Core stability voor wielrenners'],
   kracht: ['MKC-Kracht', 'Sterker trappen, 2x per week met gewichten'],
   kiestraining: ['MKC-Training', 'Core of kracht, kies wat bij je past'],
-  krachtteaser: ['MKC-Kracht', 'Vanaf 1 november in de app'],
+  krachtteaser: ['MKC-Kracht', 'Verwacht eind 2027'],
   analyse: ['MKC-Analyse', 'Je FTP, zones en plan uit je eigen ritten'],
   afval: ['MKC-Afval', 'Lichter worden zonder watts te verliezen'],
   pacing: ['MKC-Pacing', 'Je grote tocht slim ingedeeld'],
@@ -2821,14 +2821,13 @@ function tegelsHtml(d) {
   else if (d.core) t.push(tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
   else t.push(tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Thuis, 10 tot 20 min, 2 tot 4x per week', tag: binnenkortNu() ? 'Binnenkort' : lid ? 'Inbegrepen' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
   // Michel ziet Kracht tot de opening altijd als voorbeeld, ook als hij zelf Core doet.
-  if (d.beheer && d.kracht && d.kracht.open && vorm !== 'kracht' && Date.now() < KRACHT_OPEN_APP) t.push(tegel({ v: 'kracht', ic: 'kracht', nm: 'Kracht', sub: 'Voorbeeld: alleen jij ziet dit tot 1 november', tag: 'Preview', tagKlas: 'or' }));
-  if (!d.kracht && Date.now() < KRACHT_OPEN_APP) t.push(tegel({ v: 'krachtteaser', ic: 'kracht', nm: 'Kracht', sub: 'Sportschool, 2x per week met gewichten. We zijn er hard mee bezig', tag: 'Vanaf 1 nov', tagKlas: 'or' }));
+  if (d.beheer && d.kracht && d.kracht.open && vorm !== 'kracht' && Date.now() < KRACHT_OPEN_APP) t.push(tegel({ v: 'kracht', ic: 'kracht', nm: 'Kracht', sub: 'Voorbeeld: alleen jij ziet dit', tag: 'Preview', tagKlas: 'or' }));
   if (d.kracht && d.kracht.open && vorm === 'kracht') { const kb = d.kracht.beeld; t.push(tegel({ v: 'kracht', ic: 'kracht', nm: 'Kracht', sub: !kb ? 'Sportschool, 2x per week een uur, met gewichten' : kb.seizoen ? (kb.volgende ? 'Seizoen &middot; onderhoud, ongeveer ' + kb.volgende.minuten + ' min' : 'Seizoen &middot; onderhoud deze week gedaan') : kb.volgende ? 'Week ' + kb.week + ' &middot; sessie ' + kb.volgende.letter + ', ongeveer ' + kb.volgende.minuten + ' min' : 'Week ' + kb.week + ' rond, volgende week staat klaar', tag: kb ? (kb.volgende ? 'Start' : 'Klaar') : 'Nieuw', tagKlas: kb && kb.volgende ? 'gr' : 'or' })); }
   if (!coaching) t.push(tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP, zones en een plan uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Tijd voor een nieuwe' : 'Jouw uitslag') : '€' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' }));
   const halfNu = t.filter((x) => !x.includes('tegel breed')).length; // even? dan zou de coach alleen op een halve rij staan
   t.push(tegel({ breed: halfNu % 2 === 0, v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: 'Antwoord met Michels kennis uit 9 jaar prof', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Lid') : '3 gratis', tagKlas: 'or' }));
   if (lid) t.push(tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true }));
-  const bk = `<div class="bk-rij"><span>Binnenkort</span>${(!d.kracht || d.beheer) && Date.now() < KRACHT_OPEN_APP ? `<button type="button" data-view="krachtteaser" style="border-color:rgba(255,107,26,.6);color:#FF6B1A">${IC.kracht}Kracht &middot; 1 nov</button>` : ''}<button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
+  const bk = `<div class="bk-rij"><span>Binnenkort</span>${(!d.kracht || d.beheer) && Date.now() < KRACHT_OPEN_APP ? `<button type="button" data-view="krachtteaser">${IC.kracht}Kracht</button>` : ''}<button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}</div>`;
   const wissel = vorm === 'core' && d.kracht ? `<p class="klein tg-wissel">Liever kracht in de sportschool? <button type="button" class="sb-link" data-wisselvorm="kracht" style="display:inline;margin:0">Wissel naar Kracht</button></p>` : '';
   return `<div class="tegels">${t.join('')}</div>${wissel}${routeHtml(d)}${eersteWeekHtml(d) ? '' : bk}`;
 }
@@ -3171,7 +3170,7 @@ function routeHtml(d) {
   const naLancering = Date.now() >= 1792144800000;
   const stappen = [
     { nm: 'Gratis account', wat: 'Bandenspanning, wind en 3 coachvragen per week' },
-    { nm: 'MKC-lid', wat: 'Slimme bandenspanning, kleding en voeding voor elke rit, je coach zonder limiet en de Core-app.', prijs: '&euro;' + APP_PRIJS.maand + ' per maand, altijd opzegbaar', knop: `<button type="button" class="knop" data-view="lid">${kanLidNu(d) ? 'Word lid' : 'Bekijk wat je krijgt'}</button>` },
+    { nm: 'MKC-lid', wat: 'Slimme bandenspanning, kleding en voeding voor elke rit, je eigen coach en de Core-app.', prijs: '&euro;' + APP_PRIJS.maand + ' per maand, altijd opzegbaar', knop: `<button type="button" class="knop" data-view="lid">${kanLidNu(d) ? 'Word lid' : 'Bekijk wat je krijgt'}</button>` },
     { nm: 'Trainingsschema', wat: 'Een plan van 8, 12 of 16 weken in TrainingPeaks. Hier in de app zie je elke dag je training, met uitleg.', prijs: naLancering ? 'Vanaf &euro;59, lidmaatschap inbegrepen' : 'Lidmaatschap inbegrepen', knop: `<a class="knop" href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Kies je schema</a>` },
     { nm: '1-op-1 coaching', wat: 'Michel maakt je plan en stuurt elke week bij op wat je rijdt en hoe je je voelt.', prijs: 'Vanaf &euro;79 per maand, app inbegrepen', knop: `<a class="knop" href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener">Bekijk coaching</a>` }
   ];
@@ -3194,7 +3193,7 @@ function routeHtml(d) {
 // KRACHT (14-10-2026). Anders dan Core: in de sportschool, 2x per week ongeveer een uur, met gewichten.
 // Server: api/app.js actie=kracht, motor: lib/kracht.js. Eerst alleen zichtbaar voor Michel.
 // ===========================================================================
-const KRACHT_OPEN_APP = Date.parse('2026-11-01T00:00:00+01:00');
+const KRACHT_OPEN_APP = Infinity; // verwacht eind 2027, datum volgt (zelfde als KRACHT_OPEN in api/app.js)
 const KR = { actief: null, sets: {}, timer: null, eind: 0, bezig: false, fout: '' };
 const KR_PLANNING = '<p class="klein"><b>Zo past het in je week:</b> doe kracht liefst op een dag zonder harde rit. Moet het op dezelfde dag, fiets dan eerst en houd minstens 3 tot 6 uur ertussen. Na een zware krachtsessie 1 tot 2 dagen geen harde training. In het seizoen is 1 sessie per week genoeg om je kracht vast te houden.</p>';
 const KR_VERSCHIL = `<div class="kr-verschil"><div><b>Core</b><span>Thuis, zonder gewichten. 10 tot 20 minuten, 2 tot 4 keer per week. Voor een stabiele romp op de fiets.</span></div><div><b>Kracht</b><span>In de sportschool, met gewichten. Ongeveer een uur, 2 keer per week. Voor meer kracht in je benen: sterker bergop, aanzetten en sprinten.</span></div></div>`;
@@ -3238,13 +3237,13 @@ function krSetsVoor(o) {
 }
 function krachtPagina(d) {
   const k = d && d.kracht;
-  if (!k) { const nogD = Math.max(0, Math.ceil((KRACHT_OPEN_APP - Date.now()) / 864e5));
-  return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><span class="tag oranje">${nogD > 1 ? 'Nog ' + nogD + ' dagen' : nogD === 1 ? 'Morgen' : 'Vandaag'}</span><div class="label">Kracht</div><h2>Sterker trappen komt eraan</h2>
-    <p>We zijn er hard mee bezig. Vanaf 1 november kies je in de app tussen Core en Kracht: twee keer per week een uur in de sportschool, met een opbouw van 12 weken en gewichten die de app voor je uitrekent.</p>${KR_VERSCHIL}
+  if (!k) {
+  return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><span class="tag oranje">Verwacht eind 2027</span><div class="label">Kracht</div><h2>Sterker trappen komt eraan</h2>
+    <p>We zijn ermee bezig. Straks kies je in de app tussen Core en Kracht: twee keer per week een uur in de sportschool, met een opbouw van 12 weken en gewichten die de app voor je uitrekent.</p>${KR_VERSCHIL}
     <div class="wazig kr-voorbeeld" style="margin:14px 0"><div class="achter"><div class="kr-volgende" style="margin:0"><div class="dash-lab">Week 4 &middot; Opbouw</div><b>Sessie A: Squat en bilspieren</b><small>Ongeveer 45 minuten</small><ul class="kr-lijst"><li><b>Squat met stang</b><span>3 x 8-10 &middot; 62,5 kg</span></li><li><b>Roemeense deadlift</b><span>3 x 8-10 &middot; 55 kg</span></li><li><b>Bulgaarse split squat</b><span>3 x 8-10 per kant &middot; 14 kg</span></li><li><b>Hip thrust</b><span>3 x 8-10 &middot; 70 kg</span></li></ul></div></div><div class="slotje">${SLOT}<b>Zo ziet je sessie eruit</b><span class="klein">De app rekent je gewichten uit</span></div></div>
     <ul class="core-punten"><li>Zware oefeningen die op de trapbeweging lijken: squat, step-up, deadlift op één been</li><li>Je logt je gewichten, de app zegt wanneer het zwaarder mag</li><li>In de winter opbouw, in het seizoen 1 keer per week vasthouden</li></ul>
-    <p class="klein">Kracht hoort bij het lidmaatschap, ook als je coaching of een schema hebt.${isLid(d) || (d.lid && d.lid.bron === 'coaching') ? ' Jij kunt er op 1 november meteen mee aan de slag.' : ''}</p>
-    ${opDeHoogteHtml('kracht')}<p class="klein" style="margin-top:6px">Sta je op de lijst, dan krijg je op 1 november een berichtje in de app${D && PUSH && PUSH.inst && PUSH.inst.aan ? ' en een pushmelding' : ''}.</p></div></div></div>`; }
+    <p class="klein">Kracht hoort bij het lidmaatschap, ook als je coaching of een schema hebt.${isLid(d) || (d.lid && d.lid.bron === 'coaching') ? ' Jij kunt er dan meteen mee aan de slag.' : ''}</p>
+    ${opDeHoogteHtml('kracht')}<p class="klein" style="margin-top:6px">Sta je op de lijst, dan krijg je een berichtje in de app zodra het open staat${D && PUSH && PUSH.inst && PUSH.inst.aan ? ' en een pushmelding' : ''}.</p></div></div></div>`; }
   if (!k.open) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht</div><h2>Sterker trappen</h2><p>Twee keer per week een uur in de sportschool, met een opbouw van 12 weken.</p>${KR_VERSCHIL}<p class="klein">Kracht zit in het lidmaatschap.</p><button type="button" class="knop" data-view="lid">Bekijk het lidmaatschap</button></div></div></div>`;
   const b = k.beeld;
   if (!b) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht</div><h2>Sterker trappen</h2>
@@ -3422,10 +3421,10 @@ function verkoopMoment(d) {
   const nog = dl && dl.doel === 'evenement' && dl.datum ? Math.ceil((Date.parse(dl.datum + 'T08:00:00') - Date.now()) / 864e5) : null;
   const l = [];
   if (c && c.opSlot) l.push({ k: 'proef', t: 'Je proefweek zit erop', p: (c.rompscore != null ? 'Je Rompscore staat op ' + c.rompscore + '. ' : '') + 'Niveau 2 staat klaar, en alles wat je deed blijft staan.', knop: 'Ga door als lid' });
-  if (gratisOver() === 0) l.push({ k: 'vragen', t: 'Je vragen voor deze week zijn op', p: 'Als lid vraag je door wanneer je wilt. En je coach kent dan je fietsen, je doel en je Core.', knop: 'Vraag onbeperkt' });
+  if (gratisOver() === 0) l.push({ k: 'vragen', t: 'Je vragen voor deze week zijn op', p: 'Als lid vraag je door wanneer je wilt. En je coach kent dan je fietsen, je doel en je Core.', knop: 'Word lid' });
   if (nog != null && nog > 0 && nog <= 56) l.push({ k: 'tocht', t: 'Nog ' + nog + ' dagen tot ' + esc(dl.naam), p: 'Als lid stemt je Core af op je tocht, krijg je kledingadvies voor die ochtend en straks je pacingplan voor &euro;19.', knop: 'Bereid je slim voor' });
   if (!c && nog != null && nog > 21) l.push({ k: 'coremee', t: 'Core die meebeweegt naar ' + esc(dl.naam), mee: true, knop: 'Bekijk wat je krijgt' });
-  { const max = d.gratisMax || 3, over = gratisOver(); if (over != null && over > 0 && over < max) l.push({ k: 'coach', t: 'Smaakt naar meer?', p: 'Je coach antwoordt met wat ik in 9 jaar prof en als coach heb geleerd. Als lid vraag je onbeperkt, en kent hij je fietsen, je doel en je Core. Dan krijg je antwoord op jouw situatie.', knop: 'Vraag onbeperkt' }); }
+  { const max = d.gratisMax || 3, over = gratisOver(); if (over != null && over > 0 && over < max) l.push({ k: 'coach', t: 'Smaakt naar meer?', p: 'Je coach antwoordt met wat ik in 9 jaar prof en als coach heb geleerd. Als lid vraag je tot 25 keer per week, en kent hij je fietsen, je doel en je Core. Dan krijg je antwoord op jouw situatie.', knop: 'Word lid' }); }
   if (spDagen() >= 3) l.push({ k: 'spanning', t: 'Je checkt je spanning vaak', p: 'De slimme versie onthoudt je fietsen en rekent nat wegdek en kou mee. Elke ochtend klaar, zonder iets in te vullen.', knop: 'Bekijk de slimme versie' });
   if ((w && w.temp < 10) || (!w && (maand >= 10 || maand <= 2))) l.push({ k: 'kou', t: w ? 'Wat trek je aan bij ' + w.temp + '&deg;?' : 'Wat trek je aan als het koud is?', p: 'Leden krijgen voor elke rit kledingadvies, op basis van het weer tijdens hun hele rit en hoe snel ze het koud hebben.', knop: 'Zo werkt het' });
   l.push({ k: 'ochtend', t: 'Zo begint de ochtend van een lid', ochtend: true, knop: 'Bekijk wat je krijgt' });
@@ -4296,7 +4295,7 @@ function gratisTellerHtml(id) {
 }
 function gratisOpHtml() {
   return `<div class="cc-slotkaart"><div class="label">Je gratis vragen zijn op</div><h3>Wil je verder vragen?</h3>
-    <p>Maandag heb je weer 3 gratis vragen. Als lid vraag je zoveel je wilt, en kent je coach ook je fietsen en je Core-voortgang.</p>
+    <p>Maandag heb je weer 3 gratis vragen. Als lid vraag je tot 25 keer per week, en kent je coach ook je fietsen en je Core-voortgang.</p>
     ${kanLidNu() ? '<button class="knop" data-actie="wordlid">Word lid voor &euro;' + APP_PRIJS.maand + ' per maand</button><p class="klein">Maandelijks opzegbaar.</p>' : '<p class="klein">Het lidmaatschap gaat binnenkort open.</p>'}</div>`;
 }
 function coachBouw() {
