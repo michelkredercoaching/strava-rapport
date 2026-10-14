@@ -697,7 +697,7 @@
   .tp-uitleg { position:relative; border:1px solid rgba(255,107,26,.45); background:rgba(255,107,26,.06); border-radius:12px; padding:14px; margin-bottom:16px; }
   .tp-uitleg > b { display:block; font-size:15px; margin-bottom:6px; padding-right:24px; }
   .tp-uitleg p { display:flex; gap:8px; font-size:13.5px; margin:5px 0; line-height:1.45; }
-  .route { margin:18px 0 6px; border:1px solid var(--border); border-radius:14px; padding:16px; background:var(--surface); }
+  .route { position:relative; margin:18px 0 6px; border:1px solid var(--border); border-radius:14px; padding:16px; background:var(--surface); }
   .rt-lab { font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--accent); font-weight:700; }
   .rt-kop { font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1.05; margin:4px 0 10px; }
   .rt-lijst { position:relative; } .rt-lijst::before { content:''; position:absolute; left:13px; top:14px; bottom:14px; width:2px; background:var(--border); }
@@ -2724,7 +2724,7 @@ function appBalkHtml() {
   const zl = D && !D.gast ? zicht() : null, lsoort = zl && zl.lid && zl.lid.bron;
   const [nm, st] = VIEW === 'lid' && zl && !isLid(zl) ? ['MKC-Lid', 'Word lid van de MKC-app'] : VIEW === 'lid' && lsoort === 'coaching' ? ['MKC-Lidmaatschap', 'Inbegrepen bij je coaching'] : VIEW === 'lid' && ['schema', 'cadeau'].includes(lsoort) ? ['MKC-Lidmaatschap', 'Wat je hebt en hoe je daarna verdergaat'] : (KOPPEN[VIEW] || KOPPEN.home);
   const terug = VIEW !== 'home' ? '<button type="button" class="cc-terug" data-view="home" aria-label="Terug"><span>&#8249;</span>Terug</button>' : '';
-  const uit = VIEW === 'home' ? '<div class="ab-rechts"><button class="ab-uit" data-actie="uitloggen">Uitloggen</button></div>' : '';
+  const uit = '';
   return `<div class="appbalk">${terug}<span class="cc-av"><img src="/icoon-192.png" alt=""></span><div class="ab-tekst"><div class="nm">${nm}</div><div class="st">${st}</div></div>${uit}</div>`;
 }
 function tegel({ v, href, ic, nm, sub, tag, tagKlas, breed, dim }) {
@@ -3090,7 +3090,8 @@ function routeHtml(d) {
   if (nu === 0) verder = open(stappen[1]) + `<div class="rt-stap of"><span class="rt-bol">${OPEN_SLOT}</span><div class="rt-of"><b>Of meteen met een plan</b><div><a href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Trainingsschema<small>${naLancering ? 'vanaf &euro;59' : '8, 12 of 16 weken'}</small></a><a href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener">1-op-1 coaching<small>vanaf &euro;79 p/m</small></a></div><span>Het lidmaatschap zit er dan bij in.</span></div></div>`;
   const keuze = nu === 1 ? `<div class="rt-kies">${OPEN_SLOT}Kies wat bij je past</div><div class="rt-keuze">${kaartje(sch, '8, 12 of 16 weken in TrainingPeaks, met elke dag uitleg in de app.')}${kaartje(coa, 'Michel maakt je plan en stuurt elke week bij.')}</div>` : '';
   if (nu === 2) verder = open(coa);
-  return `<div class="route"><div class="rt-lab">Jouw volgende stap</div><div class="rt-kop">${kop}</div><div class="rt-lijst">${stappen.slice(0, nu + 1).map(klaar).join('')}${verder}</div>${keuze}</div>`;
+  try { if (Date.now() - Number(localStorage.getItem('mkcRouteWeg') || 0) < 14 * 864e5) return ''; } catch (e) {}
+  return `<div class="route"><button type="button" class="welkom-x" data-actie="routeweg" aria-label="Verbergen">&times;</button><div class="rt-lab">Jouw volgende stap</div><div class="rt-kop">${kop}</div><div class="rt-lijst">${stappen.slice(0, nu + 1).map(klaar).join('')}${verder}</div>${keuze}</div>`;
 }
 function vandaagHtml(d) {
   if (!d || d.gast) return '';
@@ -3133,7 +3134,7 @@ function vandaagHtml(d) {
   }
   // Bijna binnen: de volgende medaille, de sterkste reden om vandaag iets te doen
   { const bn = (d.badges || []).filter((b) => b.volgende && !b.binnenkort && !b.goudLid && !b.goudKlaar && b.waarde > 0 && !(b.id === 'gemeten' && d.lid && d.lid.bron === 'coaching')).sort((a, b) => (b.waarde / b.volgende) - (a.waarde / a.volgende))[0];
-    if (bn) rijen.push(vdRij('palmares', 'Bijna binnen', esc(bn.naam) + ' ' + ['brons', 'zilver', 'goud'][bn.niveau] + ' &middot; ' + bn.waarde + ' van ' + bn.volgende, { view: 'palmares' })); }
+    if (bn) { const nog = bn.volgende - bn.waarde, e = bn.eenheid; rijen.push(vdRij('palmares', 'Bijna binnen', esc(bn.naam) + ' ' + ['brons', 'zilver', 'goud'][bn.niveau] + ' &middot; nog ' + nog + (e ? ' ' + esc(nog === 1 ? e[0] : e[1]) : ''), { view: 'palmares' })); } }
   // Je week in één regel: wat je al deed, zodat je ziet dat het opbouwt
   const wk = [];
   if (c && !c.intakeNodig && c.frequentie) wk.push(c.gedaan >= c.frequentie ? '<span class="ok">&#10003; Core deze week rond</span>' : 'Core deze week <b>' + c.gedaan + ' van ' + c.frequentie + '</b>');
@@ -3259,7 +3260,7 @@ function teken() {
   $('#app').innerHTML = `${appBalkHtml()}
     ${beheerHtml(d)}${d.beheer ? `<details class="bh-groep" data-klap="beheer" ${klapOpen('beheer', true) ? 'open' : ''}><summary><b>Beheer</b><span>${bhDashKort()}</span></summary><div id="bhdash">${bhDashHtml()}</div><div class="bh-sec">Te doen</div>${opvolgHtml()}${nakijkHtml()}<div class="bh-sec">Mensen</div>${ledenHtml()}${doelenBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}<div class="bh-sec">Groei en gebruik</div>${gebruikHtml()}${badgeBeheerHtml()}<div class="bh-sec">Berichten versturen</div>${aankondigHtml()}${pushOpnieuwHtml()}</details>` : ''}
     <div class="groet">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Fijn dat je er bent.</em>' : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Welkom.') + '<br><em>Alles op één plek.</em>'}</div>
-    ${welkomNu() ? '<p class="welkom-michel">' + (eersteWeekHtml(d) ? 'Begin hieronder met je eerste week.' : startlijstHtml(d) ? 'Begin hieronder met je startlijst, dan staat de app helemaal goed.' : 'Fijn dat je er bent.') + ' Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
+    ${welkomNu() ? '<p class="welkom-michel">' + (eersteWeekHtml(d) ? 'Begin hieronder met je eerste week.' : startlijstHtml(d) ? 'Begin hieronder met je startlijst, dan staat de app helemaal goed.' : '') + ' Elke dag staat er een nieuwe tip van mij voor je klaar. <b>Michel</b></p>' : ''}
     ${!d.gast ? '<div class="rang-plek">' + palmaresChipHtml(d) + rangChipHtml(d) + '</div>' : ''}
     ${!isLid(d) && !(d.lid && d.lid.bron === 'coaching') ? `<div class="acc-badge"><b>Gratis account</b> &middot; ${vriendActief() ? '<a href="#" data-actie="naarlid">' + (vriendDoor() ? esc(vriendDoor()) + ' gaf je' : 'je maat gaf je') + ' korting op je lidmaatschap</a>' : kanLidNu(d) ? '<a href="#" data-actie="naarlid">wat krijg je als lid?</a>' : 'lid worden kan vanaf 16 oktober'}</div>` : ''}
     <div id="groepsrit">${grHtml()}</div>
@@ -3282,7 +3283,7 @@ function teken() {
     ${rustigBegin(d) ? '' : volgendeStapHtml(d)}
     <div id="meldinst">${meldInstHtml()}</div>
     ${feedbackHtml()}
-    <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a> &middot; <a href="#" data-lx="verwijder">Account verwijderen</a></div>`;
+    <div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a> &middot; <a href="#" data-actie="uitloggen">Uitloggen</a> &middot; <a href="#" data-lx="verwijder">Account verwijderen</a></div>`;
   if (document.getElementById('vandaagvak')) vdLaad();
   if (!ONB && onbNodig(d)) onbStart();
   if (WK.plaats && !WK.uren && !isLid(d) && kanLidNu(d)) wkLaad();
@@ -3301,6 +3302,7 @@ document.addEventListener('change', (e) => {
 document.addEventListener('click', (e) => {
   const k = e.target.closest('[data-actie]'); if (!k) return;
   const actie = k.dataset.actie;
+  if (k.tagName === 'A' && k.getAttribute('href') === '#') e.preventDefault();
   if (actie === 'aitegoed') {
     const v = (document.getElementById('aiTegoed') || {}).value; if (!v) return;
     fetch(API + '?actie=aitegoed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), dollar: v }) }).then((r) => r.json()).then((j) => { if (j.ok) { D.aiGebruik = j.ai; teken(); } }).catch(() => {});
@@ -3326,6 +3328,7 @@ document.addEventListener('click', (e) => {
     setTimeout(() => { const b = document.querySelector('.plannen') || document.querySelector('.lidblok'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 250);
   }
   if (actie === 'opzeggen') zegOp(k);
+  if (actie === 'routeweg') { try { localStorage.setItem('mkcRouteWeg', String(Date.now())); } catch (er) {} const r = k.closest('.route'); if (r) r.remove(); return; }
   if (actie === 'uitloggen') { wisToken(); D = null; CC.berichten = null; document.getElementById('ccFab')?.remove(); document.getElementById('ccPaneel')?.remove(); toonLogin('Je bent uitgelogd.'); }
   if (actie === 'installgids') return installGids(false);
   if (actie === 'tpuitlegweg') { try { localStorage.setItem('mkcTpUitlegWeg', '1'); } catch (e) {} return teken(); }
