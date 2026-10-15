@@ -1571,6 +1571,33 @@ async function vraagRecht(res, t) {
 }
 // AI-verbruik per maand bijhouden, zodat Michel ziet wat het echt kost.
 // Redis: app:ai:<jjjj-mm>:vragen / :in / :out
+// Lengte van een coachantwoord (15-10-2026): hooguit 130 woorden. Staat als laatste regel in de
+// prompt; komt hij er toch ruim overheen, dan korten we hem één keer in. De KNOP-regel telt niet mee.
+const COACH_MAX_WOORDEN = 130;
+const COACH_LENGTE = 'LENGTE, BELANGRIJK: hooguit 130 woorden (de KNOP-regel telt niet mee). Liever drie korte alinea\u0027s dan vier lange. Kies de twee of drie dingen die er voor deze renner het meest toe doen en laat de rest weg.';
+function coachWoorden(t) { return String(t || '').split('\n').filter((r) => !/^KNOP:/.test(r.trim())).join(' ').split(/\s+/).filter(Boolean).length; }
+async function coachKortIn(t) {
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': CLAUDE_KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01', 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-opus-5-5', max_tokens: 1200, output_config: { effort: 'low' }, fallbacks: 'default',
+        system: 'Je kort een antwoord van de MKC-coach in tot hooguit 120 woorden. Houd precies dezelfde toon (warm, je-vorm, gewone zinnen, geen lijstjes, geen gedachtestreepjes, geen opmaak), dezelfde boodschap en dezelfde getallen. Laat bijzaken weg in plaats van alles samen te persen. Staat er onderaan een regel die begint met KNOP:, zet die ongewijzigd onderaan. Geef alleen de nieuwe tekst.',
+        messages: [{ role: 'user', content: t }]
+      }),
+      signal: AbortSignal.timeout(15000)
+    });
+    if (!r.ok) return t;
+    const j = await r.json();
+    await logVerbruik(j);
+    const k = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
+    if (!k || coachWoorden(k) >= coachWoorden(t)) return t;
+    // De KNOP-regel moet blijven.
+    const knop = t.split('\n').find((x) => /^KNOP:/.test(x.trim()));
+    return knop && !/^KNOP:/m.test(k) ? k + '\n' + knop.trim() : k;
+  } catch (e) { return t; }
+}
 async function logVerbruik(j) {
   try {
     const u = (j && j.usage) || {}, m = new Date().toISOString().slice(0, 7);
@@ -1894,7 +1921,7 @@ async function routeCoach(req, res) {
           model: 'claude-opus-5-5', max_tokens: 3000, output_config: { effort: 'low' }, fallbacks: 'default',
           system: [
             { type: 'text', text: `${COACH_KENNIS}\n${COACH_PRAKTIJK}`, cache_control: { type: 'ephemeral' } },
-            { type: 'text', text: `OVER DEZE RENNER\n${context}\n\nREGELS\n${COACH_REGELS}${await voorbeeldenTekst('mkc-coach', tekst)}` }
+            { type: 'text', text: `OVER DEZE RENNER\n${context}\n\nREGELS\n${COACH_REGELS}${await voorbeeldenTekst('mkc-coach', tekst)}\n\n${COACH_LENGTE}` }
           ],
           messages: [...eerder, { role: 'user', content: tekst }]
         }),
@@ -1907,7 +1934,7 @@ async function routeCoach(req, res) {
         if (j.stop_reason === 'refusal') { antwoord = COACH_MEDISCH; medisch = true; }
         else {
           const t = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
-          if (t.includes('[MEDISCH]')) { antwoord = COACH_MEDISCH; medisch = true; } else if (t) antwoord = t;
+          if (t.includes('[MEDISCH]')) { antwoord = COACH_MEDISCH; medisch = true; } else if (t) antwoord = coachWoorden(t) > COACH_MAX_WOORDEN + 15 ? await coachKortIn(t) : t;
         }
       }
     } catch (e) { console.error('coach fout:', e); }
