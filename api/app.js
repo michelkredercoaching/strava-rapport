@@ -964,11 +964,48 @@ async function routeBeheerDash(req, res) {
   const pushLijst = await redis(['SMEMBERS', 'app:push:alle']);
   const zonder = (r) => ((r.ok && r.result) || []).filter((e) => !BEHEER.includes(e)).length;
   const tel = (leden && leden.tel) || {};
-  return res.status(200).json({ ok: true,
+  const [ritten, maten] = await Promise.all([dashRitten().catch(() => null), dashMaten().catch(() => null)]);
+  return res.status(200).json({ ok: true, ritten, maten,
     accounts: Math.max(0, (Number(acc.result) || 0) - BEHEER.length), vandaag: zonder(vandaag), week: zonder(w7), maand: zonder(w30),
     betaald: (tel['betaald-maand'] || 0) + (tel['betaald-jaar'] || 0), maandLeden: tel['betaald-maand'] || 0, jaarLeden: tel['betaald-jaar'] || 0,
     coaching: (tel['coaching-flex'] || 0) + (tel['coaching-premium'] || 0), schema: (tel.schema || 0) + (tel.cadeau || 0),
     mrr: leden ? leden.mrr : null, nieuwVandaag: leden ? leden.nieuwVandaag : 0, voorverkoop: await voorverkoopAan(), voorLancering: Date.now() < LANCERING, push: zonder(pushLijst) });
+}
+// Groepsritten (15-10-2026): gepland in totaal (dagtellers, 120 dagen bewaard), laatste 7 dagen,
+// en hoeveel er nog komen (lopende ritten in Redis). Michels eigen ritten tellen niet mee.
+async function scanAlles(patroon) {
+  const keys = []; let cursor = '0', n = 0;
+  do { const r = await redis(['SCAN', cursor, 'MATCH', patroon, 'COUNT', '500']); if (!r.ok || !Array.isArray(r.result)) break; cursor = String(r.result[0]); keys.push(...r.result[1]); } while (cursor !== '0' && ++n < 60);
+  return keys;
+}
+async function dashRitten() {
+  const nlDag = (t) => new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+  const dagKeys = Array.from({ length: 120 }, (_, i) => `stat:${nlDag(Date.now() - i * 864e5)}:groepsrit-maak`);
+  const r = await redis(['MGET', ...dagKeys]);
+  const per = ((r.ok && r.result) || []).map((x) => Number(x) || 0);
+  const ids = (await scanAlles('groepsrit:*')).filter((k) => /^groepsrit:[A-Za-z0-9]{8}$/.test(k));
+  let komen = 0, meeTotaal = 0;
+  if (ids.length) {
+    const g = await redis(['MGET', ...ids]);
+    const ritten = ((g.ok && g.result) || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter((x) => x && !BEHEER.includes(x.maker));
+    const nog = ritten.filter((x) => x.start > Date.now());
+    komen = nog.length;
+    for (const x of nog) { const m = await redis(['SCARD', `groepsrit:${x.id}:mee`]); meeTotaal += Number(m.result) || 0; }
+  }
+  return { totaal: per.reduce((t, x) => t + x, 0), week: per.slice(0, 7).reduce((t, x) => t + x, 0), komen, mee: meeTotaal };
+}
+// Maten-link (15-10-2026): wie zijn link deelde (vanaf nu geteld bij WhatsApp, delen en story) plus
+// iedereen met een uitnodiging in zijn lijst (ook van voor het tellen), en hoe ver die maten kwamen.
+async function dashMaten() {
+  const keys = (await scanAlles('lid:uitnodigingen:*')).filter((k) => !BEHEER.includes(k.slice('lid:uitnodigingen:'.length)));
+  const mensen = new Set(), st = { verstuurd: 0, account: 0, lid: 0 };
+  if (keys.length) {
+    const r = await redis(['MGET', ...keys]);
+    ((r.ok && r.result) || []).forEach((x, i) => { let l = []; try { l = JSON.parse(x) || []; } catch (e) {} if (l.length) mensen.add(keys[i].slice('lid:uitnodigingen:'.length)); for (const u of l) st[u.status in st ? u.status : 'verstuurd']++; });
+  }
+  const [gedeeld, keer] = await Promise.all([redis(['SMEMBERS', 'app:maatdeel:mensen']), redis(['GET', 'app:maatdeel:keer'])]);
+  for (const e of (gedeeld.ok && gedeeld.result) || []) if (!BEHEER.includes(e)) mensen.add(e);
+  return { mensen: mensen.size, keer: Number(keer.result) || 0, uitnodigingen: st.verstuurd + st.account + st.lid, account: st.account + st.lid, pro: st.lid };
 }
 async function routeAankondig(req, res) {
   const body = req.method === 'POST' ? await leesBody(req) : {};

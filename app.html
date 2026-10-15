@@ -2234,6 +2234,7 @@ function bhDashHtml() {
   return `<div class="bhd"><div class="bhd-rij">
     ${cel(x.accounts, 'accounts', 'iedereen die de app gebruikte')}${cel(x.vandaag, 'actief vandaag')}${cel(x.week, 'actief 7 dagen')}${cel(x.maand, 'actief 30 dagen')}</div>
     <div class="bhd-rij">${cel(x.betaald, 'betalende leden', x.maandLeden + ' maand &middot; ' + x.jaarLeden + ' jaar' + (x.nieuwVandaag ? ' &middot; ' + x.nieuwVandaag + ' nieuw vandaag' : ''))}${cel(eur(x.mrr), 'omzet per maand', 'uit lidmaatschappen')}${x.push != null ? cel(x.push, 'meldingen aan', x.accounts ? Math.round(x.push / x.accounts * 100) + '% van de accounts' : '') : ''}${cel(x.coaching, 'coaching')}${cel(x.schema, 'via schema')}</div>
+    ${x.ritten || x.maten ? `<div class="bhd-rij">${x.ritten ? cel(x.ritten.totaal, 'groepsritten gepland', x.ritten.week + ' deze week &middot; ' + x.ritten.komen + ' komen nog' + (x.ritten.mee ? ' (' + x.ritten.mee + ' rijden mee)' : '')) : ''}${x.maten ? cel(x.maten.mensen, 'deelden hun maten-link', (x.maten.keer ? x.maten.keer + ' keer gedeeld &middot; ' : '') + x.maten.uitnodigingen + ' uitgenodigd &middot; ' + x.maten.account + ' account &middot; ' + x.maten.pro + ' Pro') : ''}</div>` : ''}
     <button type="button" class="sb-link" data-bhd="ververs" style="margin:6px 0 0">Ververs</button></div>`;
 }
 document.addEventListener('click', async (e) => { const vv = e.target.closest('[data-bhd="voorverkoop"]'); if (vv) { vv.disabled = true; try { await fetch(API + '?actie=voorverkoop', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), aan: vv.dataset.aan === '1' }) }); } catch (er) {} BHD = null; const el = document.getElementById('bhdash'); if (el) el.innerHTML = bhDashHtml(); return laadOverzicht(); } if (e.target.closest('[data-bhd]')) { BHD = null; const el = document.getElementById('bhdash'); if (el) el.innerHTML = bhDashHtml(); } });
@@ -4127,7 +4128,7 @@ function rnNieuwVrij() {
 // Onderkant van elke story (13-10-2026): korting + leesbare code in een pil + kort adres.
 // De volledige link gaat naar het klembord, om als link-sticker te plakken.
 async function storyLink() {
-  try { const j = await (await fetch('/api/lid?actie=uitnodig', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), mijnNaam: String((D && D.naam) || '').split(' ')[0] }) })).json(); if (j.ok) { if (D && j.leesCode) D.mijnCode = j.leesCode; return { url: j.url, code: j.leesCode || '' }; } } catch (e) {}
+  try { const j = await (await fetch('/api/lid?actie=uitnodig', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), deel: 'story', mijnNaam: String((D && D.naam) || '').split(' ')[0] }) })).json(); if (j.ok) { if (D && j.leesCode) D.mijnCode = j.leesCode; return { url: j.url, code: j.leesCode || '' }; } } catch (e) {}
   return { url: 'https://rapport.michelkredercoaching.nl/app', code: '' };
 }
 function storyVoet(x, W, H, code) {
@@ -4315,7 +4316,7 @@ document.addEventListener('click', async (e) => {
     const naam = k.dataset.naam || (veld ? veld.value.trim() : ''), u = k.dataset.u || '';
     const w = a === 'whatsapp' ? window.open('', '_blank') : null;
     try {
-      const j = await (await fetch('/api/lid?actie=uitnodig', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam, u, mijnNaam: String((D && D.naam) || '').split(' ')[0] }) })).json();
+      const j = await (await fetch('/api/lid?actie=uitnodig', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam, u, deel: a, mijnNaam: String((D && D.naam) || '').split(' ')[0] }) })).json();
       if (!j.ok) { if (w) w.close(); return alert(j.fout || 'Dat lukte niet.'); }
       if (D) D.uitnodigingen = j.lijst || D.uitnodigingen;
       if (a === 'whatsapp') { if (w) w.location.href = j.whatsapp; else location.href = j.whatsapp; }

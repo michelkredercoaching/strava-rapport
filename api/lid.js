@@ -42,7 +42,7 @@ import { maakMollieFactuur } from '../lib/mollie-factuur.js';
 import { planNaam, laadPlan } from '../lib/schema-app.js';
 import { browserContext, stuurPurchase } from '../lib/meta-capi.js';
 import { appMelding } from '../lib/app-melding.js';
-import { overzicht as gebruikOverzicht } from '../lib/stat.js';
+import { overzicht as gebruikOverzicht, tel as statTel } from '../lib/stat.js';
 import { reviewMoment } from '../lib/review.js';
 import zlib from 'node:zlib';
 import { maakKortingToken } from '../lib/korting.js';
@@ -410,6 +410,7 @@ async function routeUitnodig(req, res) {
     else x.op = new Date().toISOString();
     await redis(['SET', `lid:uitnodigingen:${email}`, JSON.stringify(l.slice(0, 60))]);
   }
+  if (body.deel && !BEHEER_LID.includes(email)) { await redis(['SADD', 'app:maatdeel:mensen', email]); await redis(['INCR', 'app:maatdeel:keer']); await statTel(email, 'maat-deel'); }
   const url = `${APP_URL}?vriend=${code}${x ? '&u=' + x.id : ''}`;
   const tekst = waTekst(x ? x.naam.split(' ')[0] : '', url);
   const leesCode = await leesbareCode(email, mijn || (lid && lid.naam) || '', code);
