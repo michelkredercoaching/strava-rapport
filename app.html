@@ -542,6 +542,11 @@
   .bh-filter button.aan { border-color:var(--accent); color:var(--white); background:rgba(255,107,26,.12); }
   .bh-kaart { background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; }
   .bh-kaart.stil { opacity:.55; }
+  .bhc-som { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; } .bhc-som span { padding:6px 10px; border-radius:6px; background:var(--surface2); font-size:12.5px; color:var(--muted); } .bhc-som b { color:var(--text, #f5f3ef); font-size:14px; margin-right:3px; } .bhc-som .let b { color:#ff8a5c; }
+  .bhc-r { background:var(--surface2); border:1px solid var(--border); border-radius:8px; margin-bottom:6px; } .bhc-r.let { border-color:rgba(255,138,92,.55); } .bhc-r.stil { opacity:.55; }
+  .bhc-r summary { list-style:none; cursor:pointer; padding:9px 12px; display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; font-size:13.5px; } .bhc-r summary::-webkit-details-marker { display:none; }
+  .bhc-mid { color:var(--muted); font-size:12.5px; } .bhc-op { margin-left:auto; color:var(--muted); font-size:12.5px; } .bhc-why { flex-basis:100%; font-style:normal; color:#ff8a5c; font-size:12.5px; }
+  .bhc-in { padding:0 12px 10px; font-size:12.5px; color:var(--muted); display:grid; gap:4px; } .bhc-in b { color:var(--text, #f5f3ef); } .bhc-in .rood { color:#ff8a5c; } .bhc-mail { color:var(--accent); font-size:12.5px; }
   .bh-k1 { display:flex; justify-content:space-between; gap:8px; align-items:center; }
   .bh-k1 b { font-size:14px; }
   .bh-tag { font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#0A0A0A; background:var(--accent); border-radius:99px; padding:2px 8px; white-space:nowrap; }
@@ -4917,7 +4922,7 @@ function gebruikHtml() {
 }
 function gebTeken() { const el = document.getElementById('gebruik'); if (el) el.outerHTML = gebruikHtml(); }
 // ---- Beheer (13-10-2026): doelen, schema bijstellen, Core-voortgang ----
-const BH = { badges: { open: false, data: null, wie: null }, doelen: { open: false, data: null }, schema: { open: false, data: null, email: '', plan: '', week: 1, dag: '', melding: '', bezig: false }, core: { open: false, data: null, filter: 'coaching' } };
+const BH = { badges: { open: false, data: null, wie: null }, doelen: { open: false, data: null }, schema: { open: false, data: null, email: '', plan: '', week: 1, dag: '', melding: '', bezig: false }, core: { open: false, data: null, filter: 'alle' } };
 async function bhLaad(wat) {
   const actie = { doelen: 'doelenoverzicht', schema: 'schemabeheer', core: 'coreoverzicht', badges: 'badgeoverzicht' }[wat];
   try { const j = await (await fetch(API + '?actie=' + actie + '&t=' + encodeURIComponent(leesToken()))).json(); if (j.ok) BH[wat].data = j; } catch (e) {}
@@ -5008,19 +5013,43 @@ function coreBeheerHtml() {
   const C = BH.core, x = C.data, kop = bhKop('core', 'Core-voortgang', x ? x.deelnemers.length + (x.deelnemers.length === 1 ? ' deelnemer' : ' deelnemers') : 'progressie per renner');
   if (!C.open) return `<div class="geb" id="bhcore">${kop}</div>`;
   if (!x) return `<div class="geb" id="bhcore">${kop}<div class="geb-in"><p class="klein">Laden...</p></div></div>`;
-  const l = x.deelnemers.filter((d) => C.filter === 'alle' || (C.filter === 'coaching' ? d.coaching : C.filter === 'leden' ? d.lid && !d.coaching : !d.lid && !d.coaching));
-  const knop = (f, n) => `<button type="button" class="${C.filter === f ? 'aan' : ''}" data-bh="corefilter" data-f="${f}">${n}</button>`;
-  const kaart = (d) => {
-    const winst = d.rompStart != null && d.rompNu != null ? d.rompNu - d.rompStart : null;
-    const stil = d.laatste && Date.now() - Date.parse(d.laatste) > 10 * 864e5;
-    return `<div class="bh-kaart${stil ? ' stil' : ''}"><div class="bh-k1"><b>${esc(d.naam || d.email)}</b>${d.coaching ? `<span class="bh-tag">Coaching ${d.coaching === 'premium' ? 'Premium' : 'Flex'}</span>` : d.lid ? '<span class="bh-tag lid">Lid</span>' : '<span class="bh-tag grijs">Proef</span>'}</div>
-      <div class="bh-k2">${d.naam ? esc(d.email) + ' &middot; ' : ''}${d.intake ? 'Niveau ' + d.niveau + (d.fase ? ' (' + esc(d.fase) + ')' : '') : 'Intake nog niet gedaan'}${d.doel ? ' &middot; doel: ' + esc(d.doel) : ''}</div>
-      <div class="bh-k3"><span>Deze week <b>${d.deze7}${d.frequentie ? '/' + d.frequentie : ''}</b></span><span>Reeks <b>${d.reeks} wk</b></span><span>Sessies <b>${d.sessies}</b></span><span>Rompscore <b>${d.rompStart != null ? d.rompStart + ' &rarr; ' + d.rompNu : '&ndash;'}${winst ? ' (' + (winst > 0 ? '+' : '') + winst + ')' : ''}</b></span></div>
-      <div class="bh-k4"><span>Laatste sessie: ${dagenGeleden(d.laatste)}</span>${d.pijnMax != null ? `<span class="${d.pijnMax >= 5 ? 'rood' : ''}">Pijn max ${d.pijnMax}/10 (4 wk)</span>` : ''}${d.klachten.length ? '<span>Klachten: ' + esc(d.klachten.join(', ')) + '</span>' : ''}</div></div>`;
+  // Overzicht (15-10-2026): samenvatting, eerst wie aandacht nodig heeft, compacte regels die openklikken.
+  const dagenSinds = (iso) => iso ? Math.floor((Date.now() - Date.parse(iso)) / 864e5) : null;
+  const soort = (d) => d.coaching ? 'coaching' : d.lid && /schema|cadeau/.test(d.bron || '') ? 'schema' : d.lid ? 'pro' : 'gratis';
+  const redenen = (d) => {
+    const r = [], n = dagenSinds(d.laatste);
+    if (d.pijnMax != null && d.pijnMax >= 4) r.push('pijn ' + d.pijnMax + '/10');
+    if (d.intake && d.sessies && n != null && n >= 7) r.push(n + ' dagen niets gedaan');
+    else if (d.intake && d.frequentie && d.deze7 === 0 && n != null && n >= 4) r.push('deze week nog niets');
+    return r;
   };
-  return `<div class="geb" id="bhcore">${kop}<div class="geb-in"><div class="bh-filter">${knop('coaching', 'Coaching')}${knop('leden', 'Leden')}${knop('proef', 'Proef')}${knop('alle', 'Alle')}</div>
-    ${l.length ? l.map(kaart).join('') : '<p class="klein">Niemand in deze groep.</p>'}
-    <p class="klein">Grijs = langer dan 10 dagen geen sessie.</p><button type="button" class="sb-link" data-bh="ververs" data-w="core">Ververs</button></div></div>`;
+  const alle = x.deelnemers;
+  const aandacht = alle.filter((d) => redenen(d).length);
+  const metHertest = alle.filter((d) => d.tests >= 2 && d.rompStart != null && d.rompNu != null);
+  const gemWinst = metHertest.length ? Math.round(metHertest.reduce((t, d) => t + (d.rompNu - d.rompStart), 0) / metHertest.length) : null;
+  const actief = alle.filter((d) => d.deze7 > 0).length, stil = alle.filter((d) => { const n = dagenSinds(d.laatste); return d.sessies && n != null && n >= 7; }).length;
+  const pijn = alle.filter((d) => d.pijnMax != null && d.pijnMax >= 4).length;
+  const som = `<div class="bhc-som"><span><b>${alle.length}</b> deelnemers</span><span><b>${actief}</b> actief deze week</span><span class="${stil ? 'let' : ''}"><b>${stil}</b> 7+ dagen niets</span><span class="${pijn ? 'let' : ''}"><b>${pijn}</b> pijnsignaal</span>${gemWinst != null ? `<span><b>${gemWinst > 0 ? '+' : ''}${gemWinst}</b> Rompscore na hertest (${metHertest.length})</span>` : ''}</div>`;
+  const f = C.filter || 'alle';
+  const l = alle.filter((d) => f === 'alle' || (f === 'aandacht' ? redenen(d).length : soort(d) === f));
+  const lijst = f === 'alle' ? aandacht.concat(l.filter((d) => !redenen(d).length)) : l;
+  const knop = (k, n, aantal) => `<button type="button" class="${f === k ? 'aan' : ''}" data-bh="corefilter" data-f="${k}">${n}${aantal != null ? ' ' + aantal : ''}</button>`;
+  const tag = (d) => d.coaching ? `<span class="bh-tag">${d.coaching === 'premium' ? 'Premium' : 'Flex'}</span>` : soort(d) === 'schema' ? '<span class="bh-tag lid">Schema</span>' : d.lid ? '<span class="bh-tag lid">Pro</span>' : '<span class="bh-tag grijs">Gratis</span>';
+  const regel = (d) => {
+    const r = redenen(d), n = dagenSinds(d.laatste);
+    const romp = d.tests >= 2 && d.rompStart != null ? `Rompscore <b>${d.rompStart} &rarr; ${d.rompNu}</b> (${d.rompNu - d.rompStart >= 0 ? '+' : ''}${d.rompNu - d.rompStart})` : d.rompStart != null ? `Starttest <b>${d.rompStart}</b>` : 'Nog geen starttest';
+    return `<details class="bhc-r${r.length ? ' let' : ''}${!r.length && n != null && n >= 10 ? ' stil' : ''}"><summary><b>${esc(d.naam || d.email)}</b>${tag(d)}<span class="bhc-mid">${d.intake ? d.deze7 + (d.frequentie ? '/' + d.frequentie : '') + ' deze week' : 'intake nog doen'}</span><span class="bhc-op">${d.laatste ? dagenGeleden(d.laatste) : '&ndash;'}</span>${r.length ? `<em class="bhc-why">${esc(r.join(' · '))}</em>` : ''}</summary>
+      <div class="bhc-in"><div>${esc(d.email)}${d.intake ? ' &middot; Niveau ' + d.niveau + (d.fase ? ' (' + esc(d.fase) + ')' : '') : ''}${d.doel ? ' &middot; doel: ' + esc(d.doel) : ''}</div>
+      <div>Sessies <b>${d.sessies}</b>${d.reeks ? ' &middot; reeks <b>' + d.reeks + ' wk</b>' : ''} &middot; ${romp}</div>
+      ${d.pijnMax != null || d.klachten.length ? `<div>${d.pijnMax != null ? `<span class="${d.pijnMax >= 4 ? 'rood' : ''}">Pijn max ${d.pijnMax}/10 (4 wk)</span>` : ''}${d.klachten.length ? (d.pijnMax != null ? ' &middot; ' : '') + 'Klachten bij intake: ' + esc(d.klachten.join(', ')) : ''}</div>` : ''}
+      <a class="bhc-mail" href="mailto:${esc(d.email)}">Mail ${esc((d.naam || '').split(' ')[0] || 'deze renner')}</a></div></details>`;
+  };
+  const tel = (k) => alle.filter((d) => soort(d) === k).length;
+  return `<div class="geb" id="bhcore">${kop}<div class="geb-in">${som}
+    <div class="bh-filter">${knop('alle', 'Alle')}${knop('aandacht', 'Aandacht', aandacht.length)}${knop('coaching', 'Coaching', tel('coaching'))}${knop('schema', 'Schema', tel('schema'))}${knop('pro', 'Pro', tel('pro'))}${knop('gratis', 'Gratis', tel('gratis'))}</div>
+    ${f === 'alle' && aandacht.length ? '<div class="rv-sub">Aandacht nodig</div>' : ''}
+    ${lijst.length ? lijst.map((d, i) => (f === 'alle' && aandacht.length && i === aandacht.length ? '<div class="rv-sub">De rest</div>' : '') + regel(d)).join('') : '<p class="klein">Niemand in deze groep.</p>'}
+    <p class="klein">Aandacht = pijn 4 of hoger, 7 dagen of langer niets gedaan, of deze week nog niets. Grijs = 10 dagen of langer niets. Tik op een naam voor de details.</p><button type="button" class="sb-link" data-bh="ververs" data-w="core">Ververs</button></div></div>`;
 }
 document.addEventListener('change', (e) => {
   const S = BH.schema;

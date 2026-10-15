@@ -699,7 +699,7 @@ async function routeSchemaBeheer(req, res) {
 async function routeCoreOverzicht(req, res) {
   if (!beheerEmail(req, req.query?.t)) return res.status(403).json({ ok: false });
   const l = await coreOverzicht().catch(() => []);
-  for (const x of l) { const lm = await haalLid(x.email).catch(() => null); x.coaching = lm && lm.coaching ? lm.coaching : null; x.lid = !!(lm && lidBeeld(lm).open); }
+  for (const x of l) { const lm = await haalLid(x.email).catch(() => null); x.coaching = lm && lm.coaching ? lm.coaching : null; const lb = lm ? lidBeeld(lm) : null; x.lid = !!(lb && lb.open); x.bron = lb && lb.open ? (lb.bron || lm.bron || '') : ''; }
   return res.status(200).json({ ok: true, deelnemers: l.filter((x) => !BEHEER.includes(x.email)) });
 }
 
