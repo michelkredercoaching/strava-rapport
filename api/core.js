@@ -448,7 +448,7 @@ async function metToken(req, res) {
 function planIntake(d) {
   const start = (d.tests || []).find((t) => t.moment === 0);
   const laatste = (d.tests || []).filter((t) => t.uitslag).slice(-1)[0];
-  return { ...(d.intake || {}), verlicht: !!d.verlicht, bijstel: d.bijstel || 0, startScore: start ? start.score : null, disbalans: laatste ? disbalansUit(laatste.uitslag) : null, zwakst: laatste ? ((zwakkeSchakel(laatste.uitslag) || {}).zwak || null) : null,
+  return { ...(d.intake || {}), verlicht: !!d.verlicht, bijstel: d.bijstel || 0, startScore: start ? start.score : null, disbalans: laatste ? disbalansUit(laatste.uitslag) : null, zwakst: laatste ? ((zwakkeSchakel(laatste.uitslag) || {}).zwak || null) : null, overgang: !!d.overgang, onderhoud: !!d.onderhoud,
     discipline: soortVan(d), doelModus: modusVan(d), bevrorenWeek: d.bevroren || null, vervang: d.vervang || {} };
 }
 // Periodisering (12-10-2026)
@@ -531,6 +531,9 @@ function klantBeeld(d) {
     sessies, gedaanDezeWeek: gedaan,
     weekRond: gedaan.length >= nodigVoorWeek(d.intake), nodigVoorWeek: nodigVoorWeek(d.intake),
     frequentie: frequentie(d.intake),
+    onderhoud: !!d.onderhoud, overgang: !!d.overgang,
+    // Pijn van 6 of hoger in twee verschillende weken (laatste 21 dagen): advies fysio of bike-fit (15-10-2026).
+    pijnAdvies: (() => { const wk = new Set((d.pijn || []).filter((x) => (x.score || 0) >= 6 && Date.now() - Date.parse(x.op) < 21 * 864e5).map((x) => Math.floor(Date.parse(x.op) / (7 * 864e5)))); return wk.size >= 2; })(),
     herhaling: !!d.verlicht,
     klaar: d.status === 'klaar',
     testNodig: d.intake && !geblokkeerd ? testNodig(d.afgerond, (d.tests || []).map((t) => t.moment)) : null,
@@ -1058,6 +1061,7 @@ async function routeWeekklaar(req, res) {
   const stap = volgendeWeek(d.week, reactie, d.slechterOpRij, d.zwaarOpRij || 0);
   // Eenmalige kopers zonder lidmaatschap springen niet voorbij niveau 12.
   if (!magDoorlopen(d) && oudeWeek < BLOK_WEKEN && stap.week > BLOK_WEKEN) stap.week = BLOK_WEKEN;
+  const zwaarGevoeld = (d.bijstel || 0) < 0;
   d.bijstel = 0;
   d.reacties.push({ week: d.week, reactie, op: nu() });
   d.teller += 1;
@@ -1089,6 +1093,10 @@ async function routeWeekklaar(req, res) {
     d.verlicht = false;
     d.afgerond = Math.max(d.afgerond, oudeWeek);
     if (oudeWeek >= BLOK_WEKEN && !magDoorlopen(d)) { d.status = 'klaar'; melding = 'Niveau 12 bereikt. Doe je romptest en kijk wat het je heeft opgeleverd. Wil je verder, dan beweegt de app als lid gewoon met je mee.'; }
+    else if (d.onderhoud && reactie !== 'makkelijk' && isBetaald(d)) {
+      // Onderhoud (15-10-2026): in het seizoen je niveau vasthouden, 2x per week.
+      melding = `Onderhoud: je houdt niveau ${d.week} vast, 2 keer per week. Zo blijft je romp sterk terwijl je veel fietst. Voelt het te makkelijk, kies dan Te makkelijk.`;
+    }
     else if (d.vasthouden) {
       // Eén week vasthouden na een hertest met weinig vooruitgang.
       d.vasthouden = false;
@@ -1105,6 +1113,9 @@ async function routeWeekklaar(req, res) {
       if (!isBetaald(d) && oudeWeek === 1) { d.proefKlaarOp = nu(); await mcTag(d.email, 'core-proef-klaar'); }
     }
   }
+  // Eerst langer, dan pas zwaarder (15-10-2026): zware laatste sessie en nu een nieuwe fase = eerst nog een week de huidige varianten.
+  d.overgang = !!(zwaarGevoeld && reactie !== 'zwaar' && reactie !== 'slechter' && d.week === oudeWeek + 1 && weekInBlok(oudeWeek) % 3 === 0 && weekInBlok(oudeWeek) < BLOK_WEKEN);
+  if (d.overgang && melding) melding += ' Je laatste sessie voelde zwaar, dus je begint de nieuwe fase nog met je huidige oefeningen, op de nieuwe tijden. Volgende week ga je naar de zwaardere varianten.';
   const nieuwBadge = verdiendeBadges(d.afgerond).find((b) => b.fase * 3 === d.afgerond && reactie !== 'slechter' && reactie !== 'zwaar');
   await bewaarDossier(d);
   return res.status(200).json({ ok: true, melding, nieuwBadge: nieuwBadge || null, ...klantBeeld(d) });
@@ -1202,9 +1213,17 @@ async function routeFrequentie(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const r = await metToken(req, res); if (!r) return;
   const { d, body } = r;
+  // Onderhoud aan of uit (15-10-2026): altijd 2x per week; uit = terug naar wat je had.
+  if (typeof body.onderhoud === 'boolean' && d.intake) {
+    if (body.onderhoud && !d.onderhoud) { d.intake.frequentieVoor = d.intake.frequentie; d.intake.frequentie = 2; }
+    if (!body.onderhoud && d.onderhoud) d.intake.frequentie = [2, 3, 4].includes(d.intake.frequentieVoor) ? d.intake.frequentieVoor : 3;
+    d.onderhoud = body.onderhoud;
+    await bewaarDossier(d);
+    return res.status(200).json({ ok: true, ...klantBeeld(d) });
+  }
   const f = Number(body.frequentie);
   if (![2, 3, 4].includes(f) || !d.intake) return res.status(400).json({ ok: false, fout: 'kies 2, 3 of 4' });
-  d.intake.frequentie = f;
+  d.intake.frequentie = f; d.onderhoud = false;
   await bewaarDossier(d);
   return res.status(200).json({ ok: true, ...klantBeeld(d) });
 }

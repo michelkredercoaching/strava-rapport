@@ -373,6 +373,7 @@
   @media (max-width:560px) { .test { grid-template-columns:72px 1fr; } .test .testknoppen { grid-column:1 / -1; } .badges { grid-template-columns:repeat(2,1fr); } }
   .vg-deel { background:transparent !important; border:1.5px solid var(--accent, #FF6B1A) !important; color:var(--accent, #FF6B1A) !important; }
   .sk { display:grid; gap:6px; } .sk-rij { display:grid; grid-template-columns:78px 1fr 40px; align-items:center; gap:8px; font-size:13px; } .sk-balk { height:8px; border-radius:4px; background:rgba(255,255,255,.08); overflow:hidden; } .sk-balk span { display:block; height:100%; background:#7fe0a0; } .sk-rij.zwak .sk-balk span { background:#FF6B1A; } .sk-rij.zwak b { color:#FF6B1A; } .sk-rij small { text-align:right; color:var(--muted, #999); }
+  .kaart-x { position:absolute; top:8px; right:10px; background:none; border:0; color:var(--muted, #999); font-size:22px; cursor:pointer; } .blok.kaart { position:relative; }
 </style>
 </head>
 <body>
@@ -450,7 +451,7 @@ function teken() {
     h += appHtml();
     const testEerst = d.testNodig === 0 && (d.gedaanDezeWeek.length > 0 || d.afgerond > 0);
     const metDash = !d.opSlot && !d.klaar && d.sessies.length;
-    if (metDash) h += dashHtml(d);
+    if (metDash) h += pijnAdviesHtml(d) + onderhoudVoorstelHtml(d) + dashHtml(d);
     if (testEerst && !metDash) h += testHtml(d, true);
     const meterLater = d.meterNodig != null && !d.afgerond && d.sessies.length;
     if (d.meterNodig != null && !meterLater) h += meterHtml(d);
@@ -700,11 +701,23 @@ function dashHtml(d) {
       ${d.mobiliteit ? '<button type="button" data-actie="mobiliteit"><b>Mobiliteit</b><span>Rustdag of stijf na een rit</span></button>' : ''}
     </div></div>`;
 }
+// Pijn in twee verschillende weken (15-10-2026): oefenen alleen helpt beperkt, laat er iemand naar kijken.
+const lsWeg = (k, dagen) => { try { return Date.now() - Number(localStorage.getItem(k) || 0) < dagen * 864e5; } catch (e) { return false; } };
+function pijnAdviesHtml(d) {
+  if (!d.pijnAdvies || lsWeg('mkcPijnAdviesWeg', 14)) return '';
+  return `<div class="blok kaart" style="border-color:rgba(255,138,92,.6)"><button type="button" class="kaart-x" data-actie="weg" data-k="mkcPijnAdviesWeg" aria-label="Sluiten">&times;</button><h2>Laat er even naar kijken</h2><p>Je gaf de afgelopen weken vaker pijn aan. Oefenen helpt, maar bij aanhoudende pijn is het slim dat een fysiotherapeut of bike-fitter meekijkt. Vaak zit de oorzaak ook in je houding op de fiets.</p><p class="klein muted">Tot die tijd maakt de app de oefeningen lichter waar je pijn aangeeft. Michel heeft een seintje gekregen.</p></div>`;
+}
+// Seizoen (april t/m september): voorstel om Core op onderhoud te zetten, altijd 2x per week.
+function onderhoudVoorstelHtml(d) {
+  const m = new Date().getMonth() + 1;
+  if (d.onderhoud || !d.betaald || m < 4 || m > 9 || lsWeg('mkcOnderhoudWeg', 30)) return '';
+  return `<div class="blok kaart"><button type="button" class="kaart-x" data-actie="weg" data-k="mkcOnderhoudWeg" aria-label="Sluiten">&times;</button><h2>In het seizoen? Zet Core op onderhoud</h2><p>Fiets je nu veel? Dan houd je je niveau vast met 2 sessies per week van zo'n 20 minuten. Zo blijft je romp sterk zonder dat het je benen kost.</p><button type="button" class="knop" data-actie="onderhoud" data-aan="1">Zet op onderhoud</button></div>`;
+}
 function sessiesHtml(d) {
   const slot = d.testNodig === 0 && (d.gedaanDezeWeek.length > 0 || d.afgerond > 0);
   const eersteOpen = d.sessies.findIndex((s) => !d.gedaanDezeWeek.includes(s.letter));
   return `<div class="blok"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px"><h2 style="margin:0">Je sessies${d.herhaling ? ' <span class="muted klein" style="font-family:DM Sans">(herhaling, lichtere varianten)</span>' : ''}</h2>
-    <div class="freqkeuze" title="Hoe vaak per week">${[2, 3, 4].map((f) => `<button data-actie="freq" data-f="${f}" class="${d.frequentie === f ? 'aan' : ''}">${f}x</button>`).join('')}</div></div>${focusHtml(d)}<div class="sessies">
+    <div class="freqkeuze" title="Hoe vaak per week">${[2, 3, 4].map((f) => `<button data-actie="freq" data-f="${f}" class="${d.frequentie === f && !d.onderhoud ? 'aan' : ''}">${f}x</button>`).join('')}${d.betaald ? `<button data-actie="onderhoud" data-aan="${d.onderhoud ? '' : '1'}" class="${d.onderhoud ? 'aan' : ''}" title="Niveau vasthouden, 2x per week">Onderhoud</button>` : ''}</div></div>${d.onderhoud ? '<p class="klein muted" style="margin:-6px 0 10px">Onderhoud: 2x per week, je houdt je niveau vast. Tik nog eens op Onderhoud om weer op te bouwen.</p>' : ''}${(d.sessies[0] || {}).overgang ? '<p class="klein muted" style="margin:-6px 0 10px">Deze week nog je huidige oefeningen op de nieuwe tijden. Volgende week de zwaardere varianten.</p>' : ''}${focusHtml(d)}<div class="sessies">
     ${d.sessies.map((s, i) => {
       const klaar = d.gedaanDezeWeek.includes(s.letter);
       const opslot = !klaar && eersteOpen >= 0 && i > eersteOpen;
@@ -1065,6 +1078,8 @@ document.addEventListener('click', async (e) => {
   }
   if (actie === 'doorgaan') { await post('doorgaan', {}); melding('Genoteerd, dank je.'); }
   if (actie === 'coach') coachOpen(true);
+  if (actie === 'onderhoud') { const aan = k.dataset.aan === '1'; const j = await post('frequentie', { onderhoud: aan }); if (j.ok) melding(aan ? 'Core staat op onderhoud: 2x per week, je houdt je niveau vast.' : 'Onderhoud staat uit. Je bouwt weer op.'); }
+  if (actie === 'weg' && k.dataset.k) { try { localStorage.setItem(k.dataset.k, String(Date.now())); } catch (er) {} k.closest('.kaart')?.remove(); return; }
   if (actie === 'freq') { const j = await post('frequentie', { frequentie: Number(k.dataset.f) }); if (j.ok) melding(`Vanaf nu ${k.dataset.f}x per week. Je sessies zijn aangepast.`); }
   if (actie === 'appweg') { try { localStorage.setItem('coreAppWeg', '1'); } catch (e) {} teken(); }
   if (actie === 'installeer' && installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; teken(); }); }
