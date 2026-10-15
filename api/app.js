@@ -2062,6 +2062,8 @@ async function routeCorrectieImport(req, res) {
   if (req.method !== 'POST' || !sleutel || String(req.headers?.['x-sleutel'] || '') !== sleutel) return res.status(403).json({ ok: false });
   const body = await leesBody(req);
   const id = String(body.id || '').slice(0, 20), tekst = String(body.correctie || '').trim().slice(0, 1200);
+  // Goed bevonden met Michel (15-10-2026): alleen afvinken, geen correctie.
+  if (body.goed && id) { await redis(['SADD', 'app:nagekeken', id]); return res.status(200).json({ ok: true, goed: true }); }
   const l = await redis(['LRANGE', 'app:antwoorden', '0', '199']);
   const a = ((l.ok && l.result) || []).map((x) => { try { return JSON.parse(x); } catch { return null; } }).find((x) => x && x.id === id);
   if (!a || !tekst) return res.status(404).json({ ok: false, fout: 'antwoord niet gevonden of lege correctie' });
@@ -2074,10 +2076,10 @@ async function routeCorrectieImport(req, res) {
 async function routeCorrectiesExport(req, res) {
   const sleutel = process.env.TRECHTER_SLEUTEL || '';
   if (!sleutel || String(req.headers?.['x-sleutel'] || '') !== sleutel) return res.status(403).json({ ok: false });
-  const [c, a, k, g] = await Promise.all([haalCorrecties(), redis(['LRANGE', 'app:antwoorden', '0', '199']), redis(['SCARD', 'app:nagekeken']), redis(['LRANGE', 'app:kennisgaten', '0', '199'])]);
+  const [c, a, k, g, nki] = await Promise.all([haalCorrecties(), redis(['LRANGE', 'app:antwoorden', '0', '199']), redis(['SCARD', 'app:nagekeken']), redis(['LRANGE', 'app:kennisgaten', '0', '199']), redis(['SMEMBERS', 'app:nagekeken'])]);
   const gaten = ((g.ok && g.result) || []).map((x) => { try { return JSON.parse(x); } catch { return null; } }).filter(Boolean);
   const antwoorden = ((a.ok && a.result) || []).map((x) => { try { const j = JSON.parse(x); return { id: j.id, bron: j.bron, vraag: j.vraag, antwoord: j.antwoord, op: j.op }; } catch { return null; } }).filter(Boolean);
-  return res.status(200).json({ ok: true, correcties: c.map((x) => ({ id: x.id, bron: x.bron, vraag: x.vraag, origineel: x.origineel, correctie: x.correctie, op: x.op })), antwoorden, nagekeken: Number(k.result) || 0, gaten });
+  return res.status(200).json({ ok: true, correcties: c.map((x) => ({ id: x.id, bron: x.bron, vraag: x.vraag, origineel: x.origineel, correctie: x.correctie, op: x.op })), antwoorden, nagekeken: Number(k.result) || 0, nagekekenIds: (nki.ok && nki.result) || [], gaten });
 }
 async function routeAntwoorden(req, res) {
   const body = req.method === 'POST' ? await leesBody(req) : {};
