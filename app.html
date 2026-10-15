@@ -3209,7 +3209,7 @@ function coachingPaginaHtml(d) {
       ${plek('core', 'Je core in de Core-app', 'Korte sessies thuis op de timer, op jouw niveau. Je Rompscore laat zien dat je sterker wordt.', d && d.core && d.core.link ? { href: d.core.link + '#vandaag' } : { view: 'core' })}
       ${plek('rijden', 'Bandenspanning en je rit', 'Je bandenspanning, kleding, voeding en de wind voor de rit van vandaag.', { view: 'rijden' })}
       ${plek('coach', 'Snelle vraag aan je coach', 'Over voeding, materiaal of herstel, ook om 23:00. Gaat het over je planning of hoe je je voelt, dan liever direct naar mij.', { view: 'coach' })}
-      ${plek('palmares', 'Je medailles en de ranglijst', 'Wat je doet levert medailles en beloningen op, en een renner op de ranglijst.', { view: 'palmares' })}
+      ${plek('palmares', 'Je medailles en de ranglijst', 'Wat je doet levert medailles en beloningen op, en een wielren-avatar op de ranglijst.', { view: 'palmares' })}
     </div></div>
     <div class="kaart"><div class="kaart-in">
       <h2>De TrainingPeaks-app</h2>
@@ -3834,8 +3834,8 @@ function pmIntroHtml() {
   if (pmIntroWeg()) return '';
   return `<div class="kaart actief pm-intro"><div class="kaart-in"><div class="label">Zo werkt je palmares</div><h2>Verdien je medailles</h2>
     <ol class="pm-stappen"><li><b>Brons, zilver en goud</b><span>Elke badge heeft drie medailles. Je verdient ze met wat je echt doet: Core, ritten, groepsritten, maten en elke dag de app openen.</span></li>
-    <li><b>Beloningen</b><span>Elke nieuwe medaille is 1 extra vraag aan je coach, een maand geldig. En elke paar medailles speel je iets vrij: nieuwe spullen voor je renner, een gouden week, een gratis analyse en uiteindelijk een renner in brons, zilver of goud.</span></li>
-    <li><b>Je renner en het podium</b><span>Je staat op de ranglijst met je eigen renner. Elke maand begint de maandstand opnieuw, dus iedereen maakt kans op het podium.</span></li></ol>
+    <li><b>Beloningen</b><span>Elke nieuwe medaille is 1 extra vraag aan je coach, een maand geldig. En elke paar medailles speel je iets vrij: nieuwe kleding en spullen voor je wielren-avatar, een gouden week, een gratis analyse en uiteindelijk een avatar in brons, zilver of goud.</span></li>
+    <li><b>Je renner en het podium</b><span>Je staat op de ranglijst met je eigen wielren-avatar. Elke maand begint de maandstand opnieuw, dus iedereen maakt kans op het podium.</span></li></ol>
     <button type="button" class="knop" data-pmintro="weg">Begrepen, laat zien</button></div></div>`;
 }
 document.addEventListener('click', (e) => { if (e.target.closest('[data-pmintro]')) { try { localStorage.setItem('mkcPmIntro', '1'); } catch (er) {} teken(); } });
@@ -4006,7 +4006,7 @@ function ranglijstHtml(d) {
       <p class="klein" style="margin:8px 0 0">Haal je eerste medaille en je rijdt mee in het klassement, op weg naar het podium.${dichtst ? ' Het snelst: <b style="color:var(--accent)">' + esc(dichtst.naam) + '</b>, ' + esc(dichtst.uitleg[0]) + '.' : ''}</p>
       <button type="button" class="sb-link" data-rl="wijzig" style="margin-top:8px">Naar je kleedkamer</button> <button type="button" class="sb-link" data-rl="weg" style="margin-left:12px">Niet meedoen</button></div></div>`;
   }
-  if (!open && !x.profiel && !RL.maak && !x.weg) return '<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in"><div class="label">Startlijst</div><p class="klein">Je renner wordt klaargezet. Ververs de app zo even.</p></div></div>';
+  if (!open && !x.profiel && !RL.maak && !x.weg) return '<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in"><div class="label">Startlijst</div><p class="klein">Je avatar wordt klaargezet. Ververs de app zo even.</p></div></div>';
   if (!x.profiel || RL.maak) {
     const pr = x.profiel || {}, R = x.renner;
     const k = RL.keuze || { naam: pr.naam || '', huid: pr.huid || 'h1', trui: pr.trui || 'mkc', helm: pr.helm || 'wit', bril: pr.bril || 'zwart', schoenen: pr.schoenen || 'wit', fiets: pr.fiets || 'oranje', wielen: pr.wielen || 'standaard' };
@@ -4017,7 +4017,7 @@ function ranglijstHtml(d) {
     const items = R[RL.tab].map((it) => `<button type="button" class="kk-item${k[RL.tab] === it.id ? ' aan' : ''}${open(it) ? '' : ' dicht'}" data-rlitem="${RL.tab}|${it.id}" ${open(it) ? '' : 'disabled'}>${voorbeeld(RL.tab, it)}<b>${esc(it.naam)}</b>${open(it) ? '' : `<small>${medailleSlotKlein()} ${it.vanaf.m} med.${it.vanaf.g ? ' + ' + it.vanaf.g + ' goud' : ''}</small>`}</button>`).join('');
     const volgend = Object.entries(R).flatMap(([s, l]) => l.filter((it) => !open(it)).map((it) => ({ s, it }))).sort((a, b) => a.it.vanaf.m - b.it.vanaf.m)[0];
     return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in">${open ? '<div class="md-unlock" style="animation:none">Ranglijst ontgrendeld</div>' : '<div class="md-unlock" style="animation:none">Startlijst</div>'}<h2 style="margin-top:6px">${x.profiel ? 'Je kleedkamer' : x.weg ? 'Doe weer mee' : 'Maak je renner'}</h2>
-      <p class="klein" style="margin:4px 0 12px">Je staat op de ranglijst met een bijnaam en je eigen renner. Met meer medailles speel je nieuwe truien, helmen, brillen en fietsen vrij. Je echte naam en mailadres ziet niemand.</p>
+      <p class="klein" style="margin:4px 0 12px">Je staat op de ranglijst met een bijnaam en je eigen wielren-avatar. Met meer medailles speel je nieuwe truien, helmen, brillen en fietsen vrij. Je echte naam en mailadres ziet niemand.</p>
       <div class="rl-maak"><div class="rn-podium">${rennerFiets(k, 240)}<b class="rn-naam">${esc(k.naam || 'Jouw bijnaam')}</b></div>
       <div class="gr-maak"><label>Bijnaam</label><input id="rlNaam" maxlength="16" placeholder="Bijv. De Klimgeit" value="${esc(k.naam)}"></div>
       <div class="kk"><div class="kk-tabs">${tabs.map(([t, n]) => `<button type="button" data-rltab="${t}" class="${RL.tab === t ? 'aan' : ''}">${n}</button>`).join('')}</div><div class="kk-items">${items}</div>
@@ -4033,7 +4033,7 @@ function ranglijstHtml(d) {
   const mijnPlek = !opPodium && x.ik ? `<div class="pd-ik">${avatarSvg(rlMetaal(x), 44)}<div><b>Jouw plek: #${x.ik.plek}</b><small>${x.ik.medailles} ${x.ik.medailles === 1 ? 'medaille' : 'medailles'}${x.ik.goud ? ' &middot; ' + x.ik.goud + ' goud' : ''}${nogNaar3 ? ' &middot; nog ' + nogNaar3 + (nogNaar3 === 1 ? ' medaille' : ' medailles') + ' tot het podium' : ''}</small></div></div>` : '';
   return `<div class="kaart actief rl-kaart" id="ranglijst"><div class="kaart-in">
     <div class="rl-kop"><div><div class="label">Ranglijst</div><h2>${opPodium ? 'Jij staat op het podium!' : 'Het podium'}</h2><p class="klein" style="margin:2px 0 0">Op medailles, bij gelijke stand telt goud.</p></div><div class="rl-ik">${x.profiel.trui ? rennerFiets(rlMetaal(x), 110) : avatarSvg(x.profiel, 54)}<small>${esc(x.profiel.naam)}</small></div></div>
-    ${x.profiel.auto ? `<div class="rl-auto">Je doet mee als <b>${esc(x.profiel.naam)}</b>. Andere naam of een eigen renner? <button type="button" class="sb-link" data-rl="wijzig" style="display:inline;margin:0">Naar je kleedkamer</button></div>` : ''}
+    ${x.profiel.auto ? `<div class="rl-auto">Je doet mee als <b>${esc(x.profiel.naam)}</b>. Andere naam of een eigen avatar? <button type="button" class="sb-link" data-rl="wijzig" style="display:inline;margin:0">Naar je kleedkamer</button></div>` : ''}
     <div class="rl-tabs"><button type="button" data-rlper="maand" class="${RL.periode === 'maand' ? 'aan' : ''}">Deze maand</button><button type="button" data-rlper="alles" class="${RL.periode === 'alles' ? 'aan' : ''}">Aller tijden</button></div>
     ${RL.periode === 'maand' ? '<p class="klein rl-uitleg">Elke maand begint iedereen weer bij nul. Medailles die je deze maand haalt, tellen.</p>' : ''}
     <div class="podium">${blok(r2, 2)}${blok(r1, 1)}${blok(r3, 3)}</div>
@@ -4140,7 +4140,7 @@ async function rennerStory() {
   g2.fillStyle = 'rgba(245,243,239,.75)'; g2.font = dm(40, 500); g2.fillText('Medailles verdienen met elke rit en elke Core-sessie.', W / 2, 1420);
   storyVoet(g2, W, H, sl.code);
   const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.92));
-  await storyDelen(blob, 'mkc-renner.jpg', 'Mijn renner in de MKC-app.' + (sl.code ? ' Met code ' + sl.code + ' krijg je 50% korting:' : ' Train mee met 50% korting:'), sl.url);
+  await storyDelen(blob, 'mkc-renner.jpg', 'Mijn wielren-avatar in de MKC-app.' + (sl.code ? ' Met code ' + sl.code + ' krijg je 50% korting:' : ' Train mee met 50% korting:'), sl.url);
 }
 function medailleSlot() { return '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>'; }
 function badgeModal(id, nieuwNiveau) {
