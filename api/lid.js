@@ -1241,7 +1241,7 @@ async function schemaEindeMails() {
       <p>Je kunt op twee manieren verder:</p>
       <p><b>Een vervolgschema.</b> Een nieuw blok dat aansluit op waar je nu staat. De app hoort er weer bij, voor de hele looptijd.</p>
       <p style="margin:14px 0 22px"><a href="https://michelkredercoaching.nl/trainingsschema-vervolg/" style="background:#ff6b1a;color:#0a0a0a;padding:13px 24px;border-radius:4px;text-decoration:none;font-weight:700">Kies je vervolgschema</a></p>
-      <p><b>Lid blijven.</b> Je coach voor al je vragen, de Core-app, je bandenspanning en kledingadvies voor elke rit. ${euro(PLANNEN.maand.bedrag)} per maand of ${euro(PLANNEN.jaar.bedrag)} per jaar.</p>
+      <p><b>Lid blijven.</b> Je coach voor al je vragen, de Core-app, je bandenspanning en kledingadvies voor elke rit. ${euro(PLANNEN.maand.bedrag)} per maand of ${euro(PLANNEN.jaar.bedrag)} per jaar, met elk jaar een gratis Strava-analyse.</p>
       <p style="margin:14px 0 22px"><a href="${APP_URL}#lid" style="color:#ff6b1a;font-weight:700">Blijf lid van de MKC-app</a></p>
       <p>Sportieve groet,<br>Michel</p></div>`;
     try {

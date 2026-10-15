@@ -2450,7 +2450,7 @@ const LID_BEWIJS = `<div class="bewijs"><div class="bw-kop"><span class="bw-ster
   <div class="bw-kaart"><span class="bw-soort">Coaching</span><p class="bw-citaat">&ldquo;Mijn FTP is gestegen van 220 naar 290/300.&rdquo;</p><b>Marnix</b></div>
   <div class="bw-kaart"><span class="bw-soort">Schema</span><p class="bw-citaat">&ldquo;Dankzij Michel&rsquo;s aanpak &lsquo;train slimmer, niet harder&rsquo; heb ik met hetzelfde aantal trainingsuren duidelijk meer vermogen ontwikkeld.&rdquo;</p><b>Bjorn</b></div>
 </div>`;
-const LID_REKENSOM = '<p class="klein lid-reken">Rekensom: doe je met Pro een Strava-analyse, dan betaal je &euro;19 in plaats van &euro;29. Die &euro;10 is je eerste maand al voor de helft.</p>';
+const LID_REKENSOM = '<p class="klein lid-reken">Rekensom: doe je met Pro een Strava-analyse, dan betaal je &euro;19 in plaats van &euro;29. Die &euro;10 is je eerste maand al voor de helft. Kies je per jaar, dan krijg je elk jaar een gratis Strava-analyse t.w.v. &euro;29 cadeau.</p>';
 // Lidpagina kort (13-10-2026): droomuitkomst bovenaan, dan vier uitkomsten die je
 // zelf openklikt, kort bewijs en de prijs. Details blijven, maar alleen als je wilt.
 function lidStapelHtml(d) {
@@ -2474,12 +2474,12 @@ function lidStap2Html() {
   if (!LV.plan) return '';
   const jaar = LV.plan === 'jaar';
   const maat = vriendActief(), bk = !maat && D && D.badgeKorting ? D.badgeKorting : 0;
-  if (bk) return `<div class="lid-stap2"><b>Bijna klaar: ${jaar ? 'per jaar, &euro;' + (89 - bk) + ' het eerste jaar (badgekorting), daarna &euro;' + APP_PRIJS.jaar : 'per maand, &euro;' + (9.99 - bk).toFixed(2).replace('.', ',') + ' de eerste maand (badgekorting), daarna &euro;' + APP_PRIJS.maand}</b>
+  if (bk) return `<div class="lid-stap2"><b>Bijna klaar: ${jaar ? 'per jaar, &euro;' + (89 - bk) + ' het eerste jaar (badgekorting), daarna &euro;' + APP_PRIJS.jaar + ', met elk jaar een gratis Strava-analyse t.w.v. &euro;29' : 'per maand, &euro;' + (9.99 - bk).toFixed(2).replace('.', ',') + ' de eerste maand (badgekorting), daarna &euro;' + APP_PRIJS.maand}</b>
     ${lidFactuurHtml()}
     <label class="lid-akkoord"><input type="checkbox" id="lidAkkoord"> <span>Ik wil direct toegang en weet dat ik daarmee afzie van mijn bedenktijd van 14 dagen. Ik ga akkoord met de <a href="/voorwaarden" target="_blank" rel="noopener">voorwaarden</a> en de <a href="/privacy#app" target="_blank" rel="noopener">privacyverklaring</a>.</span></label>
     <button class="knop" data-actie="wordlid" data-plan="${LV.plan}">Naar betalen</button>
     <button type="button" class="sb-link" data-lidplan="terug" style="display:block;margin:8px auto 0">Ander plan kiezen</button></div>`;
-  return `<div class="lid-stap2"><b>Bijna klaar: ${jaar ? 'per jaar, &euro;' + (maat ? APP_PRIJS.jaarMaat + ' het eerste jaar (via je maat), daarna &euro;' + APP_PRIJS.jaar : APP_PRIJS.jaar) : 'per maand, &euro;' + (maat ? APP_PRIJS.half + ' de eerste maand (via je maat), daarna &euro;' + APP_PRIJS.maand : APP_PRIJS.maand)}</b>
+  return `<div class="lid-stap2"><b>Bijna klaar: ${jaar ? 'per jaar, &euro;' + (maat ? APP_PRIJS.jaarMaat + ' het eerste jaar (via je maat), daarna &euro;' + APP_PRIJS.jaar : APP_PRIJS.jaar) + ', met elk jaar een gratis Strava-analyse t.w.v. &euro;29' : 'per maand, &euro;' + (maat ? APP_PRIJS.half + ' de eerste maand (via je maat), daarna &euro;' + APP_PRIJS.maand : APP_PRIJS.maand)}</b>
     ${lidFactuurHtml()}
     <label class="lid-akkoord"><input type="checkbox" id="lidAkkoord"> <span>Ik wil direct toegang en weet dat ik daarmee afzie van mijn bedenktijd van 14 dagen. Ik ga akkoord met de <a href="/voorwaarden" target="_blank" rel="noopener">voorwaarden</a> en de <a href="/privacy#app" target="_blank" rel="noopener">privacyverklaring</a>.</span></label>
     <button class="knop" data-actie="wordlid" data-plan="${LV.plan}">Naar betalen</button>
@@ -3519,7 +3519,7 @@ function verkoopMomentHtml(d) {
   const m = verkoopMoment(d); if (!m) return '';
   return `<div class="vk" data-vk="${m.k}"><button type="button" class="vk-x" data-vkweg="${m.k}" aria-label="Sluiten">&times;</button>
     <b>${m.t}</b>${m.ochtend ? lidOchtendHtml() : m.mee ? coreMeeHtml(d, true) : '<p>' + m.p + '</p>'}
-    <button type="button" class="knop" data-actie="naarlid">${m.knop}</button><span class="vk-prijs">&euro;${APP_PRIJS.maand} per maand, of &euro;${APP_PRIJS.jaar} per jaar</span><span class="vk-bewijs">&#9733; 4,9 uit 48 Google-reviews &middot; 1000+ renners trainen met mijn schema&rsquo;s</span></div>`;
+    <button type="button" class="knop" data-actie="naarlid">${m.knop}</button><span class="vk-prijs">&euro;${APP_PRIJS.maand} per maand, of &euro;${APP_PRIJS.jaar} per jaar met een gratis Strava-analyse</span><span class="vk-bewijs">&#9733; 4,9 uit 48 Google-reviews &middot; 1000+ renners trainen met mijn schema&rsquo;s</span></div>`;
 }
 document.addEventListener('click', (e) => { const k = e.target.closest('[data-vkweg]'); if (!k) return; try { localStorage.setItem('mkcVkWeg:' + k.dataset.vkweg, String(Date.now())); } catch (er) {} if (VIEW === 'home') teken(); });
 // Korte "Word Pro"-balk op de startpagina; de voordelen, prijzen en factuurgegevens staan op de pagina MKC-Lid.
@@ -3580,7 +3580,7 @@ function paginaHtml(d) {
     const lid = isLid(d), tijdelijk = lid && d.lid && ['schema', 'cadeau'].includes(d.lid.bron);
     const pitch = binnenkortNu() && !d.voorverkoop ? binnenkortPitchHtml() : kanLidNu(d) ? lidPitchHtml() : '';
     if (!lid) return appBalkHtml() + (pitch || '<p class="klein">Pro worden kan op dit moment niet.</p>') + planKeuzeHtml() + voet;
-    const daarna = tijdelijk ? `<details class="daarna" ${location.hash === '#lid' ? 'open' : ''}><summary><b>Daarna Pro blijven</b><span>vanaf &euro;${APP_PRIJS.jaarPerMaand} per maand${binnenkortNu() && !d.voorverkoop ? ' &middot; kan vanaf 16 oktober' : ''}</span></summary>${pitch}</details>` : '';
+    const daarna = tijdelijk ? `<details class="daarna" ${location.hash === '#lid' ? 'open' : ''}><summary><b>Daarna Pro blijven</b><span>vanaf &euro;${APP_PRIJS.jaarPerMaand} per maand, per jaar met een gratis Strava-analyse${binnenkortNu() && !d.voorverkoop ? ' &middot; kan vanaf 16 oktober' : ''}</span></summary>${pitch}</details>` : '';
     return appBalkHtml() + lidStatusHtml(d.lid) + lidExtraHtml(d.lid) + daarna + voet;
   }
   return null;
@@ -4242,7 +4242,7 @@ function jaarBesparing(l) { const p = l.prijs || {}; return Math.floor(Number(p.
 function naarJaarHtml(l) {
   if (!l || !l.naarJaarKan) return '';
   const p = l.prijs || {}, jaar = String(p.jaar || '89').replace('.00', '').replace('.', ',');
-  return `<div class="naarjaar"><b>Stap over op een jaar en bespaar &euro;${jaarBesparing(l)}</b><p>&euro;${jaar} per jaar, dat is &euro;${(Number(p.jaar || 89) / 12).toFixed(2).replace('.', ',')} per maand. Je huidige maand loopt gewoon door.</p><button type="button" class="knop leeg" data-lx="naarjaar">Bekijk de overstap</button></div>`;
+  return `<div class="naarjaar"><b>Stap over op een jaar en bespaar &euro;${jaarBesparing(l)}</b><p>&euro;${jaar} per jaar, dat is &euro;${(Number(p.jaar || 89) / 12).toFixed(2).replace('.', ',')} per maand. Plus elk jaar een gratis Strava-analyse t.w.v. &euro;29. Je huidige maand loopt gewoon door.</p><button type="button" class="knop leeg" data-lx="naarjaar">Bekijk de overstap</button></div>`;
 }
 function lidExtraHtml(l) {
   if (!l) return '';

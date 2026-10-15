@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>De Core-app voor wielrenners | Michel Kreder Coaching</title>
+<meta name="description" content="De Core-app voor wielrenners: core op maat die met je meebeweegt, 2, 3 of 4 korte sessies per week thuis zonder gewichten. Train mee op de timer, meet je Rompscore en zie je progressie in je eigen grafiek. Tegen rugpijn op de fiets en stabiel tot de laatste kilometer.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+  /* WordPress-pagina /core/. Alles zit onder .cplp, zodat het thema er niet
+     doorheen fietst. Achtergrond van rand tot rand zonder horizontale scroll,
+     zelfde truc als /bandenspanning/. */
+  .cplp {
+    --black:#0A0A0A; --off:#111; --surface:#161616; --surface2:#1c1c1c;
+    --border:rgba(255,255,255,0.08); --white:#F5F3EF; --muted:rgba(245,243,239,0.62);
+    --accent:#FF6B1A; --accent-dim:rgba(255,107,26,0.12); --groen:#4CC38A;
+    font-family:'DM Sans',sans-serif; background:var(--black); color:var(--white);
+    box-shadow:0 0 0 100vmax var(--black); clip-path:inset(0 -100vmax);
+    margin:0; padding:56px 20px 72px; -webkit-font-smoothing:antialiased; line-height:1.6;
+  }
+  .cplp *, .cplp *::before, .cplp *::after { box-sizing:border-box; }
+  .cplp .wrap { max-width:720px; margin:0 auto; }
+  .cplp .eyebrow { display:inline-flex; align-items:center; gap:10px; font-size:11px; font-weight:600; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:14px; }
+  .cplp .eyebrow::before { content:''; width:20px; height:1px; background:var(--accent); }
+  .cplp h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(44px,7.5vw,76px); line-height:.92; text-transform:uppercase; margin:0 0 18px; color:var(--white) !important; }
+  .cplp h1 em, .cplp h2 em { font-style:normal; color:var(--accent) !important; }
+  .cplp h2 { font-family:'Bebas Neue',sans-serif; font-size:clamp(32px,5vw,44px); line-height:1; text-transform:uppercase; margin:0 0 14px; color:var(--white) !important; }
+  .cplp h3 { font-size:16px; font-weight:700; margin:0 0 6px; color:var(--white) !important; }
+  .cplp p { font-size:16px; font-weight:300; color:rgba(245,243,239,.84); margin:0 0 16px; }
+  .cplp p strong { font-weight:600; color:var(--white); }
+  .cplp .sectie { margin-top:64px; }
+  .cplp .knop { display:inline-block; background:var(--accent); color:#0A0A0A !important; text-decoration:none; font-family:'Bebas Neue',sans-serif; font-size:23px; letter-spacing:.06em; text-transform:uppercase; padding:17px 32px 14px; border-radius:4px; }
+  .cplp .knop.breed { display:block; text-align:center; }
+  .cplp .onderknop { font-size:13px; color:var(--muted); margin-top:10px; }
+  .cplp .trust { display:flex; flex-wrap:wrap; gap:8px 18px; font-size:13px; color:var(--muted); margin-top:18px; }
+  .cplp .trust b { color:var(--white); font-weight:600; }
+  /* demo-animatie */
+  .cplp .demo { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:12px; margin:30px 0 0; }
+  .cplp .demo svg { width:100%; height:auto; display:block; }
+  .cplp .demo .onder { display:flex; justify-content:space-between; align-items:center; padding:8px 6px 2px; font-size:13px; color:var(--muted); }
+  .cplp .demo .onder b { color:var(--white); font-weight:600; }
+  .cplp .lijst { list-style:none; padding:0; margin:0 0 16px; display:flex; flex-direction:column; gap:10px; }
+  .cplp .lijst li { display:flex; gap:12px; font-size:15.5px; color:rgba(245,243,239,.84); line-height:1.55; }
+  .cplp .lijst li::before { content:''; width:6px; height:6px; border-radius:50%; background:var(--accent); flex-shrink:0; margin-top:9px; }
+  .cplp .stappen { display:grid; gap:12px; }
+  .cplp .stap { display:grid; grid-template-columns:44px 1fr; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:18px; }
+  .cplp .stap .nr { font-family:'Bebas Neue',sans-serif; font-size:34px; color:var(--accent); line-height:1; }
+  .cplp .stap p { font-size:14.5px; margin:0; color:var(--muted); }
+  .cplp .fases { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .cplp .fase { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:14px 12px; }
+  .cplp .fase .wk { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600; }
+  .cplp .fase .nm { font-family:'Bebas Neue',sans-serif; font-size:22px; line-height:1.05; margin:4px 0 6px; }
+  .cplp .fase p { font-size:13px; margin:0; color:var(--muted); }
+  .cplp .grafiek { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:16px; margin-top:6px; }
+  .cplp .grafiek svg { width:100%; height:auto; display:block; }
+  .cplp .twee { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .cplp .vak { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:18px; }
+  .cplp .vak.niet { opacity:.8; }
+  .cplp .prijs { background:linear-gradient(180deg, rgba(255,107,26,.09), var(--surface)); border:1px solid rgba(255,107,26,.4); border-radius:8px; padding:30px 26px; text-align:center; }
+  .cplp .prijs .bedrag { font-family:'Bebas Neue',sans-serif; font-size:84px; line-height:.9; color:var(--white); }
+  .cplp .prijs .sub { color:var(--muted); font-size:14px; margin:4px 0 20px; }
+  .cplp .prijs .lijst { text-align:left; max-width:440px; margin:0 auto 22px; }
+  .cplp .garantie { border:1px solid var(--border); background:var(--surface); border-radius:6px; padding:20px 22px; margin-top:14px; }
+  .cplp details { border-bottom:1px solid var(--border); padding:16px 0; }
+  .cplp details summary { cursor:pointer; font-weight:600; font-size:15.5px; list-style:none; }
+  .cplp details summary::-webkit-details-marker { display:none; }
+  .cplp details summary::after { content:'+'; float:right; color:var(--accent); font-size:20px; line-height:1; }
+  .cplp details[open] summary::after { content:'–'; }
+  .cplp details p { margin:10px 0 0; font-size:15px; }
+  /* telefoon met de app erin */
+  .cplp .telefoon { max-width:320px; margin:34px auto 0; background:#050505; border:9px solid #1f1f1f; border-radius:38px; padding:14px 12px 16px; box-shadow:0 30px 80px -20px rgba(255,107,26,.25), 0 0 0 1px rgba(255,255,255,.06); position:relative; }
+  .cplp .telefoon::before { content:''; position:absolute; top:7px; left:50%; transform:translateX(-50%); width:84px; height:20px; background:#1f1f1f; border-radius:12px; }
+  .cplp .app-kop { display:flex; justify-content:space-between; align-items:center; padding:20px 4px 10px; }
+  .cplp .app-logo { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.08em; color:var(--white); line-height:1; }
+  .cplp .app-logo span { color:var(--accent); }
+  .cplp .app-week { font-size:11px; color:var(--muted); letter-spacing:.06em; }
+  .cplp .app-chips { display:flex; gap:6px; margin:0 0 10px; }
+  .cplp .app-chip { flex:1; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:7px 8px; }
+  .cplp .app-chip .l { font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .cplp .app-chip .w { font-family:'Bebas Neue',sans-serif; font-size:22px; line-height:1; color:var(--white); }
+  .cplp .app-chip .w em { font-style:normal; color:var(--groen); font-size:14px; margin-left:4px; font-family:'DM Sans',sans-serif; font-weight:600; }
+  .cplp .app-scherm { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:8px; }
+  .cplp .app-scherm svg { width:100%; height:auto; display:block; }
+  .cplp .app-oef { display:flex; justify-content:space-between; align-items:baseline; padding:8px 4px 6px; }
+  .cplp .app-oef b { font-size:14px; color:var(--white); }
+  .cplp .app-oef span { font-size:11px; color:var(--muted); }
+  .cplp .app-klok { font-family:'Bebas Neue',sans-serif; font-size:44px; line-height:1; color:var(--accent); text-align:center; margin:2px 0 6px; }
+  .cplp .app-balk { height:5px; background:rgba(255,255,255,.08); border-radius:3px; overflow:hidden; }
+  .cplp .app-balk i { display:block; height:100%; width:0; background:var(--accent); }
+  .cplp .app-sets { display:flex; gap:5px; justify-content:center; margin-top:10px; }
+  .cplp .app-sets i { width:22px; height:5px; border-radius:3px; background:rgba(255,255,255,.12); }
+  .cplp .app-sets i.af { background:var(--groen); }
+  .cplp .tel-onder { text-align:center; font-size:13px; color:var(--muted); margin-top:14px; }
+  /* functies van de app */
+  .cplp .functies { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:18px; }
+  .cplp .functie { background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:16px; }
+  .cplp .functie .ic { width:30px; height:30px; border-radius:8px; background:var(--accent-dim); color:var(--accent); display:flex; align-items:center; justify-content:center; margin-bottom:10px; }
+  .cplp .functie .ic svg { width:17px; height:17px; }
+  .cplp .functie p { font-size:14px; margin:0; color:var(--muted); }
+  .cplp .afzender { display:flex; gap:14px; align-items:center; border-top:1px solid var(--border); margin-top:48px; padding-top:22px; font-size:13.5px; color:var(--muted); }
+  @media (max-width:640px) {
+    .cplp { padding:40px 16px 56px; }
+    .cplp .fases { grid-template-columns:1fr 1fr; }
+    .cplp .twee { grid-template-columns:1fr; }
+    .cplp .functies { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="cplp"><div class="wrap">
+
+  <div class="eyebrow">De Core-app voor wielrenners</div>
+  <h1>Geen rugpijn meer. <em>Stabiel</em> tot de laatste kilometer.</h1>
+  <p>Na drie uur fietsen zak je in. Je onderrug begint te zeuren, je schouders trekken op en je trapt niet meer zo rond als in het eerste uur. Dat ligt zelden aan je benen. <strong>Het ligt aan je romp, die het eerder opgeeft dan je motor.</strong></p>
+  <p>Daarom heb ik een eigen app gebouwd. Core op maat die met je meebeweegt, thuis op de mat en zonder gewichten. Jij kiest wat in je week past: twee langere sessies, drie van een kwartier, of vier korte vlak voor je rit. De app traint met je mee, meet je romp en laat zien hoe je vooruitgaat.</p>
+  <a class="knop" href="#prijs">Start met de Core-app</a>
+  <p class="onderknop">Of <a href="https://michelkredercoaching.nl/core-gratis/" style="color:#FF6B1A">probeer eerst week 1 gratis</a>.</p>
+  <div class="trust"><span><b>4,9</b> uit 100+ beoordelingen</span><span>Gebouwd door oud-profrenner Michel Kreder</span><span>iPhone en Android, niets te downloaden</span></div>
+
+  <div class="telefoon" aria-label="Zo ziet de Core-app eruit">
+    <div class="app-kop"><div class="app-logo">CORE<span>.</span></div><div class="app-week">Week 3 &middot; Sessie 2 van 3</div></div>
+    <div class="app-chips">
+      <div class="app-chip"><div class="l">Rompscore</div><div class="w">66<em>+14</em></div></div>
+      <div class="app-chip"><div class="l">Nog</div><div class="w">47 <span style="font-size:13px;font-family:'DM Sans',sans-serif;color:var(--muted)">dagen</span></div></div>
+    </div>
+    <div class="app-scherm"><div id="demoBeeld"></div></div>
+    <div class="app-oef"><b id="demoNaam">Dead bug</b><span id="demoDeel">voorkant</span></div>
+    <div class="app-klok" id="demoKlok">0:30</div>
+    <div class="app-balk"><i id="demoBalk"></i></div>
+    <div class="app-sets" id="demoSets"><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+  <p class="tel-onder">Telefoon op de grond, op start drukken en meedoen.</p>
+
+  <div class="sectie">
+    <h2>Geen pdf. <em>Een app die met je meetraint.</em></h2>
+    <p>Een lijstje oefeningen leg je na twee weken weg. Je weet niet of je het goed doet, niet of het zwaarder moet en niet of het iets oplevert. Dus heb ik gebouwd wat ik zelf zou willen hebben.</p>
+    <div class="functies">
+      <div class="functie"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg></div><h3>Meetrainen op de timer</h3><p>Je ziet elke oefening bewegen, de klok telt af en een piepje zegt wanneer je wisselt. Niets lezen, niets tellen.</p></div>
+      <div class="functie"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></div><h3>Je Rompscore</h3><p>Een starttest met de stopwatch meet hoe sterk je romp is, en hoeveel je ene kant zwakker is dan de andere.</p></div>
+      <div class="functie"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></div><h3>Je progressie in beeld</h3><p>In week 4, 8 en 12 test je opnieuw. Je Rompscore en je rugklachten komen in je eigen grafiek.</p></div>
+      <div class="functie"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg></div><h3>Een plan dat meebeweegt</h3><p>Na elke week vraagt de app hoe je lichaam reageerde. Ging het slechter, dan wordt je volgende week vanzelf lichter.</p></div>
+      <div class="functie"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><h3>Je Core-coach</h3><p>Twijfel je over een oefening? Stel je vraag in de app en je krijgt direct antwoord, getraind op mijn methode.</p></div>
+      <div class="functie"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></div><h3>Op je beginscherm en in je agenda</h3><p>Met twee tikken staat de app tussen je andere apps, en je sessies zet je in één keer in je agenda.</p></div>
+    </div>
+  </div>
+
+  <div class="sectie">
+    <h2>Waarom je romp het eerst <em>opgeeft</em></h2>
+    <p>Op de fiets houdt je romp je bekken stil terwijl je benen trappen. Wordt die moe, dan gaan je heup en knie heen en weer, zak je in je onderrug en vangt je nek de rest op.</p>
+    <p>Je merkt dat niet in de eerste kilometers. Je merkt het in het laatste uur, op de klim waar je uit het zadel moet, en de dag erna in je rug.</p>
+    <p><strong>Meer kilometers lossen dat niet op.</strong> Een romp die het langer volhoudt wel. En die train je niet op de fiets, maar in een kwartier ernaast.</p>
+  </div>
+
+  <div class="sectie">
+    <h2>Zo werkt het</h2>
+    <div class="stappen">
+      <div class="stap"><div class="nr">1</div><div><h3>Je plan op maat</h3><p>Na aankoop beantwoord je een paar vragen. Last van je onderrug, nek of knie? Dan begin je lichter en zitten de oefeningen voor jouw klacht er vaker in.</p></div></div>
+      <div class="stap"><div class="nr">2</div><div><h3>Je starttest</h3><p>Een paar houdgrepen met de stopwatch in de app. Daar komt jouw Rompscore uit, en het verschil tussen je linker- en rechterkant.</p></div></div>
+      <div class="stap"><div class="nr">3</div><div><h3>Meetrainen met de timer</h3><p>Telefoon op de grond, op start drukken. Je ziet elke oefening bewegen, de klok telt af en een piepje zegt wanneer je wisselt. Niets lezen, niets tellen.</p></div></div>
+      <div class="stap"><div class="nr">4</div><div><h3>Beweegt met je mee, nooit op pijn</h3><p>Na elke sessie en elk niveau vraagt de app hoe het ging. Te makkelijk? Dan ga je sneller. Te zwaar of meer klachten? Dan wordt het lichter. Zo bouw je altijd op jouw tempo, en nooit door op pijn.</p></div></div>
+    </div>
+  </div>
+
+  <div class="sectie">
+    <h2>Niveau voor niveau, <em>op jouw tempo</em></h2>
+    <div class="fases">
+      <div class="fase"><div class="wk">Fase 1</div><div class="nm">Fundament</div><p>De basis goed leren: aanspannen zonder je adem in te houden.</p></div>
+      <div class="fase"><div class="wk">Fase 2</div><div class="nm">Opbouw</div><p>Zwaardere varianten en drie rondes.</p></div>
+      <div class="fase"><div class="wk">Fase 3</div><div class="nm">Kracht</div><p>Langzaam en zwaar: hier komt je stabiliteit vandaan.</p></div>
+      <div class="fase"><div class="wk">Fase 4 en verder</div><div class="nm">Op de fiets</div><p>Oefeningen die je fietshouding nabootsen. Daarna gaat het gewoon door: elk niveau een stap zwaarder.</p></div>
+    </div>
+  </div>
+
+  <div class="sectie">
+    <h2>Je ziet het <em>zwart op wit</em></h2>
+    <p>Elke 4 weken doe je de romptest opnieuw, en stijgt je Rompscore flink, dan schuift de app je een niveau op. Je Rompscore en je klachten op de fiets komen in een grafiek, zodat je niet hoeft te gissen of het werkt.</p>
+    <div class="grafiek" id="voorbeeldGrafiek"></div>
+    <p class="onderknop">Voorbeeld van hoe je grafiek eruitziet. Jouw lijn hangt af van je startpunt.</p>
+  </div>
+
+  <div class="sectie">
+    <h2>Wat je krijgt</h2>
+    <ul class="lijst">
+      <li>2, 3 of 4 sessies per week van 10 tot 25 minuten, thuis zonder gewichten. Wisselen kan altijd</li>
+      <li>Een plan dat zich aanpast aan je klachten: onderrug, nek, knie of heup</li>
+      <li>De Core-app op je telefoon, met meetrainen op de timer en elke oefening in beeld</li>
+      <li>Een starttest en daarna elke 4 weken de romptest, met je Rompscore en je links-rechtsverschil</li>
+      <li>Train je naar een rit of wedstrijd toe? Dan tel ik af en wordt de laatste week voor je doel vanzelf lichter</li>
+      <li>Elke maandag je week in je mail, met een tip die bij je fase past</li>
+      <li>Twijfel je over een oefening? Stel je vraag aan je Core-coach in de app en je krijgt direct antwoord</li>
+    </ul>
+  </div>
+
+  <div class="sectie">
+    <h2>Voor wie</h2>
+    <div class="twee">
+      <div class="vak"><h3>Wel voor jou</h3><ul class="lijst" style="margin:8px 0 0"><li>Je rijdt 3 tot 10 uur per week</li><li>Je onderrug of nek zeurt na lange ritten</li><li>Je zakt in het laatste uur in</li><li>Je wilt het thuis doen, zonder sportschool</li></ul></div>
+      <div class="vak niet"><h3>Niet voor jou</h3><ul class="lijst" style="margin:8px 0 0"><li>Je hebt pijn die uitstraalt naar je been, of een verse blessure: ga dan eerst langs je huisarts of fysio</li><li>Je zoekt een krachtschema met gewichten</li></ul></div>
+    </div>
+  </div>
+
+  <div class="sectie" id="prijs">
+    <!-- Lidmaatschap: verschijnt vanzelf zodra lid worden kan (api/lid.js?actie=open).
+         Dan verdwijnen de eenmalige prijs en de garantie hieronder. -->
+    <div class="prijs" id="prijsLid">
+      <div class="eyebrow" style="justify-content:center">Lid van de MKC-app</div>
+      <div class="bedrag">&euro;9,99<span style="font-size:.4em;color:var(--muted)"> per maand</span></div>
+      <div class="sub">per maand, maandelijks opzegbaar, of &euro;89 per jaar (ruim 3 maanden gratis, plus een gratis Strava-analyse) &middot; begin met een gratis week</div>
+      <ul class="lijst">
+        <li>De Core-app die met je meebeweegt: gaat het makkelijk, dan ga je sneller; voelt het zwaar, dan wordt het lichter</li>
+        <li>Plan op maat voor je klachten, 2, 3 of 4 sessies per week op de timer</li>
+        <li>Rompscore elke 4 weken, met een grafiek van je progressie</li>
+        <li>Je eigen MKC-coach, dag en nacht, en slimme bandenspanning voor elke rit</li>
+      </ul>
+      <a class="knop breed" href="https://michelkredercoaching.nl/core-gratis/">Start je gratis week</a>
+      <p class="onderknop">Week 1 is gratis en zonder betaalgegevens. Bevalt het, dan word je in de app lid en blijft alles staan.</p>
+    </div>
+    <div class="prijs" id="prijsEenmalig" style="display:none">
+      <div class="eyebrow" style="justify-content:center">Eenmalig, geen abonnement</div>
+      <div class="bedrag">&euro;49</div>
+      <div class="sub">tot en met niveau 12 &middot; minder dan een bidon per week</div>
+      <ul class="lijst">
+        <li>De Core-app: 2, 3 of 4 sessies per week, meetrainen op de timer</li>
+        <li>Plan op maat voor je klachten, dat zich elke week aanpast</li>
+        <li>Rompscore en een grafiek van je progressie</li>
+        <li>Je Core-coach voor direct antwoord op je vragen</li>
+      </ul>
+      <a class="knop breed" id="kooplink" href="#">Ja, ik start met de Core-app</a>
+      <p class="onderknop">Na betalen krijg je direct je persoonlijke link naar de app in je mail.</p>
+      <p class="onderknop">Eerst proberen? <a href="https://michelkredercoaching.nl/core-gratis/" style="color:#FF6B1A">Doe week 1 gratis</a>. Ga je daarna door, dan blijft alles staan.</p>
+    </div>
+    <div class="garantie" id="prijsGarantie" style="display:none">
+      <h3>Je Rompscore gaat omhoog, of je krijgt je geld terug</h3>
+      <p style="margin:0;font-size:14.5px;color:var(--muted)">Doe minstens 10 van de 12 niveaus en de romptests. Is je Rompscore bij niveau 12 niet hoger dan bij de start, mail me dan en je krijgt je &euro;49 terug.</p>
+    </div>
+  </div>
+
+  <div class="sectie">
+    <h2>Vragen</h2>
+    <details><summary>Ik heb rugklachten. Kan ik dit wel doen?</summary><p>Juist daarvoor is het gemaakt. Geef het bij de intake aan, dan begin je een niveau lichter en zonder oefeningen die je onderrug belasten. Heb je pijn die uitstraalt naar je been, tintelingen of pijn 's nachts, laat dat dan eerst checken. Het programma vraagt daar ook naar en wacht tot je groen licht hebt.</p></details>
+    <details><summary>Moet ik een app downloaden?</summary><p>Nee. Je opent de Core-app via je persoonlijke link en zet hem met twee tikken op je beginscherm, dan opent hij voortaan als elke andere app. Werkt op iPhone en Android, en ook op je laptop.</p></details>
+    <details><summary>Heb ik iets nodig?</summary><p>Een mat of een kleed en je telefoon. Voor één oefening een bezemsteel, en voor de stretch na afloop een bank.</p></details>
+    <details><summary>Wanneer doe ik de sessies naast mijn fietstrainingen?</summary><p>Op je rustige dagen of na een korte rit, niet vlak voor je zwaarste training. Kies je 4x per week, dan kun je de korte sessies ook vlak voor een rustige rit doen. Je geeft bij de intake aan welke dag dat is.</p></details>
+    <details><summary>Wat als ik een week mis?</summary><p>Dan ga je verder waar je was. Je gaat pas door naar de volgende week als je genoeg sessies hebt gedaan (bij 3x per week twee, bij 4x drie, bij 2x allebei), dus je slaat nooit iets over.</p></details>
+    <details><summary>Levert dit me meer watt op?</summary><p>Dat ga ik je niet beloven. Wat wel vaststaat: met een vermoeide romp trap je slechter en zakt je houding in. Een sterke romp houdt je langer stabiel en helpt tegen rugpijn. Dat merk je vooral in het laatste uur van een lange rit.</p></details>
+  </div>
+
+  <div class="afzender"><span><strong style="color:var(--white)">Michel Kreder</strong> · oud-profrenner en trainer. Ik help renners sneller worden met training die past bij hun leven.</span></div>
+</div></div>
+
+<!-- De animaties komen van de Vercel-site, zodat de verkooppagina precies
+     dezelfde beelden laat zien als de persoonlijke pagina. -->
+<script src="https://rapport.michelkredercoaching.nl/core-programma/figuur.js"></script>
+<script src="https://rapport.michelkredercoaching.nl/core-programma/animaties.js"></script>
+<script>
+(function () {
+  // VUL IN zodra het product in WooCommerce bestaat (het product van €49).
+  var CORE_PRODUCT_ID = 13050;
+  var koop = document.getElementById('kooplink');
+  if (koop) koop.href = CORE_PRODUCT_ID ? 'https://michelkredercoaching.nl/checkout/?add-to-cart=' + CORE_PRODUCT_ID : '#prijs';
+  // Lidmaatschap open? Dan het lidblok tonen en de eenmalige prijs + garantie weg.
+  fetch('https://rapport.michelkredercoaching.nl/api/lid?actie=open').then(function (r) { return r.json(); }).then(function (j) {
+    if (!j || !j.open) return;
+    document.getElementById('prijsLid').style.display = '';
+    document.getElementById('prijsEenmalig').style.display = 'none';
+    document.getElementById('prijsGarantie').style.display = 'none';
+  }).catch(function () {});
+
+  // Demo in het telefoonscherm: een paar oefeningen achter elkaar. Per oefening
+  // loopt de klok in versneld tempo van 0:30 naar 0:00 en vult de balk, zodat je
+  // ziet hoe meetrainen werkt zonder dat je er een halve minuut naar kijkt.
+  var F = window.CoreFiguur, A = window.CoreAnimaties, el = document.getElementById('demoBeeld');
+  if (F && A && el) {
+    var reeks = [['deadbug-gebogen', 'Dead bug', 'voorkant'], ['birddog', 'Bird dog', 'anti-rotatie'], ['zijplank-heupdip', 'Zijplank met heupdip', 'zijkant'], ['bridge-mars', 'Bridge met mars', 'bil'], ['fietshouding', 'Fietshouding-houdgreep', 'onderrug']];
+    var DUUR = 6500, i = 0, stop = null, start = 0;
+    var naam = document.getElementById('demoNaam'), deel = document.getElementById('demoDeel');
+    var klok = document.getElementById('demoKlok'), balk = document.getElementById('demoBalk');
+    var sets = document.querySelectorAll('#demoSets i');
+    var volgende = function () {
+      if (stop) stop();
+      var r = reeks[i % reeks.length];
+      stop = F.speel(el, A[r[0]]);
+      naam.textContent = r[1];
+      deel.textContent = r[2];
+      for (var k = 0; k < sets.length; k++) sets[k].className = k < (i % reeks.length) ? 'af' : '';
+      start = Date.now();
+      i++;
+    };
+    var tik = function () {
+      var p = Math.min(1, (Date.now() - start) / DUUR);
+      var rest = Math.ceil(30 * (1 - p));
+      klok.textContent = '0:' + (rest < 10 ? '0' : '') + rest;
+      balk.style.width = (p * 100) + '%';
+      requestAnimationFrame(tik);
+    };
+    volgende(); setInterval(volgende, DUUR); requestAnimationFrame(tik);
+  }
+
+  // Voorbeeldgrafiek: Rompscore omhoog, rugklachten omlaag.
+  var g = document.getElementById('voorbeeldGrafiek');
+  if (g) {
+    var W = 600, H = 210, L = 30, R = 12, T = 18, B = 28;
+    var sx = function (x) { return L + (W - L - R) * x / 12; }, sy = function (y) { return T + (H - T - B) * (1 - y / 100); };
+    var score = [[0, 52], [4, 66], [8, 78], [12, 88]], rug = [[0, 60], [4, 45], [8, 30], [12, 20]];
+    var lijn = function (p, k) { return '<polyline fill="none" stroke="' + k + '" stroke-width="3" stroke-linejoin="round" points="' + p.map(function (q) { return sx(q[0]) + ',' + sy(q[1]); }).join(' ') + '"/>' + p.map(function (q) { return '<circle cx="' + sx(q[0]) + '" cy="' + sy(q[1]) + '" r="5" fill="' + k + '"/>'; }).join(''); };
+    var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
+    [0, 50, 100].forEach(function (v) { s += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + sy(v) + '" y2="' + sy(v) + '" stroke="rgba(255,255,255,.07)"/>'; });
+    [0, 4, 8, 12].forEach(function (w) { s += '<text x="' + sx(w) + '" y="' + (H - 8) + '" text-anchor="middle" font-size="11" fill="rgba(245,243,239,.45)">week ' + w + '</text>'; });
+    s += lijn(score, '#FF6B1A') + lijn(rug, '#8ab4ff');
+    s += '<text x="' + (sx(12) - 4) + '" y="' + (sy(88) - 12) + '" text-anchor="end" font-size="12" font-weight="700" fill="#FF6B1A">Rompscore</text>';
+    s += '<text x="' + (sx(12) - 4) + '" y="' + (sy(20) + 22) + '" text-anchor="end" font-size="12" font-weight="700" fill="#8ab4ff">Rugklachten</text>';
+    g.innerHTML = s + '</svg>';
+  }
+})();
+</script>
+</body>
+</html>

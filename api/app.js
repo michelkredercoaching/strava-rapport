@@ -2249,7 +2249,7 @@ async function lanceerBericht(email) {
   const b = lidBeeld(await haalLid(email));
   if (b.open && b.bron && b.bron !== 'lid') return null;
   if (b.open) return { title: 'Je Core-app is open', body: 'Vanaf nu staat je eerste Core-sessie klaar. Een kwartier, thuis op de timer.', url: '/app' };
-  return { title: 'De MKC-app is nu helemaal open', body: 'Word Pro voor €9,99 per maand: je eigen coach, je bandenspanning en kleding voor elke rit en de Core-app.', url: '/app#lid' };
+  return { title: 'De MKC-app is nu helemaal open', body: 'Word Pro voor €9,99 per maand: je eigen coach, je bandenspanning en kleding voor elke rit en de Core-app. Per jaar krijg je er een gratis Strava-analyse bij.', url: '/app#lid' };
 }
 async function routePushCron(req, res) {
   const auth = String(req.headers?.authorization || '');

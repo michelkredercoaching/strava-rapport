@@ -461,7 +461,7 @@ function teken() {
     if (d.testNodig != null && d.testNodig !== 0) h += testHtml(d, false);
     if (!d.betaald && !d.opSlot) h += `<div class="proefbalk proefweek"><b>Je gratis week</b><ul><li>${d.frequentie || 3} sessies op jouw niveau, thuis op de timer</li><li>Je starttest: je Rompscore als nulmeting</li><li>Elke sessie met één tik op Strava, met je eigen deelplaatje</li></ul><span class="klein">Daarna ga je met Pro door naar niveau 2 en verder. Alles wat je deze week doet, blijft staan.</span></div>`;
     if (d.opSlot) h += muurHtml(d);
-    else if (d.klaar) h += `<div class="blok kaart accent"><h2>Niveau 12 bereikt</h2><p>Knap gedaan. ${d.testNodig != null ? 'Doe hierboven je romptest en kijk wat het je heeft opgeleverd.' : 'Je Rompscore staat in je voortgang hieronder.'}</p>${d.magDoorlopen ? '' : `<p style="margin-top:10px">Wil je verder? De app beweegt met je mee: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller. Doorgaan doe je met Pro van de MKC-app: &euro;9,99 per maand, maandelijks opzegbaar, of &euro;89 per jaar.</p><a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word Pro en ga door</a>`}</div>`;
+    else if (d.klaar) h += `<div class="blok kaart accent"><h2>Niveau 12 bereikt</h2><p>Knap gedaan. ${d.testNodig != null ? 'Doe hierboven je romptest en kijk wat het je heeft opgeleverd.' : 'Je Rompscore staat in je voortgang hieronder.'}</p>${d.magDoorlopen ? '' : `<p style="margin-top:10px">Wil je verder? De app beweegt met je mee: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller. Doorgaan doe je met Pro van de MKC-app: &euro;9,99 per maand, maandelijks opzegbaar, of &euro;89 per jaar met elk jaar een gratis Strava-analyse.</p><a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word Pro en ga door</a>`}</div>`;
     else {
       if (d.weekRond) h += weekklaarHtml(d);
       if (d.kracht == null && d.week > 1) h += krachtVraagHtml();
@@ -626,7 +626,7 @@ function muurHtml(d) {
       <h2 style="margin-bottom:8px">Je volgende niveau staat klaar</h2>
       <p class="muted klein">${t ? `Je startte met een Rompscore van <b style="color:var(--white)">${t.score}</b>.${zwak ? ` Je ${zwak.naam.toLowerCase()} is ${zwak.pct}% zwakker ${zwak.zwakker}.` : ''} ` : ''}Vanaf hier wordt elk niveau een stap zwaarder.</p>
       ${d.lidOpen ? `<div class="prijs">&euro;9,99</div>
-      <div class="klein muted">per maand (maandelijks opzegbaar), of &euro;89 per jaar (ruim 3 maanden gratis).</div>
+      <div class="klein muted">per maand (maandelijks opzegbaar), of &euro;89 per jaar (ruim 3 maanden gratis, plus elk jaar een gratis Strava-analyse).</div>
       <ul>
         <li>Een Core-app die met je meebeweegt: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller</li>
         <li>Je romptest elke 4 weken, met grafiek</li>
@@ -656,7 +656,7 @@ function blokMuurHtml(d) {
   const winst = eerste && laatste && laatste !== eerste ? laatste.score - eerste.score : null;
   return `<div class="blok kaart accent"><div class="eyebrow">Niveau 12 bereikt</div><h2>Ga verder met Pro</h2>
     <p>${winst != null ? `Je Rompscore ging van <b>${eerste.score}</b> naar <b>${laatste.score}</b> (${winst > 0 ? '+' : ''}${winst}). ` : ''}De app beweegt met je mee: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller. Je voortgang en je grafiek lopen gewoon door.</p>
-    <p style="margin-top:10px">Doorgaan doe je met Pro van de MKC-app: &euro;9,99 per maand, maandelijks opzegbaar, of &euro;89 per jaar.</p>
+    <p style="margin-top:10px">Doorgaan doe je met Pro van de MKC-app: &euro;9,99 per maand, maandelijks opzegbaar, of &euro;89 per jaar met elk jaar een gratis Strava-analyse.</p>
     <a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word Pro en ga door</a></div>`;
 }
 
