@@ -144,7 +144,8 @@
   .gr-tip { margin:8px 0 4px; padding:8px 10px; border-left:3px solid rgba(255,107,26,.6); background:rgba(255,107,26,.06); } .gr-tip p { margin:0; line-height:1.45; }
   .plan-extra { margin:6px 0 10px; font-size:13px; font-weight:700; color:#7fe0a0; }
   .sb-voorbreedte { display:flex; align-items:center; gap:8px; margin:6px 0; font-size:13px; color:var(--muted); } .sb-voorbreedte select { flex:1; }
-  .sk-tpzin { margin:10px 0 0; font-size:12.5px; color:var(--muted); }
+  .sk-tpzin { margin:8px 0 12px; font-size:12.5px; color:var(--muted); }
+  .sk-tpgroot { display:block; width:100%; text-align:center; margin-top:14px; box-sizing:border-box; }
   .hklap { margin-top:12px; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
   .hklap > summary { list-style:none; cursor:pointer; display:flex; align-items:baseline; gap:10px; padding:13px 14px; } .hklap > summary::-webkit-details-marker { display:none; }
   .hklap > summary b { font-family:'Bebas Neue',sans-serif; font-size:19px; letter-spacing:.03em; font-weight:400; }
@@ -2261,15 +2262,6 @@ function skBlokken(blokken, meet) {
   const regel = (x) => x.stappen ? `<li>${x.x > 1 ? x.x + '&times; ' : ''}${x.stappen.map((y) => `${skMin(y.s)} <span>${esc(skDoel(y, meet))}</span>`).join(' &middot; ')}</li>` : `<li>${esc(x.n || 'Blok')}: ${skMin(x.s)} <span>${esc(skDoel(x, meet))}</span></li>`;
   return `<details class="sk-opbouw"><summary>Opbouw van de training</summary><ul class="sk-blokken">${blokken.map(regel).join('')}</ul></details>`;
 }
-function skTraining(w, meet, sleutel) {
-  const tekst = (w.tekst || '').trim(), lang = tekst.length > 240, open = SK.open[sleutel];
-  const notitie = (w.notitie || '').replace(/\*+/g, '').trim();
-  return `<div class="sk-tr">${w.melding ? `<div class="sk-tip" style="margin:0 0 12px">${esc(w.melding)}</div>` : ''}<h3>${esc(w.titel)}</h3>
-    <div class="sk-meta">${skUren(w.duur)}${w.tss ? ' &middot; TSS ' + Math.round(w.tss) : ''}${w.blokken ? ' &middot; ' + (meet === 'hartslag' ? 'grafiek in % van je omslagpunt' : 'grafiek in % van je FTP') : ''}</div>
-    ${skGrafiek(w.blokken)}${skBlokken(w.blokken, meet)}
-    ${tekst ? `<div class="sk-tekst${lang && !open ? ' dicht' : ''}">${opmaak(tekst)}</div>${lang ? `<button class="sk-meer" data-sk="meer" data-k="${sleutel}">${open ? 'Minder' : 'Lees de hele uitleg'}</button>` : ''}` : ''}
-    ${notitie ? `<div class="sk-tip">${opmaak(notitie)}</div>` : ''}</div>`;
-}
 // Core rond het schema (09-10-2026): op welke dagen van deze schemaweek je je
 // core-sessies het beste doet. Rustdag het best, dan een rustige rit; nooit op
 // een zware dag en liever niet de dag voor een zware training. Met rust ertussen.
@@ -2299,32 +2291,24 @@ function schemaKaart(d) {
   const s = d.schema; if (!s) return '';
   const kop = (h2, sub) => `<div class="sk-kop"><div class="label">Jouw ${s.winter ? 'winterprogramma' : 'schema'} &middot; ${esc(s.titel)}</div><h2>${h2}</h2><div class="sk-sub">${sub}</div></div>`;
   if (s.status === 'voor') {
-    const v = s.volgende;
     return `<div class="sk">${kop('Bijna begonnen', 'Je schema start op ' + esc(datumKort(s.start)) + '.')}
-      <div class="sk-dag">${v ? `<div class="sk-dagkop">Eerste training &middot; ${esc(datumKort(v.datum))}</div>${skTraining(v, s.meet, 'eerste')}` : ''}
-      <div class="sk-acties"><button class="knop leeg" data-sk="vraag" data-titel="${esc(v ? v.titel : '')}">Vraag je coach</button></div></div></div>`;
+      <a class="knop sk-tpgroot" href="https://app.trainingpeaks.com/#calendar" target="_blank" rel="noopener">Bekijk je schema in TrainingPeaks</a>
+      <div class="sk-acties"><button class="knop leeg" data-sk="vraag" data-titel="">Vraag je coach</button></div></div>`;
   }
   if (s.status === 'klaar') {
     return `<div class="sk">${kop('Schema afgerond', 'Alle ' + s.weken + ' weken zitten erop. Knap gedaan.')}
       <div class="sk-dag"><p class="sk-rust">Wat nu? Bouw verder met een vervolgschema dat aansluit op waar je nu staat, of blijf Pro en houd je coach, de Core-app en je ritadvies.</p>
       <div class="sk-acties"><a class="knop" href="https://michelkredercoaching.nl/trainingsschema-vervolg/">Kies je vervolgschema</a>${isLid(d) && d.lid && d.lid.bron !== 'schema' ? '' : '<button class="knop leeg" data-actie="naarlid">Blijf Pro</button>'}</div></div></div>`;
   }
-  const kiesDag = SK.dag != null ? SK.dag : s.dagNr;
-  const dagInfo = s.weekDagen.find((x) => x.dag === kiesDag) || s.weekDagen.find((x) => x.vandaag);
-  const isVandaag = dagInfo && dagInfo.vandaag;
-  const cd = coreDagen(s, coreAantal(d)).map((x) => x.dag);
-  const strook = s.weekDagen.map((x) => `<button data-sk="dag" data-dag="${x.dag}" class="${x.trainingen.length ? 'tr' : ''}${x.vandaag ? ' nu' : ''}${x.dag === kiesDag ? ' kies' : ''}"><b>${x.dagnaam}</b><i></i>${cd.includes(x.dag) ? '<em class="sk-c">core</em>' : ''}</button>`).join('');
-  const coreRegel = cd.length ? `<div class="sk-coreregel">Core-dagen deze week: <b>${s.weekDagen.filter((x) => cd.includes(x.dag)).map((x) => x.dagnaam).join(' &middot; ')}</b>. Fiets je die dag, doe hem dan vlak voor je rit: dan ben je al omgekleed en warm.</div>` : '';
-  const inhoud = dagInfo && dagInfo.trainingen.length
-    ? dagInfo.trainingen.map((w, i) => skTraining(w, s.meet, dagInfo.dag + '-' + i)).join('')
-    : `<p class="sk-rust">${isVandaag ? 'Vandaag staat er niets op je schema. Rust is ook training: hier word je sterker.' : 'Rustdag.'}${isVandaag && s.volgende ? ` Volgende training: <b>${esc(s.volgende.titel)}</b>, ${s.volgende.overDagen === 1 ? 'morgen' : esc(datumKort(s.volgende.datum))}.` : ''}</p>`;
-  const titel = dagInfo && dagInfo.trainingen.length ? dagInfo.trainingen[0].titel : '';
-  return `<div class="sk">${kop('Week ' + s.week + ' van ' + s.weken, (s.weekUren ? s.weekUren.toString().replace('.', ',') + ' uur fietsen deze week' : '') + ' &middot; je traint in TrainingPeaks')}
-    <div class="sk-week">${strook}</div>${coreRegel}
-    <div class="sk-dag"><div class="sk-dagkop">${isVandaag ? 'Vandaag' : esc(datumKort(dagInfo.datum))}</div>${inhoud}
-      <div class="sk-acties">${cd.includes(dagInfo.dag) && d.core && d.core.link ? `<a class="knop" href="${esc(d.core.link)}">Doe je core-sessie</a>` : ''}<a class="knop leeg sk-tp" href="https://app.trainingpeaks.com/#calendar" target="_blank" rel="noopener">Bekijk in TrainingPeaks</a><button class="knop leeg" data-sk="vraag" data-titel="${esc(titel)}">Vraag je coach over ${titel ? 'deze training' : 'je schema'}</button></div>
-      <p class="sk-tpzin">Heeft Michel je schema voor jou aangepast, bijvoorbeeld na ziekte of een val? Dan staat je echte training in TrainingPeaks, en die geldt.</p></div>
-    <div class="sk-schuif"><span>Loopt je schema in TrainingPeaks anders?</span><span><button data-sk="schuif" data-r="-1">Ik loop een dag voor</button> &middot; <button data-sk="schuif" data-r="1">achter</button></span></div></div>`;
+  // Simpel (15-10-2026): TrainingPeaks is leidend, de app wijst ernaar.
+  const cd = coreDagen(s, coreAantal(d));
+  const coreRegel = cd.length ? `<div class="sk-coreregel">Core-dagen deze week: <b>${cd.map((x) => x.dagnaam).join(' &middot; ')}</b>. Fiets je die dag, doe hem dan vlak voor je rit: dan ben je al omgekleed en warm.</div>` : '';
+  const coreVandaag = cd.some((x) => x.vandaag) && d.core && d.core.link;
+  return `<div class="sk">${kop('Week ' + s.week + ' van ' + s.weken, (s.niveau ? esc(s.niveau) + ' &middot; ' : '') + 'je traint in TrainingPeaks')}
+    <a class="knop sk-tpgroot" href="https://app.trainingpeaks.com/#calendar" target="_blank" rel="noopener">Open je training in TrainingPeaks</a>
+    <p class="sk-tpzin">Daar staat altijd je actuele schema, ook als Michel het voor jou heeft aangepast.</p>
+    ${coreRegel}
+    <div class="sk-acties">${coreVandaag ? `<a class="knop" href="${esc(d.core.link)}">Doe je core-sessie</a>` : ''}<button class="knop leeg" data-sk="vraag" data-titel="">Vraag je coach over je schema</button></div></div>`;
 }
 async function skSchuif(r) {
   if (D && D.beheer && BEKIJK === 'zelf' && SIM.schema !== 'echt') return;
@@ -2942,7 +2926,7 @@ function schemaTegelSub(s) {
   if (s.status === 'voor') return 'Start ' + esc(datumKort(s.start));
   if (s.status === 'klaar') return 'Alle ' + s.weken + ' weken gedaan, kies je vervolg';
   const nu = (s.weekDagen || []).find((x) => x.vandaag);
-  return 'Week ' + s.week + ' &middot; ' + (nu && nu.trainingen.length ? 'vandaag: ' + esc(nu.trainingen[0].titel) : 'vandaag rust');
+  return 'Week ' + s.week + ' van ' + s.weken + ' &middot; open in TrainingPeaks';
 }
 // Hoe oud is de analyse? RAPDAT staat als "12 oktober 2026".
 const NL_MAANDEN = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
@@ -3454,9 +3438,7 @@ function vandaagHtml(d) {
   const s = d.schema, rijen = [];
   // Training
   if (s && s.status === 'loopt') {
-    const nu = s.weekDagen.find((x) => x.vandaag);
-    if (nu && nu.trainingen.length) rijen.push(vdRij('schema', 'Training &middot; week ' + s.week, esc(nu.trainingen.map((w) => w.titel).join(' + ')), { view: 'schema' }));
-    else rijen.push(vdRij('schema', 'Training &middot; week ' + s.week, 'Rust vandaag' + (s.volgende ? '. ' + (s.volgende.overDagen === 1 ? 'Morgen' : esc(datumKort(s.volgende.datum)).replace(/^./, (c) => c.toUpperCase())) + ': ' + esc(s.volgende.titel) : ''), { view: 'schema' }));
+    rijen.push(vdRij('schema', 'Training &middot; week ' + s.week + ' van ' + s.weken, 'Je training van vandaag staat in TrainingPeaks', { href: 'https://app.trainingpeaks.com/#calendar', extern: true }));
   } else if (s && s.status === 'voor') rijen.push(vdRij('schema', 'Training', 'Je schema start ' + esc(datumKort(s.start)), { view: 'schema' }));
   else if (s && s.status === 'klaar') rijen.push(vdRij('schema', 'Training', 'Schema afgerond. Kies je vervolg', { href: SITE + '/trainingsschema-vervolg/', extern: true }));
   else if (coaching) rijen.push(vdRij('schema', 'Training', 'Je trainingen staan in TrainingPeaks, open ze daar', { href: 'https://app.trainingpeaks.com/', extern: true }));
@@ -4619,19 +4601,12 @@ function rvGewendHtml() {
 // Eten vandaag (15-10-2026): eet naar het werk van vandaag. Soort dag uit je schema, anders kies je zelf.
 const DV_KEUZES = [['rust', 'Rustdag'], ['licht', 'Rustig'], ['matig', 'Duurrit'], ['zwaar', 'Hard'], ['lang', 'Lang']];
 function dvVandaagStr(plus) { const t = new Date(Date.now() + (plus || 0) * 864e5); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); }
-function dvSchema() {
-  const d = D && !D.gast ? zicht() : null, s = d && d.schema;
-  if (!s || s.status !== 'loopt' || !DV_LIB) return null;
-  const i = (s.weekDagen || []).findIndex((x) => x.vandaag); if (i < 0) return null;
-  const nu = s.weekDagen[i], mo = s.weekDagen[i + 1];
-  const morgenTr = mo ? mo.trainingen : s.volgende && s.volgende.overDagen === 1 ? [s.volgende] : [];
-  return { soort: DV_LIB.soortUitTraining(nu.trainingen), duur: nu.trainingen.reduce((t, w) => t + (Number(w.duur) || 0), 0), titel: nu.trainingen.map((w) => w.titel).join(' + '), morgen: morgenTr.length ? DV_LIB.soortUitTraining(morgenTr) : 'rust' };
-}
 function dagVoedingHtml() {
   if (!DV_LIB) return '<p class="klein">Even rekenen...</p>';
   const gewicht = SB.profiel && SB.profiel.gewicht;
   if (!gewicht) return '<p class="klein" style="margin-top:12px">Vul eerst je gewicht in bij je fiets (tabblad Banden), dan reken ik uit wat jij vandaag nodig hebt.</p>';
-  const k = sbKeuze(), vandaag = dvVandaagStr(0), sch = dvSchema(), kk = klKeuze();
+  // Geen trainingen uit het standaardplan (15-10-2026, TrainingPeaks is leidend): je kiest zelf je soort dag.
+  const k = sbKeuze(), vandaag = dvVandaagStr(0), sch = null, kk = klKeuze();
   const eigen = k.dvDag === vandaag && DV_LIB.DAG_SOORTEN[k.dvSoort] ? k.dvSoort : null;
   const soort = eigen || (sch ? sch.soort : kk.hard ? 'zwaar' : kk.duur >= 3 ? 'lang' : kk.duur <= 1 ? 'licht' : 'matig');
   const morgen = k.dvMorgenDag === vandaag ? (k.dvMorgen ? 'zwaar' : 'rust') : sch ? sch.morgen : null;
