@@ -2865,12 +2865,12 @@ function onderaanHtml(d) {
 // "Doe je core" met de reden, op jouw doel (besluit Michel 15-10-2026): gratis, lid en schema, niet coaching.
 // Eén keer per dag weg te tikken. Kracht gekozen of Core nog dicht: geen kaart.
 const CORE_WAAROM = {
-  evenement: (dl) => 'Voor ' + esc(dl.naam) + ': in de laatste uren geeft je romp het vaak eerder op dan je benen. Met een sterke romp houd je je vermogen vast tot de finish.',
-  sneller: () => 'Sneller worden zit niet alleen in je benen. Een stabiele romp zorgt dat je watts op de pedalen komen, in plaats van weg te lekken.',
+  evenement: (dl) => 'Voor ' + esc(dl.naam) + ': in de laatste uren geeft je romp het vaak eerder op dan je benen. Met een sterke romp blijf je stabiel en zonder rugpijn zitten tot de finish.',
+  sneller: () => 'Sneller worden doe je op de fiets. Je romp zorgt dat je stabiel blijft zitten als je hard trapt, en dat je rug het volhoudt als je meer gaat trainen.',
   afvallen: () => 'Je romp sterk houden terwijl je lichter wordt: zo blijf je stabiel op de fiets en voorkom je klachten.',
   fit: () => 'Een sterke romp voorkomt rug- en nekklachten, zodat je langer en met meer plezier blijft fietsen.'
 };
-function coreWaarom(d) { const dl = d.doel; return dl && !dl.klaar && CORE_WAAROM[dl.doel] ? CORE_WAAROM[dl.doel](dl) : 'Je benen duwen af tegen je romp. Is die stabiel, dan komt je kracht op de pedalen en blijft je rug heel op lange ritten.'; }
+function coreWaarom(d) { const dl = d.doel; return dl && !dl.klaar && CORE_WAAROM[dl.doel] ? CORE_WAAROM[dl.doel](dl) : 'Een sterke romp houdt je stabiel op het zadel en je rug heel op lange ritten.'; }
 function coreDoeHtml(d) {
   if (!d || d.gast || (d.lid && d.lid.bron === 'coaching') || binnenkortNu() || trainingsvorm(d) === 'kracht') return '';
   try { if (localStorage.getItem('mkcCoreDoeWeg') === new Date().toISOString().slice(0, 10)) return ''; } catch (e) {}
