@@ -1318,10 +1318,19 @@ async function routeOverzicht(req, res) {
   let uitnodigingen = []; try { uitnodigingen = ((uitn.ok && uitn.result && JSON.parse(uitn.result)) || []).slice(0, 30); } catch (e) {}
   let uitgenodigd = null; try { const u = uitg.ok && uitg.result ? JSON.parse(uitg.result) : null; if (u && !(lidmaatschap && lidmaatschap.betaaldOoit)) uitgenodigd = { naam: u.naam || '' }; } catch (e) {}
   const ledenAnalyse = lb.open && lb.bron !== 'coaching' && !lb.coaching ? (() => { const t = maakKortingToken(LEDEN_ANALYSE, 30); return t ? `https://rapport.michelkredercoaching.nl/?korting=${t}` : null; })() : null;
+  // Pro per jaar (besluit Michel 15-10-2026): één gratis Strava-analyse per betaald jaar. Eén link per
+  // looptijd (tot-datum), eenmalig te gebruiken (korting-token van €0, zie lib/korting.js).
+  let jaarAnalyse = null;
+  if (lb.open && lidmaatschap && lidmaatschap.plan === 'jaar' && lidmaatschap.betaaldOoit && !['schema', 'cadeau', 'coaching'].includes(lidmaatschap.bron) && !BEHEER.includes(email)) {
+    const k = `app:jaaranalyse:${email}:${String(lidmaatschap.tot || '').slice(0, 10)}`;
+    let t = await redis(['GET', k]); t = t.ok && t.result;
+    if (!t) { const nieuw = maakKortingToken(0, 365); if (nieuw) { const z = await redis(['SET', k, nieuw, 'NX', 'EX', String(400 * 86400)]); t = z.ok && z.result === 'OK' ? nieuw : ((await redis(['GET', k])).result || nieuw); } }
+    if (t) jaarAnalyse = `https://rapport.michelkredercoaching.nl/?korting=${t}`;
+  }
   const pushNu = await haalPush(email).catch(() => null);
   const palmares = await badgesBijwerken(email, { core, ritten, coachBerichten, doel, lidmaatschap, analyse, voornaam: (core && core.naam) || mf.FNAME || '', pushAan: !!(pushNu && pushNu.sub), profiel: bandenProfiel }).catch((e) => { console.error('badges', email, e && e.message); return { badges: [], medailles: 0, beloningen: [], nieuweBadges: [], nieuweBeloningen: [] }; });
   const badgeKorting = await redis(['GET', `app:badgekorting:${email}`]);
-  return res.status(200).json({ doel, ledenAnalyse, badges: palmares.badges, medailles: palmares.medailles, goud: palmares.goud, maandMedailles: palmares.maandMedailles, maand: palmares.maand, maandCollectie: palmares.maandCollectie, ranglijstOpen: palmares.ranglijstOpen, appReeks: palmares.appReeks, beloningen: palmares.beloningen, tegoedNieuw: palmares.tegoedNieuw || 0, vraagTegoed: await tegoedAantal(email), nieuweBadges: palmares.nieuweBadges, nieuweBeloningen: palmares.nieuweBeloningen, badgeKorting: Number(badgeKorting.ok && badgeKorting.result) || 0, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1), kracht: !!(ik.ok && ik.result === 1) }, 
+  return res.status(200).json({ doel, ledenAnalyse, jaarAnalyse, badges: palmares.badges, medailles: palmares.medailles, goud: palmares.goud, maandMedailles: palmares.maandMedailles, maand: palmares.maand, maandCollectie: palmares.maandCollectie, ranglijstOpen: palmares.ranglijstOpen, appReeks: palmares.appReeks, beloningen: palmares.beloningen, tegoedNieuw: palmares.tegoedNieuw || 0, vraagTegoed: await tegoedAantal(email), nieuweBadges: palmares.nieuweBadges, nieuweBeloningen: palmares.nieuweBeloningen, badgeKorting: Number(badgeKorting.ok && badgeKorting.result) || 0, review: reviewNu ? REVIEW_LINK : null, interesse: { afval: !!(ia.ok && ia.result === 1), pacing: !!(ip.ok && ip.result === 1), kracht: !!(ik.ok && ik.result === 1) }, 
     ok: true,
     email,
     beheer: BEHEER.includes(email),
