@@ -2301,7 +2301,7 @@ function schemaKaart(d) {
   const isVandaag = dagInfo && dagInfo.vandaag;
   const cd = coreDagen(s, coreAantal(d)).map((x) => x.dag);
   const strook = s.weekDagen.map((x) => `<button data-sk="dag" data-dag="${x.dag}" class="${x.trainingen.length ? 'tr' : ''}${x.vandaag ? ' nu' : ''}${x.dag === kiesDag ? ' kies' : ''}"><b>${x.dagnaam}</b><i></i>${cd.includes(x.dag) ? '<em class="sk-c">core</em>' : ''}</button>`).join('');
-  const coreRegel = cd.length ? `<div class="sk-coreregel">Core-dagen deze week: <b>${s.weekDagen.filter((x) => cd.includes(x.dag)).map((x) => x.dagnaam).join(' &middot; ')}</b>. Op een rustdag of rustige rit, en niet vlak voor je zware trainingen.</div>` : '';
+  const coreRegel = cd.length ? `<div class="sk-coreregel">Core-dagen deze week: <b>${s.weekDagen.filter((x) => cd.includes(x.dag)).map((x) => x.dagnaam).join(' &middot; ')}</b>. Fiets je die dag, doe hem dan vlak voor je rit: dan ben je al omgekleed en warm.</div>` : '';
   const inhoud = dagInfo && dagInfo.trainingen.length
     ? dagInfo.trainingen.map((w, i) => skTraining(w, s.meet, dagInfo.dag + '-' + i)).join('')
     : `<p class="sk-rust">${isVandaag ? 'Vandaag staat er niets op je schema. Rust is ook training: hier word je sterker.' : 'Rustdag.'}${isVandaag && s.volgende ? ` Volgende training: <b>${esc(s.volgende.titel)}</b>, ${s.volgende.overDagen === 1 ? 'morgen' : esc(datumKort(s.volgende.datum))}.` : ''}</p>`;

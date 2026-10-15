@@ -47,7 +47,7 @@ import { maakKortingToken } from '../lib/korting.js';
 import { BADGES, BELONINGEN, NIVEAUS, RANGLIJST_VANAF, RENNER, rennerOpen, badgeOverzicht, medailleTotaal, maandUitdaging, MAX_MEDAILLES } from '../lib/badges.js';
 import { OEFENINGEN } from '../lib/core.js';
 import { tel, overzicht as gebruikOverzicht, CLIENT_GEBEURTENISSEN, GAST_GEBEURTENISSEN } from '../lib/stat.js';
-import { COACH_KENNIS, COACH_REGELS, COACH_TOON } from '../lib/coach-kennis.js';
+import { COACH_KENNIS, COACH_PRAKTIJK, COACH_REGELS, COACH_TOON } from '../lib/coach-kennis.js';
 import { meldMedisch } from '../lib/meld-medisch.js';
 import { meld as meldActief, opruimen, wisPersoon } from '../lib/app-opruimen.js';
 import { ruimReeksenOp } from '../lib/reeks.js';
@@ -1807,7 +1807,7 @@ async function routeBandVraag(req, res) {
 // ===========================================================================
 const COACH_PER_DAG = 25;
 const COACH_MEDISCH = 'Dit ga ik niet op afstand beantwoorden, daar is je lijf te belangrijk voor. Stop met wat pijn doet en laat het checken door je huisarts of fysiotherapeut, zeker als het uitstraalt, je tintelingen voelt, het erger wordt of als het om je hart, ademhaling of duizeligheid gaat. Is dat in orde, dan denk ik graag mee over hoe je weer opbouwt.';
-const COACH_MEDISCH_WOORDEN = /(uit\s*stra+l|stra+l\w*\s+(het\s+)?(uit|door)|tintel|doof|gevoelloos|hernia|ischias|operatie|geopereerd|zwanger|scherpe pijn|stekende pijn|bloed|nachtelijke pijn|verlamd|krachtverlies|koorts|gebroken|breuk|pijn op (de|mijn) borst|borstpijn|hartklop|hartritme|duizel|flauw|benauwd|medicijn)/i;
+const COACH_MEDISCH_WOORDEN = /(uit\s*stra+l|stra+l\w*\s+(het\s+)?(uit|door)|tintel|doof|gevoelloos|hernia|ischias|operatie|geopereerd|zwanger|scherpe pijn|stekende pijn|bloed|nachtelijke pijn|verlamd|krachtverlies|koorts|gebroken|breuk|pijn op (de|mijn) borst|borstpijn|hartklop|hartritme|duizel|flauw|benauwd|medicijn|antibiotica)/i;
 const COACH_STORING = 'Ik kan je vraag nu even niet beantwoorden. Probeer het over een paar minuten nog eens.';
 
 async function haalCoachBerichten(email) {
@@ -1887,7 +1887,10 @@ async function routeCoach(req, res) {
         headers: { 'x-api-key': CLAUDE_KEY, 'anthropic-version': '2023-06-01', 'anthropic-beta': 'server-side-fallback-2026-07-01', 'content-type': 'application/json' },
         body: JSON.stringify({
           model: 'claude-opus-5-5', max_tokens: 3000, output_config: { effort: 'low' }, fallbacks: 'default',
-          system: `${COACH_KENNIS}\n\nOVER DEZE RENNER\n${context}\n\nREGELS\n${COACH_REGELS}${await voorbeeldenTekst('mkc-coach', tekst)}`,
+          system: [
+            { type: 'text', text: `${COACH_KENNIS}\n${COACH_PRAKTIJK}`, cache_control: { type: 'ephemeral' } },
+            { type: 'text', text: `OVER DEZE RENNER\n${context}\n\nREGELS\n${COACH_REGELS}${await voorbeeldenTekst('mkc-coach', tekst)}` }
+          ],
           messages: [...eerder, { role: 'user', content: tekst }]
         }),
         signal: AbortSignal.timeout(40000)
