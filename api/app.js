@@ -964,7 +964,7 @@ async function routeBeheerDash(req, res) {
   const pushLijst = await redis(['SMEMBERS', 'app:push:alle']);
   const zonder = (r) => ((r.ok && r.result) || []).filter((e) => !BEHEER.includes(e)).length;
   const tel = (leden && leden.tel) || {};
-  const [ritten, maten] = await Promise.all([dashRitten().catch(() => null), dashMaten().catch(() => null)]);
+  const [ritten, maten] = await Promise.all([dashRitten().catch((e) => ({ fout: String(e && e.message || e) })), dashMaten().catch((e) => ({ fout: String(e && e.message || e) }))]);
   return res.status(200).json({ ok: true, ritten, maten,
     accounts: Math.max(0, (Number(acc.result) || 0) - BEHEER.length), vandaag: zonder(vandaag), week: zonder(w7), maand: zonder(w30),
     betaald: (tel['betaald-maand'] || 0) + (tel['betaald-jaar'] || 0), maandLeden: tel['betaald-maand'] || 0, jaarLeden: tel['betaald-jaar'] || 0,
