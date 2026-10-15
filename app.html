@@ -144,6 +144,7 @@
   .gr-tip { margin:8px 0 4px; padding:8px 10px; border-left:3px solid rgba(255,107,26,.6); background:rgba(255,107,26,.06); } .gr-tip p { margin:0; line-height:1.45; }
   .plan-extra { margin:6px 0 10px; font-size:13px; font-weight:700; color:#7fe0a0; }
   .sb-voorbreedte { display:flex; align-items:center; gap:8px; margin:6px 0; font-size:13px; color:var(--muted); } .sb-voorbreedte select { flex:1; }
+  .sk-tpzin { margin:10px 0 0; font-size:12.5px; color:var(--muted); }
   .hklap { margin-top:12px; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
   .hklap > summary { list-style:none; cursor:pointer; display:flex; align-items:baseline; gap:10px; padding:13px 14px; } .hklap > summary::-webkit-details-marker { display:none; }
   .hklap > summary b { font-family:'Bebas Neue',sans-serif; font-size:19px; letter-spacing:.03em; font-weight:400; }
@@ -2321,7 +2322,8 @@ function schemaKaart(d) {
   return `<div class="sk">${kop('Week ' + s.week + ' van ' + s.weken, (s.weekUren ? s.weekUren.toString().replace('.', ',') + ' uur fietsen deze week' : '') + ' &middot; je traint in TrainingPeaks')}
     <div class="sk-week">${strook}</div>${coreRegel}
     <div class="sk-dag"><div class="sk-dagkop">${isVandaag ? 'Vandaag' : esc(datumKort(dagInfo.datum))}</div>${inhoud}
-      <div class="sk-acties">${cd.includes(dagInfo.dag) && d.core && d.core.link ? `<a class="knop" href="${esc(d.core.link)}">Doe je core-sessie</a>` : ''}<button class="knop leeg" data-sk="vraag" data-titel="${esc(titel)}">Vraag je coach over ${titel ? 'deze training' : 'je schema'}</button></div></div>
+      <div class="sk-acties">${cd.includes(dagInfo.dag) && d.core && d.core.link ? `<a class="knop" href="${esc(d.core.link)}">Doe je core-sessie</a>` : ''}<a class="knop leeg sk-tp" href="https://app.trainingpeaks.com/#calendar" target="_blank" rel="noopener">Bekijk in TrainingPeaks</a><button class="knop leeg" data-sk="vraag" data-titel="${esc(titel)}">Vraag je coach over ${titel ? 'deze training' : 'je schema'}</button></div>
+      <p class="sk-tpzin">Heeft Michel je schema voor jou aangepast, bijvoorbeeld na ziekte of een val? Dan staat je echte training in TrainingPeaks, en die geldt.</p></div>
     <div class="sk-schuif"><span>Loopt je schema in TrainingPeaks anders?</span><span><button data-sk="schuif" data-r="-1">Ik loop een dag voor</button> &middot; <button data-sk="schuif" data-r="1">achter</button></span></div></div>`;
 }
 async function skSchuif(r) {
