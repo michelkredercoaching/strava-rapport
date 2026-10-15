@@ -137,6 +137,7 @@
   .bh-knop { display:flex; align-items:center; gap:10px; width:100%; margin:0 0 12px; padding:10px 14px; background:var(--surface); border:1px dashed rgba(255,107,26,.5); border-radius:10px; color:inherit; font:inherit; text-align:left; cursor:pointer; } .bh-knop b { font-size:14px; } .bh-knop span { flex:1; min-width:0; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .bh-knop i { color:var(--accent); font-style:normal; font-size:20px; }
   .pm-tegoed { display:flex; gap:12px; align-items:center; margin:12px 0; padding:12px 14px; border:1px solid rgba(255,107,26,.45); background:rgba(255,107,26,.07); border-radius:12px; } .pm-tg-n { flex-shrink:0; width:42px; height:42px; border-radius:50%; background:#FF6B1A; color:#0A0A0A; font-family:'Bebas Neue',sans-serif; font-size:24px; display:flex; align-items:center; justify-content:center; } .pm-tegoed b { display:block; font-size:15px; } .pm-tegoed span { font-size:12.5px; color:var(--muted); line-height:1.45; }
   .md-tg { margin:10px 0; padding:8px 10px; border-radius:8px; background:rgba(255,107,26,.12); color:#FF6B1A; font-weight:700; font-size:13.5px; text-align:center; }
+  .core-doe .knop { display:inline-block; margin-top:4px; padding:10px 14px; font-size:14px; }
   .hklap { margin-top:12px; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
   .hklap > summary { list-style:none; cursor:pointer; display:flex; align-items:baseline; gap:10px; padding:13px 14px; } .hklap > summary::-webkit-details-marker { display:none; }
   .hklap > summary b { font-family:'Bebas Neue',sans-serif; font-size:19px; letter-spacing:.03em; font-weight:400; }
@@ -2857,12 +2858,34 @@ function onderaanHtml(d) {
   const doel = d.gast ? '' : `<div id="doelvak" class="onder-doel">${doelVakHtml(d)}</div>`;
   return lidT + doel + hklap('tipdicht', 'Tip van Michel', tipKop(d), tipHtml(d), false) + (eersteWeekHtml(d) ? '' : bk);
 }
+// "Doe je core" met de reden, op jouw doel (besluit Michel 15-10-2026): gratis, lid en schema, niet coaching.
+// Eén keer per dag weg te tikken. Kracht gekozen of Core nog dicht: geen kaart.
+const CORE_WAAROM = {
+  evenement: (dl) => 'Voor ' + esc(dl.naam) + ': in de laatste uren geeft je romp het vaak eerder op dan je benen. Met een sterke romp houd je je vermogen vast tot de finish.',
+  sneller: () => 'Sneller worden zit niet alleen in je benen. Een stabiele romp zorgt dat je watts op de pedalen komen, in plaats van weg te lekken.',
+  afvallen: () => 'Je romp sterk houden terwijl je lichter wordt: zo blijf je stabiel op de fiets en voorkom je klachten.',
+  fit: () => 'Een sterke romp voorkomt rug- en nekklachten, zodat je langer en met meer plezier blijft fietsen.'
+};
+function coreWaarom(d) { const dl = d.doel; return dl && !dl.klaar && CORE_WAAROM[dl.doel] ? CORE_WAAROM[dl.doel](dl) : 'Je benen duwen af tegen je romp. Is die stabiel, dan komt je kracht op de pedalen en blijft je rug heel op lange ritten.'; }
+function coreDoeHtml(d) {
+  if (!d || d.gast || (d.lid && d.lid.bron === 'coaching') || binnenkortNu() || trainingsvorm(d) === 'kracht') return '';
+  try { if (localStorage.getItem('mkcCoreDoeWeg') === new Date().toISOString().slice(0, 10)) return ''; } catch (e) {}
+  const c = d.core, weg = '<button type="button" class="welkom-x" data-actie="coredoeweg" aria-label="Vandaag niet">&times;</button>';
+  const kaart = (kop, knop) => `<div class="an-coach an-nudge core-doe">${weg}<b>${kop}</b><span>${coreWaarom(d)}</span>${knop}</div>`;
+  if (!c) return kaart('Begin met je core', '<button type="button" data-actie="startcore">Start je gratis Core-week</button>');
+  if (c.nogDicht || c.opSlot || c.klaar) return '';
+  if (c.intakeNodig) return kaart('Doe je core-intake, 1 minuut', `<a class="knop" href="${esc(c.link)}#vandaag">Start je intake</a>`);
+  if (!c.volgende || c.vandaagGedaan) return '';
+  const s = d.schema; if (s && s.status === 'loopt') { const cd = coreDagen(s, coreAantal(d)); if (cd.length && !cd.some((x) => x.vandaag)) return ''; }
+  return kaart('Doe je core vandaag &middot; ' + c.volgende.minuten + ' min', `<a class="knop" href="${esc(c.link)}#vandaag">Start ${esc(c.volgende.naam)}</a>`);
+}
+document.addEventListener('click', (e) => { const k = e.target.closest('[data-actie="coredoeweg"]'); if (!k) return; e.preventDefault(); try { localStorage.setItem('mkcCoreDoeWeg', new Date().toISOString().slice(0, 10)); } catch (er) {} k.closest('.core-doe')?.remove(); });
 // Eén volgende stap tegelijk: de eerste die nu van toepassing is.
 function stapHtml(d) {
   if (!d || d.gast) return '';
   const ew = eersteWeekHtml(d); if (ew) return ew;
   const sl = startlijstHtml(d); if (sl) return `<div id="startlijst">${sl}</div>`;
-  const opties = [() => schemaEindeHtml(d), () => reviewHtml(d), () => krachtNieuwHtml(d), () => analyseNudgeHtml(d),
+  const opties = [() => schemaEindeHtml(d), () => coreDoeHtml(d), () => reviewHtml(d), () => krachtNieuwHtml(d), () => analyseNudgeHtml(d),
     () => { const m = meldVraagHtml(); return m && m.trim() ? `<div id="meldvraag">${m}</div>` : ''; }];
   if (!rustigBegin(d)) opties.push(() => verkoopMomentHtml(d), () => routeHtml(d) || volgendeStapHtml(d), () => vriendMomentHtml(d), () => appHtml() || '');
   for (const f of opties) { const h = f(); if (h && String(h).trim()) return h; }
