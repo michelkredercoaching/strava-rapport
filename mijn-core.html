@@ -372,6 +372,7 @@
   .muurkaart li::before { content:''; position:absolute; left:0; top:8px; width:5px; height:5px; border-radius:50%; background:var(--accent); }
   @media (max-width:560px) { .test { grid-template-columns:72px 1fr; } .test .testknoppen { grid-column:1 / -1; } .badges { grid-template-columns:repeat(2,1fr); } }
   .vg-deel { background:transparent !important; border:1.5px solid var(--accent, #FF6B1A) !important; color:var(--accent, #FF6B1A) !important; }
+  .sk { display:grid; gap:6px; } .sk-rij { display:grid; grid-template-columns:78px 1fr 40px; align-items:center; gap:8px; font-size:13px; } .sk-balk { height:8px; border-radius:4px; background:rgba(255,255,255,.08); overflow:hidden; } .sk-balk span { display:block; height:100%; background:#7fe0a0; } .sk-rij.zwak .sk-balk span { background:#FF6B1A; } .sk-rij.zwak b { color:#FF6B1A; } .sk-rij small { text-align:right; color:var(--muted, #999); }
 </style>
 </head>
 <body>
@@ -759,6 +760,14 @@ function lijnGrafiek(series, opts) {
   }
   return s + '</svg>';
 }
+// Zwakste schakel (15-10-2026): hoe je rompdelen zich tot elkaar verhouden, als % van de richtwaarde.
+function schakelHtml(d) {
+  const s = d.schakel; if (!s || !s.pct) return '';
+  const NAAM = { voorkant: 'Voorkant', zijkant: 'Zijkant', bil: 'Bil', rug: 'Rug' };
+  const balk = (k) => `<div class="sk-rij${s.zwak && s.zwak.deel === k ? ' zwak' : ''}"><b>${NAAM[k]}</b><div class="sk-balk"><span style="width:${s.pct[k]}%"></span></div><small>${s.pct[k]}%</small></div>`;
+  const tekst = s.zwak ? `Je ${esc(s.zwak.naam)} is je zwakste schakel: ${s.zwak.pct}% van de richtwaarde, de rest gemiddeld ${s.zwak.rest}%. Tot je volgende test werk je in die oefeningen 5 seconden langer.` : 'Je romp is mooi in balans: geen deel blijft ver achter.';
+  return `<h3 style="margin:22px 0 6px;font-size:15px">Je romp in verhouding <span class="muted klein" style="font-weight:400">(% van de richtwaarde)</span></h3><div class="sk">${Object.keys(NAAM).map(balk).join('')}</div><p class="klein" style="margin-top:6px">${tekst}</p>`;
+}
 // Disbalans-meter: het verschil links/rechts per romptest, met wat de app eraan doet.
 function disbalansHtml(d) {
   const v = (d.disbalansVerloop || []).filter((x) => x.punten.some((p) => p.pct > 10) || x.punten.length > 1);
@@ -858,7 +867,7 @@ function voortgangHtml(d) {
     <div class="weeklabels">${[...Array(12)].map((_, i) => `<div>${(d.blokStart || 0) + i + 1}</div>`).join('')}</div>
     <div class="badges">${d.badges.map((b) => `<div class="badge ${b.verdiend ? 'aan' : ''}" title="${esc(b.tekst)}"><div class="ic">${b.fase}</div><div class="nm">${esc(b.naam)}</div><div class="klein muted">${b.verdiend ? 'Verdiend' : 'Niveau ' + b.fase * 3}</div></div>`).join('')}</div>
     ${d.tests.length ? `<h3 style="margin:22px 0 6px;font-size:15px">Rompscore</h3><div class="grafiek">${lijnGrafiek([{ kleur: '#FF6B1A', punten: d.tests.map((t) => ({ x: t.moment, y: t.score })) }], { max: 100, raster: [0, 50, 100] })}</div>
-      ${disbalansHtml(d)}` : ''}
+      ${schakelHtml(d)}${disbalansHtml(d)}` : ''}
     ${d.meters.length ? `<h3 style="margin:22px 0 6px;font-size:15px">Klachten op de fiets <span class="muted klein" style="font-weight:400">(lager is beter)</span></h3><div class="grafiek">${lijnGrafiek([
         { kleur: '#FF6B1A', punten: d.meters.map((m) => ({ x: m.moment, y: m.onderrug })) },
         { kleur: '#8ab4ff', punten: d.meters.map((m) => ({ x: m.moment, y: m.nek })) }], { max: 10, raster: [0, 5, 10] })}</div>
@@ -1533,10 +1542,10 @@ function bouwStappen(s) {
       if (o.perKant) {
         // Disbalans: de zwakke kant gaat eerst en werkt een paar seconden langer.
         const eerst = o.zwak || 'Links', dan = eerst === 'Links' ? 'Rechts' : 'Links';
-        st.push({ soort: 'werk', ...extra, sec: s.werk + (o.zwak ? o.extra : 0), kant: o.zwak ? eerst + ' · zwakke kant, ' + o.extra + ' s extra' : eerst });
+        st.push({ soort: 'werk', ...extra, sec: s.werk + (o.extraWerk || 0) + (o.zwak ? o.extra : 0), kant: o.zwak ? eerst + ' · zwakke kant, ' + o.extra + ' s extra' : eerst });
         st.push({ soort: 'wissel', ...extra, sec: 5, kant: 'Wissel naar ' + dan.toLowerCase() });
-        st.push({ soort: 'werk', ...extra, sec: s.werk, kant: dan });
-      } else st.push({ soort: 'werk', ...extra, sec: s.werk });
+        st.push({ soort: 'werk', ...extra, sec: s.werk + (o.extraWerk || 0), kant: dan });
+      } else st.push({ soort: 'werk', ...extra, sec: s.werk + (o.extraWerk || 0) });
       const laatste = r === s.rondes && i === s.oefeningen.length - 1;
       if (!laatste) {
         const volgende = s.oefeningen[(i + 1) % s.oefeningen.length];

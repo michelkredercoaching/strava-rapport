@@ -41,7 +41,7 @@ import {
   maakPlan, sessie, heeftRodeVlag, KLACHTEN, OEFENINGEN, TESTS, rompscore, balans,
   volgendeWeek, testNodig, meterNodig, verdiendeBadges, BADGES,
   WEEKTIPS, besteStart, FASES, WEKEN as WEEKTABEL, letters, nodigVoorWeek, frequentie, startniveau,
-  weekRij, blokVan, BLOK_WEKEN, BLOKTIPS, disbalansUit, weekInBlok,
+  weekRij, blokVan, BLOK_WEKEN, BLOKTIPS, disbalansUit, weekInBlok, zwakkeSchakel,
   DISCIPLINES, disciplineVan, doelModus, MODUS_UITLEG, FASE_UITLEG, FIETSTIPS, extraSessie,
   BEPERKINGEN, vervangerKeuze
 } from '../lib/core.js';
@@ -448,7 +448,7 @@ async function metToken(req, res) {
 function planIntake(d) {
   const start = (d.tests || []).find((t) => t.moment === 0);
   const laatste = (d.tests || []).filter((t) => t.uitslag).slice(-1)[0];
-  return { ...(d.intake || {}), verlicht: !!d.verlicht, bijstel: d.bijstel || 0, startScore: start ? start.score : null, disbalans: laatste ? disbalansUit(laatste.uitslag) : null,
+  return { ...(d.intake || {}), verlicht: !!d.verlicht, bijstel: d.bijstel || 0, startScore: start ? start.score : null, disbalans: laatste ? disbalansUit(laatste.uitslag) : null, zwakst: laatste ? ((zwakkeSchakel(laatste.uitslag) || {}).zwak || null) : null,
     discipline: soortVan(d), doelModus: modusVan(d), bevrorenWeek: d.bevroren || null, vervang: d.vervang || {} };
 }
 // Periodisering (12-10-2026)
@@ -522,6 +522,7 @@ function klantBeeld(d) {
     kracht: d.intake ? (d.intake.kracht || null) : null,
     // Disbalans-meter: per paar het verschil bij elke romptest.
     disbalans: intake.disbalans || null,
+    schakel: (() => { const l = tests.filter((t) => t.uitslag).slice(-1)[0]; return l ? zwakkeSchakel(l.uitslag) : null; })(),
     disbalansVerloop: ['Zijkant', 'Bil'].map((naam) => ({ naam, punten: tests.map((t) => { const b = (t.balans || []).find((x) => x.naam === naam); return b ? { moment: t.moment, pct: b.pct, zwakker: b.zwakker } : null; }).filter(Boolean) })).filter((x) => x.punten.length),
     intakeNodig: !d.intake, geblokkeerd,
     week, afgerond: d.afgerond, fase: weekRij(week).fase, faseNaam: FASES[weekRij(week).fase],
