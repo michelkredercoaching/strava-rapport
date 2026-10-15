@@ -978,34 +978,51 @@ async function scanAlles(patroon) {
   do { const r = await redis(['SCAN', cursor, 'MATCH', patroon, 'COUNT', '500']); if (!r.ok || !Array.isArray(r.result)) break; cursor = String(r.result[0]); keys.push(...r.result[1]); } while (cursor !== '0' && ++n < 60);
   return keys;
 }
+async function dashNaam(email) {
+  const a = await redis(['GET', `app:naam:${email}`]); if (a.ok && a.result) return a.result;
+  const core = await coreVoorEmail(email).catch(() => null); if (core && core.naam) return core.naam;
+  const l = await haalLid(email).catch(() => null); if (l && l.naam) return l.naam;
+  const mc = await mcLid(email).catch(() => null); return (mc && mc.merge_fields && mc.merge_fields.FNAME) || '';
+}
 async function dashRitten() {
   const nlDag = (t) => new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
   const dagKeys = Array.from({ length: 120 }, (_, i) => `stat:${nlDag(Date.now() - i * 864e5)}:groepsrit-maak`);
   const r = await redis(['MGET', ...dagKeys]);
   const per = ((r.ok && r.result) || []).map((x) => Number(x) || 0);
   const ids = (await scanAlles('groepsrit:*')).filter((k) => /^groepsrit:[A-Za-z0-9]{8}$/.test(k));
-  let komen = 0, meeTotaal = 0;
+  let komen = 0, meeTotaal = 0, lijst = [];
   if (ids.length) {
     const g = await redis(['MGET', ...ids]);
     const ritten = ((g.ok && g.result) || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter((x) => x && !BEHEER.includes(x.maker));
     const nog = ritten.filter((x) => x.start > Date.now());
     komen = nog.length;
-    for (const x of nog) { const m = await redis(['SCARD', `groepsrit:${x.id}:mee`]); meeTotaal += Number(m.result) || 0; }
+    for (const x of ritten) { const m = await redis(['SCARD', `groepsrit:${x.id}:mee`]); x.mee = Number(m.result) || 0; if (x.start > Date.now()) meeTotaal += x.mee; }
+    // Wie plande er (15-10-2026): de ritten die nog in Redis staan (komende en tot 3 dagen terug).
+    lijst = ritten.sort((a, b) => b.start - a.start).slice(0, 40).map((x) => ({ naam: x.naam, door: x.door || '', maker: x.maker, start: x.start, plaats: (x.plaats && x.plaats.naam) || '', mee: x.mee, nog: x.start > Date.now() }));
   }
-  return { totaal: per.reduce((t, x) => t + x, 0), week: per.slice(0, 7).reduce((t, x) => t + x, 0), komen, mee: meeTotaal };
+  // Iedereen die ooit plande (dagsets van 120 dagen), met op hoeveel dagen.
+  const u = await Promise.all(dagKeys.map((k) => redis(['SMEMBERS', k + ':u'])));
+  const makers = {};
+  for (const r2 of u) for (const e of (r2.ok && r2.result) || []) makers[e] = (makers[e] || 0) + 1;
+  return { totaal: per.reduce((t, x) => t + x, 0), week: per.slice(0, 7).reduce((t, x) => t + x, 0), komen, mee: meeTotaal, lijst,
+    makers: (await Promise.all(Object.entries(makers).sort((a, b) => b[1] - a[1]).slice(0, 50).map(async ([email, dagen]) => ({ email, dagen, naam: await dashNaam(email), ritten: Number((await redis(['HGET', `app:teller:${email}`, 'groepsritten'])).result) || dagen })))).sort((a, b) => b.ritten - a.ritten) };
 }
 // Maten-link (15-10-2026): wie zijn link deelde (vanaf nu geteld bij WhatsApp, delen en story) plus
 // iedereen met een uitnodiging in zijn lijst (ook van voor het tellen), en hoe ver die maten kwamen.
 async function dashMaten() {
   const keys = (await scanAlles('lid:uitnodigingen:*')).filter((k) => !BEHEER.includes(k.slice('lid:uitnodigingen:'.length)));
-  const mensen = new Set(), st = { verstuurd: 0, account: 0, lid: 0 };
+  const mensen = new Set(), st = { verstuurd: 0, account: 0, lid: 0 }, perMens = {};
   if (keys.length) {
     const r = await redis(['MGET', ...keys]);
-    ((r.ok && r.result) || []).forEach((x, i) => { let l = []; try { l = JSON.parse(x) || []; } catch (e) {} if (l.length) mensen.add(keys[i].slice('lid:uitnodigingen:'.length)); for (const u of l) st[u.status in st ? u.status : 'verstuurd']++; });
+    ((r.ok && r.result) || []).forEach((x, i) => { let l = []; try { l = JSON.parse(x) || []; } catch (e) {} const e = keys[i].slice('lid:uitnodigingen:'.length); if (l.length) { mensen.add(e); perMens[e] = l.map((u) => ({ naam: u.naam || 'Een maat', status: u.status || 'verstuurd' })); } for (const u of l) st[u.status in st ? u.status : 'verstuurd']++; });
   }
   const [gedeeld, keer] = await Promise.all([redis(['SMEMBERS', 'app:maatdeel:mensen']), redis(['GET', 'app:maatdeel:keer'])]);
   for (const e of (gedeeld.ok && gedeeld.result) || []) if (!BEHEER.includes(e)) mensen.add(e);
-  return { mensen: mensen.size, keer: Number(keer.result) || 0, uitnodigingen: st.verstuurd + st.account + st.lid, account: st.account + st.lid, pro: st.lid };
+  // Wie deelden (15-10-2026): naam, en wie ze uitnodigden met hoe ver die kwamen.
+  const per = await redis(['HGETALL', 'app:maatdeel:per']); const perKeer = {}; const pr = (per.ok && per.result) || []; if (Array.isArray(pr)) for (let i = 0; i < pr.length; i += 2) perKeer[pr[i]] = Number(pr[i + 1]) || 0; else Object.assign(perKeer, pr);
+  const lijst = await Promise.all([...mensen].slice(0, 80).map(async (email) => ({ email, naam: await dashNaam(email), maten: perMens[email] || [], keer: perKeer[email] || 0 })));
+  lijst.sort((a, b) => b.keer - a.keer || b.maten.length - a.maten.length);
+  return { mensen: mensen.size, keer: Number(keer.result) || 0, uitnodigingen: st.verstuurd + st.account + st.lid, account: st.account + st.lid, pro: st.lid, lijst };
 }
 async function routeAankondig(req, res) {
   const body = req.method === 'POST' ? await leesBody(req) : {};
