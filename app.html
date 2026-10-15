@@ -2312,20 +2312,7 @@ function schemaKaart(d) {
       <div class="sk-acties"><a class="knop" href="https://michelkredercoaching.nl/trainingsschema-vervolg/">Kies je vervolgschema</a>${isLid(d) && d.lid && d.lid.bron !== 'schema' ? '' : '<button class="knop leeg" data-actie="naarlid">Blijf Pro</button>'}</div></div></div>`;
   }
   // Simpel (15-10-2026): TrainingPeaks is leidend, de app wijst ernaar. Core als eigen blok met knop.
-  const cd = coreDagen(s, coreAantal(d));
-  const c = d.core;
-  let coreBlok = '';
-  if (c && c.link && !c.opSlot && !c.nogDicht) {
-    const vandaag = cd.some((x) => x.vandaag);
-    const chips = s.weekDagen.map((x) => `<span class="skc-dag${cd.includes(x) ? ' aan' : ''}${x.vandaag ? ' nu' : ''}">${x.dagnaam}</span>`).join('');
-    const knop = c.intakeNodig ? 'Start je intake, 1 minuut' : vandaag && !c.vandaagGedaan ? 'Doe je core van vandaag' : 'Open de Core-app';
-    const zin = c.intakeNodig ? 'Na je intake van een minuut plant de app je core-dagen rond dit schema.'
-      : vandaag ? (c.vandaagGedaan ? 'Je core van vandaag zit erop. Mooi.' : 'Vandaag is een core-dag. Fiets je ook? Doe hem dan vlak voor je rit, dan ben je al warm.')
-      : 'Fiets je op een core-dag, doe hem dan vlak voor je rit: dan ben je al omgekleed en warm.';
-    coreBlok = `<div class="skc"><div class="skc-kop"><span class="skc-ic">${IC.core}</span><div><b>Core deze week</b><span>${c.intakeNodig ? 'nog niet gestart' : cd.length + ' keer, rond je schema'}</span></div></div>
-      ${c.intakeNodig ? '' : `<div class="skc-dagen">${chips}</div>`}<p class="skc-zin">${zin}</p>
-      <a class="knop skc-knop" href="${esc(c.link)}${c.intakeNodig || vandaag ? '#vandaag' : ''}">${knop}</a></div>`;
-  }
+  const coreBlok = coreBlokHtml(d, s);
   return `<div class="sk">${kop('Week ' + s.week + ' van ' + s.weken, (s.niveau ? esc(s.niveau) + ' &middot; ' : '') + 'je traint in TrainingPeaks')}
     <div class="sk-dag"><a class="knop sk-tpgroot" href="https://app.trainingpeaks.com/#calendar" target="_blank" rel="noopener">Open je training in TrainingPeaks</a>
     <p class="sk-tpzin">Daar staat altijd je actuele schema, ook als Michel het voor jou heeft aangepast.</p>
@@ -3219,6 +3206,22 @@ function tpUitlegHtml(d) {
 }
 // Coachingpagina (14-10-2026, na vragen van Daan en Ilse): alles over app + TrainingPeaks op één plek, en vooral: benader me gewoon.
 const TP_IOS = 'https://apps.apple.com/nl/app/trainingpeaks-plan-train-lift/id408047715', TP_ANDROID = 'https://play.google.com/store/apps/details?id=com.peaksware.trainingpeaks';
+// Core-blok (15-10-2026): op Mijn schema en Jouw coaching. Met schema ook de dagstrook.
+function coreBlokHtml(d, s) {
+  const c = d && d.core;
+  if (!c || !c.link || c.opSlot || c.nogDicht) return '';
+  const cd = s && s.weekDagen ? coreDagen(s, coreAantal(d)) : [];
+  const vandaag = cd.some((x) => x.vandaag);
+  const chips = cd.length ? s.weekDagen.map((x) => `<span class="skc-dag${cd.includes(x) ? ' aan' : ''}${x.vandaag ? ' nu' : ''}">${x.dagnaam}</span>`).join('') : '';
+  const knop = c.intakeNodig ? 'Start je intake, 1 minuut' : vandaag && !c.vandaagGedaan ? 'Doe je core van vandaag' : 'Open de Core-app';
+  const zin = c.intakeNodig ? (s ? 'Na je intake van een minuut plant de app je core-dagen rond dit schema.' : 'Na je intake van een minuut weet de app je niveau en stemt hij je sessies af op je doel.')
+    : vandaag ? (c.vandaagGedaan ? 'Je core van vandaag zit erop. Mooi.' : 'Vandaag is een core-dag. Fiets je ook? Doe hem dan vlak voor je rit, dan ben je al warm.')
+    : 'Fiets je op een core-dag, doe hem dan vlak voor je rit: dan ben je al omgekleed en warm.';
+  const sub = c.intakeNodig ? 'nog niet gestart' : cd.length ? cd.length + ' keer, rond je schema' : (c.frequentie || 3) + ' keer per week';
+  return `<div class="skc"><div class="skc-kop"><span class="skc-ic">${IC.core}</span><div><b>Core deze week</b><span>${sub}</span></div></div>
+      ${chips ? `<div class="skc-dagen">${chips}</div>` : ''}<p class="skc-zin">${zin}</p>
+      <a class="knop skc-knop" href="${esc(c.link)}${c.intakeNodig || vandaag ? '#vandaag' : ''}">${knop}</a></div>`;
+}
 function coachingPaginaHtml(d) {
   const vn = esc(String((d && d.naam) || '').trim().split(' ')[0]);
   const ua = navigator.userAgent || '', ios = /iPhone|iPad|iPod/.test(ua), android = /Android/.test(ua);
@@ -3227,6 +3230,10 @@ function coachingPaginaHtml(d) {
   const vraag = (v, a) => `<details class="cp-vraag"><summary>${v}</summary><p>${a}</p></details>`;
   const winkel = ios ? `<a class="knop" href="${TP_IOS}" target="_blank" rel="noopener">Download voor iPhone</a>` : android ? `<a class="knop" href="${TP_ANDROID}" target="_blank" rel="noopener">Download voor Android</a>` : `<a class="knop" href="${TP_IOS}" target="_blank" rel="noopener">iPhone</a><a class="knop" href="${TP_ANDROID}" target="_blank" rel="noopener">Android</a>`;
   return `<div class="kaarten cp">
+    <div class="sk"><div class="sk-kop"><div class="label">Jouw coaching</div><h2>Je plan staat in TrainingPeaks</h2><div class="sk-sub">Daar zet ik je trainingen klaar en stuur ik bij</div></div>
+      <div class="sk-dag"><a class="knop sk-tpgroot" href="https://app.trainingpeaks.com/#calendar" target="_blank" rel="noopener">Open je training in TrainingPeaks</a>
+      <p class="sk-tpzin">Daar staat altijd je actuele plan, ook als ik het deze week voor je heb aangepast.</p>
+      ${coreBlokHtml(d, null)}</div></div>
     <div class="kaart actief cp-michel"><div class="kaart-in">
       <h2>Is er iets? Benader me gewoon${vn ? ', ' + vn : ''}</h2>
       <p>Daar is coaching voor. Een vraag over je training, je voelt je niet fit, je week loopt anders dan gepland of je twijfelt ergens over: stuur me een bericht. Liever te vroeg dan te laat, dan pas ik je planning op tijd aan.</p>
@@ -3234,15 +3241,13 @@ function coachingPaginaHtml(d) {
     </div></div>
     <div class="kaart"><div class="kaart-in">
       <h2>Waar vind je wat</h2>
-      ${plek('schema', 'Je trainingen in TrainingPeaks', 'Daar zet ik ze klaar en stuur ik bij op wat je rijdt en hoe je je voelt.', { href: 'https://app.trainingpeaks.com/', extern: true })}
-      ${plek('core', 'Je core in de Core-app', 'Korte sessies thuis op de timer, op jouw niveau. Je Rompscore laat zien dat je sterker wordt.', d && d.core && d.core.link ? { href: d.core.link + '#vandaag' } : { view: 'core' })}
       ${plek('rijden', 'Bandenspanning en je rit', 'Je bandenspanning, kleding, voeding en de wind voor de rit van vandaag.', { view: 'rijden' })}
       ${plek('coach', 'Snelle vraag aan je coach', 'Over voeding, materiaal of herstel, ook om 23:00. Gaat het over je planning of hoe je je voelt, dan liever direct naar mij.', { view: 'coach' })}
       ${plek('palmares', 'Je medailles en de ranglijst', 'Wat je doet levert medailles en beloningen op, en een wielren-avatar op de ranglijst.', { view: 'palmares' })}
     </div></div>
     <div class="kaart"><div class="kaart-in">
       <h2>De TrainingPeaks-app</h2>
-      <p>Met de app op je telefoon open je je schema met één tik in TrainingPeaks, en heb je je coach en je ritadvies altijd bij de hand.</p>
+      <p>Met de TrainingPeaks-app op je telefoon zie je je training van vandaag meteen, en kun je na je rit laten weten hoe het ging. Dat lees ik.</p>
       <div class="cp-knoppen">${winkel}</div>
       <p class="klein">Tip: koppel in TrainingPeaks je Garmin, Wahoo of Zwift. Dan staan je trainingen vanzelf op je teller en komen je ritten automatisch binnen.</p>
     </div></div>
