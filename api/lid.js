@@ -535,10 +535,10 @@ async function beloonVriend(code, maatEmail, maatNaam, meteenBevestigd = false) 
     if (lid.vriendJaar !== jaar) { lid.vriendJaar = jaar; lid.vriendBeloningen = 0; }
     if ((lid.vriendBeloningen || 0) < VRIEND_MAX) {
       const zin = await vriendTijdErbij(lid, email, { dagen: VRIEND_DAGEN }, '2 weken extra');
-      if (zin) { lid.vriendBeloningen = (lid.vriendBeloningen || 0) + 1; lid.vriendDagen = (lid.vriendDagen || 0) + VRIEND_DAGEN; meldingen.push({ titel: lid.vriendCadeau ? '2 weken gratis lid' : '2 weken extra voor jou', tekst: `${vn} is lid geworden via jouw link. Je krijgt 2 weken ${lid.vriendCadeau ? 'gratis lid, met alles erop en eraan' : 'extra'}: ${zin}.` }); }
+      if (zin) { lid.vriendBeloningen = (lid.vriendBeloningen || 0) + 1; lid.vriendDagen = (lid.vriendDagen || 0) + VRIEND_DAGEN; meldingen.push({ titel: lid.vriendCadeau ? '2 weken gratis Pro' : '2 weken extra voor jou', tekst: `${vn} heeft nu Pro via jouw link. Je krijgt 2 weken ${lid.vriendCadeau ? 'gratis Pro, met alles erop en eraan' : 'extra'}: ${zin}.` }); }
     }
   }
-  if (!meldingen.length) meldingen.push({ titel: vn + ' is lid geworden', tekst: `${vn} is lid geworden via jouw link en kreeg korting op Pro. Bedankt voor het delen!` });
+  if (!meldingen.length) meldingen.push({ titel: vn + ' heeft nu Pro', tekst: `${vn} nam Pro via jouw link en kreeg korting. Bedankt voor het delen!` });
   await vriendMijlpalen(lid, email, meldingen);
   await bewaarLid(email, lid);
   { const ug = await redis(['GET', `lid:uitgenodigd:${maatEmail}`]); let u = ''; try { u = (ug.ok && ug.result && JSON.parse(ug.result).u) || ''; } catch (e) {} await uitnStatus(email, { u, naam: vn, status: 'lid' }); }

@@ -1660,7 +1660,7 @@ function analyseKaart(a) {
     <p class="klein" style="margin:12px 0 6px">Zo ziet je uitslag eruit (voorbeeld):</p>
     <div class="cijfers"><div class="cijfer"><span>FTP</span><b>241</b></div><div class="cijfer"><span>W/kg</span><b>3,4</b></div><div class="cijfer"><span>Type</span><b>Klimmer</b></div></div>
     <p class="klein" style="margin:8px 0 14px">Plus je zones, je sterke en zwakke punten en een persoonlijk plan wat je nu moet trainen.</p>
-    <a class="knop" href="${analyseKoop()}">${analysePrijs() === 0 ? 'Doe je gratis Strava-analyse' : 'Doe je Strava-analyse voor &euro;' + analysePrijs()}</a><p class="klein">${lp ? 'Pro-prijs, normaal &euro;29. ' : ''}Eenmalig, werkt met vermogen en met hartslag. Je uitslag komt daarna ook in je app.${!lp && D && !D.gast && kanLidNu(zicht()) ? ' Lid van de MKC-app? Dan betaal je &euro;' + LEDEN.analyse + '.' : ''}</p></div></div>`;
+    <a class="knop" href="${analyseKoop()}">${analysePrijs() === 0 ? 'Doe je gratis Strava-analyse' : 'Doe je Strava-analyse voor &euro;' + analysePrijs()}</a><p class="klein">${lp ? 'Pro-prijs, normaal &euro;29. ' : ''}Eenmalig, werkt met vermogen en met hartslag. Je uitslag komt daarna ook in je app.${!lp && D && !D.gast && kanLidNu(zicht()) ? ' Heb je MKC Pro? Dan betaal je &euro;' + LEDEN.analyse + '.' : ''}</p></div></div>`;
 }
 
 function pacingKaart() {
@@ -1720,13 +1720,13 @@ function bandenKaart(d) {
   if (vtab === 'groep') { if (!d.gast) grZorg(); return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag open">Gratis</span>
     <div class="label">Vandaag rijden</div><h2>Rij je samen?</h2>${vtabs}
     ${d.gast ? '<p>Plan een rit en deel de link in je groepsapp. Iedereen ziet het weer, de wind en zijn eigen bandenspanning voor jullie rit.</p><button type="button" class="knop" data-actie="gastlogin" style="margin-top:12px">Maak je gratis account</button>' : '<div id="grmaak">' + grMaakHtml() + '</div>' + grVriendHtml(d)}</div></div>`; }
-  if (vtab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag oranje">Lid</span>
+  if (vtab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag oranje">Pro</span>
     <div class="label">Vandaag rijden</div><h2>Wat neem je mee?</h2>${vtabs}
     ${vrijWeerRegel()}<div class="bt-slot"><div class="achter">
       ${vrijVoedingAchter()}</div>
     <div class="voor">${SLOT}<b>${weerNu() ? 'Je voeding voor een rit van 2 uur staat klaar' : 'Nooit meer de man met de hamer'}</b><span>Voor jouw rit precies hoeveel koolhydraten en bidons je meeneemt, afgestemd op hoe lang en hoe hard je rijdt en hoe warm het wordt. Met Michels eigen regels.</span>
       ${kanLidNu(d) ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met de MKC-app</button>' : BINNENKORT}</div></div></div></div>`;
-  if (vtab === 'kleding') return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag oranje">Lid</span>
+  if (vtab === 'kleding') return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag oranje">Pro</span>
     <div class="label">Vandaag rijden</div><h2>Wat trek je aan?</h2>${vtabs}
     ${vrijWeerRegel()}<div class="bt-slot"><div class="achter">
       ${vrijKledingAchter()}</div>
@@ -2306,7 +2306,7 @@ function schemaKaart(d) {
   if (s.status === 'klaar') {
     return `<div class="sk">${kop('Schema afgerond', 'Alle ' + s.weken + ' weken zitten erop. Knap gedaan.')}
       <div class="sk-dag"><p class="sk-rust">Wat nu? Bouw verder met een vervolgschema dat aansluit op waar je nu staat, of blijf Pro en houd je coach, de Core-app en je ritadvies.</p>
-      <div class="sk-acties"><a class="knop" href="https://michelkredercoaching.nl/trainingsschema-vervolg/">Kies je vervolgschema</a>${isLid(d) && d.lid && d.lid.bron !== 'schema' ? '' : '<button class="knop leeg" data-actie="naarlid">Blijf lid</button>'}</div></div></div>`;
+      <div class="sk-acties"><a class="knop" href="https://michelkredercoaching.nl/trainingsschema-vervolg/">Kies je vervolgschema</a>${isLid(d) && d.lid && d.lid.bron !== 'schema' ? '' : '<button class="knop leeg" data-actie="naarlid">Blijf Pro</button>'}</div></div></div>`;
   }
   const kiesDag = SK.dag != null ? SK.dag : s.dagNr;
   const dagInfo = s.weekDagen.find((x) => x.dag === kiesDag) || s.weekDagen.find((x) => x.vandaag);
@@ -2474,8 +2474,8 @@ function lidStapelHtml(d) {
   const rij = (naam, kop, sub, binnen) => `<details class="ls-rij" data-klap="ls-${naam}"${klapOpen('ls-' + naam, false) ? ' open' : ''}><summary><b>${kop}</b><span>${sub}</span></summary><div class="ls-in">${binnen}</div></details>`;
   return `<div class="lid-stapel"><div class="rv-sub" style="margin-top:4px">Wat je krijgt</div>
     ${rij('ochtend', 'Nooit meer twijfelen voor je rit', 'Elke ochtend om 7:00 je spanning, kleding en wind', lidOchtendHtml())}
-    ${rij('core', 'Een romp die het volhoudt tot de finish', '10 tot 15 minuten thuis, en hij beweegt mee naar je doel', coreMeeHtml(d))}
-    ${rij('coach', 'Michel in je broekzak', 'Vraag wanneer je wilt, direct antwoord op jouw situatie', coachBankHtml(d))}
+    ${rij('core', 'Een romp die het volhoudt tot de finish', '10 tot 20 minuten thuis, en hij beweegt mee naar je doel', coreMeeHtml(d))}
+    ${rij('coach', 'Je eigen coach in je broekzak', 'Tot 25 vragen per week, direct antwoord met Michels kennis', coachBankHtml(d))}
     ${rij('goud', 'Goud en de grote beloningen', (() => { const k = ((d && d.badges) || []).filter((b) => b.goudKlaar).length; return k ? '<b style="color:var(--accent)">' + k + (k === 1 ? ' gouden medaille staat' : ' gouden medailles staan') + ' al voor je klaar.</b> ' : ''; })() + 'Alle badges en goud, plus een gratis analyse en pacingplan als beloning', '<p class="klein" style="margin:0">Als gratis gebruiker haal je brons en zilver. Met Pro ook goud, de Core- en ritbadges, en de beloningen bij 15 en 25 medailles: een gratis Strava-analyse en straks een gratis pacingplan. Goud dat al klaarstaat, krijg je meteen.</p>')}
     ${rij('prijs', 'Goedkoper verder', 'Strava-analyse &euro;19 in plaats van &euro;29, &euro;20 korting op het Afvalprogramma', '<p class="klein" style="margin:0">Ook het pacingplan voor je tocht krijg je straks voor &euro;19. E&eacute;n analyse en je eerste maand is al voor de helft terugverdiend.</p>')}</div>`;
 }
@@ -2586,16 +2586,16 @@ function lidPitchHtml() {
 function lidStatusHtml(l) {
   if (!l || l.status === 'geen' || l.status === 'nieuw') return '';
   if (l.status === 'actief' && l.bron === 'coaching') return `<div class="lidrij" id="lid"><span><b>Inbegrepen bij je coaching</b> &middot; ${l.coaching === 'premium' ? 'Premium' : 'Flexibel'}</span></div><p class="klein">Zolang je coaching loopt, heb je de hele MKC-app erbij. Je hoeft niets te regelen. Vragen over je coaching? Mail <a href="mailto:info@michelkredercoaching.nl" style="color:var(--accent)">info@michelkredercoaching.nl</a>.</p>`;
-  if (l.status === 'actief' && l.bron === 'cadeau') return `<div class="lidrij" id="lid"><span><b>${l.vriendCadeau ? 'Gratis lid via je maten' : 'Gratis maand'}</b> &middot; je hebt alles tot ${esc(datumNl(l.tot))}</span></div>`;
+  if (l.status === 'actief' && l.bron === 'cadeau') return `<div class="lidrij" id="lid"><span><b>${l.vriendCadeau ? 'Gratis Pro via je maten' : 'Gratis maand'}</b> &middot; je hebt alles tot ${esc(datumNl(l.tot))}</span></div>`;
   if (l.status === 'actief' && l.bron === 'schema') return `<div class="lidrij" id="lid"><span><b>Inbegrepen bij je schema</b> &middot; je hebt alles tot ${esc(datumNl(l.tot))}</span></div>`;
   if (l.status === 'actief' && l.handmatig) return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Pro per jaar' : 'Pro per maand'}</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid" data-plan="${l.plan === 'jaar' ? 'jaar' : 'maand'}">Verlengen</button></div>`;
   if (l.status === 'actief' && l.jaarKeuze && !l.jaarKeuze.gekozen) return `<div class="lidkeuze" id="lid"><b>Je jaar zit er op ${esc(datumNl(l.jaarKeuze.op))} op</b><p>Hoe wil je verder? Kies je niets, dan ga je per maand verder.</p>
       <div class="rij"><button type="button" class="knop" data-jaarkeuze="jaar">Nog een jaar &middot; &euro;${esc(String(((l.prijs || {}).jaar) || '89').replace('.00', '').replace('.', ','))}</button><button type="button" class="knop leeg" data-jaarkeuze="maand">Per maand &middot; &euro;${esc(String(((l.prijs || {}).maand) || '9.99').replace('.00', '').replace('.', ','))}</button></div></div>`;
-  if (l.status === 'actief' && l.jaarVanaf) return `<div class="lidrij" id="lid"><span><b>Lid</b> &middot; je jaar voor &euro;${esc(String((l.prijs || {}).jaar || '89').replace('.00', '').replace('.', ','))} start rond ${esc(datumNl(l.jaarVanaf))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
+  if (l.status === 'actief' && l.jaarVanaf) return `<div class="lidrij" id="lid"><span><b>Pro</b> &middot; je jaar voor &euro;${esc(String((l.prijs || {}).jaar || '89').replace('.00', '').replace('.', ','))} start rond ${esc(datumNl(l.jaarVanaf))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
   if (l.status === 'actief' && l.jaarKeuze && l.jaarKeuze.gekozen) return `<div class="lidrij" id="lid"><span><b>Jaarlid</b> &middot; nog een jaar, verlengt rond ${esc(datumNl(l.jaarKeuze.op))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
   if (l.status === 'actief') return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Pro per jaar' : 'Pro per maand'}</b> &middot; ${l.plan === 'jaar' ? 'verlengt automatisch rond' : 'volgende afschrijving rond'} ${esc(datumNl(l.tot, -5))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
   if (l.status === 'achterstand') return `<div class="lidrij waarschuw" id="lid"><span><b>Betaling mislukt</b> &middot; je app blijft open tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid" data-plan="${l.plan === 'jaar' ? 'jaar' : 'maand'}">Betaling bijwerken</button></div>`;
-  if (l.status === 'opgezegd' && l.open) return `<div class="lidrij"><span>Opgezegd &middot; je kunt nog alles gebruiken tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid">Opnieuw lid</button></div>`;
+  if (l.status === 'opgezegd' && l.open) return `<div class="lidrij"><span>Opgezegd &middot; je kunt nog alles gebruiken tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid">Opnieuw Pro</button></div>`;
   return '';
 }
 document.addEventListener('click', async (e) => {
@@ -2965,7 +2965,7 @@ function schemaEindeHtml(d) {
     <p>Je hebt een mooi blok gereden. Hoe ga je verder?</p>
     <div class="se-keuze">
       <a class="knop" href="${SITE}/trainingsschema-vervolg/" target="_blank" rel="noopener">Vervolgschema<small>sluit aan op waar je nu staat, de app hoort erbij</small></a>
-      <button class="knop leeg" data-view="lid">Lid blijven<small>&euro;${APP_PRIJS.maand} per maand, altijd opzegbaar</small></button>
+      <button class="knop leeg" data-view="lid">Pro blijven<small>&euro;${APP_PRIJS.maand} per maand, altijd opzegbaar</small></button>
     </div></div>`;
 }
 // ---- Welkom (12-10-2026) ----
@@ -3273,7 +3273,7 @@ function routeHtml(d) {
   const stappen = [
     { nm: 'Gratis account', wat: 'Bandenspanning, wind en 3 coachvragen per week' },
     { nm: 'MKC Pro', wat: 'Slimme bandenspanning, kleding en voeding voor elke rit, je eigen coach en de Core-app.', prijs: '&euro;' + APP_PRIJS.maand + ' per maand, altijd opzegbaar', knop: `<button type="button" class="knop" data-view="lid">${kanLidNu(d) ? 'Word Pro' : 'Bekijk wat je krijgt'}</button>` },
-    { nm: 'Trainingsschema', wat: 'Een plan van 8, 12 of 16 weken in TrainingPeaks. Hier in de app zie je elke dag je training, met uitleg.', prijs: naLancering ? 'Vanaf &euro;59, lidmaatschap inbegrepen' : 'Lidmaatschap inbegrepen', knop: `<a class="knop" href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Kies je schema</a>` },
+    { nm: 'Trainingsschema', wat: 'Een plan van 8, 12 of 16 weken in TrainingPeaks. Hier in de app zie je elke dag je training, met uitleg.', prijs: naLancering ? 'Vanaf &euro;59, MKC Pro inbegrepen' : 'MKC Pro inbegrepen', knop: `<a class="knop" href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Kies je schema</a>` },
     { nm: '1-op-1 coaching', wat: 'Michel maakt je plan en stuurt elke week bij op wat je rijdt en hoe je je voelt.', prijs: 'Vanaf &euro;79 per maand, app inbegrepen', knop: `<a class="knop" href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener">Bekijk coaching</a>` }
   ];
   // Schema en coaching zijn twee keuzes naast elkaar, geen trap: wie lid is kiest zelf (besluit Michel 14-10-2026).
@@ -3741,7 +3741,7 @@ async function zegOpNu(knop) {
     const r = await fetch('/api/lid?actie=opzeggen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), reden, toelichting }) });
     const j = await r.json();
     if (!j.ok) alert(j.fout || 'Opzeggen lukte niet.');
-    else { await laadOverzicht(); const tot = j.lid && j.lid.tot; return modal('<h3>Je Pro is opgezegd</h3><p>Er wordt niets meer afgeschreven.' + (tot ? ' Je kunt alles blijven gebruiken tot ' + esc(datumNl(tot)) + '.' : '') + '</p><p class="klein">Bedenk je je? Op je lidpagina word je met één tik weer lid, en alles wat je deed staat er dan nog.</p><button type="button" class="knop" data-lx="dicht">Oké</button>'); }
+    else { await laadOverzicht(); const tot = j.lid && j.lid.tot; return modal('<h3>Je Pro is opgezegd</h3><p>Er wordt niets meer afgeschreven.' + (tot ? ' Je kunt alles blijven gebruiken tot ' + esc(datumNl(tot)) + '.' : '') + '</p><p class="klein">Bedenk je je? Bij Mijn Pro neem je met één tik weer Pro, en alles wat je deed staat er dan nog.</p><button type="button" class="knop" data-lx="dicht">Oké</button>'); }
   } catch { alert('Verbinding mislukt.'); }
   lxDicht(); laadOverzicht();
 }
@@ -3790,7 +3790,7 @@ function vriendKaartHtml(l, compact) {
   return `<div class="vr-kaart"><div class="vr-kop"><div><small>Jouw rang</small><b>${rang}</b></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'} via jouw link</small></div></div>
     <h3>${l.gratis ? 'Krijg gratis Pro via je maten' : 'Nodig je maten uit'}</h3>
     ${D && D.mijnCode ? `<div class="vr-code">Jouw code <b>${esc(D.mijnCode)}</b><span>Noem hem gewoon, je maat vult hem in bij Pro worden.</span></div>` : ''}
-    <div class="vr-geef"><div><small>Jouw maat krijgt</small><b>50% korting</b><span>eerste maand &euro;${APP_PRIJS.half}, of een jaar voor &euro;${APP_PRIJS.jaarMaat}</span></div><div><small>Jij krijgt</small><b>${zelf ? '2 weken' : coaching ? 'Een rang' : 'Analyse'}</b><span>${zelf ? (gratisLid ? 'gratis lid per maat, plus de mijlpalen hieronder' : 'extra per maat, plus de mijlpalen hieronder') : coaching ? 'van Gangmaker tot Ploegleider' : 'gratis bij 3 maten, plus je rang'}</span></div></div>
+    <div class="vr-geef"><div><small>Jouw maat krijgt</small><b>50% korting</b><span>eerste maand &euro;${APP_PRIJS.half}, of een jaar voor &euro;${APP_PRIJS.jaarMaat}</span></div><div><small>Jij krijgt</small><b>${zelf ? '2 weken' : coaching ? 'Een rang' : 'Analyse'}</b><span>${zelf ? (gratisLid ? 'gratis Pro per maat, plus de mijlpalen hieronder' : 'extra per maat, plus de mijlpalen hieronder') : coaching ? 'van Gangmaker tot Ploegleider' : 'gratis bij 3 maten, plus je rang'}</span></div></div>
     ${ladder}<p class="vr-doel">${doel}</p>
     ${l.vriendAnalyse ? `<a class="knop" href="${esc(l.vriendAnalyse)}" target="_blank" rel="noopener" style="margin-bottom:10px">Claim je gratis analyse</a>` : ''}
     ${knoppen}
@@ -3802,9 +3802,9 @@ function vriendLijstHtml() {
   const l = (D && D.uitnodigingen) || []; if (!l.length) return '';
   const st = { verstuurd: ['Uitgenodigd', ''], account: ['Heeft een account', 'half'], lid: ['Heeft Pro', 'aan'] };
   const dag = (x) => new Date(x).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
-  const rij = (x) => { const [t, c] = st[x.status] || st.verstuurd; return `<li><div><b>${esc(x.naam)}</b><small>${x.zelf ? 'via je link' : 'uitgenodigd'} ${dag(x.op)}${x.lidOp ? ' &middot; lid sinds ' + dag(x.lidOp) : ''}</small></div><span class="vr-st ${c}">${x.status === 'lid' ? '&#10003; ' : ''}${t}</span>${x.status !== 'lid' && !x.zelf ? `<button type="button" class="vr-nog" data-lx="whatsapp" data-u="${esc(x.id)}" data-naam="${esc(x.naam)}">Stuur nog eens</button>` : ''}</li>`; };
+  const rij = (x) => { const [t, c] = st[x.status] || st.verstuurd; return `<li><div><b>${esc(x.naam)}</b><small>${x.zelf ? 'via je link' : 'uitgenodigd'} ${dag(x.op)}${x.lidOp ? ' &middot; Pro sinds ' + dag(x.lidOp) : ''}</small></div><span class="vr-st ${c}">${x.status === 'lid' ? '&#10003; ' : ''}${t}</span>${x.status !== 'lid' && !x.zelf ? `<button type="button" class="vr-nog" data-lx="whatsapp" data-u="${esc(x.id)}" data-naam="${esc(x.naam)}">Stuur nog eens</button>` : ''}</li>`; };
   const lid = l.filter((x) => x.status === 'lid').length;
-  return `<details class="vr-lijst" data-klap="vrlijst"${klapOpen('vrlijst', l.length <= 4) ? ' open' : ''}><summary><b>Jouw uitnodigingen</b><span>${l.length} uitgenodigd &middot; ${lid} lid</span></summary><ul>${l.map(rij).join('')}</ul></details>`;
+  return `<details class="vr-lijst" data-klap="vrlijst"${klapOpen('vrlijst', l.length <= 4) ? ' open' : ''}><summary><b>Jouw uitnodigingen</b><span>${l.length} uitgenodigd &middot; ${lid} Pro</span></summary><ul>${l.map(rij).join('')}</ul></details>`;
 }
 // ---- Palmares (13-10-2026): medailles in brons, zilver en goud, uitgerekend door de server (lib/badges.js) ----
 const MD_NIV = ['brons', 'zilver', 'goud'], MD_NAAM = ['Brons', 'Zilver', 'Goud'];
