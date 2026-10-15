@@ -938,6 +938,12 @@
   .kl-mee li { background:transparent !important; border-style:dashed !important; }
   .kl-groep .rv-sub { margin-top:12px; }
   .rv-uit .kl-lijst li { padding:8px 12px; font-size:14px; }
+  .rv-opbouw { margin:8px 0 2px; color:rgba(245,243,239,.85); }
+  .rv-tochtdag { margin:10px 0 0; padding:8px 12px; border-radius:8px; background:rgba(255,107,26,.12); color:#ffb48a; font-size:13px; font-weight:600; }
+  .rv-gewendhulp { display:block; margin-top:6px; font-size:12px; color:var(--muted); }
+  .rv-schema { list-style:none; margin:0; padding:0; display:grid; gap:4px; }
+  .rv-schema li { display:flex; gap:12px; padding:7px 10px; border-radius:8px; background:rgba(255,255,255,.04); font-size:14px; }
+  .rv-schema li b { min-width:38px; color:var(--accent); font-variant-numeric:tabular-nums; }
   .rv-instel .klap-in.gr-maak { background:none; border:0; padding:0 14px 14px; margin:0; }
   .rv-instel .gr-maak label:first-child, .rv-instel .rij2:first-child label { margin-top:4px; }
   .rv-uit { margin-top:14px; }
@@ -4588,17 +4594,36 @@ function windRegelHtml() {
   const a = WIND_LIB.windAdvies(ritUren());
   return a ? `<details class="klap wind" data-klap="wind" ${klapOpen('wind', false) ? 'open' : ''}><summary>${KOMPAS}<b>Wind</b><span>${esc(a.kort)}</span></summary><div class="klap-in"><p class="klein" style="margin:0;color:rgba(245,243,239,.88)">${esc(a.tekst)}</p>${a.kust ? `<p class="klein" style="margin:8px 0 0">${esc(a.kust)}</p>` : ''}</div></details>` : '';
 }
+// Ritvoeding persoonlijk (15-10-2026): wat je darm gewend is (profiel), je tochtdag en afvallen uit je doel.
+function rvInvoer(k, temp) {
+  const d = D && !D.gast ? zicht() : null, dl = d && d.doel && !d.doel.klaar ? d.doel : null;
+  const vertrek = new Date(Date.now() + (k.over || 0) * 36e5);
+  const dag = vertrek.getFullYear() + '-' + String(vertrek.getMonth() + 1).padStart(2, '0') + '-' + String(vertrek.getDate()).padStart(2, '0');
+  const doelDag = !!(dl && dl.doel === 'evenement' && dl.datum === dag);
+  return { duur: k.duur, temp, hard: k.hard, gewend: (SB.profiel && SB.profiel.rvGewend) || null, doelDag, doelNaam: doelDag ? dl.naam : '', afvallen: !!(dl && dl.doel === 'afvallen') };
+}
+function rvGewendHtml() {
+  const g = (SB.profiel && SB.profiel.rvGewend) || '';
+  const knop = (w, t) => `<button type="button" data-kl="gewend" data-w="${w}" class="${g === w ? 'aan' : ''}">${t}</button>`;
+  return `<div class="kl-kou${g ? '' : ' nieuw'}"><b>${g ? 'Zoveel eet je onderweg' : 'Hoeveel eet jij onderweg per uur?'}</b>${g ? '' : '<span>Dan krijg je wat jouw maag aankan, en hoe je verder opbouwt.</span>'}
+    <div class="bt-keuze">${knop('weinig', 'Weinig')}${knop('60', 'Rond 60 g')}${knop('80', '80 g of meer')}</div><small class="rv-gewendhulp">Een reep is ongeveer 40 gram, een gel 25, een bidon sportdrank 40.</small></div>`;
+}
+function rvSchemaHtml(a) {
+  if (!a.schema || a.schema.length < 2) return '';
+  return `<details class="klap" data-klap="rvschema"${klapOpen('rvschema', false) ? ' open' : ''}><summary><b>Eetschema onderweg</b><span>elke 20 min</span></summary><div class="klap-in"><ul class="rv-schema">${a.schema.map((x) => `<li><b>${x.t}</b><span>${esc(x.wat)}</span></li>`).join('')}</ul><p class="klein" style="margin:8px 0 0">Zet op je Garmin of Wahoo een herinnering voor eten en drinken, elke 20 minuten.</p></div></details>`;
+}
 function voedingTabHtml() {
   if (!SB.weer) return '<p class="klein" style="margin-top:12px">Kies hierboven je plek, dan reken ik met de temperatuur tijdens je rit.</p>';
   if (!RV_LIB) return '<p class="klein">Even rekenen...</p>';
   const k = klKeuze(), stuk = ritUren();
   const temp = stuk.length ? Math.round(stuk.reduce((t, u) => t + u.temp, 0) / stuk.length) : SB.weer.temp;
-  const a = RV_LIB.voedingAdvies({ duur: k.duur, temp, hard: k.hard });
+  const a = RV_LIB.voedingAdvies(rvInvoer(k, temp));
   const tips = (temp <= 5 ? ['Koud weer: een thermosbidon met warme thee of sportdrank drinkt een stuk prettiger, en dan drink je ook echt genoeg.'] : []).concat(a.tips.filter((t) => !/^(Ontbijt|Na afloop)/.test(t)));
   return sbRitInstelHtml(false) + `<div class="rv-uit">
     <div class="rv-kop"><div><b>${a.gPerUur || '0'}</b><span>gram per uur</span></div><div><b>${a.bidons}</b><span>${a.bidons === 1 ? 'bidon' : 'bidons'}</span></div><div><b>${temp}&deg;</b><span>onderweg</span></div></div>${a.totaalG ? `<p class="klein rv-uitleg">Vanaf ongeveer 20 minuten na de start, samen ${a.totaalG} gram.</p>` : ''}
+    ${a.doelDag ? '<p class="rv-tochtdag">Tochtdag: ' + esc(a.doelNaam) + '. Ik reken met wat de dag vraagt.</p>' : ''}${a.opbouw ? `<p class="klein rv-opbouw">${esc(a.opbouw)}</p>` : ''}
     <div class="rv-sub">Neem mee</div><ul class="kl-lijst">${a.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
-    ${sbTipsKlap('rvtips', tips, '')}${ritVoorNaHtml('voeding')}`;
+    ${rvGewendHtml()}${rvSchemaHtml(a)}${sbTipsKlap('rvtips', tips, '')}${ritVoorNaHtml('voeding')}`;
 }
 
 // ---- Gratis windadvies: lokkertje voor wie nog geen lid is (09-10-2026) ----
@@ -4751,6 +4776,7 @@ document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-kl]'); if (!k) return;
   if (k.dataset.kl === 'hard') { sbBewaarKeuze({ klHard: k.dataset.w === '1' }); return sbTeken(); }
   if (k.dataset.kl === 'kou') { SB.profiel.kouType = k.dataset.w; SB.profiel.kouGekozen = true; sbTeken(); await sbBewaarProfiel(true); }
+  if (k.dataset.kl === 'gewend') { SB.profiel.rvGewend = SB.profiel.rvGewend === k.dataset.w ? null : k.dataset.w; sbTeken(); await sbBewaarProfiel(true); }
   if (k.dataset.kl === 'tab') { if (k.dataset.w === 'kleding') statEens('kleding'); sbBewaarKeuze({ tab: k.dataset.w }); return sbTeken(); }
   if (k.dataset.kl === 'vrijtab') { btBewaar({ ...btLees(), tab: k.dataset.w }); return teken(); }
 });
@@ -5076,7 +5102,7 @@ function grHtml() {
   if (uren && uren.length && lid && KL_LIB && RV_LIB) {
     const tl = uren.map((u) => u.temp), temp = Math.round(tl.reduce((t, x) => t + x, 0) / tl.length);
     const kl = KL_LIB.kledingAdvies({ temp: Math.min(...tl), start: tl[0], wind: Math.max(...uren.map((u) => u.wind)), regen: uren.reduce((t, u) => t + u.regen, 0) >= 0.5, regenMm: uren.reduce((t, u) => t + u.regen, 0), intensiteit: rit.tempo === 'hard' ? 'hard' : 'rustig', kouType: (SB.profiel && SB.profiel.kouType) || 'normaal', bijstel: KL_LIB.kledingBijstel(SB.ritten || []), duurUur: rit.duur });
-    const rv = RV_LIB.voedingAdvies({ duur: rit.duur, temp, hard: rit.tempo === 'hard' });
+    const rv = RV_LIB.voedingAdvies({ duur: rit.duur, temp, hard: rit.tempo === 'hard', gewend: (SB.profiel && SB.profiel.rvGewend) || null });
     lidBlok = (kl ? `<div class="gr-blok"><h4>Wat trek je aan &middot; voelt als ${kl.gevoel}&deg;</h4><ul class="kl-lijst">${kl.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${kl.tips && kl.tips[0] ? `<p class="klein">${esc(kl.tips[0])}</p>` : ''}</div>` : '')
       + `<div class="gr-blok"><h4>Wat neem je mee &middot; ${esc(rv.kort)}</h4><ul class="kl-lijst">${rv.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
   } else if (uren && uren.length && !lid) {
@@ -5250,7 +5276,7 @@ function rkData() {
       const st = ritUren(), w = SB.weer;
       d.weer = `${st.length ? Math.round(st.reduce((t, x) => t + x.temp, 0) / st.length) : w.temp}° · wind ${w.wind} km/u${w.nat ? ' · nat wegdek' : ''}`;
       const kl = klReken(); if (kl) d.kleding = { gevoel: kl.gevoel, items: kl.items.filter((x) => !/ondershirt|zomersokken/i.test(x)).slice(0, 4) };
-      if (RV_LIB) { const k = klKeuze(); const temp = st.length ? Math.round(st.reduce((t, x) => t + x.temp, 0) / st.length) : w.temp; const rv = RV_LIB.voedingAdvies({ duur: k.duur, temp, hard: k.hard }); d.voeding = { kort: rv.kort, items: rv.items.slice(0, 3) }; }
+      if (RV_LIB) { const k = klKeuze(); const temp = st.length ? Math.round(st.reduce((t, x) => t + x.temp, 0) / st.length) : w.temp; const rv = RV_LIB.voedingAdvies(rvInvoer(k, temp)); d.voeding = { kort: rv.kort, items: rv.items.slice(0, 3) }; }
       if (WIND_LIB) { const a = WIND_LIB.windAdvies(st); if (a) { d.wind = rkWind(a); d.windKort = a.kracht >= 10 ? 'Wind: ' + a.kort : ''; } }
     }
   } else {

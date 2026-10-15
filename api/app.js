@@ -1650,7 +1650,9 @@ function schoonProfiel(p) {
   });
   // Kledingadvies: heb je het snel koud of snel warm? En het ochtendbericht.
   const kouType = ['koud', 'warm'].includes(p.kouType) ? p.kouType : 'normaal';
-  return { gewicht: gewicht >= 40 && gewicht <= 150 ? gewicht : null, plaats, fietsen, kouType, kouGekozen: !!p.kouGekozen || kouType !== "normaal" };
+  // Wat je onderweg gewend bent te eten (ritvoeding, 15-10-2026).
+  const rvGewend = ['weinig', '60', '80'].includes(p.rvGewend) ? p.rvGewend : null;
+  return { gewicht: gewicht >= 40 && gewicht <= 150 ? gewicht : null, plaats, fietsen, kouType, kouGekozen: !!p.kouGekozen || kouType !== "normaal", rvGewend };
 }
 async function haalBandenProfiel(email) {
   const r = await redis(['GET', `app:banden:${email}`]);
