@@ -40,7 +40,7 @@ import { leesDoel } from '../lib/doelen.js';
 import {
   maakPlan, sessie, heeftRodeVlag, KLACHTEN, OEFENINGEN, TESTS, rompscore, balans,
   volgendeWeek, testNodig, meterNodig, verdiendeBadges, BADGES,
-  WEEKTIPS, besteStart, FASES, WEKEN as WEEKTABEL, letters, nodigVoorWeek, frequentie, startniveau,
+  WEEKTIPS, besteStart, FASES, WEKEN as WEEKTABEL, letters, nodigVoorWeek, frequentie, startniveau, instapNiveau,
   weekRij, blokVan, BLOK_WEKEN, BLOKTIPS, disbalansUit, weekInBlok, zwakkeSchakel,
   DISCIPLINES, disciplineVan, doelModus, MODUS_UITLEG, FASE_UITLEG, FIETSTIPS, extraSessie,
   BEPERKINGEN, vervangerKeuze
@@ -1144,7 +1144,15 @@ async function routeTest(req, res) {
   if (vorige && score > vorige.score) await reviewMoment(d.email, 'rompscore');
   // De romptest stuurt mee (08-10-2026): 10 punten of meer erbij sinds de vorige
   // test = de app schuift je een niveau op (eenmalige kopers niet voorbij niveau 12).
+  // Instap (15-10-2026): sterke starttest bij iemand die al core doet = de basis overslaan.
   let melding = null;
+  if (moment === 0 && d.week <= 1 && !vorige) {
+    const inst = instapNiveau(d.intake, score);
+    if (inst > d.week && (magDoorlopen(d) || inst <= BLOK_WEKEN)) {
+      d.week = inst; d.instap = inst;
+      melding = `Sterke starttest (Rompscore ${score}): je romp is al goed getraind. Je slaat de basis over en begint op niveau ${inst}, fase ${FASES[weekRij(inst).fase]}, met zwaardere oefeningen. Voelt het te zwaar, kies dan na je week Te zwaar en de app zet je terug.`;
+    }
+  }
   if (vorige && score - vorige.score >= 10 && (magDoorlopen(d) || d.week < BLOK_WEKEN) && d.status !== 'klaar') {
     d.week += 1; d.vasthouden = false; d.bijstel = 0;
     melding = `Je Rompscore steeg flink (+${score - vorige.score}). De app beweegt mee: je schuift een niveau op, naar niveau ${d.week}.`;

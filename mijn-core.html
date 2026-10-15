@@ -581,7 +581,7 @@ function testHtml(d, start) {
   const titel = start ? 'Je starttest' : 'Je romptest';
   return `<div class="blok kaart accent" id="test"><h2>${titel}</h2>
     <p class="muted klein" style="margin-bottom:6px">${start ? (d.gedaanDezeWeek.length || d.afgerond ? 'Je nulmeting: daar vergelijk je straks alles mee. Je volgende sessie gaat open zodra hij is gedaan.' : 'Je eerste sessie kun je meteen doen. Doe deze nulmeting vóór je tweede sessie: daar vergelijk je straks alles mee.') : 'Zelfde test als bij de start. Zo zie je zwart op wit wat het oplevert.'}
-    6 houdingen, zo lang als je ze goed kunt houden, met 2 minuten rust ertussen. Ongeveer 15 minuten. De app telt af, houdt de tijd bij en geeft je rust.</p>
+    6 houdingen, zo lang als je ze goed kunt houden, met 2 minuten rust ertussen. Ongeveer 15 minuten. De app telt af, houdt de tijd bij en geeft je rust.${start ? ' Doe je al veel aan core en is je test sterk, dan sla je de basis over en begin je meteen met zwaardere oefeningen.' : ''}</p>
     <div class="testkort"><button class="knop" data-actie="starttest">${start ? 'Start de starttest' : 'Start de romptest'}</button></div>
     <details class="handmatig"><summary class="klein muted" style="cursor:pointer;margin-top:8px">Of vul je tijden zelf in</summary>
     ${d.testDefinities.map((t) => `<div class="test" data-test="${t.id}">
