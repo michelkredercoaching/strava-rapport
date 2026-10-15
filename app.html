@@ -1260,7 +1260,7 @@ const CC_KNOPPEN = {
   rijden: ['Naar je bandenspanning', { tab: 'banden' }], kleding: ['Naar je kleding', { tab: 'kleding' }], voeding: ['Naar je ritvoeding', { tab: 'voeding' }],
   groepsrit: ['Plan een groepsrit', { tab: 'groep' }], ochtend: ['Naar je ochtendbericht', { tab: 'banden', klap: 'ochtend' }],
   schema: ['Naar je schema', {}], core: ['Open de Core-app', {}], kracht: ['Naar Kracht', {}], analyse: ['Naar je Strava-analyse', {}], palmares: ['Naar je palmares', {}],
-  kleedkamer: ['Naar je kleedkamer', {}], doel: ['Pas je doel aan', {}], lid: ['Naar je lidmaatschap', {}], coaching: ['Naar Jouw coaching', {}], meldingen: ['Naar je meldingen', {}],
+  kleedkamer: ['Naar je kleedkamer', {}], doel: ['Pas je doel aan', {}], lid: ['Naar je Pro', {}], coaching: ['Naar Jouw coaching', {}], meldingen: ['Naar je meldingen', {}],
   startpakket: ['Bekijk Het Startpakket', { href: '/het-startpakket/', verkoop: true }], schemas: ['Bekijk de trainingsschema\'s', { href: '/trainingsschemas/', verkoop: true }],
   winter: ['Bekijk het Winterprogramma', { href: '/winterprogramma/', verkoop: true }], begeleiding: ['Bekijk de trainingsbegeleiding', { href: '/trainingsbegeleiding/', verkoop: true }]
 };
@@ -1527,7 +1527,7 @@ function coreKaart(c) {
     return `<div class="kaart actief"><div class="kaart-in"><span class="tag oranje">Proefweek klaar</span><div class="label">Core-app</div>
       <h2>Niveau 2 staat klaar</h2><p>Je proefweek zit erop. Ga door en alles wat je deed blijft staan.</p>
       ${c.rompscore != null ? `<div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore}</b></div><div class="cijfer"><span>Niveau</span><b>1</b></div>${kanLidNu() ? '<div class="cijfer"><span>Prijs</span><b>&euro;' + APP_PRIJS.maand + '<em style="color:var(--muted)">/mnd</em></b></div>' : ''}</div>` : ''}
-      ${kanLidNu() ? '<button class="knop" data-actie="naarlid">Word lid en ga door</button>' : `<a class="knop" href="${esc(c.link)}">Ga door naar niveau 2</a>`}</div></div>`;
+      ${kanLidNu() ? '<button class="knop" data-actie="naarlid">Word Pro en ga door</button>' : `<a class="knop" href="${esc(c.link)}">Ga door naar niveau 2</a>`}</div></div>`;
   }
   const winst = c.rompscore != null && c.startScore != null && c.rompscore > c.startScore ? `<em>+${c.rompscore - c.startScore}</em>` : '';
   // Balk: hoe ver je bent in dit niveau (sessies gedaan van wat nodig is).
@@ -1539,7 +1539,7 @@ function coreKaart(c) {
   return `<div class="kaart actief"><div class="kaart-in"><span class="tag open">${c.klaar ? 'Afgerond' : 'Actief'}</span>
     <div class="label">Core-app</div>
     <h2>${c.klaar ? 'Niveau 12 bereikt' : `Niveau ${c.week}`}</h2>
-    <p>${c.klaar ? 'Knap gedaan. Als lid beweegt de app met je mee.' : `Fase: ${esc(c.faseNaam)} &middot; ${c.gedaan} van ${c.frequentie} sessies gedaan`}</p>
+    <p>${c.klaar ? 'Knap gedaan. Met Pro beweegt de app met je mee.' : `Fase: ${esc(c.faseNaam)} &middot; ${c.gedaan} van ${c.frequentie} sessies gedaan`}</p>
     ${(() => { const dz = zicht(); const cd = coreDagen(dz && dz.schema, coreAantal(dz || {})); return cd.length && !c.klaar ? `<p class="klein" style="color:#4CC38A;margin-top:-4px">Past bij je schema: ${cd.map((x) => x.dagnaam).join(', ')}</p>` : ''; })()}
     <div class="cijfers"><div class="cijfer"><span>Rompscore</span><b>${c.rompscore != null ? c.rompscore : '&ndash;'}${winst}</b></div>
       <div class="cijfer"><span>Niveau</span><b>${c.week}</b></div><div class="cijfer"><span>Gedaan</span><b>${c.afgerond}</b></div></div>
@@ -1568,7 +1568,7 @@ document.addEventListener('click', async (e) => {
 function afvalKaart() {
   return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Verwacht begin 2027</span>
     <div class="label">Afvalprogramma</div><h2>Lichter, zonder in te leveren</h2>
-    <p>Je eigen richtlijn per dag, wekelijkse bijsturing en je gewicht in een grafiek. Afvallen zonder dat je watts zakken.</p><p class="klein" style="margin-top:-4px">Leden van de MKC-app krijgen &euro;${LEDEN.afvalKorting} korting.</p>
+    <p>Je eigen richtlijn per dag, wekelijkse bijsturing en je gewicht in een grafiek. Afvallen zonder dat je watts zakken.</p><p class="klein" style="margin-top:-4px">Pro-gebruikers krijgen &euro;${LEDEN.afvalKorting} korting.</p>
     <div class="wazig"><div class="achter"><div class="cijfers"><div class="cijfer"><span>Rustdag</span><b>1950</b></div><div class="cijfer"><span>Trainingsdag</span><b>2850</b></div><div class="cijfer"><span>Deze week</span><b>-0,4</b></div></div>${nepGrafiek()}</div>
       <div class="slotje">${SLOT}</div></div>
     ${BINNENKORT_IG}${opDeHoogteHtml('afval')}</div></div>`;
@@ -1645,13 +1645,13 @@ function analyseKaart(a) {
     <p class="klein" style="margin:12px 0 6px">Zo ziet je uitslag eruit (voorbeeld):</p>
     <div class="cijfers"><div class="cijfer"><span>FTP</span><b>241</b></div><div class="cijfer"><span>W/kg</span><b>3,4</b></div><div class="cijfer"><span>Type</span><b>Klimmer</b></div></div>
     <p class="klein" style="margin:8px 0 14px">Plus je zones, je sterke en zwakke punten en een persoonlijk plan wat je nu moet trainen.</p>
-    <a class="knop" href="${analyseKoop()}">Doe je Strava-analyse voor &euro;${analysePrijs()}</a><p class="klein">${lp ? 'Ledenprijs, normaal &euro;29. ' : ''}Eenmalig, werkt met vermogen en met hartslag. Je uitslag komt daarna ook in je app.${!lp && D && !D.gast && kanLidNu(zicht()) ? ' Lid van de MKC-app? Dan betaal je &euro;' + LEDEN.analyse + '.' : ''}</p></div></div>`;
+    <a class="knop" href="${analyseKoop()}">Doe je Strava-analyse voor &euro;${analysePrijs()}</a><p class="klein">${lp ? 'Pro-prijs, normaal &euro;29. ' : ''}Eenmalig, werkt met vermogen en met hartslag. Je uitslag komt daarna ook in je app.${!lp && D && !D.gast && kanLidNu(zicht()) ? ' Lid van de MKC-app? Dan betaal je &euro;' + LEDEN.analyse + '.' : ''}</p></div></div>`;
 }
 
 function pacingKaart() {
   return `<div class="kaart binnenkort"><div class="kaart-in"><span class="tag slot">Verwacht eind 2026</span>
     <div class="label">Pacingplan</div><h2>Je grote tocht, slim ingedeeld</h2>
-    <p>Hoe hard je per klim, per strook en per uur kunt rijden zonder stuk te gaan, berekend uit je eigen ritten. Voor granfondo's, gravelfondo's en toertochten zoals de Amstel Gold Race of Luik-Bastenaken-Luik.</p><p class="klein" style="margin-top:-4px">&euro;29 eenmalig, voor leden van de MKC-app &euro;${LEDEN.pacing}.</p>${BINNENKORT_IG}${opDeHoogteHtml('pacing')}</div></div>`;
+    <p>Hoe hard je per klim, per strook en per uur kunt rijden zonder stuk te gaan, berekend uit je eigen ritten. Voor granfondo's, gravelfondo's en toertochten zoals de Amstel Gold Race of Luik-Bastenaken-Luik.</p><p class="klein" style="margin-top:-4px">&euro;29 eenmalig, voor Pro-gebruikers &euro;${LEDEN.pacing}.</p>${BINNENKORT_IG}${opDeHoogteHtml('pacing')}</div></div>`;
 }
 
 // Bandenspanning staat altijd bovenaan (besluit Michel 07-10-2026): de gratis
@@ -1755,7 +1755,7 @@ document.addEventListener('click', async (e) => {
   BTV.bezig = false; teken();
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'btVraag') { e.preventDefault(); document.querySelector('[data-btv="vraag"]')?.click(); } });
-// ---- Slimme bandenspanning voor leden (stap 3, 07-10-2026) ----
+// ---- Slimme bandenspanning met Pro (stap 3, 07-10-2026) ----
 // Bewaarde fietsen (server, app:banden:<email>), het weer van vandaag op je
 // eigen plek, ondergrond, en een vraagknop. Rekent met dezelfde formule als de
 // gratis versie; daarbovenop alleen de vaste regels van de kaart (nat -0,3,
@@ -1905,7 +1905,7 @@ function slimBandenKaart() {
     SB.bewerk = true;
   }
   const tab = ['kleding', 'voeding', 'groep'].includes(sbKeuze().tab) ? sbKeuze().tab : 'banden';
-  const kop = `<span class="tag oranje">Lid</span><div class="label">Vandaag rijden</div><h2>${SB.bewerk ? 'Wat pomp je vandaag?' : tab === 'kleding' ? 'Wat trek je aan?' : tab === 'voeding' ? 'Wat neem je mee?' : tab === 'groep' ? 'Rij je samen?' : 'Wat pomp je vandaag?'}</h2>`;
+  const kop = `<span class="tag oranje">Pro</span><div class="label">Vandaag rijden</div><h2>${SB.bewerk ? 'Wat pomp je vandaag?' : tab === 'kleding' ? 'Wat trek je aan?' : tab === 'voeding' ? 'Wat neem je mee?' : tab === 'groep' ? 'Rij je samen?' : 'Wat pomp je vandaag?'}</h2>`;
   if (SB.bewerk) return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}<p>Zet je fietsen erin. Dan hoef je straks alleen nog te kiezen op welke je rijdt.</p>${sbBewerkHtml()}</div></div>`;
   const f = sbFiets(), uit = sbReken(f), nat = sbNat();
   const gNu = f ? sbGrond(f) : null;
@@ -2107,7 +2107,7 @@ document.addEventListener('input', (e) => {
 });
 
 // Volgorde (besluit Michel 07-10-2026): bovenaan de gratis bandenspanning, dan
-// het lidmaatschap (voor niet-leden), dan wat actief is, wat je kunt
+// Pro (voor niet-leden), dan wat actief is, wat je kunt
 // ontgrendelen en onderaan wat nog moet komen. Met tussenkopjes.
 function kaartenHtml(d) {
   if (d.beheer && BEKIJK === 'alles') d = voorbeeldData(d);
@@ -2286,7 +2286,7 @@ function schemaKaart(d) {
   }
   if (s.status === 'klaar') {
     return `<div class="sk">${kop('Schema afgerond', 'Alle ' + s.weken + ' weken zitten erop. Knap gedaan.')}
-      <div class="sk-dag"><p class="sk-rust">Wat nu? Bouw verder met een vervolgschema dat aansluit op waar je nu staat, of blijf lid en houd je coach, de Core-app en je ritadvies.</p>
+      <div class="sk-dag"><p class="sk-rust">Wat nu? Bouw verder met een vervolgschema dat aansluit op waar je nu staat, of blijf Pro en houd je coach, de Core-app en je ritadvies.</p>
       <div class="sk-acties"><a class="knop" href="https://michelkredercoaching.nl/trainingsschema-vervolg/">Kies je vervolgschema</a>${isLid(d) && d.lid && d.lid.bron !== 'schema' ? '' : '<button class="knop leeg" data-actie="naarlid">Blijf lid</button>'}</div></div></div>`;
   }
   const kiesDag = SK.dag != null ? SK.dag : s.dagNr;
@@ -2329,7 +2329,7 @@ const APP_PRIJS = { maand: '9,99', jaar: '89', jaarPerMaand: '7,42', half: '5', 
 const LID_LIJST = ['De Core-app (core stability voor wielrenners) die met je meebeweegt: gaat het makkelijk, dan ga je sneller', 'Slimme bandenspanning: je fietsen, het weer van vandaag en een geheugen', 'Kledingadvies voor je rit, plus een ochtendbericht met weer, spanning en kleding', 'Vragen aan je eigen coach wanneer je wilt (tot 25 per week), met Michels kennis uit 9 jaar prof en zijn coachervaring', 'Ledenprijzen: je Strava-analyse en straks het pacingplan voor &euro;19 in plaats van &euro;29, en &euro;20 korting op het Afvalprogramma', 'Per maand, altijd opzegbaar, of voordelig per jaar'];
 // ---- Verkopen zonder proef (12-10-2026) ----
 // De lidpagina laat zien wat je krijgt, op jou afgestemd: je doel, wat je al
-// gebruikte, hoe je ochtend eruitziet als lid. Kiezen gaat eerst, je gegevens daarna.
+// gebruikte, hoe je ochtend eruitziet met Pro. Kiezen gaat eerst, je gegevens daarna.
 function spTel() { try { const v = new Date().toLocaleDateString('sv-SE'); const l = JSON.parse(localStorage.getItem('mkcSpDagen') || '[]'); if (!l.includes(v)) { l.push(v); localStorage.setItem('mkcSpDagen', JSON.stringify(l.slice(-30))); } } catch (e) {} }
 function spDagen() { try { return JSON.parse(localStorage.getItem('mkcSpDagen') || '[]').length; } catch (e) { return 0; } }
 function lidVoornaam() { const d = zicht(); return String((d && d.naam) || '').trim().split(' ')[0]; }
@@ -2355,9 +2355,9 @@ function lidGebruikHtml(d) {
   if (d && d.core && d.core.rompscore != null) stukken.push('je Rompscore staat op ' + d.core.rompscore);
   if (!stukken.length) return '';
   const zin = stukken.join(', ').replace(/, ([^,]*)$/, ' en $1');
-  return `<div class="lid-gebruik">${zin.charAt(0).toUpperCase() + zin.slice(1)}. Als lid gaat dat slimmer, en zonder grens.</div>`;
+  return `<div class="lid-gebruik">${zin.charAt(0).toUpperCase() + zin.slice(1)}. Met Pro gaat dat slimmer, en zonder grens.</div>`;
 }
-// Zo begint je ochtend als lid: een echt voorbeeld van het ochtendbericht.
+// Zo begint je ochtend met Pro: een echt voorbeeld van het ochtendbericht.
 function lidOchtendHtml() {
   const w = weerNu(), nm = lidVoornaam();
   const voor = (() => { try { return Number(localStorage.getItem('mkcLaatsteSpVoor')) || 4.8; } catch (e) { return 4.8; } })();
@@ -2368,7 +2368,7 @@ function lidOchtendHtml() {
   const sp = nat ? nl(voor - 0.3) + ' voor en ' + nl(achter - 0.3) + ' achter (nat wegdek)' : nl(voor) + ' voor en ' + nl(achter) + ' achter';
   return `<div class="lid-push"><div class="lp-kop"><img src="/icoon-192.png" alt=""><b>MKC</b><span>07:00</span></div>
     <b>Goedemorgen${nm ? ' ' + esc(nm) : ''}</b><p>${temp}&deg; en ${nat ? 'nat' : 'droog'}${w && w.plaats ? ' in ' + esc(w.plaats) : ''}. Pomp ${sp}. ${kleding}</p></div>
-    <p class="klein lp-onder">Zo begint je dag als lid. Elke ochtend, voor jouw rit.</p>`;
+    <p class="klein lp-onder">Zo begint je dag met Pro. Elke ochtend, voor jouw rit.</p>`;
 }
 // Core die meebeweegt (12-10-2026): precies wat lib/core.js doet (doelModus,
 // MODUS_UITLEG, rustweek), op het doel van de bezoeker afgestemd.
@@ -2425,7 +2425,7 @@ function coachBankHtml(d) {
     <p class="bank-sub">Je vraagt het aan een coach die getraind is op mijn methode: 9 jaar profwielrennen en wat ik mijn coachingklanten leer. Dag en nacht, en direct antwoord.</p>
     <div class="bank-chat"><div class="bc-ik">${COACH_VOORBEELD.vraag}</div><div class="bc-coach"><span class="cc-av"><img src="/icoon-192.png" alt=""></span><p>${COACH_VOORBEELD.antwoord}</p></div></div>
     <div class="bank-themas">${themas.map((t) => '<span>' + t + '</span>').join('')}</div>
-    <p class="klein bank-onder">Als lid kent je coach ook je fietsen, je doel en je Core-voortgang. Daardoor krijg je antwoord op jouw situatie, niet een algemeen verhaal.</p></div>`;
+    <p class="klein bank-onder">Met Pro kent je coach ook je fietsen, je doel en je Core-voortgang. Daardoor krijg je antwoord op jouw situatie, niet een algemeen verhaal.</p></div>`;
 }
 const LID_VOORDELEN = [
   ['Je eigen coach', 'Tot 25 vragen per week, op jouw situatie.'],
@@ -2447,7 +2447,7 @@ const LID_BEWIJS = `<div class="bewijs"><div class="bw-kop"><span class="bw-ster
   <div class="bw-kaart"><span class="bw-soort">Coaching</span><p class="bw-citaat">&ldquo;Mijn FTP is gestegen van 220 naar 290/300.&rdquo;</p><b>Marnix</b></div>
   <div class="bw-kaart"><span class="bw-soort">Schema</span><p class="bw-citaat">&ldquo;Dankzij Michel&rsquo;s aanpak &lsquo;train slimmer, niet harder&rsquo; heb ik met hetzelfde aantal trainingsuren duidelijk meer vermogen ontwikkeld.&rdquo;</p><b>Bjorn</b></div>
 </div>`;
-const LID_REKENSOM = '<p class="klein lid-reken">Rekensom: doe je als lid een Strava-analyse, dan betaal je &euro;19 in plaats van &euro;29. Die &euro;10 is je eerste maand al voor de helft.</p>';
+const LID_REKENSOM = '<p class="klein lid-reken">Rekensom: doe je met Pro een Strava-analyse, dan betaal je &euro;19 in plaats van &euro;29. Die &euro;10 is je eerste maand al voor de helft.</p>';
 // Lidpagina kort (13-10-2026): droomuitkomst bovenaan, dan vier uitkomsten die je
 // zelf openklikt, kort bewijs en de prijs. Details blijven, maar alleen als je wilt.
 function lidStapelHtml(d) {
@@ -2456,7 +2456,7 @@ function lidStapelHtml(d) {
     ${rij('ochtend', 'Nooit meer twijfelen voor je rit', 'Elke ochtend om 7:00 je spanning, kleding en wind', lidOchtendHtml())}
     ${rij('core', 'Een romp die het volhoudt tot de finish', '10 tot 15 minuten thuis, en hij beweegt mee naar je doel', coreMeeHtml(d))}
     ${rij('coach', 'Michel in je broekzak', 'Vraag wanneer je wilt, direct antwoord op jouw situatie', coachBankHtml(d))}
-    ${rij('goud', 'Goud en de grote beloningen', (() => { const k = ((d && d.badges) || []).filter((b) => b.goudKlaar).length; return k ? '<b style="color:var(--accent)">' + k + (k === 1 ? ' gouden medaille staat' : ' gouden medailles staan') + ' al voor je klaar.</b> ' : ''; })() + 'Alle badges en goud, plus een gratis analyse en pacingplan als beloning', '<p class="klein" style="margin:0">Als gratis gebruiker haal je brons en zilver. Als lid ook goud, de Core- en ritbadges, en de beloningen bij 15 en 25 medailles: een gratis Strava-analyse en straks een gratis pacingplan. Goud dat al klaarstaat, krijg je meteen.</p>')}
+    ${rij('goud', 'Goud en de grote beloningen', (() => { const k = ((d && d.badges) || []).filter((b) => b.goudKlaar).length; return k ? '<b style="color:var(--accent)">' + k + (k === 1 ? ' gouden medaille staat' : ' gouden medailles staan') + ' al voor je klaar.</b> ' : ''; })() + 'Alle badges en goud, plus een gratis analyse en pacingplan als beloning', '<p class="klein" style="margin:0">Als gratis gebruiker haal je brons en zilver. Met Pro ook goud, de Core- en ritbadges, en de beloningen bij 15 en 25 medailles: een gratis Strava-analyse en straks een gratis pacingplan. Goud dat al klaarstaat, krijg je meteen.</p>')}
     ${rij('prijs', 'Goedkoper verder', 'Strava-analyse &euro;19 in plaats van &euro;29, &euro;20 korting op het Afvalprogramma', '<p class="klein" style="margin:0">Ook het pacingplan voor je tocht krijg je straks voor &euro;19. E&eacute;n analyse en je eerste maand is al voor de helft terugverdiend.</p>')}</div>`;
 }
 const LID_BEWIJS_KORT = `<div class="bewijs"><div class="bw-kop"><span class="bw-ster">&#9733;&#9733;&#9733;&#9733;&#9733;</span><b>4,9 uit 48 Google-reviews</b><small>en meer dan 1000 wielrenners trainen met mijn schema&rsquo;s</small></div>
@@ -2509,7 +2509,7 @@ function binnenkortPitchHtml() {
   return `<div class="lidblok">${vriendUitnodigHtml()}${lidKopHtml(d).replace('<div class="label">MKC-app</div>', '<div class="label">MKC-app &middot; opent vrijdag 16 oktober</div>')}
     ${lidGebruikHtml(d)}${lidStapelHtml(d)}${LID_BEWIJS_KORT}
     ${plannenHtml(true)}
-    <p class="klein lid-risico">Lid worden kan vanaf vrijdag 16 oktober om 12:00. Per maand en altijd opzegbaar. Je bandenspanning en je 3 gratis coachvragen kun je nu al gebruiken.</p>${vriendLid(d) ? '<div class="of-gratis"><span>of</span></div>' + vriendKaartHtml(vriendLid(d)) : ''}</div>`;
+    <p class="klein lid-risico">Pro worden kan vanaf vrijdag 16 oktober om 12:00. Per maand en altijd opzegbaar. Je bandenspanning en je 3 gratis coachvragen kun je nu al gebruiken.</p>${vriendLid(d) ? '<div class="of-gratis"><span>of</span></div>' + vriendKaartHtml(vriendLid(d)) : ''}</div>`;
 }
 // De twee prijskaarten; dicht = vóór de lancering (knoppen uit).
 function plannenHtml(dicht) {
@@ -2567,12 +2567,12 @@ function lidStatusHtml(l) {
   if (l.status === 'actief' && l.bron === 'coaching') return `<div class="lidrij" id="lid"><span><b>Inbegrepen bij je coaching</b> &middot; ${l.coaching === 'premium' ? 'Premium' : 'Flexibel'}</span></div><p class="klein">Zolang je coaching loopt, heb je de hele MKC-app erbij. Je hoeft niets te regelen. Vragen over je coaching? Mail <a href="mailto:info@michelkredercoaching.nl" style="color:var(--accent)">info@michelkredercoaching.nl</a>.</p>`;
   if (l.status === 'actief' && l.bron === 'cadeau') return `<div class="lidrij" id="lid"><span><b>${l.vriendCadeau ? 'Gratis lid via je maten' : 'Gratis maand'}</b> &middot; je hebt alles tot ${esc(datumNl(l.tot))}</span></div>`;
   if (l.status === 'actief' && l.bron === 'schema') return `<div class="lidrij" id="lid"><span><b>Inbegrepen bij je schema</b> &middot; je hebt alles tot ${esc(datumNl(l.tot))}</span></div>`;
-  if (l.status === 'actief' && l.handmatig) return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid" data-plan="${l.plan === 'jaar' ? 'jaar' : 'maand'}">Verlengen</button></div>`;
+  if (l.status === 'actief' && l.handmatig) return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Pro per jaar' : 'Pro per maand'}</b> &middot; tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid" data-plan="${l.plan === 'jaar' ? 'jaar' : 'maand'}">Verlengen</button></div>`;
   if (l.status === 'actief' && l.jaarKeuze && !l.jaarKeuze.gekozen) return `<div class="lidkeuze" id="lid"><b>Je jaar zit er op ${esc(datumNl(l.jaarKeuze.op))} op</b><p>Hoe wil je verder? Kies je niets, dan ga je per maand verder.</p>
       <div class="rij"><button type="button" class="knop" data-jaarkeuze="jaar">Nog een jaar &middot; &euro;${esc(String(((l.prijs || {}).jaar) || '89').replace('.00', '').replace('.', ','))}</button><button type="button" class="knop leeg" data-jaarkeuze="maand">Per maand &middot; &euro;${esc(String(((l.prijs || {}).maand) || '9.99').replace('.00', '').replace('.', ','))}</button></div></div>`;
   if (l.status === 'actief' && l.jaarVanaf) return `<div class="lidrij" id="lid"><span><b>Lid</b> &middot; je jaar voor &euro;${esc(String((l.prijs || {}).jaar || '89').replace('.00', '').replace('.', ','))} start rond ${esc(datumNl(l.jaarVanaf))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
   if (l.status === 'actief' && l.jaarKeuze && l.jaarKeuze.gekozen) return `<div class="lidrij" id="lid"><span><b>Jaarlid</b> &middot; nog een jaar, verlengt rond ${esc(datumNl(l.jaarKeuze.op))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
-  if (l.status === 'actief') return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Jaarlid' : 'Lid'}</b> &middot; ${l.plan === 'jaar' ? 'verlengt automatisch rond' : 'volgende afschrijving rond'} ${esc(datumNl(l.tot, -5))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
+  if (l.status === 'actief') return `<div class="lidrij" id="lid"><span><b>${l.plan === 'jaar' ? 'Pro per jaar' : 'Pro per maand'}</b> &middot; ${l.plan === 'jaar' ? 'verlengt automatisch rond' : 'volgende afschrijving rond'} ${esc(datumNl(l.tot, -5))}</span><button data-actie="opzeggen">Opzeggen</button></div>`;
   if (l.status === 'achterstand') return `<div class="lidrij waarschuw" id="lid"><span><b>Betaling mislukt</b> &middot; je app blijft open tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid" data-plan="${l.plan === 'jaar' ? 'jaar' : 'maand'}">Betaling bijwerken</button></div>`;
   if (l.status === 'opgezegd' && l.open) return `<div class="lidrij"><span>Opgezegd &middot; je kunt nog alles gebruiken tot ${esc(datumNl(l.tot))}</span><button data-actie="wordlid">Opnieuw lid</button></div>`;
   return '';
@@ -2814,11 +2814,11 @@ const KOPPEN = {
   analyse: ['MKC-Analyse', 'Je FTP, zones en plan uit je eigen ritten'],
   afval: ['MKC-Afval', 'Lichter worden zonder watts te verliezen'],
   pacing: ['MKC-Pacing', 'Je grote tocht slim ingedeeld'],
-  lid: ['MKC-Lidmaatschap', 'Status, facturen en een vriend uitnodigen']
+  lid: ['MKC Pro', 'Status, facturen en een vriend uitnodigen']
 };
 function appBalkHtml() {
   const zl = D && !D.gast ? zicht() : null, lsoort = zl && zl.lid && zl.lid.bron;
-  const [nm, st] = VIEW === 'lid' && zl && !isLid(zl) ? ['MKC-Lid', 'Word lid van de MKC-app'] : VIEW === 'lid' && lsoort === 'coaching' ? ['MKC-Lidmaatschap', 'Inbegrepen bij je coaching'] : VIEW === 'lid' && ['schema', 'cadeau'].includes(lsoort) ? ['MKC-Lidmaatschap', 'Wat je hebt en hoe je daarna verdergaat'] : (KOPPEN[VIEW] || KOPPEN.home);
+  const [nm, st] = VIEW === 'lid' && zl && !isLid(zl) ? ['MKC Pro', 'Word Pro'] : VIEW === 'lid' && lsoort === 'coaching' ? ['MKC Pro', 'Inbegrepen bij je coaching'] : VIEW === 'lid' && ['schema', 'cadeau'].includes(lsoort) ? ['MKC Pro', 'Wat je hebt en hoe je daarna verdergaat'] : (KOPPEN[VIEW] || KOPPEN.home);
   const terug = VIEW !== 'home' ? '<button type="button" class="cc-terug" data-view="home" aria-label="Terug"><span>&#8249;</span>Terug</button>' : '';
   const uit = '';
   return `<div class="appbalk">${terug}<span class="cc-av"><img src="/icoon-192.png" alt=""></span><div class="ab-tekst"><div class="nm">${nm}</div><div class="st">${st}</div></div>${uit}</div>`;
@@ -2844,23 +2844,23 @@ function tegelsHtml(d) {
   else if (d.core) trein = (tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
   else trein = (tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Thuis, 10 tot 20 minuten', tag: binnenkortNu() ? 'Binnenkort' : lid ? 'Inbegrepen' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
   if (d.kracht && d.kracht.open && vorm === 'kracht') { const kb = d.kracht.beeld; trein = (tegel({ v: 'kracht', ic: 'kracht', nm: 'Kracht', sub: !kb ? 'Sportschool, 2x per week een uur, met gewichten' : kb.seizoen ? (kb.volgende ? 'Seizoen &middot; onderhoud, ongeveer ' + kb.volgende.minuten + ' min' : 'Seizoen &middot; onderhoud deze week gedaan') : kb.volgende ? 'Week ' + kb.week + ' &middot; sessie ' + kb.volgende.letter + ', ongeveer ' + kb.volgende.minuten + ' min' : 'Week ' + kb.week + ' rond, volgende week staat klaar', tag: kb ? (kb.volgende ? 'Start' : 'Klaar') : 'Nieuw', tagKlas: kb && kb.volgende ? 'gr' : 'or' })); }
-  const banden = tegel({ v: 'rijden', ic: 'rijden', nm: 'Bandenspanning', sub: mijnSp ? 'Jouw spanning: ' + mijnSp : slim ? 'Check je spanning, kleding en voeding' : 'Check je spanning voor vandaag', tag: slim ? (inbegrepen ? 'Inbegrepen' : 'Lid') : 'Gratis', tagKlas: slim ? 'or' : 'gr' });
+  const banden = tegel({ v: 'rijden', ic: 'rijden', nm: 'Bandenspanning', sub: mijnSp ? 'Jouw spanning: ' + mijnSp : slim ? 'Check je spanning, kleding en voeding' : 'Check je spanning voor vandaag', tag: slim ? (inbegrepen ? 'Inbegrepen' : 'Pro') : 'Gratis', tagKlas: slim ? 'or' : 'gr' });
   const analyseT = tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP en zones uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Nieuwe?' : 'Open') : SLOT + ' €' + (d.ledenAnalyse ? LEDEN.analyse : 29), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' });
   const derde = coaching ? tegel({ v: 'coaching', ic: 'schema', nm: 'Jouw coaching', sub: 'TrainingPeaks en hoe je mij bereikt', tag: 'Michel', tagKlas: 'or' }) : analyseT;
   const gvo = gratisOver(), lvo = lidOverNu();
   const tgv = tegoedNu(), wkMax = gvo != null ? ((D && D.gratisMax) || 3) : ((D && D.lidMax) || 25), wk = gvo != null ? gvo : lvo;
-  const coach = tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: wk != null ? '<b>' + wk + '/' + wkMax + '</b> deze week' + (tgv ? '<br>+' + tgv + ' extra deze maand' : '') : 'Antwoord met Michels kennis', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Lid') : '3 gratis', tagKlas: 'or' });
+  const coach = tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: wk != null ? '<b>' + wk + '/' + wkMax + '</b> deze week' + (tgv ? '<br>+' + tgv + ' extra deze maand' : '') : 'Antwoord met Michels kennis', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Pro') : '3 gratis', tagKlas: 'or' });
   const t = [trein, banden, derde, coach];
   if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: schemaTegelSub(d.schema), tag: d.schema.status === 'klaar' ? 'Afgerond' : 'Actief', tagKlas: 'gr', breed: true }));
   // Michel ziet Kracht tot de opening altijd als voorbeeld, ook als hij zelf Core doet.
   const wissel = vorm === 'core' && d.kracht && Date.now() >= KRACHT_OPEN_APP ? `<p class="klein tg-wissel">Liever kracht in de sportschool? <button type="button" class="sb-link" data-wisselvorm="kracht" style="display:inline;margin:0">Wissel naar Kracht</button></p>` : '';
   return `<div class="tegels kort">${t.join('')}</div>${wissel}`;
 }
-// Onderaan het beginscherm: je lidmaatschap (of lid worden) en wat er binnenkort komt.
+// Onderaan het beginscherm: je Pro (of Pro worden) en wat er binnenkort komt.
 function onderaanHtml(d) {
   if (d.beheer && BEKIJK === 'alles') d = voorbeeldData(d);
   const coaching = !!(d.lid && d.lid.bron === 'coaching');
-  const lidT = isLid(d) ? `<div class="tegels kort" style="margin-top:14px">${tegel({ v: 'lid', ic: 'lid', nm: 'Mijn lidmaatschap', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true })}</div>` : (routeHtml(d) ? '' : lidBalkHtml(d));
+  const lidT = isLid(d) ? `<div class="tegels kort" style="margin-top:14px">${tegel({ v: 'lid', ic: 'lid', nm: 'Mijn Pro', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' maat' : ' maten') + ' via jouw link' : 'Status, facturen en je maten uitnodigen'), tag: '', breed: true })}</div>` : (routeHtml(d) ? '' : lidBalkHtml(d));
   const bk = `<div class="bk-rij"><span>Binnenkort</span>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}<button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${(!d.kracht || d.beheer) && Date.now() < KRACHT_OPEN_APP ? `<button type="button" data-view="krachtteaser">${IC.kracht}Kracht</button>` : ''}</div>`;
   const doel = d.gast ? '' : `<div id="doelvak" class="onder-doel">${doelVakHtml(d)}</div>`;
   return lidT + doel + hklap('tipdicht', 'Tip van Michel', tipKop(d), tipHtml(d), false) + (eersteWeekHtml(d) ? '' : bk);
@@ -3165,7 +3165,7 @@ document.addEventListener('click', (e) => {
 });
 
 // ---- Vandaag (12-10-2026) ----
-// Bovenaan voor leden: in één blik je training, je core en je rit van vandaag.
+// Bovenaan met Pro: in één blik je training, je core en je rit van vandaag.
 // Met schema: de training uit je schema. Coaching: je training staat in
 // TrainingPeaks (Michel zet hem klaar). Alleen lid: core en rit, plus een
 // zachte regel over een schema. Gratis accounts zien deze kaart niet.
@@ -3220,7 +3220,7 @@ function coachingPaginaHtml(d) {
     <div class="kaart"><div class="kaart-in">
       <h2>Vaak gevraagd</h2>
       ${vraag('Komen mijn trainingen ook in deze app?', 'Nee, die blijven in TrainingPeaks. Daar stuur ik ze bij. Deze app is een aanvulling: je core, je bandenspanning en kleding voor elke rit, je palmares en een coach voor snelle vragen.')}
-      ${vraag('Kost de app extra?', 'Nee. Het lidmaatschap is inbegrepen bij je coaching, zolang je coaching loopt.')}
+      ${vraag('Kost de app extra?', 'Nee. Pro is inbegrepen bij je coaching, zolang je coaching loopt.')}
       ${vraag('Ik mis een training of ben ziek. Wat nu?', 'Laat het me even weten. Inhalen is meestal niet nodig, ik schuif je week liever slim om dan dat je alles achter elkaar propt.')}
       ${vraag('Mijn rit staat niet in TrainingPeaks', 'Check of je teller of Strava gekoppeld is in TrainingPeaks (Instellingen, Apps en apparaten). Lukt het niet, stuur me een berichtje.')}
       ${vraag('Wie leest mijn berichten?', 'Ik. Berichten via WhatsApp en TrainingPeaks lees en beantwoord ik zelf. Alleen Vraag je coach in de app antwoordt automatisch, met mijn kennis.')}
@@ -3230,13 +3230,13 @@ function coachingPaginaHtml(d) {
 // Je route (14-10-2026): gratis, lid, schema, coaching. Wat je hebt staat afgevinkt, de volgende stap
 // staat open met wat het je oplevert, de rest zit nog op slot. Coaching is de top, die zien deze kaart niet.
 const OPEN_SLOT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>';
-// Lid worden kan ook via een plan (14-10-2026): bij een schema of coaching zit het lidmaatschap erbij.
+// Pro worden kan ook via een plan (14-10-2026): bij een schema of coaching zit Pro erbij.
 function planKeuzeHtml() {
   const na = Date.now() >= 1792144800000;
-  return `<div class="plankeuze"><div class="label">Of meteen met een plan</div><h3>Lid via je schema of coaching</h3>
-    <p>Koop je een trainingsschema of start je met coaching, dan zit het MKC-lidmaatschap er gewoon bij. Apart lid worden hoeft dan niet.</p>
-    <div class="pk-opties"><a href="${SITE}/trainingsschemas/" target="_blank" rel="noopener"><b>Trainingsschema</b><span>8, 12 of 16 weken in TrainingPeaks${na ? ' &middot; vanaf &euro;59' : ''}</span><em>Lid voor de hele looptijd, plus 2 weken</em></a>
-    <a href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener"><b>1-op-1 coaching</b><span>Michel maakt je plan en stuurt elke week bij &middot; vanaf &euro;79 per maand</span><em>Lid zolang je coaching loopt</em></a></div></div>`;
+  return `<div class="plankeuze"><div class="label">Of meteen met een plan</div><h3>Pro via je schema of coaching</h3>
+    <p>Koop je een trainingsschema of start je met coaching, dan zit het MKC Pro er gewoon bij. Apart Pro worden hoeft dan niet.</p>
+    <div class="pk-opties"><a href="${SITE}/trainingsschemas/" target="_blank" rel="noopener"><b>Trainingsschema</b><span>8, 12 of 16 weken in TrainingPeaks${na ? ' &middot; vanaf &euro;59' : ''}</span><em>Pro voor de hele looptijd, plus 2 weken</em></a>
+    <a href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener"><b>1-op-1 coaching</b><span>Michel maakt je plan en stuurt elke week bij &middot; vanaf &euro;79 per maand</span><em>Pro zolang je coaching loopt</em></a></div></div>`;
 }
 function planOptie(d, naLancering) {
   const doel = d.doel && !d.doel.klaar ? d.doel.doel : null, maand = new Date().getMonth(), winter = maand >= 9 || maand <= 1;
@@ -3251,7 +3251,7 @@ function routeHtml(d) {
   const naLancering = Date.now() >= 1792144800000;
   const stappen = [
     { nm: 'Gratis account', wat: 'Bandenspanning, wind en 3 coachvragen per week' },
-    { nm: 'MKC-lid', wat: 'Slimme bandenspanning, kleding en voeding voor elke rit, je eigen coach en de Core-app.', prijs: '&euro;' + APP_PRIJS.maand + ' per maand, altijd opzegbaar', knop: `<button type="button" class="knop" data-view="lid">${kanLidNu(d) ? 'Word lid' : 'Bekijk wat je krijgt'}</button>` },
+    { nm: 'MKC Pro', wat: 'Slimme bandenspanning, kleding en voeding voor elke rit, je eigen coach en de Core-app.', prijs: '&euro;' + APP_PRIJS.maand + ' per maand, altijd opzegbaar', knop: `<button type="button" class="knop" data-view="lid">${kanLidNu(d) ? 'Word Pro' : 'Bekijk wat je krijgt'}</button>` },
     { nm: 'Trainingsschema', wat: 'Een plan van 8, 12 of 16 weken in TrainingPeaks. Hier in de app zie je elke dag je training, met uitleg.', prijs: naLancering ? 'Vanaf &euro;59, lidmaatschap inbegrepen' : 'Lidmaatschap inbegrepen', knop: `<a class="knop" href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Kies je schema</a>` },
     { nm: '1-op-1 coaching', wat: 'Michel maakt je plan en stuurt elke week bij op wat je rijdt en hoe je je voelt.', prijs: 'Vanaf &euro;79 per maand, app inbegrepen', knop: `<a class="knop" href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener">Bekijk coaching</a>` }
   ];
@@ -3262,7 +3262,7 @@ function routeHtml(d) {
   const kaartje = (st, kort) => `<div class="rt-in"><b>${st.nm}</b><p>${kort}</p><small>${st.prijs}</small>${st.knop}</div>`;
   const [sch, coa] = [stappen[2], stappen[3]];
   let verder = '';
-  if (nu === 0) verder = open(stappen[1]) + `<div class="rt-stap of"><span class="rt-bol">${OPEN_SLOT}</span><div class="rt-of"><b>Of meteen met een plan</b><div>${planOptie(d, naLancering)}<a href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener">1-op-1 coaching<small>vanaf &euro;79 p/m</small></a></div><span>Het lidmaatschap zit er dan bij in.</span></div></div>`;
+  if (nu === 0) verder = open(stappen[1]) + `<div class="rt-stap of"><span class="rt-bol">${OPEN_SLOT}</span><div class="rt-of"><b>Of meteen met een plan</b><div>${planOptie(d, naLancering)}<a href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener">1-op-1 coaching<small>vanaf &euro;79 p/m</small></a></div><span>Pro zit er dan bij in.</span></div></div>`;
   const keuze = nu === 1 ? `<div class="rt-kies">${OPEN_SLOT}Kies wat bij je past</div><div class="rt-keuze">${kaartje(sch, '8, 12 of 16 weken in TrainingPeaks, met elke dag uitleg in de app.')}${kaartje(coa, 'Michel maakt je plan en stuurt elke week bij.')}</div>` : '';
   if (nu === 2) verder = open(coa);
   try { if (Date.now() - Number(localStorage.getItem('mkcRouteWeg') || 0) < 14 * 864e5) return ''; } catch (e) {}
@@ -3298,7 +3298,7 @@ function krKiesHtml(d) {
     <p>Kies wat bij je past. Je doet er één tegelijk, wisselen kan altijd.</p>
     <div class="kr-kies">
       <button type="button" data-kiesvorm="core"><span class="kr-kies-ic">${IC.core}</span><b>Core</b><span>Thuis, zonder gewichten. 10 tot 20 minuten, 2 tot 4 keer per week. Voor een stabiele romp op de fiets.</span><em>${isLid(d) || (d.lid && d.lid.bron === 'coaching') ? 'Inbegrepen' : 'Week 1 gratis'}</em></button>
-      <button type="button" data-kiesvorm="kracht"><span class="kr-kies-ic">${IC.kracht}</span><b>Kracht</b><span>In de sportschool, met gewichten. Ongeveer een uur, 2 keer per week. Voor meer kracht in je benen. Het beste naast ongeveer 2 keer per week een uur fietsen.</span><em>${kOpen ? 'Inbegrepen' : 'Met lidmaatschap'}</em></button>
+      <button type="button" data-kiesvorm="kracht"><span class="kr-kies-ic">${IC.kracht}</span><b>Kracht</b><span>In de sportschool, met gewichten. Ongeveer een uur, 2 keer per week. Voor meer kracht in je benen. Het beste naast ongeveer 2 keer per week een uur fietsen.</span><em>${kOpen ? 'Inbegrepen' : 'Met Pro'}</em></button>
     </div></div></div></div>`;
 }
 document.addEventListener('click', async (e) => {
@@ -3323,9 +3323,9 @@ function krachtPagina(d) {
     <p>We zijn ermee bezig. Straks kies je in de app tussen Core en Kracht: twee keer per week een uur in de sportschool, met een opbouw van 12 weken en gewichten die de app voor je uitrekent.</p>${KR_VERSCHIL}
     <div class="wazig kr-voorbeeld" style="margin:14px 0"><div class="achter"><div class="kr-volgende" style="margin:0"><div class="dash-lab">Week 4 &middot; Opbouw</div><b>Sessie A: Squat en bilspieren</b><small>Ongeveer 45 minuten</small><ul class="kr-lijst"><li><b>Squat met stang</b><span>3 x 8-10 &middot; 62,5 kg</span></li><li><b>Roemeense deadlift</b><span>3 x 8-10 &middot; 55 kg</span></li><li><b>Bulgaarse split squat</b><span>3 x 8-10 per kant &middot; 14 kg</span></li><li><b>Hip thrust</b><span>3 x 8-10 &middot; 70 kg</span></li></ul></div></div><div class="slotje">${SLOT}<b>Zo ziet je sessie eruit</b><span class="klein">De app rekent je gewichten uit</span></div></div>
     <ul class="core-punten"><li>Zware oefeningen die op de trapbeweging lijken: squat, step-up, deadlift op één been</li><li>Je logt je gewichten, de app zegt wanneer het zwaarder mag</li><li>In de winter opbouw, in het seizoen 1 keer per week vasthouden</li></ul>
-    <p class="klein">Kracht hoort bij het lidmaatschap, ook als je coaching of een schema hebt.${isLid(d) || (d.lid && d.lid.bron === 'coaching') ? ' Jij kunt er dan meteen mee aan de slag.' : ''}</p>
+    <p class="klein">Kracht hoort bij Pro, ook als je coaching of een schema hebt.${isLid(d) || (d.lid && d.lid.bron === 'coaching') ? ' Jij kunt er dan meteen mee aan de slag.' : ''}</p>
     ${opDeHoogteHtml('kracht')}<p class="klein" style="margin-top:6px">Sta je op de lijst, dan krijg je een berichtje in de app zodra het open staat${D && PUSH && PUSH.inst && PUSH.inst.aan ? ' en een pushmelding' : ''}.</p></div></div></div>`; }
-  if (!k.open) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht</div><h2>Sterker trappen</h2><p>Twee keer per week een uur in de sportschool, met een opbouw van 12 weken.</p>${KR_VERSCHIL}<p class="klein">Kracht zit in het lidmaatschap.</p><button type="button" class="knop" data-view="lid">Bekijk het lidmaatschap</button></div></div></div>`;
+  if (!k.open) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht</div><h2>Sterker trappen</h2><p>Twee keer per week een uur in de sportschool, met een opbouw van 12 weken.</p>${KR_VERSCHIL}<p class="klein">Kracht zit in Pro.</p><button type="button" class="knop" data-view="lid">Bekijk Pro</button></div></div></div>`;
   const b = k.beeld;
   if (!b) return `<div class="kaarten"><div class="kaart actief"><div class="kaart-in"><div class="label">Kracht</div><h2>Sterker trappen</h2>
     <p>Twee keer per week een uur in de sportschool. Je bouwt in 12 weken op van wennen naar zware kracht en snelkracht, en de app rekent je gewichten uit.</p>
@@ -3501,14 +3501,14 @@ function verkoopMoment(d) {
   const c = d.core, dl = d.doel && !d.doel.klaar ? d.doel : null, w = weerNu(), maand = new Date().getMonth();
   const nog = dl && dl.doel === 'evenement' && dl.datum ? Math.ceil((Date.parse(dl.datum + 'T08:00:00') - Date.now()) / 864e5) : null;
   const l = [];
-  if (c && c.opSlot) l.push({ k: 'proef', t: 'Je proefweek zit erop', p: (c.rompscore != null ? 'Je Rompscore staat op ' + c.rompscore + '. ' : '') + 'Niveau 2 staat klaar, en alles wat je deed blijft staan.', knop: 'Ga door als lid' });
-  if (gratisOver() === 0) l.push({ k: 'vragen', t: 'Je vragen voor deze week zijn op', p: 'Als lid vraag je door wanneer je wilt. En je coach kent dan je fietsen, je doel en je Core.', knop: 'Word lid' });
-  if (nog != null && nog > 0 && nog <= 56) l.push({ k: 'tocht', t: 'Nog ' + nog + ' dagen tot ' + esc(dl.naam), p: 'Als lid stemt je Core af op je tocht, krijg je kledingadvies voor die ochtend en straks je pacingplan voor &euro;19.', knop: 'Bereid je slim voor' });
+  if (c && c.opSlot) l.push({ k: 'proef', t: 'Je proefweek zit erop', p: (c.rompscore != null ? 'Je Rompscore staat op ' + c.rompscore + '. ' : '') + 'Niveau 2 staat klaar, en alles wat je deed blijft staan.', knop: 'Ga door met Pro' });
+  if (gratisOver() === 0) l.push({ k: 'vragen', t: 'Je vragen voor deze week zijn op', p: 'Met Pro vraag je door wanneer je wilt. En je coach kent dan je fietsen, je doel en je Core.', knop: 'Word Pro' });
+  if (nog != null && nog > 0 && nog <= 56) l.push({ k: 'tocht', t: 'Nog ' + nog + ' dagen tot ' + esc(dl.naam), p: 'Met Pro stemt je Core af op je tocht, krijg je kledingadvies voor die ochtend en straks je pacingplan voor &euro;19.', knop: 'Bereid je slim voor' });
   if (!c && nog != null && nog > 21) l.push({ k: 'coremee', t: 'Core die meebeweegt naar ' + esc(dl.naam), mee: true, knop: 'Bekijk wat je krijgt' });
-  { const max = d.gratisMax || 3, over = gratisOver(); if (over != null && over > 0 && over < max) l.push({ k: 'coach', t: 'Smaakt naar meer?', p: 'Je coach antwoordt met wat ik in 9 jaar prof en als coach heb geleerd. Als lid vraag je tot 25 keer per week, en kent hij je fietsen, je doel en je Core. Dan krijg je antwoord op jouw situatie.', knop: 'Word lid' }); }
+  { const max = d.gratisMax || 3, over = gratisOver(); if (over != null && over > 0 && over < max) l.push({ k: 'coach', t: 'Smaakt naar meer?', p: 'Je coach antwoordt met wat ik in 9 jaar prof en als coach heb geleerd. Met Pro vraag je tot 25 keer per week, en kent hij je fietsen, je doel en je Core. Dan krijg je antwoord op jouw situatie.', knop: 'Word Pro' }); }
   if (spDagen() >= 3) l.push({ k: 'spanning', t: 'Je checkt je spanning vaak', p: 'De slimme versie onthoudt je fietsen en rekent nat wegdek en kou mee. Elke ochtend klaar, zonder iets in te vullen.', knop: 'Bekijk de slimme versie' });
   if ((w && w.temp < 10) || (!w && (maand >= 10 || maand <= 2))) l.push({ k: 'kou', t: w ? 'Wat trek je aan bij ' + w.temp + '&deg;?' : 'Wat trek je aan als het koud is?', p: 'Leden krijgen voor elke rit kledingadvies, op basis van het weer tijdens hun hele rit en hoe snel ze het koud hebben.', knop: 'Zo werkt het' });
-  l.push({ k: 'ochtend', t: 'Zo begint de ochtend van een lid', ochtend: true, knop: 'Bekijk wat je krijgt' });
+  l.push({ k: 'ochtend', t: 'Zo begint je ochtend met Pro', ochtend: true, knop: 'Bekijk wat je krijgt' });
   return l.find((x) => !vkWeg(x.k)) || null;
 }
 function verkoopMomentHtml(d) {
@@ -3518,11 +3518,11 @@ function verkoopMomentHtml(d) {
     <button type="button" class="knop" data-actie="naarlid">${m.knop}</button><span class="vk-prijs">&euro;${APP_PRIJS.maand} per maand, of &euro;${APP_PRIJS.jaar} per jaar</span><span class="vk-bewijs">&#9733; 4,9 uit 48 Google-reviews &middot; 1000+ renners trainen met mijn schema&rsquo;s</span></div>`;
 }
 document.addEventListener('click', (e) => { const k = e.target.closest('[data-vkweg]'); if (!k) return; try { localStorage.setItem('mkcVkWeg:' + k.dataset.vkweg, String(Date.now())); } catch (er) {} if (VIEW === 'home') teken(); });
-// Korte "Word lid"-balk op de startpagina; de voordelen, prijzen en factuurgegevens staan op de pagina MKC-Lid.
+// Korte "Word Pro"-balk op de startpagina; de voordelen, prijzen en factuurgegevens staan op de pagina MKC-Lid.
 function lidBalkHtml(d) {
   if (isLid(d) || (d.lid && d.lid.bron === 'coaching')) return '';
   if (!binnenkortNu() && !kanLidNu(d)) return '';
-  return `<button type="button" class="lidbalk" data-view="lid"><span><b>Word lid van de MKC-app</b><em>${d.voorverkoop ? 'Voorverkoop &middot; je eerste maand start pas vrijdag 16 oktober' : binnenkortNu() ? 'Open vanaf vrijdag 16 oktober &middot; bekijk wat je krijgt' : '&euro;' + APP_PRIJS.maand + ' per maand &middot; alles ontgrendeld'}</em></span><i>&#8250;</i></button>`;
+  return `<button type="button" class="lidbalk" data-view="lid"><span><b>Word Pro</b><em>${d.voorverkoop ? 'Voorverkoop &middot; je eerste maand start pas vrijdag 16 oktober' : binnenkortNu() ? 'Open vanaf vrijdag 16 oktober &middot; bekijk wat je krijgt' : '&euro;' + APP_PRIJS.maand + ' per maand &middot; alles ontgrendeld'}</em></span><i>&#8250;</i></button>`;
 }
 // Na je analyse (12-10-2026): heb je nog geen schema of coaching, dan onderaan
 // de twee manieren om op je analyse te trainen. Je tegoed uit de analyse telt mee.
@@ -3541,7 +3541,7 @@ function vriendMomentHtml(d) {
   const wk = Math.floor((Date.now() / 864e5 + 3) / 7);
   try { if (Number(localStorage.getItem('mkcVrWeg')) === wk) return ''; } catch (e) {}
   const n = l.vriendAantal || 0, rang = VR_RANG.find(([m]) => n >= m)[1];
-  const jij = l.vriendBeloning === false ? '' : l.gratis || l.vriendCadeau ? ' Jij krijgt 2 weken gratis lid per maat.' : ' Jij krijgt 2 weken extra per maat.';
+  const jij = l.vriendBeloning === false ? '' : l.gratis || l.vriendCadeau ? ' Jij krijgt 2 weken gratis Pro per maat.' : ' Jij krijgt 2 weken extra per maat.';
   return `<div class="vr-moment"><button type="button" class="welkom-x" data-actie="vrweg" aria-label="Sluiten">&times;</button><small>Weekend, tijd om te fietsen ${n ? '&middot; ' + rang + ', ' + n + (n === 1 ? ' maat' : ' maten') : ''}</small><b>Rijd je met maten? Geef ze 50% korting</b><p>Met jouw link is hun eerste maand de helft.${jij}</p><div class="vr-knoppen" style="grid-template-columns:1fr 1fr"><button type="button" class="knop wa-knop" data-lx="whatsapp">WhatsApp</button><button type="button" class="knop leeg" data-actie="naarlid">Bekijk je beloningen</button></div></div>`;
 }
 function volgendeStapHtml(d) {
@@ -3575,8 +3575,8 @@ function paginaHtml(d) {
   if (VIEW === 'lid') {
     const lid = isLid(d), tijdelijk = lid && d.lid && ['schema', 'cadeau'].includes(d.lid.bron);
     const pitch = binnenkortNu() && !d.voorverkoop ? binnenkortPitchHtml() : kanLidNu(d) ? lidPitchHtml() : '';
-    if (!lid) return appBalkHtml() + (pitch || '<p class="klein">Lid worden kan op dit moment niet.</p>') + planKeuzeHtml() + voet;
-    const daarna = tijdelijk ? `<details class="daarna" ${location.hash === '#lid' ? 'open' : ''}><summary><b>Daarna lid blijven</b><span>vanaf &euro;${APP_PRIJS.jaarPerMaand} per maand${binnenkortNu() && !d.voorverkoop ? ' &middot; kan vanaf 16 oktober' : ''}</span></summary>${pitch}</details>` : '';
+    if (!lid) return appBalkHtml() + (pitch || '<p class="klein">Pro worden kan op dit moment niet.</p>') + planKeuzeHtml() + voet;
+    const daarna = tijdelijk ? `<details class="daarna" ${location.hash === '#lid' ? 'open' : ''}><summary><b>Daarna Pro blijven</b><span>vanaf &euro;${APP_PRIJS.jaarPerMaand} per maand${binnenkortNu() && !d.voorverkoop ? ' &middot; kan vanaf 16 oktober' : ''}</span></summary>${pitch}</details>` : '';
     return appBalkHtml() + lidStatusHtml(d.lid) + lidExtraHtml(d.lid) + daarna + voet;
   }
   return null;
@@ -3720,7 +3720,7 @@ async function zegOpNu(knop) {
     const r = await fetch('/api/lid?actie=opzeggen', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), reden, toelichting }) });
     const j = await r.json();
     if (!j.ok) alert(j.fout || 'Opzeggen lukte niet.');
-    else { await laadOverzicht(); const tot = j.lid && j.lid.tot; return modal('<h3>Je lidmaatschap is opgezegd</h3><p>Er wordt niets meer afgeschreven.' + (tot ? ' Je kunt alles blijven gebruiken tot ' + esc(datumNl(tot)) + '.' : '') + '</p><p class="klein">Bedenk je je? Op je lidpagina word je met één tik weer lid, en alles wat je deed staat er dan nog.</p><button type="button" class="knop" data-lx="dicht">Oké</button>'); }
+    else { await laadOverzicht(); const tot = j.lid && j.lid.tot; return modal('<h3>Je Pro is opgezegd</h3><p>Er wordt niets meer afgeschreven.' + (tot ? ' Je kunt alles blijven gebruiken tot ' + esc(datumNl(tot)) + '.' : '') + '</p><p class="klein">Bedenk je je? Op je lidpagina word je met één tik weer lid, en alles wat je deed staat er dan nog.</p><button type="button" class="knop" data-lx="dicht">Oké</button>'); }
   } catch { alert('Verbinding mislukt.'); }
   lxDicht(); laadOverzicht();
 }
@@ -3754,7 +3754,7 @@ function vriendKaartHtml(l, compact) {
     : [{ n: 1, t: 'Gangmaker', sub: 'rang' }, coaching ? { n: 3, t: 'Wegkapitein', sub: 'rang' } : { n: 3, t: 'Analyse', sub: 'gratis' }, { n: 5, t: 'Kopman', sub: 'rang' }, { n: 10, t: 'Ploegleider', sub: 'rang' }];
   const telt = (p) => (zelf && p.n >= 3 ? nb : n) >= p.n;
   const volgende = paal.find((p) => !telt(p));
-  const naam = (p) => p.sub === 'rang' ? 'de rang ' + p.t : p.n === 1 ? (gratisLid ? '2 weken gratis lid' : '2 weken extra') : p.n === 3 ? 'je gratis Strava-analyse' : p.n === 5 ? 'een gratis maand' : 'een gratis jaar';
+  const naam = (p) => p.sub === 'rang' ? 'de rang ' + p.t : p.n === 1 ? (gratisLid ? '2 weken gratis Pro' : '2 weken extra') : p.n === 3 ? 'je gratis Strava-analyse' : p.n === 5 ? 'een gratis maand' : 'een gratis jaar';
   // Gelijke afstanden; de balk loopt per stuk tussen twee mijlpalen.
   const pos = (i) => paal.length === 1 ? 50 : Math.round(i / (paal.length - 1) * 100);
   const i2 = paal.findIndex((p) => !telt(p));
@@ -3767,8 +3767,8 @@ function vriendKaartHtml(l, compact) {
   const knoppen = `<label class="vr-label">Wie nodig je uit?</label><input class="vr-naam" type="text" maxlength="40" placeholder="Naam van je maat, bijv. Jan" autocomplete="off"><div class="vr-knoppen"><button type="button" class="knop wa-knop" data-lx="whatsapp">Stuur via WhatsApp</button><button type="button" class="knop leeg" data-lx="vriend">Andere app of kopieer</button></div>`;
   if (compact) return `<div class="vr-kaart compact"><div class="vr-kop"><div><small>Jouw rang</small><a href="#" data-actie="naarmaten" class="vr-rang-link"><b>${rang}</b> <span>bekijk je beloningen &rsaquo;</span></a></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'}</small></div></div><p class="vr-doel">${doel}</p>${knoppen}</div>`;
   return `<div class="vr-kaart"><div class="vr-kop"><div><small>Jouw rang</small><b>${rang}</b></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'} via jouw link</small></div></div>
-    <h3>${l.gratis ? 'Word gratis lid via je maten' : 'Nodig je maten uit'}</h3>
-    ${D && D.mijnCode ? `<div class="vr-code">Jouw code <b>${esc(D.mijnCode)}</b><span>Noem hem gewoon, je maat vult hem in bij lid worden.</span></div>` : ''}
+    <h3>${l.gratis ? 'Krijg gratis Pro via je maten' : 'Nodig je maten uit'}</h3>
+    ${D && D.mijnCode ? `<div class="vr-code">Jouw code <b>${esc(D.mijnCode)}</b><span>Noem hem gewoon, je maat vult hem in bij Pro worden.</span></div>` : ''}
     <div class="vr-geef"><div><small>Jouw maat krijgt</small><b>50% korting</b><span>eerste maand &euro;${APP_PRIJS.half}, of een jaar voor &euro;${APP_PRIJS.jaarMaat}</span></div><div><small>Jij krijgt</small><b>${zelf ? '2 weken' : coaching ? 'Een rang' : 'Analyse'}</b><span>${zelf ? (gratisLid ? 'gratis lid per maat, plus de mijlpalen hieronder' : 'extra per maat, plus de mijlpalen hieronder') : coaching ? 'van Gangmaker tot Ploegleider' : 'gratis bij 3 maten, plus je rang'}</span></div></div>
     ${ladder}<p class="vr-doel">${doel}</p>
     ${l.vriendAnalyse ? `<a class="knop" href="${esc(l.vriendAnalyse)}" target="_blank" rel="noopener" style="margin-bottom:10px">Claim je gratis analyse</a>` : ''}
@@ -3779,7 +3779,7 @@ function vriendKaartHtml(l, compact) {
 // Mijn uitnodigingen: wie, wanneer, en hoe ver. Niet-leden kun je nog eens een berichtje sturen.
 function vriendLijstHtml() {
   const l = (D && D.uitnodigingen) || []; if (!l.length) return '';
-  const st = { verstuurd: ['Uitgenodigd', ''], account: ['Heeft een account', 'half'], lid: ['Lid', 'aan'] };
+  const st = { verstuurd: ['Uitgenodigd', ''], account: ['Heeft een account', 'half'], lid: ['Heeft Pro', 'aan'] };
   const dag = (x) => new Date(x).toLocaleDateString('nl-NL', { day: 'numeric', month: 'short' });
   const rij = (x) => { const [t, c] = st[x.status] || st.verstuurd; return `<li><div><b>${esc(x.naam)}</b><small>${x.zelf ? 'via je link' : 'uitgenodigd'} ${dag(x.op)}${x.lidOp ? ' &middot; lid sinds ' + dag(x.lidOp) : ''}</small></div><span class="vr-st ${c}">${x.status === 'lid' ? '&#10003; ' : ''}${t}</span>${x.status !== 'lid' && !x.zelf ? `<button type="button" class="vr-nog" data-lx="whatsapp" data-u="${esc(x.id)}" data-naam="${esc(x.naam)}">Stuur nog eens</button>` : ''}</li>`; };
   const lid = l.filter((x) => x.status === 'lid').length;
@@ -3854,13 +3854,13 @@ function palmaresHtml(d) {
   if (!lidNu) groepen.sort((x, y) => (l.filter((b) => b.groep === x).every((b) => b.lid) ? 1 : 0) - (l.filter((b) => b.groep === y).every((b) => b.lid) ? 1 : 0));
   const tegeltje = (b) => {
     const p = b.volgende ? Math.round(Math.min(b.waarde, b.volgende) / b.volgende * 100) : 100;
-    return `<button type="button" class="md-tegel n${b.niveau}" data-badge="${b.id}">${medailleSvg(b, 74)}<b>${b.naam}</b><small>${b.binnenkort ? 'Binnenkort' : b.niveau ? MD_NAAM[b.niveau - 1] : !lidNu && b.lid ? 'Met lidmaatschap' : 'Op slot'}</small>${b.goudKlaar ? '<em class="goud">Goud staat klaar</em>' : b.goudLid ? '<em>Goud: als lid</em>' : b.volgende && !b.binnenkort ? `<span class="md-balk"><i style="width:${p}%"></i></span><em>${Math.min(b.waarde, b.volgende)} / ${b.volgende}</em>` : !b.volgende ? '<em class="goud">Alles goud</em>' : ''}</button>`;
+    return `<button type="button" class="md-tegel n${b.niveau}" data-badge="${b.id}">${medailleSvg(b, 74)}<b>${b.naam}</b><small>${b.binnenkort ? 'Binnenkort' : b.niveau ? MD_NAAM[b.niveau - 1] : !lidNu && b.lid ? 'Met Pro' : 'Op slot'}</small>${b.goudKlaar ? '<em class="goud">Goud staat klaar</em>' : b.goudLid ? '<em>Goud: met Pro</em>' : b.volgende && !b.binnenkort ? `<span class="md-balk"><i style="width:${p}%"></i></span><em>${Math.min(b.waarde, b.volgende)} / ${b.volgende}</em>` : !b.volgende ? '<em class="goud">Alles goud</em>' : ''}</button>`;
   };
   const belKaart = (r) => {
     const nog = Math.max(0, r.n - m), goudNog = Math.max(0, (r.goud || 0) - ((d && d.goud) || 0));
     const kort = lidNu ? String(r.kort).replace(/, plus .*$/, '.') : r.kort;
     const knop = !r.behaald ? '' : r.binnenkort ? '<p class="klein" style="margin:6px 0 0">Verdiend! Je krijgt hem zodra het pacingplan er is.</p>' : r.handmatig ? '<p class="klein" style="margin:6px 0 0">Verdiend! Michel neemt contact met je op om dit te regelen.</p>' : r.renner || r.metaal || r.id === 'm20' ? `<button type="button" class="knop" data-view="palmares" data-kk="1">Naar je kleedkamer</button>` : r.sessie ? `<button type="button" class="knop" data-beloning="${r.id}">Bekijk de sessie</button>` : r.coaching ? '<p class="klein" style="margin:6px 0 0">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">Start je analyse</a>` : '';
-    return `<div class="bel${r.behaald ? ' aan' : ''}"><div class="bel-n"><b>${r.n}</b><small>medailles</small>${r.goud ? '<em>+' + r.goud + ' goud</em>' : ''}</div><div class="bel-tekst"><b>${r.behaald ? '&#10003; ' : ''}${esc(r.titel)}</b><span>${esc(kort)}</span>${r.behaald ? (r.lidKorting ? '<span class="bel-extra">Je €' + r.lidKorting + ' lidmaatschapskorting staat klaar bij Mijn lidmaatschap.</span>' : '') + (r.vragen ? '<span class="bel-extra">Je 2 extra coachvragen staan klaar.</span>' : '') : `<span class="bel-nog">${nog ? 'Nog ' + nog + ' ' + (nog === 1 ? 'medaille' : 'medailles') : ''}${nog && goudNog ? ' en ' : ''}${goudNog ? (nog ? '' : 'Nog ') + goudNog + ' gouden ' + (goudNog === 1 ? 'medaille' : 'medailles') : ''}${r.binnenkort ? ' &middot; binnenkort' : ''}</span>`}${knop}</div>${r.behaald ? '' : '<div class="bel-slot">' + medailleSlot() + '</div>'}</div>`;
+    return `<div class="bel${r.behaald ? ' aan' : ''}"><div class="bel-n"><b>${r.n}</b><small>medailles</small>${r.goud ? '<em>+' + r.goud + ' goud</em>' : ''}</div><div class="bel-tekst"><b>${r.behaald ? '&#10003; ' : ''}${esc(r.titel)}</b><span>${esc(kort)}</span>${r.behaald ? (r.lidKorting ? '<span class="bel-extra">Je €' + r.lidKorting + ' lidmaatschapskorting staat klaar bij Mijn Pro.</span>' : '') + (r.vragen ? '<span class="bel-extra">Je 2 extra coachvragen staan klaar.</span>' : '') : `<span class="bel-nog">${nog ? 'Nog ' + nog + ' ' + (nog === 1 ? 'medaille' : 'medailles') : ''}${nog && goudNog ? ' en ' : ''}${goudNog ? (nog ? '' : 'Nog ') + goudNog + ' gouden ' + (goudNog === 1 ? 'medaille' : 'medailles') : ''}${r.binnenkort ? ' &middot; binnenkort' : ''}</span>`}${knop}</div>${r.behaald ? '' : '<div class="bel-slot">' + medailleSlot() + '</div>'}</div>`;
   };
   const gratisHaal = l.filter((b) => !b.lid && !b.binnenkort).length;
   const allesGoud = (g) => l.filter((b) => b.groep === g && !b.binnenkort).every((b) => b.niveau === 3);
@@ -3874,10 +3874,10 @@ function palmaresHtml(d) {
     <div class="pm-tel">${[0, 1, 2].map((i) => `<div class="pm-t">${medailleSvg({ icoon: 'vink', niveau: i + 1 }, 30)}<div><b>${tel[i]}</b><small>${MD_NAAM[i]}</small></div></div>`).join('')}</div>
     <div class="pm-balk"><i style="width:${Math.min(100, Math.round((m - ((d.maandCollectie || []).length)) / max * 100))}%"></i></div>
     <div class="rv-sub">Beloningen</div><div class="bel-lijst">${bel.map(belKaart).join('')}</div>
-    ${!lidNu ? `<div class="pm-gratis"><b>Je doet mee met een gratis account</b><span>Brons en zilver haal je gratis bij ${gratisHaal} badges: elke dag de app openen, groepsritten, coachvragen, je analyse, maten en je tocht. Goud en de Core-, rit- en ledenbadges verdien je met het lidmaatschap. Staat je goud al klaar, dan krijg je het meteen als je lid wordt.</span>${typeof kanLidNu === 'function' && kanLidNu(d) ? '<button type="button" class="sb-link" data-actie="naarlid" style="margin:6px 0 0">Bekijk het lidmaatschap</button>' : ''}</div>` : ''}
+    ${!lidNu ? `<div class="pm-gratis"><b>Je doet mee met een gratis account</b><span>Brons en zilver haal je gratis bij ${gratisHaal} badges: elke dag de app openen, groepsritten, coachvragen, je analyse, maten en je tocht. Goud en de Core-, rit- en ledenbadges verdien je met Pro. Staat je goud al klaar, dan krijg je het meteen als je Pro neemt.</span>${typeof kanLidNu === 'function' && kanLidNu(d) ? '<button type="button" class="sb-link" data-actie="naarlid" style="margin:6px 0 0">Bekijk Pro</button>' : ''}</div>` : ''}
     ${bijna.length ? `<div class="rv-sub">Bijna binnen</div><div class="md-raster">${bijna.map(tegeltje).join('')}</div>` : ''}
     ${groepen.map((g) => `<div class="rv-sub">${g}${allesGoud(g) ? ' <span class="pm-goud">Alles goud</span>' : ''}</div><div class="md-raster${allesGoud(g) ? ' goudrand' : ''}">${l.filter((b) => b.groep === g).map(tegeltje).join('')}</div>`).join('')}
-    <p class="klein" style="margin-top:14px">De app rekent je medailles zelf uit met wat er echt gebeurt: je Core-sessies, je ritten met het weer van dat moment, je groepsritten, je analyses en maten die lid werden. Tik op een medaille voor de details of om hem te delen.</p>
+    <p class="klein" style="margin-top:14px">De app rekent je medailles zelf uit met wat er echt gebeurt: je Core-sessies, je ritten met het weer van dat moment, je groepsritten, je analyses en maten die Pro namen. Tik op een medaille voor de details of om hem te delen.</p>
   </div></div>`;
 }
 // ---- Ranglijst (13-10-2026): eigen renner met bijnaam en avatar ----
@@ -4073,13 +4073,13 @@ function maandHtml(d) {
   const u = d && d.maand; if (!u) return '';
   const p = Math.round((u.waarde / u.doel) * 100), col = (d.maandCollectie || []).filter((c) => c.sleutel !== u.sleutel);
   return `<div class="maand${u.behaald ? ' aan' : ''}" data-maand="1"><div class="maand-md">${maandMedaille(u, u.behaald, 78)}</div><div class="maand-tekst"><small>Maanduitdaging &middot; limited edition</small><b>${esc(u.naam)}</b><span>${esc(u.uitleg)}${u.gratisSpoor ? ' <em class="maand-spoor">Gratis variant &middot; leden: ' + esc(u.ledenUitleg) + '</em>' : ''}</span>
-    ${u.behaald ? '<span class="maand-klaar">&#10003; Binnen! Deze medaille is van jou.</span>' : u.opSlot ? '<span class="maand-klaar slot">Deze maand voor leden. Volgende maand weer voor iedereen.</span>' : `<span class="md-balk"><i style="width:${p}%"></i></span><span class="maand-nog">${u.waarde} / ${u.doel} &middot; nog ${u.dagenOver} ${u.dagenOver === 1 ? 'dag' : 'dagen'}</span>`}</div></div>
+    ${u.behaald ? '<span class="maand-klaar">&#10003; Binnen! Deze medaille is van jou.</span>' : u.opSlot ? '<span class="maand-klaar slot">Deze maand met Pro. Volgende maand weer voor iedereen.</span>' : `<span class="md-balk"><i style="width:${p}%"></i></span><span class="maand-nog">${u.waarde} / ${u.doel} &middot; nog ${u.dagenOver} ${u.dagenOver === 1 ? 'dag' : 'dagen'}</span>`}</div></div>
     ${col.length ? `<div class="maand-col">${col.map((c) => `<div title="${esc(c.naam)}">${maandMedaille(c, true, 36)}<small>${c.kort}</small></div>`).join('')}</div>` : ''}`;
 }
 function maandModal(nieuw) {
   const u = (zicht() || {}).maand; if (!u) return;
   modal(`<div class="md-modal${nieuw ? ' nieuw' : ''}">${nieuw ? '<div class="md-unlock">Ontgrendeld!</div>' : ''}<div class="md-groot">${maandMedaille(u, u.behaald, 150)}</div><h3>${esc(u.naam)}</h3><p class="md-niv">Maanduitdaging &middot; limited edition</p><p>${esc(u.uitleg)}</p>
-    ${u.behaald ? '<p class="klein">Deze medaille kon je alleen deze maand halen. Hij telt mee voor je palmares en de ranglijst.</p>' : u.opSlot ? '<p class="klein">Deze maand is de uitdaging voor leden. Volgende maand is er weer een voor iedereen.</p>' : `<p class="klein">Je staat op ${u.waarde} van ${u.doel}. Nog ${u.dagenOver} ${u.dagenOver === 1 ? 'dag' : 'dagen'} deze maand.</p>`}
+    ${u.behaald ? '<p class="klein">Deze medaille kon je alleen deze maand halen. Hij telt mee voor je palmares en de ranglijst.</p>' : u.opSlot ? '<p class="klein">Deze maand is de uitdaging met Pro. Volgende maand is er weer een voor iedereen.</p>' : `<p class="klein">Je staat op ${u.waarde} van ${u.doel}. Nog ${u.dagenOver} ${u.dagenOver === 1 ? 'dag' : 'dagen'} deze maand.</p>`}
     <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">${nieuw ? 'Top!' : 'Sluiten'}</button></div>`);
 }
 document.addEventListener('click', (e) => { if (e.target.closest('[data-maand]')) { e.preventDefault(); maandModal(); } });
@@ -4147,14 +4147,14 @@ function badgeModal(id, nieuwNiveau) {
   const b = ((zicht() || {}).badges || []).find((x) => x.id === id); if (!b) return;
   const dag = (x) => x ? new Date(x).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   const gratisNu = !(isLid(zicht()) || ((zicht() || {}).lid || {}).bron === 'coaching');
-  const rij = (i) => { const gehaald = b.niveau > i; return `<li class="${gehaald ? 'aan' : ''}">${medailleSvg(b, 30, { niveau: gehaald ? i + 1 : 0 })}<div><b>${MD_NAAM[i]}</b><span>${b.uitleg[i]}</span></div><small>${gehaald ? dag(b.op[i + 1]) || 'gehaald' : b.binnenkort ? 'binnenkort' : gratisNu && (i === 2 || b.lid) ? (b.waarde >= b.drempels[i] ? 'klaar, als lid' : 'als lid') : Math.min(b.waarde, b.drempels[i]) + ' / ' + b.drempels[i]}</small></li>`; };
+  const rij = (i) => { const gehaald = b.niveau > i; return `<li class="${gehaald ? 'aan' : ''}">${medailleSvg(b, 30, { niveau: gehaald ? i + 1 : 0 })}<div><b>${MD_NAAM[i]}</b><span>${b.uitleg[i]}</span></div><small>${gehaald ? dag(b.op[i + 1]) || 'gehaald' : b.binnenkort ? 'binnenkort' : gratisNu && (i === 2 || b.lid) ? (b.waarde >= b.drempels[i] ? 'klaar, met Pro' : 'met Pro') : Math.min(b.waarde, b.drempels[i]) + ' / ' + b.drempels[i]}</small></li>`; };
   const vrij = nieuwNiveau ? rnNieuwVrij() : [];
   modal(`<div class="md-modal${nieuwNiveau ? ' nieuw' : ''}">${nieuwNiveau ? `<div class="md-unlock">Ontgrendeld!</div>` : ''}<div class="md-groot">${medailleSvg(b, 150, nieuwNiveau ? { niveau: nieuwNiveau } : {})}</div>
     <h3>${b.naam}</h3><p class="md-niv">${b.niveau ? MD_NAAM[b.niveau - 1] : b.binnenkort ? 'Binnenkort te verdienen' : 'Nog op slot'}</p>
     <ul class="md-rijen">${[0, 1, 2].map(rij).join('')}</ul>
     ${vrij.length ? `<div class="kk-nieuw"><b>Nieuw in je kleedkamer</b><span>${vrij.map(esc).join(', ')}</span></div>` : ''}
-    ${b.goudKlaar || b.goudLid ? `<p class="klein">${esc(b.nog)}</p>${kanLidNu(zicht()) ? '<button type="button" class="sb-link" data-actie="naarlid" style="margin:0 0 8px">Bekijk het lidmaatschap</button>' : ''}` : ''}
-    ${b.niveau ? `<button type="button" class="knop" data-badgedeel="${b.id}">Deel als story</button>` : b.lid && !(isLid(zicht()) || ((zicht() || {}).lid || {}).bron === 'coaching') ? `<p class="klein">Deze badge verdien je met het lidmaatschap: met de ${b.groep === 'Core' ? 'Core-app' : 'slimme bandenspanning en Ik rijd hiermee'}.</p>${kanLidNu(zicht()) ? '<button type="button" class="knop" data-actie="naarlid">Bekijk het lidmaatschap</button>' : ''}` : `<p class="klein">${esc(b.nog)}</p>`}
+    ${b.goudKlaar || b.goudLid ? `<p class="klein">${esc(b.nog)}</p>${kanLidNu(zicht()) ? '<button type="button" class="sb-link" data-actie="naarlid" style="margin:0 0 8px">Bekijk Pro</button>' : ''}` : ''}
+    ${b.niveau ? `<button type="button" class="knop" data-badgedeel="${b.id}">Deel als story</button>` : b.lid && !(isLid(zicht()) || ((zicht() || {}).lid || {}).bron === 'coaching') ? `<p class="klein">Deze badge verdien je met Pro: met de ${b.groep === 'Core' ? 'Core-app' : 'slimme bandenspanning en Ik rijd hiermee'}.</p>${kanLidNu(zicht()) ? '<button type="button" class="knop" data-actie="naarlid">Bekijk Pro</button>' : ''}` : `<p class="klein">${esc(b.nog)}</p>`}
     <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">${nieuwNiveau ? 'Top!' : 'Sluiten'}</button>${nieuwNiveau ? '<button type="button" class="sb-link" data-view="palmares" style="display:block;margin:4px auto 0">Bekijk je palmares</button>' : ''}</div>`);
 }
 function beloningModal(id, nieuw) {
@@ -4162,7 +4162,7 @@ function beloningModal(id, nieuw) {
   const sessie = r.sessie ? `<ol class="ms-lijst">${r.sessie.oefeningen.map((o) => `<li><b>${esc(o.naam)}</b><span>${esc(o.cue)}</span></li>`).join('')}</ol>` : '';
   const actie = r.handmatig ? '<p class="klein">Michel neemt contact met je op om dit te regelen.</p>' : r.renner || r.metaal || r.id === 'm20' ? '<button type="button" class="knop" data-view="palmares" data-kk="1">Naar je kleedkamer</button>' : r.sessie ? '' : r.coaching ? '<p class="klein">Je analyse regelt Michel binnen je coaching.</p>' : r.link ? `<a class="knop" href="${esc(r.link)}" target="_blank" rel="noopener">Start je gratis analyse</a>` : '';
   modal(`<div class="md-modal">${nieuw ? '<div class="md-unlock">Beloning ontgrendeld!</div>' : ''}<div class="bel-groot"><b>${r.n}</b><small>medailles</small></div><h3>${esc(r.sessie ? r.sessie.titel : r.titel)}</h3>
-    <p>${esc(r.sessie ? r.sessie.uitleg : r.kort)}</p>${sessie}${r.vragen ? '<p class="klein">Plus: 2 extra gratis coachvragen deze week.</p>' : ''}${r.lidKorting ? `<p class="klein">Plus: €${r.lidKorting} korting op je eerste lidmaatschap, die zie je bij het betalen.</p>` : ''}${actie}
+    <p>${esc(r.sessie ? r.sessie.uitleg : r.kort)}</p>${sessie}${r.vragen ? '<p class="klein">Plus: 2 extra gratis coachvragen deze week.</p>' : ''}${r.lidKorting ? `<p class="klein">Plus: €${r.lidKorting} korting op je eerste maand Pro, die zie je bij het betalen.</p>` : ''}${actie}
     <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">Sluiten</button></div>`);
 }
 // Story-plaatje van een medaille, met je eigen uitnodiglink (50% voor je maten).
@@ -4309,7 +4309,7 @@ document.addEventListener('click', async (e) => {
 
 // ===========================================================================
 // MKC-COACH (stap 4, 07-10-2026): één coach-knop in de hele app. Leden chatten
-// (api/app.js actie=coach), niet-leden zien wat het is en kunnen lid worden.
+// (api/app.js actie=coach), niet-leden zien wat het is en kunnen Pro worden.
 // Staat buiten #app, zodat hij blijft staan als de pagina opnieuw getekend wordt.
 // ===========================================================================
 const CC_NAAM = 'MKC-coach';
@@ -4373,12 +4373,12 @@ function gratisTellerHtml(id) {
   const max = (D && D.gratisMax) || 3;
   const tg = tegoedNu();
   if (over === 0 && tg) return `<p class="klein gratis-teller" id="${id}">Je gratis weekvragen zijn op, je vraagt nu met je tegoed &middot; <a href="#" data-view="palmares">${tegoedTekst(tg)}</a></p>`;
-  return `<p class="klein gratis-teller" id="${id}">${tg ? `<a href="#" data-view="palmares">${tegoedTekst(tg)}</a> &middot; ` : ''}${over > 0 ? (D && D.analyseBonus ? `Nog ${over} ${over === 1 ? 'vraag' : 'vragen'} deze week &middot; 2 extra omdat je net je analyse deed` : `Nog <b>${over}</b> van ${max} gratis vragen deze week &middot; maandag weer ${max}`) : 'Je gratis vragen van deze week zijn op &middot; maandag weer ' + max}${kanLidNu() ? ' &middot; <a href="#" data-actie="naarlid">25 per week als lid</a>' : ''}</p>`;
+  return `<p class="klein gratis-teller" id="${id}">${tg ? `<a href="#" data-view="palmares">${tegoedTekst(tg)}</a> &middot; ` : ''}${over > 0 ? (D && D.analyseBonus ? `Nog ${over} ${over === 1 ? 'vraag' : 'vragen'} deze week &middot; 2 extra omdat je net je analyse deed` : `Nog <b>${over}</b> van ${max} gratis vragen deze week &middot; maandag weer ${max}`) : 'Je gratis vragen van deze week zijn op &middot; maandag weer ' + max}${kanLidNu() ? ' &middot; <a href="#" data-actie="naarlid">25 per week met Pro</a>' : ''}</p>`;
 }
 function gratisOpHtml() {
   return `<div class="cc-slotkaart"><div class="label">Je gratis vragen zijn op</div><h3>Wil je verder vragen?</h3>
-    <p>Maandag heb je weer 3 gratis vragen. Als lid vraag je tot 25 keer per week, en kent je coach ook je fietsen en je Core-voortgang.</p>
-    ${kanLidNu() ? '<button class="knop" data-actie="wordlid">Word lid voor &euro;' + APP_PRIJS.maand + ' per maand</button><p class="klein">Maandelijks opzegbaar.</p>' : '<p class="klein">Het lidmaatschap gaat binnenkort open.</p>'}</div>`;
+    <p>Maandag heb je weer 3 gratis vragen. Met Pro vraag je tot 25 keer per week, en kent je coach ook je fietsen en je Core-voortgang.</p>
+    ${kanLidNu() ? '<button class="knop" data-actie="wordlid">Word Pro voor &euro;' + APP_PRIJS.maand + ' per maand</button><p class="klein">Maandelijks opzegbaar.</p>' : '<p class="klein">Pro gaat binnenkort open.</p>'}</div>`;
 }
 function coachBouw() {
   if (document.getElementById('ccPaneel')) return;
@@ -4952,7 +4952,7 @@ document.addEventListener('click', (e) => {
   if (k.dataset.geb === 'ververs') { GEB.data = null; gebTeken(); gebLaad(); }
 });
 
-// Uitnodiging van een maat (?vriend=code) bewaren voor bij lid worden.
+// Uitnodiging van een maat (?vriend=code) bewaren voor bij Pro worden.
 try { const q = new URLSearchParams(location.search), vr = q.get('vriend'); if (vr) { localStorage.setItem('mkcVriend', vr.replace(/[^a-z0-9]/gi, '').slice(0, 12)); localStorage.setItem('mkcVriendU', String(q.get('u') || '').replace(/[^a-f0-9]/g, '').slice(0, 8)); } } catch (e) {}
 function vriendCodeLs() { try { return localStorage.getItem('mkcVriend') || ''; } catch (e) { return ''; } }
 // Uitgenodigd? Uit het account (werkt op elk toestel) of uit deze browser.
@@ -4998,7 +4998,7 @@ document.addEventListener('click', (e) => {
 });
 setTimeout(metingToon, 1500);
 
-// Klik-ID van een Meta-advertentie bewaren, voor de Purchase bij lid worden (api/lid.js).
+// Klik-ID van een Meta-advertentie bewaren, voor de Purchase bij Pro worden (api/lid.js).
 try { const fc = new URLSearchParams(location.search).get("fbclid"); if (fc) { localStorage.setItem("mkcFbclid", fc.slice(0, 200)); localStorage.setItem("mkcFbclidOp", String(Date.now())); } } catch (e) {}
 
 // ---- Groepsrit-link (09-10-2026) ----
@@ -5071,8 +5071,8 @@ function grHtml() {
     lidBlok = (kl ? `<div class="gr-blok"><h4>Wat trek je aan &middot; voelt als ${kl.gevoel}&deg;</h4><ul class="kl-lijst">${kl.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${kl.tips && kl.tips[0] ? `<p class="klein">${esc(kl.tips[0])}</p>` : ''}</div>` : '')
       + `<div class="gr-blok"><h4>Wat neem je mee &middot; ${esc(rv.kort)}</h4><ul class="kl-lijst">${rv.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
   } else if (uren && uren.length && !lid) {
-    lidBlok = `<div class="gr-blok"><h4>Wat trek je aan</h4><div class="gr-slot">${SLOT}<p>Je kleding voor precies deze rit, op basis van het weer van start tot finish, de wind en het tempo. Voor leden.</p></div></div>
-      <div class="gr-blok"><h4>Wat neem je mee</h4><div class="gr-slot">${SLOT}<p>Hoeveel koolhydraten en bidons je meeneemt voor deze rit, afgestemd op de duur, het tempo en de temperatuur. Voor leden.</p></div>
+    lidBlok = `<div class="gr-blok"><h4>Wat trek je aan</h4><div class="gr-slot">${SLOT}<p>Je kleding voor precies deze rit, op basis van het weer van start tot finish, de wind en het tempo. Met Pro.</p></div></div>
+      <div class="gr-blok"><h4>Wat neem je mee</h4><div class="gr-slot">${SLOT}<p>Hoeveel koolhydraten en bidons je meeneemt voor deze rit, afgestemd op de duur, het tempo en de temperatuur. Met Pro.</p></div>
       ${kanLidNu(d) ? '<button type="button" class="knop leeg" data-actie="naarlid" style="margin-top:10px">Ontgrendel met de MKC-app</button>' : ''}</div>`;
   }
   return `<div class="gr"><div class="label">Groepsrit${rit.eigen ? ' &middot; jouw rit' : ''}</div><h3>${esc(rit.naam)}</h3>
@@ -5152,7 +5152,7 @@ function grStandaardDag() { const u = Number(new Date().toLocaleString('en-GB', 
 function grZorg() { if (GR.maak) return; const vn = String((D && D.naam) || '').trim().split(' ')[0]; GR.maak = { door: vn, datum: grStandaardDag(), tijd: '09:00', duur: 3, tempo: 'rustig', plaats: (SB.profiel && SB.profiel.plaats) || WK.plaats || null }; }
 function grVriendHtml(d) {
   const l = vriendLid(d); if (!l) return '';
-  return `<div class="gr-vriend"><b>Rijden je maten nog zonder de app?</b><p>Met jouw link krijgen ze 50% korting${l.vriendBeloning === false ? '' : l.gratis || l.vriendCadeau ? ', en jij 2 weken gratis lid per maat' : ', en jij 2 weken extra per maat'}.</p>${vriendKaartHtml(l, true)}</div>`;
+  return `<div class="gr-vriend"><b>Rijden je maten nog zonder de app?</b><p>Met jouw link krijgen ze 50% korting${l.vriendBeloning === false ? '' : l.gratis || l.vriendCadeau ? ', en jij 2 weken gratis Pro per maat' : ', en jij 2 weken extra per maat'}.</p>${vriendKaartHtml(l, true)}</div>`;
 }
 function grPlanKnop() { return '<button type="button" class="gr-plan-knop" data-gr="open">Rij je samen? <b>Plan een groepsrit en deel de link</b></button>'; }
 function grMaakHtml() {
@@ -5228,7 +5228,7 @@ document.addEventListener('click', async (e) => {
 document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'grZoek') { e.preventDefault(); const b = document.querySelector('[data-gr="zoek"]'); if (b) b.click(); } });
 
 // ---- Ritkaart om te delen (09-10-2026) ----
-// Een story-plaatje (1080x1920) van je rit: banden, en voor leden ook kleding,
+// Een story-plaatje (1080x1920) van je rit: banden, en met Pro ook kleding,
 // voeding en wind. Delen via de deelknop van je telefoon (Instagram, WhatsApp,
 // opslaan voor Strava), anders downloaden. Onderaan de link naar de gratis tool.
 function rkData() {
@@ -5738,10 +5738,10 @@ let NA_BETALING = null;
 function naBetalingTonen() {
   if (!NA_BETALING || !D || D.gast) return;
   const soort = NA_BETALING; NA_BETALING = null;
-  if (soort === 'welkom') return modal(`<div class="md-modal"><div class="md-unlock">Welkom als lid</div><h3 style="margin-top:8px">Je hebt nu alles</h3><p>Fijn dat je erbij bent. Met deze drie stappen staat je app helemaal goed:</p>
+  if (soort === 'welkom') return modal(`<div class="md-modal"><div class="md-unlock">Welkom met Pro</div><h3 style="margin-top:8px">Je hebt nu alles</h3><p>Fijn dat je erbij bent. Met deze drie stappen staat je app helemaal goed:</p>
     <ol class="pm-stappen" style="text-align:left"><li><b>Zet je fiets erin</b><span>Bij Vandaag rijden: dan zie je elke dag je spanning, kleding en voeding.</span></li><li><b>Start de Core-app</b><span>${D && D.voorLancering ? 'Gaat open op vrijdag 16 oktober om 12:00. Je eerste maand begint ook pas dan.' : 'Een korte intake van een minuut, dan staat je eerste sessie klaar.'}</span></li><li><b>Zet je ochtendbericht aan</b><span>Elke ochtend om 7:00 alles voor je rit op je telefoon.</span></li></ol>
     <button type="button" class="knop" data-view="rijden">Begin met je fiets</button><button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:8px auto 0">Later</button></div>`);
-  modal(`<h3>Je betaling is nog niet binnen</h3><p>Dat kan gebeuren als je de betaling hebt afgebroken, of als je bank er even over doet. Zonder geslaagde betaling wordt er niets afgeschreven.</p><p class="klein">Kwam de betaling wel door? Dan staat je lidmaatschap er binnen een paar minuten. Ververs de app dan even.</p><button type="button" class="knop" data-view="lid">Opnieuw proberen</button><button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:8px auto 0">Sluiten</button>`);
+  modal(`<h3>Je betaling is nog niet binnen</h3><p>Dat kan gebeuren als je de betaling hebt afgebroken, of als je bank er even over doet. Zonder geslaagde betaling wordt er niets afgeschreven.</p><p class="klein">Kwam de betaling wel door? Dan staat je Pro er binnen een paar minuten. Ververs de app dan even.</p><button type="button" class="knop" data-view="lid">Opnieuw proberen</button><button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:8px auto 0">Sluiten</button>`);
 }
 async function start() {
   const p = new URLSearchParams(location.search);

@@ -459,9 +459,9 @@ function teken() {
     const meterLater = d.meterNodig != null && !d.afgerond && d.sessies.length;
     if (d.meterNodig != null && !meterLater) h += meterHtml(d);
     if (d.testNodig != null && d.testNodig !== 0) h += testHtml(d, false);
-    if (!d.betaald && !d.opSlot) h += `<div class="proefbalk proefweek"><b>Je gratis week</b><ul><li>${d.frequentie || 3} sessies op jouw niveau, thuis op de timer</li><li>Je starttest: je Rompscore als nulmeting</li><li>Elke sessie met één tik op Strava, met je eigen deelplaatje</li></ul><span class="klein">Daarna ga je als lid door naar niveau 2 en verder. Alles wat je deze week doet, blijft staan.</span></div>`;
+    if (!d.betaald && !d.opSlot) h += `<div class="proefbalk proefweek"><b>Je gratis week</b><ul><li>${d.frequentie || 3} sessies op jouw niveau, thuis op de timer</li><li>Je starttest: je Rompscore als nulmeting</li><li>Elke sessie met één tik op Strava, met je eigen deelplaatje</li></ul><span class="klein">Daarna ga je met Pro door naar niveau 2 en verder. Alles wat je deze week doet, blijft staan.</span></div>`;
     if (d.opSlot) h += muurHtml(d);
-    else if (d.klaar) h += `<div class="blok kaart accent"><h2>Niveau 12 bereikt</h2><p>Knap gedaan. ${d.testNodig != null ? 'Doe hierboven je romptest en kijk wat het je heeft opgeleverd.' : 'Je Rompscore staat in je voortgang hieronder.'}</p>${d.magDoorlopen ? '' : `<p style="margin-top:10px">Wil je verder? De app beweegt met je mee: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller. Doorgaan doe je als lid van de MKC-app: &euro;9,99 per maand, maandelijks opzegbaar, of &euro;89 per jaar.</p><a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word lid en ga door</a>`}</div>`;
+    else if (d.klaar) h += `<div class="blok kaart accent"><h2>Niveau 12 bereikt</h2><p>Knap gedaan. ${d.testNodig != null ? 'Doe hierboven je romptest en kijk wat het je heeft opgeleverd.' : 'Je Rompscore staat in je voortgang hieronder.'}</p>${d.magDoorlopen ? '' : `<p style="margin-top:10px">Wil je verder? De app beweegt met je mee: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller. Doorgaan doe je met Pro van de MKC-app: &euro;9,99 per maand, maandelijks opzegbaar, of &euro;89 per jaar.</p><a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word Pro en ga door</a>`}</div>`;
     else {
       if (d.weekRond) h += weekklaarHtml(d);
       if (d.kracht == null && d.week > 1) h += krachtVraagHtml();
@@ -495,7 +495,7 @@ function kopHtml(d) {
   const doel = d.doel && d.doel.dagenTotDoel > 0
     ? `<div class="pil">${esc(d.doel.naam)} &middot; nog <b>${d.doel.wekenTotDoel >= 1 ? d.doel.wekenTotDoel + ' weken' : d.doel.dagenTotDoel + ' dagen'}</b></div>` : '';
   const sub = d.intakeNodig ? 'Eerst een paar korte vragen, dan staat je plan klaar.'
-    : d.klaar ? 'Knap gedaan. Als lid beweegt de app gewoon met je mee.' : d.opSlot ? (d.week > 12 ? 'Niveau 12 bereikt. De app beweegt met je mee als lid.' : 'Je gratis niveau zit erop.') : `Fase: ${esc(d.faseNaam)} &middot; ${d.gedaanDezeWeek.length} van ${d.frequentie} sessies gedaan${d.bijstel > 0 ? ' &middot; iets zwaarder gemaakt' : d.bijstel < 0 ? ' &middot; iets lichter gemaakt' : ''}`;
+    : d.klaar ? 'Knap gedaan. Met Pro beweegt de app gewoon met je mee.' : d.opSlot ? (d.week > 12 ? 'Niveau 12 bereikt. De app beweegt met je mee met Pro.' : 'Je gratis niveau zit erop.') : `Fase: ${esc(d.faseNaam)} &middot; ${d.gedaanDezeWeek.length} van ${d.frequentie} sessies gedaan${d.bijstel > 0 ? ' &middot; iets zwaarder gemaakt' : d.bijstel < 0 ? ' &middot; iets lichter gemaakt' : ''}`;
   // Terug naar de MKC-startpagina (/app). ?ct= ruilt deze Core-link in voor een
   // app-login, zodat je niet opnieuw hoeft in te loggen.
   const naarApp = `<a class="naarapp" href="/app?ct=${encodeURIComponent(token)}"><span class="tg"><span>&#8249;</span>Terug</span><span class="av"><img src="/icoon-192.png" alt=""></span><span class="tx"><span class="nm" style="display:block">MKC-Core</span><span class="st">Core stability voor wielrenners</span></span></a>`;
@@ -634,7 +634,7 @@ function muurHtml(d) {
         <li>Slimme bandenspanning: je fietsen en het weer van vandaag</li>
         <li>Elke sessie met één tik op Strava, en medailles en beloningen in je palmares</li>
       </ul>
-      <a class="knop breed" href="/app?ct=${encodeURIComponent(token)}">Word lid en ga door</a>
+      <a class="knop breed" href="/app?ct=${encodeURIComponent(token)}">Word Pro en ga door</a>
       <p class="klein muted" style="margin-top:12px">Alles wat je deed blijft staan. Opzeggen kan altijd, in de app.</p>` : `<div class="prijs">&euro;49</div>
       <div class="klein muted">eenmalig, tot en met niveau 12</div>
       <ul>
@@ -654,10 +654,10 @@ function muurHtml(d) {
 function blokMuurHtml(d) {
   const eerste = d.tests[0], laatste = d.tests[d.tests.length - 1];
   const winst = eerste && laatste && laatste !== eerste ? laatste.score - eerste.score : null;
-  return `<div class="blok kaart accent"><div class="eyebrow">Niveau 12 bereikt</div><h2>Ga verder als lid</h2>
+  return `<div class="blok kaart accent"><div class="eyebrow">Niveau 12 bereikt</div><h2>Ga verder met Pro</h2>
     <p>${winst != null ? `Je Rompscore ging van <b>${eerste.score}</b> naar <b>${laatste.score}</b> (${winst > 0 ? '+' : ''}${winst}). ` : ''}De app beweegt met je mee: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller. Je voortgang en je grafiek lopen gewoon door.</p>
-    <p style="margin-top:10px">Doorgaan doe je als lid van de MKC-app: &euro;9,99 per maand, maandelijks opzegbaar, of &euro;89 per jaar.</p>
-    <a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word lid en ga door</a></div>`;
+    <p style="margin-top:10px">Doorgaan doe je met Pro van de MKC-app: &euro;9,99 per maand, maandelijks opzegbaar, of &euro;89 per jaar.</p>
+    <a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word Pro en ga door</a></div>`;
 }
 
 // ---- Sessies ----

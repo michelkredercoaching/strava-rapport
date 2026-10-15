@@ -173,12 +173,12 @@ async function bewaarNieuw(d) {
   await redis(['SET', `core:email:${d.email}`, d.id, 'EX', String(BEWAAR_S)]);
 }
 // Dossiers zonder betaald-veld komen uit de webhook: die zijn betaald.
-// Sinds het lidmaatschap van de MKC-app (07-10-2026) kan toegang ook tot een
+// Sinds MKC Pro (07-10-2026) kan toegang ook tot een
 // datum lopen: d.lidTot (ISO). Wie eerder eenmalig betaalde heeft geen lidTot
 // en houdt dus gewoon toegang.
 const isBetaald = (d) => d.betaald !== false && (!d.lidTot || Date.now() < Date.parse(d.lidTot));
 // Na week 12 doorgaan met blok 2 en verder: leden (lidTot) en begeleidingsklanten.
-// Wie eenmalig betaalde, sluit na week 12 af met de vraag of hij als lid door wil.
+// Wie eenmalig betaalde, sluit na week 12 af met de vraag of hij met Pro door wil.
 const nogGeldig = (iso) => !!iso && Date.now() < Date.parse(iso);
 const magDoorlopen = (d) => nogGeldig(d.lidTot) || nogGeldig(d.doorloopTot) || d.bron === 'begeleiding';
 // Op slot: proefweek voorbij zonder betaling, of na week 12 zonder lidmaatschap.
@@ -648,7 +648,7 @@ export async function zetLidmaatschap({ email, naam, tot, stil = false, wachtOpL
   } else {
     const eenmalig = d.betaald !== false && !d.lidTot && d.bron !== 'proef' && d.bron !== 'lid';
     if (!eenmalig) { d.betaald = true; d.lidTot = tot; if (!d.lidSinds) d.lidSinds = nu(); if (d.bron === 'proef') d.bron = 'lid'; }
-    // Eenmalige kopers houden hun 12 weken voor altijd; het lidmaatschap geeft ze
+    // Eenmalige kopers houden hun 12 weken voor altijd; Pro geeft ze
     // daarnaast toegang tot blok 2 en verder, zolang het loopt.
     else d.doorloopTot = tot;
     // Had je de 12 weken al af en word je lid: dan begint blok 2.
@@ -675,7 +675,7 @@ export async function emailVoorCoreToken(token) {
 // ROUTES
 // ===========================================================================
 // Lidmaatschap open (SEPA-incasso goedgekeurd)? Dan biedt de betaalmuur na de
-// proefweek het lidmaatschap aan in plaats van de eenmalige €49. Schakelt
+// proefweek Pro aan in plaats van de eenmalige €49. Schakelt
 // vanzelf om; lid.js houdt het 10 minuten vast.
 let LID_OPEN = false;
 export default async function handler(req, res) {
@@ -1003,7 +1003,7 @@ async function routeAfvink(req, res) {
   const r = await metToken(req, res); if (!r) return;
   const { d, body } = r;
   if (!d.intake || d.status === 'wacht-op-fysio') return res.status(400).json({ ok: false, fout: 'eerst de intake' });
-  if (opSlotNu(d)) return res.status(403).json({ ok: false, fout: d.week > BLOK_WEKEN ? 'word lid om door te gaan' : 'je proefweek zit erop', opSlot: true });
+  if (opSlotNu(d)) return res.status(403).json({ ok: false, fout: d.week > BLOK_WEKEN ? 'word Pro om door te gaan' : 'je proefweek zit erop', opSlot: true });
   const letter = letters(d.intake).includes(body.letter) ? body.letter : null;
   if (!letter) return res.status(400).json({ ok: false, fout: 'welke sessie?' });
   if (!gedaanDezeWeek(d).includes(letter)) {
@@ -1053,7 +1053,7 @@ async function routeWeekklaar(req, res) {
   const { d, body } = r;
   if (d.status === 'klaar') return res.status(400).json({ ok: false, fout: 'je programma is al afgerond' });
   if (gedaanDezeWeek(d).length < nodigVoorWeek(d.intake)) return res.status(400).json({ ok: false, fout: `rond eerst ${nodigVoorWeek(d.intake)} sessies af` });
-  if (opSlotNu(d)) return res.status(403).json({ ok: false, fout: d.week > BLOK_WEKEN ? 'word lid om door te gaan' : 'je proefweek zit erop', opSlot: true });
+  if (opSlotNu(d)) return res.status(403).json({ ok: false, fout: d.week > BLOK_WEKEN ? 'word Pro om door te gaan' : 'je proefweek zit erop', opSlot: true });
   const reactie = ['makkelijk', 'beter', 'gelijk', 'zwaar', 'slechter'].includes(body.reactie) ? body.reactie : null;
   if (!reactie) return res.status(400).json({ ok: false, fout: 'hoe reageerde je lichaam?' });
 
@@ -1092,7 +1092,7 @@ async function routeWeekklaar(req, res) {
     d.slechterOpRij = 0; d.zwaarOpRij = 0;
     d.verlicht = false;
     d.afgerond = Math.max(d.afgerond, oudeWeek);
-    if (oudeWeek >= BLOK_WEKEN && !magDoorlopen(d)) { d.status = 'klaar'; melding = 'Niveau 12 bereikt. Doe je romptest en kijk wat het je heeft opgeleverd. Wil je verder, dan beweegt de app als lid gewoon met je mee.'; }
+    if (oudeWeek >= BLOK_WEKEN && !magDoorlopen(d)) { d.status = 'klaar'; melding = 'Niveau 12 bereikt. Doe je romptest en kijk wat het je heeft opgeleverd. Wil je verder, dan beweegt de app met Pro gewoon met je mee.'; }
     else if (d.onderhoud && reactie !== 'makkelijk' && isBetaald(d)) {
       // Onderhoud (15-10-2026): in het seizoen je niveau vasthouden, 2x per week.
       melding = `Onderhoud: je houdt niveau ${d.week} vast, 2 keer per week. Zo blijft je romp sterk terwijl je veel fietst. Voelt het te makkelijk, kies dan Te makkelijk.`;

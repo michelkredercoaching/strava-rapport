@@ -67,7 +67,7 @@ const BEDRAG      = PLANNEN.maand.bedrag;
 const prijzenVan = (lid) => (lid && lid.prijs) || { maand: PLANNEN.maand.bedrag, jaar: PLANNEN.jaar.bedrag };
 const halve = (v) => (Math.round(Number(v) * 50) / 100).toFixed(2);
 const euro = (v) => '€' + String(Number(v).toFixed(2)).replace('.00', '').replace('.', ',');
-const OMSCHRIJVING = 'MKC-app lidmaatschap';
+const OMSCHRIJVING = 'MKC Pro';
 const SPELING_DAGEN = 5;     // na een mislukte incasso blijft de app nog zo lang open
 
 // ---- Token (zelfde als api/app.js) --------------------------------------------
@@ -159,7 +159,7 @@ async function leesBody(req) {
   const tekst = typeof req.body === 'string' ? req.body : '';
   try { return JSON.parse(tekst || '{}'); } catch { return Object.fromEntries(new URLSearchParams(tekst)); }
 }
-// ---- Na lid worden (09-10-2026): welkom, win-back, weekoverzicht, back-up ----
+// ---- Na Pro worden (09-10-2026): welkom, win-back, weekoverzicht, back-up ----
 const knopHtml = (url, tekst) => `<p style="margin:22px 0 26px"><a href="${url}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">${tekst}</a></p>`;
 // WhatsApp-link met een kant-en-klaar berichtje en de persoonlijke link erin.
 const waLink = (code) => 'https://wa.me/?text=' + encodeURIComponent(`Ik train met de MKC-app van Michel Kreder: bandenspanning, kleding en voeding voor elke rit, core-oefeningen en een eigen coach. Via mijn link krijg je 50% korting op je eerste maand, of €5 korting op een jaar: ${APP_URL}?vriend=${code}`);
@@ -208,7 +208,7 @@ async function winbackRonde() {
 // Voorbeeldmails naar Michel zelf (Beheer), om de teksten te bekijken.
 function winbackHtml(voornaam, reden) {
   return mailHuls(`<p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
-      <p>Je lidmaatschap van de MKC-app is een tijdje geleden gestopt. Je fietsen, je ritten en je Core-voortgang staan nog gewoon voor je klaar.</p>
+      <p>Je Pro is een tijdje geleden gestopt. Je fietsen, je ritten en je Core-voortgang staan nog gewoon voor je klaar.</p>
       ${WINBACK_REGEL[reden] ? `<p>${WINBACK_REGEL[reden]}</p>` : ''}
       <p>Kom je terug, dan is je eerste maand ${euro(halve(PLANNEN.maand.bedrag))} in plaats van ${euro(PLANNEN.maand.bedrag)}. Dat aanbod staat 30 dagen voor je klaar.</p>
       ${knopHtml(APP_URL + '#lid', 'Kom terug voor ' + euro(halve(PLANNEN.maand.bedrag)))}
@@ -488,7 +488,7 @@ async function vriendMijlpalen(lid, email, meldingen) {
       if (!t) { await meldIntern(`MIJLPAAL ANALYSE - ${email}`, `${email} heeft 3 maten aangebracht, maar de gratis analyselink kon niet gemaakt worden. Stuur hem met de hand een gratis analyselink.`); continue; }
       lid.vriendAnalyse = `https://rapport.michelkredercoaching.nl/?korting=${t}`;
       lid.vriendMijlpalen.push(m.n);
-      meldingen.push({ titel: 'Mijlpaal: gratis Strava-analyse', tekst: '3 maten via jouw link. Je gratis Strava-analyse staat klaar bij Mijn lidmaatschap.' });
+      meldingen.push({ titel: 'Mijlpaal: gratis Strava-analyse', tekst: '3 maten via jouw link. Je gratis Strava-analyse staat klaar bij Mijn Pro.' });
     } else {
       if (!zelf) { lid.vriendMijlpalen.push(m.n); continue; }
       const zin = await vriendTijdErbij(lid, email, m.soort === 'jaar' ? { maanden: 12 } : { maanden: 1 }, m.titel);
@@ -538,7 +538,7 @@ async function beloonVriend(code, maatEmail, maatNaam, meteenBevestigd = false) 
       if (zin) { lid.vriendBeloningen = (lid.vriendBeloningen || 0) + 1; lid.vriendDagen = (lid.vriendDagen || 0) + VRIEND_DAGEN; meldingen.push({ titel: lid.vriendCadeau ? '2 weken gratis lid' : '2 weken extra voor jou', tekst: `${vn} is lid geworden via jouw link. Je krijgt 2 weken ${lid.vriendCadeau ? 'gratis lid, met alles erop en eraan' : 'extra'}: ${zin}.` }); }
     }
   }
-  if (!meldingen.length) meldingen.push({ titel: vn + ' is lid geworden', tekst: `${vn} is lid geworden via jouw link en kreeg korting op het lidmaatschap. Bedankt voor het delen!` });
+  if (!meldingen.length) meldingen.push({ titel: vn + ' is lid geworden', tekst: `${vn} is lid geworden via jouw link en kreeg korting op Pro. Bedankt voor het delen!` });
   await vriendMijlpalen(lid, email, meldingen);
   await bewaarLid(email, lid);
   { const ug = await redis(['GET', `lid:uitgenodigd:${maatEmail}`]); let u = ''; try { u = (ug.ok && ug.result && JSON.parse(ug.result).u) || ''; } catch (e) {} await uitnStatus(email, { u, naam: vn, status: 'lid' }); }
@@ -609,7 +609,7 @@ async function jaarKeuzeRonde() {
         <p><b>Nog een jaar</b> voor ${euro(prijzenVan(lid).jaar)}, dan blijf je het voordeligst uit. Of <b>per maand verder</b> voor ${euro(prijzenVan(lid).maand)}, dan kun je elke maand opzeggen.</p>
         <p style="margin:22px 0 26px"><a href="${APP_URL}#lid" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Kies in de app</a></p>
         <p style="color:#555;font-size:14px">Kies je niets, dan ga je vanaf ${datum} gewoon per maand verder. Alles wat je deed blijft staan.</p>`));
-      await appMelding(email, { soort: 'lid', titel: 'Kies hoe je verdergaat', tekst: `Je jaar zit er op ${datum} op. Nog een jaar voor ${euro(prijzenVan(lid).jaar)} of per maand verder voor ${euro(prijzenVan(lid).maand)}? Kies onder Mijn lidmaatschap.`, link: '/app#lid' });
+      await appMelding(email, { soort: 'lid', titel: 'Kies hoe je verdergaat', tekst: `Je jaar zit er op ${datum} op. Nog een jaar voor ${euro(prijzenVan(lid).jaar)} of per maand verder voor ${euro(prijzenVan(lid).maand)}? Kies onder Mijn Pro.`, link: '/app#lid' });
       lid.jaarVraagVoor = lid.tot; await bewaarLid(email, lid); gevraagd++;
     } else if (dagen <= KEUZE_STANDAARD && lid.jaarKeuze !== lid.tot) {
       if (await naarMaand(lid, email)) {
@@ -655,7 +655,7 @@ function lidBeeld(lid) {
 // de bedankpagina, homepage en checkout schakelen hierdoor allemaal tegelijk om.
 export const LANCERING = Date.parse('2026-10-16T12:00:00+02:00');
 const voorLancering = () => Date.now() < LANCERING;
-// Michel kan vóór de lancering wel zelf lid worden (live test met echte betaling).
+// Michel kan vóór de lancering wel zelf Pro worden (live test met echte betaling).
 const BEHEER_LID = ['michel.kredercoaching@gmail.com', 'michel.kreder@gmail.com', 'info@michelkredercoaching.nl'];
 let incassoCache = { tot: 0, open: false };
 async function incassoKlaar() {
@@ -666,12 +666,12 @@ async function incassoKlaar() {
   incassoCache = { tot: Date.now() + (m.ok ? 10 : 1) * 60 * 1000, open };
   return open;
 }
-// Lid worden kan na de lancering, ook zonder incasso (dan met iDEAL per periode).
+// Pro worden kan na de lancering, ook zonder incasso (dan met iDEAL per periode).
 async function lidOpen() { return !voorLancering() && !!MOLLIE_KEY; }
-// Voorverkoop (14-10-2026): vóór de lancering kan lid worden alvast in de app,
+// Voorverkoop (14-10-2026): vóór de lancering kan Pro worden alvast in de app,
 // als Michel de schakelaar in Beheer aanzet. Homepage, /core/ en checkout blijven
 // op lidOpen() wachten. De eerste periode begint pas bij de lancering.
-// Voorverkoop (14-10-2026) geschrapt op verzoek van Michel: lid worden kan pas vanaf de lancering.
+// Voorverkoop (14-10-2026) geschrapt op verzoek van Michel: Pro worden kan pas vanaf de lancering.
 async function voorverkoopAan() { return false; }
 async function lidOpenApp() { if (!MOLLIE_KEY) return false; if (!voorLancering()) return true; return voorverkoopAan(); }
 
@@ -702,7 +702,7 @@ export default async function handler(req, res) {
     if (actie === 'cadeaumail') return await routeCadeauMail(req, res);
     if (actie === 'schemainhaal') return await routeSchemaInhaal(req, res);
     if (actie === 'open') {
-      // Publiek: kunnen mensen al lid worden? De WordPress-pagina's (/core/,
+      // Publiek: kunnen mensen al Pro worden? De WordPress-pagina's (/core/,
       // bedankpagina, homepage, checkout) vragen dit, zodat het oude aanbod
       // van €49/€29 vanzelf verdwijnt zodra de incasso is goedgekeurd.
       res.setHeader('Access-Control-Allow-Origin', '*');
@@ -725,7 +725,7 @@ async function routeStart(req, res) {
 
   let lid = await haalLid(email) || {};
   if (lid.status === 'actief' && lid.subscriptionId) return res.status(200).json({ ok: true, alLid: true });
-  if (!(BEHEER_LID.includes(email) ? !!MOLLIE_KEY : await lidOpenApp())) return res.status(503).json({ ok: false, fout: 'Lid worden kan binnenkort. Houd Instagram in de gaten.' });
+  if (!(BEHEER_LID.includes(email) ? !!MOLLIE_KEY : await lidOpenApp())) return res.status(503).json({ ok: false, fout: 'Pro worden kan binnenkort. Houd Instagram in de gaten.' });
   // Akkoord met directe toegang (afstand bedenktijd) en voorwaarden, verplicht
   // en vastgelegd met tijdstip (09-10-2026).
   if (body.akkoord !== true) return res.status(400).json({ ok: false, fout: 'Vink eerst aan dat je direct toegang wil en akkoord gaat met de voorwaarden.' });
@@ -751,7 +751,7 @@ async function routeStart(req, res) {
   // Terugkomen na een win-back-mail: eerste maand voor de helft (30 dagen geldig).
   const terug = !herstel && !vriendVan && automatisch && planVan(body.plan) === 'maand' && lid.winbackTot && Date.parse(lid.winbackTot) > Date.now();
 
-  // Eén Mollie-klant per mailadres, hergebruiken bij opnieuw lid worden.
+  // Eén Mollie-klant per mailadres, hergebruiken bij opnieuw Pro worden.
   if (!lid.customerId) {
     const k = await mollie('/customers', { method: 'POST', body: JSON.stringify({ name: String(body.naam || '').slice(0, 80) || email, email, metadata: { bron: 'mkc-app' } }) });
     if (!k.ok) return res.status(502).json({ ok: false, fout: 'Betalen lukt nu even niet. Probeer het zo nog eens.' });
@@ -923,7 +923,7 @@ async function verwerkBetaald(req, res, p, id, lidEmail) {
     if ((p.sequenceType === 'first' && soort !== 'lid-herstel') || soort === 'lid-periode') {
       const m = await redis(['GET', `lid:meta:${id}`]);
       let ctx = null; try { ctx = m.ok && m.result ? JSON.parse(m.result) : null; } catch (e) {}
-      await stuurPurchase({ ctx, email: lidEmail, naam: lid.naam, waarde: p.amount && p.amount.value, eventId: id, product: 'MKC-app lidmaatschap (' + planVan(p.metadata && p.metadata.plan) + ')', bronUrl: APP_URL });
+      await stuurPurchase({ ctx, email: lidEmail, naam: lid.naam, waarde: p.amount && p.amount.value, eventId: id, product: 'MKC Pro (' + planVan(p.metadata && p.metadata.plan) + ')', bronUrl: APP_URL });
     }
     // Factuur via Mollie Invoicing, zelfde route en schakelaar als de analyse
     // (MOLLIE_FACTUUR=aan). Fail-safe: de toegang staat al open, een factuurfout
@@ -958,7 +958,7 @@ async function verwerkMislukt(res, p, id, lidEmail, lid) {
         <p>De automatische betaling voor je MKC-app is niet gelukt. Dat gebeurt soms, bijvoorbeeld bij een nieuw rekeningnummer of als er net te weinig op stond.</p>
         <p>Je app blijft gewoon open tot ${datum}. Werk je betaling even bij, dan loopt alles door zoals je gewend bent.</p>
         <p style="margin:22px 0 26px"><a href="${APP_URL}#lid" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Werk mijn betaling bij</a></p>`));
-      await appMelding(lidEmail, { soort: 'lid', titel: 'Je betaling is niet gelukt', tekst: `Werk je betaling bij onder Mijn lidmaatschap, dan loopt alles door. Je app blijft open tot ${datum}.`, link: '/app#lid' });
+      await appMelding(lidEmail, { soort: 'lid', titel: 'Je betaling is niet gelukt', tekst: `Werk je betaling bij onder Mijn Pro, dan loopt alles door. Je app blijft open tot ${datum}.`, link: '/app#lid' });
     }
     await bewaarLid(lidEmail, lid);
   }
@@ -996,7 +996,7 @@ async function routeOpzeggen(req, res) {
   const email = leesAppToken(String(body.t || ''));
   if (!email) return res.status(401).json({ ok: false, fout: 'Log eerst opnieuw in.' });
   const lid = await haalLid(email);
-  if (lid && (lid.handmatig || lid.bron === 'schema' || lid.bron === 'coaching') && !lid.subscriptionId) return res.status(400).json({ ok: false, fout: 'Je lidmaatschap verlengt niet automatisch; het stopt vanzelf op de einddatum.' });
+  if (lid && (lid.handmatig || lid.bron === 'schema' || lid.bron === 'coaching') && !lid.subscriptionId) return res.status(400).json({ ok: false, fout: 'Je Pro verlengt niet automatisch; het stopt vanzelf op de einddatum.' });
   if (!lid || !lid.subscriptionId) return res.status(400).json({ ok: false, fout: 'Je hebt geen lopend lidmaatschap.' });
   const r = await mollie(`/customers/${lid.customerId}/subscriptions/${lid.subscriptionId}`, { method: 'DELETE' });
   if (!r.ok && r.status !== 404 && r.status !== 422) return res.status(502).json({ ok: false, fout: 'Opzeggen lukte nu even niet. Probeer het zo nog eens.' });
@@ -1053,8 +1053,8 @@ async function routeHerinner(req, res) {
     const datum = new Date(lid.tot).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
     const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.7;color:#1a1a1a;max-width:560px">
       <p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
-      <p>${dagenOver > 0 ? `Je lidmaatschap van de MKC-app loopt op <b>${datum}</b> af.` : 'Je lidmaatschap van de MKC-app is afgelopen.'} Wil je doorgaan met je Core-app, je coach en het kledingadvies? Verlengen doe je met een paar tikken.</p>
-      <p style="margin:22px 0 26px"><a href="${APP_URL}#lid" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Verleng mijn lidmaatschap</a></p>
+      <p>${dagenOver > 0 ? `Je Pro loopt op <b>${datum}</b> af.` : 'Je Pro is afgelopen.'} Wil je doorgaan met je Core-app, je coach en het kledingadvies? Verlengen doe je met een paar tikken.</p>
+      <p style="margin:22px 0 26px"><a href="${APP_URL}#lid" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Verleng mijn Pro</a></p>
       <p style="color:#555;font-size:14px">${plan === 'jaar' ? `Een jaar kost ${euro(prijzenVan(lid).jaar)}.` : `Een maand kost ${euro(prijzenVan(lid).maand)}, een jaar ${euro(prijzenVan(lid).jaar)} (ruim 3 maanden voordeliger).`} Alles wat je deed blijft staan.</p>
       <p>Sportieve groet,<br>Michel</p></div>`;
     const key = process.env.RESEND_API_KEY;
@@ -1237,7 +1237,7 @@ async function schemaEindeMails() {
     const datum = new Date(lid.tot).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' });
     const html = `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;font-size:16px;line-height:1.7;color:#1a1a1a;max-width:560px">
       <p>${voornaam ? 'Hoi ' + voornaam : 'Hoi'},</p>
-      <p>${lid.cadeauMaand ? `Je gratis lidmaatschap van de MKC-app loopt op <b>${datum}</b> af. Ik hoop dat je er veel aan had.` : `Je schema zit erop, knap gedaan. De MKC-app die erbij hoorde loopt op <b>${datum}</b> af.`}</p>
+      <p>${lid.cadeauMaand ? `Je gratis Pro loopt op <b>${datum}</b> af. Ik hoop dat je er veel aan had.` : `Je schema zit erop, knap gedaan. De MKC-app die erbij hoorde loopt op <b>${datum}</b> af.`}</p>
       <p>Je kunt op twee manieren verder:</p>
       <p><b>Een vervolgschema.</b> Een nieuw blok dat aansluit op waar je nu staat. De app hoort er weer bij, voor de hele looptijd.</p>
       <p style="margin:14px 0 22px"><a href="https://michelkredercoaching.nl/trainingsschema-vervolg/" style="background:#ff6b1a;color:#0a0a0a;padding:13px 24px;border-radius:4px;text-decoration:none;font-weight:700">Kies je vervolgschema</a></p>

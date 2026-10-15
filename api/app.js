@@ -288,12 +288,12 @@ async function medailleMelding(email, veld, waarde) {
   for (const b of BADGES) {
     if (b.veld !== veld) continue;
     const i = b.drempels.indexOf(waarde); if (i < 0) continue;
-    // Goud is voor leden: een gratis gebruiker hoort dat zijn goud klaarstaat. Ledenbadges alleen voor leden.
+    // Goud is met Pro: een gratis gebruiker hoort dat zijn goud klaarstaat. Ledenbadges alleen met Pro.
     let lid = true;
     if (i === 2 || b.lid) { const l = await haalLid(email).catch(() => null); lid = !!(l && ((l.tot && Date.parse(l.tot) > Date.now()) || l.bron === 'coaching')); }
     if (b.lid && !lid) continue;
     const goudKlaar = i === 2 && !lid;
-    await appMelding(email, { soort: 'badge', titel: goudKlaar ? `Je goud staat klaar: ${b.naam}` : `Nieuwe medaille: ${b.naam} ${NIVEAUS[i]}`, tekst: goudKlaar ? 'Word lid en hij is meteen van jou.' : i === 2 ? 'Goud! Open je palmares en bekijk hem.' : 'Open je palmares en bekijk hem.', link: goudKlaar ? '/app#lid' : '/app#palmares' }).catch(() => {});
+    await appMelding(email, { soort: 'badge', titel: goudKlaar ? `Je goud staat klaar: ${b.naam}` : `Nieuwe medaille: ${b.naam} ${NIVEAUS[i]}`, tekst: goudKlaar ? 'Word Pro en hij is meteen van jou.' : i === 2 ? 'Goud! Open je palmares en bekijk hem.' : 'Open je palmares en bekijk hem.', link: goudKlaar ? '/app#lid' : '/app#palmares' }).catch(() => {});
   }
 }
 const dagNr = () => Math.floor(Date.parse(new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }) + 'T00:00:00Z') / 864e5);
@@ -483,7 +483,7 @@ async function rlAutoMee(email, voornaam, score) {
 // en Mailchimp; een automatische ranglijstnaam "Renner 7" wordt meteen je voornaam.
 // ===========================================================================
 // KRACHT (14-10-2026): krachttraining in de sportschool, 2x per week ongeveer een uur.
-// Eerst alleen voor Michel (beheer) om de opbouw goed te keuren; daarna voor leden,
+// Eerst alleen voor Michel (beheer) om de opbouw goed te keuren; daarna met Pro,
 // coaching en schema (KRACHT_VOOR_LEDEN = true).
 //   GET  kracht ?t=                          -> { open, kracht }
 //   POST kracht { t, start: {ervaring, waar} } | { t, log: {sessie, oef} } | { t, stop: true }
@@ -504,7 +504,7 @@ async function routeKracht(req, res) {
   const open = await magKracht(email);
   let s = await haalKracht(email);
   if (req.method === 'POST') {
-    if (!open) return res.status(403).json({ ok: false, fout: 'Kracht zit in het lidmaatschap.' });
+    if (!open) return res.status(403).json({ ok: false, fout: 'Kracht zit in Pro.' });
     if (body.programma === 'core' || body.programma === 'kracht') { await redis(['SET', `app:programma:${email}`, body.programma]); return res.status(200).json({ ok: true, open, programma: body.programma, kracht: krachtBeeld(s) }); }
     if (body.stop) { await redis(['DEL', `app:kracht:${email}`]); await redis(['SET', `app:programma:${email}`, 'core']); return res.status(200).json({ ok: true, open, kracht: null, programma: 'core' }); }
     if (body.start) {
@@ -997,7 +997,7 @@ async function routeAankondig(req, res) {
         <p>Je 3 vragen gelden voor de coach en de bandencoach samen. Elke maandag krijg je er weer 3 bij.</p>
         <p style="margin:22px 0 26px"><a href="${link}" style="background:#ff6b1a;color:#0a0a0a;padding:14px 26px;border-radius:4px;text-decoration:none;font-weight:700">Stel je eerste vraag</a></p>
         <p>Sportieve groet,<br>Michel</p>
-        <p style="color:#555;font-size:14px">P.S. Vrijdag 16 oktober gaat de MKC-app helemaal open. Als lid vraag je dan wanneer je wilt.</p>
+        <p style="color:#555;font-size:14px">P.S. Vrijdag 16 oktober gaat de MKC-app helemaal open. Met Pro vraag je dan wanneer je wilt.</p>
         <p style="color:#888;font-size:12px">Je krijgt deze mail omdat je een account hebt in de MKC-app.</p></div>`;
       try {
         const m = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${RESEND_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from: 'Michel Kreder <michel@michelkredercoaching.nl>', to: p.email, reply_to: 'info@michelkredercoaching.nl', subject: 'Vanaf nu: 3 gratis vragen per week aan je coach', html }), signal: AbortSignal.timeout(10000) });
@@ -1450,7 +1450,7 @@ async function magSlim(email) {
 async function slimEmail(req, res, t) {
   const email = leesAppToken(String(t || ''));
   if (!email) { res.status(401).json({ ok: false, fout: 'Log opnieuw in.' }); return null; }
-  if (!(await magSlim(email))) { res.status(403).json({ ok: false, fout: 'Dit hoort bij het lidmaatschap van de MKC-app.' }); return null; }
+  if (!(await magSlim(email))) { res.status(403).json({ ok: false, fout: 'Dit hoort bij MKC Pro.' }); return null; }
   return email;
 }
 
@@ -1555,7 +1555,7 @@ async function vraagRecht(res, t) {
   if (await gratisOver(email) <= 0) {
     if (await analyseBonus(email)) return { email, lid: false, bonus: true };
     if (await tegoedAantal(email) > 0) return { email, lid: false, tegoed: true };
-    res.status(402).json({ ok: false, limiet: true, gratisOver: 0, fout: 'Je 3 gratis vragen van deze week zijn op. Maandag kun je weer. Met een nieuwe medaille verdien je een extra vraag, of word lid en vraag tot 25 keer per week.' });
+    res.status(402).json({ ok: false, limiet: true, gratisOver: 0, fout: 'Je 3 gratis vragen van deze week zijn op. Maandag kun je weer. Met een nieuwe medaille verdien je een extra vraag, of word Pro en vraag tot 25 keer per week.' });
     return null;
   }
   return { email, lid: false };
@@ -1790,7 +1790,7 @@ async function routeBandVraag(req, res) {
 // ===========================================================================
 // MKC-COACH (lidmaatschap stap 4, 07-10-2026): één AI-coach voor de hele app.
 // Kent de Core-voortgang, de Strava-analyse en de fietsen van deze renner, en
-// Michels methode uit lib/coach-kennis.js. Alleen voor leden (en Michel).
+// Michels methode uit lib/coach-kennis.js. Alleen met Pro (en Michel).
 //   GET  coach ?t=            -> { berichten }  (laatste 30)
 //   POST coach { t, tekst }   -> stelt een vraag, geeft { berichten }
 // Redis: app:coach:<email> (JSON-lijst), teller app:coachvraag:<email>:<datum>
@@ -2231,14 +2231,14 @@ function nlNu() {
   const dag = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'].indexOf(String(v.weekday).slice(0, 2).toLowerCase());
   return { datum: `${v.year}-${v.month}-${v.day}`, minuten: Number(v.hour) * 60 + Number(v.minute), dag };
 }
-// Lancering (vr 16-10-2026 12:00): gratis gebruikers horen dat lid worden open is, wie in de
+// Lancering (vr 16-10-2026 12:00): gratis gebruikers horen dat Pro worden open is, wie in de
 // voorverkoop betaalde dat de Core-app open is. Coaching en schema hadden alles al: geen bericht.
 async function lanceerBericht(email) {
   if (BEHEER.includes(email)) return null;
   const b = lidBeeld(await haalLid(email));
   if (b.open && b.bron && b.bron !== 'lid') return null;
   if (b.open) return { title: 'Je Core-app is open', body: 'Vanaf nu staat je eerste Core-sessie klaar. Een kwartier, thuis op de timer.', url: '/app' };
-  return { title: 'De MKC-app is nu helemaal open', body: 'Word lid voor €9,99 per maand: je eigen coach, je bandenspanning en kleding voor elke rit en de Core-app.', url: '/app#lid' };
+  return { title: 'De MKC-app is nu helemaal open', body: 'Word Pro voor €9,99 per maand: je eigen coach, je bandenspanning en kleding voor elke rit en de Core-app.', url: '/app#lid' };
 }
 async function routePushCron(req, res) {
   const auth = String(req.headers?.authorization || '');
@@ -2251,7 +2251,7 @@ async function routePushCron(req, res) {
       const l = await redis(['SMEMBERS', 'app:interesse:kracht']);
       for (const e of (l.ok && l.result) || []) {
         const lid = await magSlim(e).catch(() => false);
-        await appMelding(e, { soort: 'kracht', titel: 'Kracht staat open', tekst: lid ? 'Je stond op de lijst: vanaf vandaag kies je in de app tussen Core en Kracht. Begin je eerste krachtweek.' : 'Je stond op de lijst: Kracht staat open voor leden. Bekijk wat je krijgt.', link: '/app' }).catch(() => {});
+        await appMelding(e, { soort: 'kracht', titel: 'Kracht staat open', tekst: lid ? 'Je stond op de lijst: vanaf vandaag kies je in de app tussen Core en Kracht. Begin je eerste krachtweek.' : 'Je stond op de lijst: Kracht staat open met Pro. Bekijk wat je krijgt.', link: '/app' }).catch(() => {});
       }
     }
   }
