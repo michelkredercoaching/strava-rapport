@@ -2813,7 +2813,7 @@ const KOPPEN = {
   palmares: ['MKC-Palmares', 'Je badges, verdiend met wat je echt doet'],
   coaching: ['MKC-Coaching', 'Zo werkt het, en zo bereik je mij'],
   rijden: ['MKC-Rijden', 'Banden, kleding, voeding en wind voor je rit'],
-  schema: ['MKC-Schema', 'Je training van vandaag'],
+  schema: ['MKC-Schema', 'Je schema in TrainingPeaks'],
   core: ['MKC-Core', 'Core stability voor wielrenners'],
   kracht: ['MKC-Kracht', 'Sterker trappen, 2x per week met gewichten'],
   kiestraining: ['MKC-Training', 'Core of kracht, kies wat bij je past'],
@@ -2910,7 +2910,7 @@ function appZinHtml(d) {
   if (!d || d.gast) return '';
   const tpLink = '<a href="https://app.trainingpeaks.com/" target="_blank" rel="noopener">Open TrainingPeaks</a>';
   if (d.lid && d.lid.bron === 'coaching') return `<p class="app-zin">Je trainingen blijven in <b>TrainingPeaks</b>, daar zet ik ze voor je klaar. Deze app is je hulp ernaast. ${tpLink}</p>`;
-  if (d.schema) return `<p class="app-zin">Je schema blijft in <b>TrainingPeaks</b>, daar train je mee. Hier zie je wat er vandaag op staat, en de rest voor je rit. ${tpLink}</p>`;
+  if (d.schema) return `<p class="app-zin">Je schema blijft in <b>TrainingPeaks</b>, daar train je mee. Hier vind je alles eromheen: je rit, je core en je coach. ${tpLink}</p>`;
   return '<p class="app-zin">Alles rond je rit: bandenspanning, kleding, voeding, core en een coach voor je vragen.</p>';
 }
 // Inklapbare blokken op het beginscherm (Vandaag open, tip van Michel dicht). De stand onthoudt de app.
@@ -3220,7 +3220,7 @@ function coachingPaginaHtml(d) {
     </div></div>
     <div class="kaart"><div class="kaart-in">
       <h2>De TrainingPeaks-app</h2>
-      <p>Met de app op je telefoon zie je je training van vandaag meteen, en kun je na je rit laten weten hoe het ging. Dat lees ik.</p>
+      <p>Met de app op je telefoon open je je schema met één tik in TrainingPeaks, en heb je je coach en je ritadvies altijd bij de hand.</p>
       <div class="cp-knoppen">${winkel}</div>
       <p class="klein">Tip: koppel in TrainingPeaks je Garmin, Wahoo of Zwift. Dan staan je trainingen vanzelf op je teller en komen je ritten automatisch binnen.</p>
     </div></div>
@@ -3259,7 +3259,7 @@ function routeHtml(d) {
   const stappen = [
     { nm: 'Gratis account', wat: 'Bandenspanning, wind en 3 coachvragen per week' },
     { nm: 'MKC Pro', wat: 'Slimme bandenspanning, kleding en voeding voor elke rit, je eigen coach en de Core-app.', prijs: '&euro;' + APP_PRIJS.maand + ' per maand, altijd opzegbaar', knop: `<button type="button" class="knop" data-view="lid">${kanLidNu(d) ? 'Word Pro' : 'Bekijk wat je krijgt'}</button>` },
-    { nm: 'Trainingsschema', wat: 'Een plan van 8, 12 of 16 weken in TrainingPeaks. Hier in de app zie je elke dag je training, met uitleg.', prijs: naLancering ? 'Vanaf &euro;59, MKC Pro inbegrepen' : 'MKC Pro inbegrepen', knop: `<a class="knop" href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Kies je schema</a>` },
+    { nm: 'Trainingsschema', wat: 'Een plan van 8, 12 of 16 weken in TrainingPeaks, met mijn uitleg bij elke training. MKC Pro zit erbij.', prijs: naLancering ? 'Vanaf &euro;59, MKC Pro inbegrepen' : 'MKC Pro inbegrepen', knop: `<a class="knop" href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Kies je schema</a>` },
     { nm: '1-op-1 coaching', wat: 'Michel maakt je plan en stuurt elke week bij op wat je rijdt en hoe je je voelt.', prijs: 'Vanaf &euro;79 per maand, app inbegrepen', knop: `<a class="knop" href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener">Bekijk coaching</a>` }
   ];
   // Schema en coaching zijn twee keuzes naast elkaar, geen trap: wie lid is kiest zelf (besluit Michel 14-10-2026).
@@ -3480,7 +3480,7 @@ function vandaagHtml(d) {
   if (c && c.reeks >= 2) wk.push('<b>' + c.reeks + ' weken</b> op rij');
   if (c && c.rompscore != null && c.startScore != null && c.rompscore > c.startScore) wk.push('Rompscore <b>+' + (c.rompscore - c.startScore) + '</b>');
   if (wk.length) rijen.push('<div class="vd-week">' + wk.map((x) => '<span>' + x + '</span>').join('') + '</div>');
-  if (!s && !coaching) rijen.push(`<a class="vd-zacht" href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Met een schema staat hier ook elke dag je training klaar &rarr;</a>`);
+  if (!s && !coaching) rijen.push(`<a class="vd-zacht" href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Train je met een schema? Dan zit Pro er gewoon bij &rarr;</a>`);
   if (!rijen.length) return '';
   const dag = new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
   return `<div class="vandaag" id="vandaagvak"><div class="vd-kop">Vandaag &middot; ${dag}</div>${rijen.join('')}</div>`;
