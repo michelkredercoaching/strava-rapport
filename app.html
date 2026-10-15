@@ -938,6 +938,12 @@
   .kl-mee li { background:transparent !important; border-style:dashed !important; }
   .kl-groep .rv-sub { margin-top:12px; }
   .rv-uit .kl-lijst li { padding:8px 12px; font-size:14px; }
+  .rv-modus { margin:12px 0 4px; }
+  .dv-keuze button { font-size:12.5px; padding:9px 2px; }
+  .dv-morgen { display:flex; gap:8px; align-items:center; margin-top:10px; font-size:13px; color:var(--muted); }
+  .rv-uit .dv-maal li { display:block; }
+  .dv-maal li b { display:block; font-size:14px; }
+  .dv-maal li small { display:block; font-size:12px; color:var(--accent); margin:1px 0 3px; }
   .rv-opbouw { margin:8px 0 2px; color:rgba(245,243,239,.85); }
   .rv-tochtdag { margin:10px 0 0; padding:8px 12px; border-radius:8px; background:rgba(255,107,26,.12); color:#ffb48a; font-size:13px; font-weight:600; }
   .rv-gewendhulp { display:block; margin-top:6px; font-size:12px; color:var(--muted); }
@@ -4584,8 +4590,8 @@ document.addEventListener('click', (e) => {
 // ---- Kledingadvies en ochtendbericht (07-10-2026, alleen leden) ----
 // Rekent met /lib/kleding.js (Michels eigen indeling uit zondagmail 5), met het
 // weer tijdens je rit (vertrek + duur, per uur van Open-Meteo).
-let RV_LIB = null, WIND_LIB = null;
-async function rvLaadLib() { try { if (!RV_LIB) RV_LIB = await import('/lib/ritvoeding.js'); if (!WIND_LIB) WIND_LIB = await import('/lib/wind.js'); } catch (e) {} }
+let RV_LIB = null, WIND_LIB = null, DV_LIB = null;
+async function rvLaadLib() { try { if (!DV_LIB) DV_LIB = await import('/lib/dagvoeding.js'); if (!RV_LIB) RV_LIB = await import('/lib/ritvoeding.js'); if (!WIND_LIB) WIND_LIB = await import('/lib/wind.js'); } catch (e) {} }
 const KOMPAS = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg>';
 // Het weer tijdens de gekozen rit (vertrek + duur uit de kledingkeuze).
 function ritUren() { const w = SB.weer; if (!w) return []; const k = klKeuze(); return (w.uren || []).slice(Math.floor(k.over), Math.ceil(k.over + k.duur) + 1); }
@@ -4600,7 +4606,7 @@ function rvInvoer(k, temp) {
   const vertrek = new Date(Date.now() + (k.over || 0) * 36e5);
   const dag = vertrek.getFullYear() + '-' + String(vertrek.getMonth() + 1).padStart(2, '0') + '-' + String(vertrek.getDate()).padStart(2, '0');
   const doelDag = !!(dl && dl.doel === 'evenement' && dl.datum === dag);
-  return { duur: k.duur, temp, hard: k.hard, gewend: (SB.profiel && SB.profiel.rvGewend) || null, doelDag, doelNaam: doelDag ? dl.naam : '', afvallen: !!(dl && dl.doel === 'afvallen') };
+  return { duur: k.duur, temp, hard: k.hard, gewend: (SB.profiel && SB.profiel.rvGewend) || null, zweet: (SB.profiel && SB.profiel.zweet) || null, doelDag, doelNaam: doelDag ? dl.naam : '', afvallen: !!(dl && dl.doel === 'afvallen') };
 }
 function rvGewendHtml() {
   const g = (SB.profiel && SB.profiel.rvGewend) || '';
@@ -4608,11 +4614,60 @@ function rvGewendHtml() {
   return `<div class="kl-kou${g ? '' : ' nieuw'}"><b>${g ? 'Zoveel eet je onderweg' : 'Hoeveel eet jij onderweg per uur?'}</b>${g ? '' : '<span>Dan krijg je wat jouw maag aankan, en hoe je verder opbouwt.</span>'}
     <div class="bt-keuze">${knop('weinig', 'Weinig')}${knop('60', 'Rond 60 g')}${knop('80', '80 g of meer')}</div><small class="rv-gewendhulp">Een reep is ongeveer 40 gram, een gel 25, een bidon sportdrank 40.</small></div>`;
 }
+// Eten vandaag (15-10-2026): eet naar het werk van vandaag. Soort dag uit je schema, anders kies je zelf.
+const DV_KEUZES = [['rust', 'Rustdag'], ['licht', 'Rustig'], ['matig', 'Duurrit'], ['zwaar', 'Hard'], ['lang', 'Lang']];
+function dvVandaagStr(plus) { const t = new Date(Date.now() + (plus || 0) * 864e5); return t.getFullYear() + '-' + String(t.getMonth() + 1).padStart(2, '0') + '-' + String(t.getDate()).padStart(2, '0'); }
+function dvSchema() {
+  const d = D && !D.gast ? zicht() : null, s = d && d.schema;
+  if (!s || s.status !== 'loopt' || !DV_LIB) return null;
+  const i = (s.weekDagen || []).findIndex((x) => x.vandaag); if (i < 0) return null;
+  const nu = s.weekDagen[i], mo = s.weekDagen[i + 1];
+  const morgenTr = mo ? mo.trainingen : s.volgende && s.volgende.overDagen === 1 ? [s.volgende] : [];
+  return { soort: DV_LIB.soortUitTraining(nu.trainingen), duur: nu.trainingen.reduce((t, w) => t + (Number(w.duur) || 0), 0), titel: nu.trainingen.map((w) => w.titel).join(' + '), morgen: morgenTr.length ? DV_LIB.soortUitTraining(morgenTr) : 'rust' };
+}
+function dagVoedingHtml() {
+  if (!DV_LIB) return '<p class="klein">Even rekenen...</p>';
+  const gewicht = SB.profiel && SB.profiel.gewicht;
+  if (!gewicht) return '<p class="klein" style="margin-top:12px">Vul eerst je gewicht in bij je fiets (tabblad Banden), dan reken ik uit wat jij vandaag nodig hebt.</p>';
+  const k = sbKeuze(), vandaag = dvVandaagStr(0), sch = dvSchema(), kk = klKeuze();
+  const eigen = k.dvDag === vandaag && DV_LIB.DAG_SOORTEN[k.dvSoort] ? k.dvSoort : null;
+  const soort = eigen || (sch ? sch.soort : kk.hard ? 'zwaar' : kk.duur >= 3 ? 'lang' : kk.duur <= 1 ? 'licht' : 'matig');
+  const morgen = k.dvMorgenDag === vandaag ? (k.dvMorgen ? 'zwaar' : 'rust') : sch ? sch.morgen : null;
+  const duur = soort === 'rust' ? 0 : eigen || !sch ? (soort === 'licht' ? 1 : soort === 'lang' ? Math.max(3, kk.duur) : kk.duur) : sch.duur;
+  const dl = (() => { const d = D && !D.gast ? zicht() : null; return d && d.doel && !d.doel.klaar ? d.doel : null; })();
+  const a = DV_LIB.dagVoeding({ gewicht, soort, training: duur ? { duur } : null, morgen, afvallen: !!(dl && dl.doel === 'afvallen') });
+  if (!a) return '';
+  const knop = ([w, t]) => `<button type="button" data-kl="dvsoort" data-w="${w}" class="${soort === w ? 'aan' : ''}">${t}</button>`;
+  const morgenAan = morgen === 'zwaar' || morgen === 'lang';
+  return `<div class="kl-kou"><b>Wat doe je vandaag?</b>${sch && !eigen ? `<span>Uit je schema: ${esc(sch.titel || 'rust')}</span>` : ''}<div class="bt-keuze dv-keuze">${DV_KEUZES.map(knop).join('')}</div>
+    <label class="dv-morgen"><input type="checkbox" data-kl="dvmorgen" ${morgenAan ? 'checked' : ''}> Morgen een lange rit of zware training</label></div>
+    <div class="rv-uit">
+    <div class="rv-kop"><div><b>${a.khTotaal}</b><span>gram koolhydraten</span></div><div><b>${a.eiwit}</b><span>gram eiwit</span></div><div><b>${String(a.khKg).replace('.', ',')}</b><span>gram per kilo</span></div></div>
+    <p class="klein rv-uitleg">${esc(a.naam)}, op ${gewicht} kilo${a.onderweg ? `. Daarvan eet je ongeveer ${a.onderweg} gram onderweg op de fiets (zie Voor je rit)` : ''}. Op je bord: ${esc(a.bord)}.</p>
+    <div class="rv-sub">Zo verdeel je het</div><ul class="kl-lijst dv-maal">${a.maaltijden.map((m) => `<li><b>${m.naam}</b><small>${m.kh} gram koolhydraten${m.eiwit ? ' &middot; ' + m.eiwit + ' gram eiwit' : ''}</small>${esc(m.wat)}</li>`).join('')}</ul></div>
+    ${sbTipsKlap('dvtips', a.tips, '', 'Tips voor vandaag')}`;
+}
+// Zweettest: weeg je voor en na een rit, dan reken ik met jouw zweet in plaats van een gemiddelde.
+function zweetTestHtml() {
+  const z = SB.profiel && SB.profiel.zweet;
+  const open = klapOpen('zweet', false) || !!SB.zweetFout;
+  return `<details class="klap" data-klap="zweet"${open ? ' open' : ''}><summary><b>Jouw zweettest</b><span>${z ? String(z.lpu).replace('.', ',') + ' liter per uur' : 'eenmalig, 1 rit'}</span></summary><div class="klap-in gr-maak">
+    <p class="klein" style="margin-top:0">Weeg je voor een rit van minstens een uur (zonder kleding, na het plassen) en direct erna weer. Dan weet ik hoeveel jij zweet en reken ik je drinken daarop. Een kilo minder is ongeveer een liter zweet.</p>
+    <div class="rij2"><div><label for="ztVoor">Gewicht voor (kg)</label><input id="ztVoor" type="number" step="0.1" inputmode="decimal" placeholder="bijv. 76,4"></div><div><label for="ztNa">Gewicht na (kg)</label><input id="ztNa" type="number" step="0.1" inputmode="decimal" placeholder="bijv. 75,6"></div></div>
+    <div class="rij2"><div><label for="ztDuur">Hoe lang reed je</label><select id="ztDuur">${[1, 1.5, 2, 2.5, 3, 4, 5].map((u) => `<option value="${u}" ${u === 2 ? 'selected' : ''}>${String(u).replace('.', ',')} uur</option>`).join('')}</select></div><div><label for="ztDronk">Wat dronk je onderweg</label><select id="ztDronk">${[0, 0.5, 1, 1.5, 2, 3, 4].map((b) => `<option value="${b}" ${b === 1 ? 'selected' : ''}>${b === 0 ? 'niets' : String(b).replace('.', ',') + (b === 1 ? ' bidon' : ' bidons')}</option>`).join('')}</select></div></div>
+    <div class="rij2"><div><label for="ztTemp">Hoe warm was het (&deg;C)</label><input id="ztTemp" type="number" inputmode="numeric" value="${SB.weer ? Math.round(SB.weer.temp) : 15}"></div><div style="display:flex;align-items:flex-end"><button type="button" class="knop" data-kl="zweet" style="width:100%">Bereken</button></div></div>
+    ${SB.zweetFout ? `<p class="klein" style="color:#ff8a5c">${esc(SB.zweetFout)}</p>` : ''}${z ? `<p class="klein">Bewaard: ${String(z.lpu).replace('.', ',')} liter per uur bij ${z.temp}&deg;. Je drinkadvies rekent hier nu mee. <a href="#" data-kl="zweetweg" style="color:var(--accent)">wissen</a></p>` : ''}</div></details>`;
+}
 function rvSchemaHtml(a) {
   if (!a.schema || a.schema.length < 2) return '';
   return `<details class="klap" data-klap="rvschema"${klapOpen('rvschema', false) ? ' open' : ''}><summary><b>Eetschema onderweg</b><span>elke 20 min</span></summary><div class="klap-in"><ul class="rv-schema">${a.schema.map((x) => `<li><b>${x.t}</b><span>${esc(x.wat)}</span></li>`).join('')}</ul><p class="klein" style="margin:8px 0 0">Zet op je Garmin of Wahoo een herinnering voor eten en drinken, elke 20 minuten.</p></div></details>`;
 }
 function voedingTabHtml() {
+  const modus = sbKeuze().rvModus === 'dag' ? 'dag' : 'rit';
+  const knop = (w, t) => `<button type="button" data-kl="rvmodus" data-w="${w}" class="${modus === w ? 'aan' : ''}">${t}</button>`;
+  return `<div class="bt-keuze rv-modus">${knop('rit', 'Voor je rit')}${knop('dag', 'Eten vandaag')}</div>` + (modus === 'dag' ? dagVoedingHtml() : ritVoedingHtml());
+}
+function ritVoedingHtml() {
   if (!SB.weer) return '<p class="klein" style="margin-top:12px">Kies hierboven je plek, dan reken ik met de temperatuur tijdens je rit.</p>';
   if (!RV_LIB) return '<p class="klein">Even rekenen...</p>';
   const k = klKeuze(), stuk = ritUren();
@@ -4623,7 +4678,7 @@ function voedingTabHtml() {
     <div class="rv-kop"><div><b>${a.gPerUur || '0'}</b><span>gram per uur</span></div><div><b>${a.bidons}</b><span>${a.bidons === 1 ? 'bidon' : 'bidons'}</span></div><div><b>${temp}&deg;</b><span>onderweg</span></div></div>${a.totaalG ? `<p class="klein rv-uitleg">Vanaf ongeveer 20 minuten na de start, samen ${a.totaalG} gram.</p>` : ''}
     ${a.doelDag ? '<p class="rv-tochtdag">Tochtdag: ' + esc(a.doelNaam) + '. Ik reken met wat de dag vraagt.</p>' : ''}${a.opbouw ? `<p class="klein rv-opbouw">${esc(a.opbouw)}</p>` : ''}
     <div class="rv-sub">Neem mee</div><ul class="kl-lijst">${a.items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>
-    ${rvGewendHtml()}${rvSchemaHtml(a)}${sbTipsKlap('rvtips', tips, '')}${ritVoorNaHtml('voeding')}`;
+    ${rvGewendHtml()}${rvSchemaHtml(a)}${sbTipsKlap('rvtips', tips, '')}${zweetTestHtml()}${ritVoorNaHtml('voeding')}`;
 }
 
 // ---- Gratis windadvies: lokkertje voor wie nog geen lid is (09-10-2026) ----
@@ -4757,9 +4812,9 @@ function ritVoorNaHtml(tab) {
   const blok = (kop, l) => l.length ? `<div class="vn-blok"><div class="rv-sub">${kop}</div>${l.map((t) => '<p>' + t + '</p>').join('')}</div>` : '';
   return `<details class="klap" data-klap="voorna-${tab}"${klapOpen('voorna-' + tab, false) ? ' open' : ''}><summary><b>Voor en na je rit</b><span>${(() => { const k = klKeuze(), u = (SB.weer && SB.weer.uren) || []; return k.over && uurDag(u, k.over) ? 'morgen' : 'vandaag'; })()}</span></summary><div class="klap-in vn">${blok('Vooraf', v.voor)}${blok('Na je rit', v.na)}</div></details>`;
 }
-function sbTipsKlap(naam, tips, extra) {
+function sbTipsKlap(naam, tips, extra, kop) {
   if (!tips.length && !extra) return '';
-  return `<details class="klap" data-klap="${naam}"${klapOpen(naam, false) ? ' open' : ''}><summary><b>Tips voor deze rit</b><span>${tips.length} ${tips.length === 1 ? 'tip' : 'tips'}</span></summary><div class="klap-in kl-tips">${tips.map((t) => '<p>' + esc(t) + '</p>').join('')}${extra ? '<p class="klein" style="margin-top:6px">' + extra + '</p>' : ''}</div></details>`;
+  return `<details class="klap" data-klap="${naam}"${klapOpen(naam, false) ? ' open' : ''}><summary><b>${kop || 'Tips voor deze rit'}</b><span>${tips.length} ${tips.length === 1 ? 'tip' : 'tips'}</span></summary><div class="klap-in kl-tips">${tips.map((t) => '<p>' + esc(t) + '</p>').join('')}${extra ? '<p class="klein" style="margin-top:6px">' + extra + '</p>' : ''}</div></details>`;
 }
 function kledingTabHtml() {
   if (!SB.weer) return '<p class="klein" style="margin-top:12px">Kies hierboven je plek, dan reken ik met het weer tijdens je rit.</p>';
@@ -4776,6 +4831,19 @@ document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-kl]'); if (!k) return;
   if (k.dataset.kl === 'hard') { sbBewaarKeuze({ klHard: k.dataset.w === '1' }); return sbTeken(); }
   if (k.dataset.kl === 'kou') { SB.profiel.kouType = k.dataset.w; SB.profiel.kouGekozen = true; sbTeken(); await sbBewaarProfiel(true); }
+  if (k.dataset.kl === 'rvmodus') { sbBewaarKeuze({ rvModus: k.dataset.w }); return sbTeken(); }
+  if (k.dataset.kl === 'dvsoort') { sbBewaarKeuze({ dvSoort: k.dataset.w, dvDag: dvVandaagStr(0) }); return sbTeken(); }
+  if (k.dataset.kl === 'dvmorgen') { sbBewaarKeuze({ dvMorgen: k.checked, dvMorgenDag: dvVandaagStr(0) }); return sbTeken(); }
+  if (k.dataset.kl === 'zweetweg') { e.preventDefault(); SB.profiel.zweet = null; sbTeken(); await sbBewaarProfiel(true); return; }
+  if (k.dataset.kl === 'zweet') {
+    const num = (id) => Number(String(document.getElementById(id)?.value || '').replace(',', '.'));
+    const voor = num('ztVoor'), na = num('ztNa'), duur = num('ztDuur'), dronk = num('ztDronk'), temp = num('ztTemp');
+    const lpu = (voor - na + dronk * 0.75) / duur;
+    if (!(voor >= 40 && voor <= 150 && na >= 40 && na <= 150) || !(duur > 0)) SB.zweetFout = 'Vul je gewicht voor en na de rit in.';
+    else if (!(voor - na > -1 && lpu >= 0.2 && lpu <= 3)) SB.zweetFout = 'Dat lijkt niet te kloppen. Check je gewichten en wat je dronk.';
+    else { SB.zweetFout = ''; SB.profiel.zweet = { lpu: Math.round(lpu * 100) / 100, temp: Number.isFinite(temp) ? Math.round(temp) : 15, op: dvVandaagStr(0) }; }
+    sbTeken(); if (!SB.zweetFout) await sbBewaarProfiel(true); return;
+  }
   if (k.dataset.kl === 'gewend') { SB.profiel.rvGewend = SB.profiel.rvGewend === k.dataset.w ? null : k.dataset.w; sbTeken(); await sbBewaarProfiel(true); }
   if (k.dataset.kl === 'tab') { if (k.dataset.w === 'kleding') statEens('kleding'); sbBewaarKeuze({ tab: k.dataset.w }); return sbTeken(); }
   if (k.dataset.kl === 'vrijtab') { btBewaar({ ...btLees(), tab: k.dataset.w }); return teken(); }

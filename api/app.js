@@ -1652,7 +1652,10 @@ function schoonProfiel(p) {
   const kouType = ['koud', 'warm'].includes(p.kouType) ? p.kouType : 'normaal';
   // Wat je onderweg gewend bent te eten (ritvoeding, 15-10-2026).
   const rvGewend = ['weinig', '60', '80'].includes(p.rvGewend) ? p.rvGewend : null;
-  return { gewicht: gewicht >= 40 && gewicht <= 150 ? gewicht : null, plaats, fietsen, kouType, kouGekozen: !!p.kouGekozen || kouType !== "normaal", rvGewend };
+  // Eigen zweettest: liters per uur bij een temperatuur (15-10-2026).
+  const z = p.zweet && typeof p.zweet === 'object' ? p.zweet : null;
+  const zweet = z && Number(z.lpu) >= 0.2 && Number(z.lpu) <= 3 ? { lpu: Math.round(Number(z.lpu) * 100) / 100, temp: Math.max(-10, Math.min(45, Math.round(Number(z.temp) || 15))), op: String(z.op || '').slice(0, 10) } : null;
+  return { gewicht: gewicht >= 40 && gewicht <= 150 ? gewicht : null, plaats, fietsen, kouType, kouGekozen: !!p.kouGekozen || kouType !== "normaal", rvGewend, zweet };
 }
 async function haalBandenProfiel(email) {
   const r = await redis(['GET', `app:banden:${email}`]);
