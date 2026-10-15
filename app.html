@@ -145,7 +145,18 @@
   .plan-extra { margin:6px 0 10px; font-size:13px; font-weight:700; color:#7fe0a0; }
   .sb-voorbreedte { display:flex; align-items:center; gap:8px; margin:6px 0; font-size:13px; color:var(--muted); } .sb-voorbreedte select { flex:1; }
   .sk-tpzin { margin:8px 0 12px; font-size:12.5px; color:var(--muted); }
-  .sk-tpgroot { display:block; width:100%; text-align:center; margin-top:14px; box-sizing:border-box; }
+  .sk-tpgroot { display:block; width:100%; text-align:center; margin-top:2px; box-sizing:border-box; }
+  .skc { margin-top:4px; padding:14px; border-radius:8px; border:1px solid rgba(76,195,138,.35); background:rgba(76,195,138,.06); }
+  .skc-kop { display:flex; gap:10px; align-items:center; }
+  .skc-kop b { display:block; font-size:15px; } .skc-kop span { font-size:12.5px; color:var(--muted); }
+  .skc-ic { width:34px; height:34px; border-radius:8px; background:rgba(76,195,138,.15); display:grid; place-items:center; flex:none; }
+  .skc-ic svg { width:20px; height:20px; stroke:#4CC38A; fill:none; stroke-width:1.8; }
+  .skc-dagen { display:grid; grid-template-columns:repeat(7, 1fr); gap:4px; margin:12px 0 2px; }
+  .skc-dag { text-align:center; padding:6px 0; border-radius:6px; font-size:12px; font-weight:600; text-transform:uppercase; color:var(--muted); background:rgba(255,255,255,.04); }
+  .skc-dag.aan { background:rgba(76,195,138,.2); color:#7fe0a8; }
+  .skc-dag.nu { outline:1px solid var(--accent); }
+  .skc-zin { margin:10px 0 12px; font-size:13px; color:rgba(245,243,239,.85); }
+  .skc-knop { display:block; width:100%; text-align:center; box-sizing:border-box; background:#4CC38A; border-color:#4CC38A; color:#0a0a0a; }
   .hklap { margin-top:12px; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
   .hklap > summary { list-style:none; cursor:pointer; display:flex; align-items:baseline; gap:10px; padding:13px 14px; } .hklap > summary::-webkit-details-marker { display:none; }
   .hklap > summary b { font-family:'Bebas Neue',sans-serif; font-size:19px; letter-spacing:.03em; font-weight:400; }
@@ -2300,15 +2311,26 @@ function schemaKaart(d) {
       <div class="sk-dag"><p class="sk-rust">Wat nu? Bouw verder met een vervolgschema dat aansluit op waar je nu staat, of blijf Pro en houd je coach, de Core-app en je ritadvies.</p>
       <div class="sk-acties"><a class="knop" href="https://michelkredercoaching.nl/trainingsschema-vervolg/">Kies je vervolgschema</a>${isLid(d) && d.lid && d.lid.bron !== 'schema' ? '' : '<button class="knop leeg" data-actie="naarlid">Blijf Pro</button>'}</div></div></div>`;
   }
-  // Simpel (15-10-2026): TrainingPeaks is leidend, de app wijst ernaar.
+  // Simpel (15-10-2026): TrainingPeaks is leidend, de app wijst ernaar. Core als eigen blok met knop.
   const cd = coreDagen(s, coreAantal(d));
-  const coreRegel = cd.length ? `<div class="sk-coreregel">Core-dagen deze week: <b>${cd.map((x) => x.dagnaam).join(' &middot; ')}</b>. Fiets je die dag, doe hem dan vlak voor je rit: dan ben je al omgekleed en warm.</div>` : '';
-  const coreVandaag = cd.some((x) => x.vandaag) && d.core && d.core.link;
+  const c = d.core;
+  let coreBlok = '';
+  if (c && c.link && !c.opSlot && !c.nogDicht) {
+    const vandaag = cd.some((x) => x.vandaag);
+    const chips = s.weekDagen.map((x) => `<span class="skc-dag${cd.includes(x) ? ' aan' : ''}${x.vandaag ? ' nu' : ''}">${x.dagnaam}</span>`).join('');
+    const knop = c.intakeNodig ? 'Start je intake, 1 minuut' : vandaag && !c.vandaagGedaan ? 'Doe je core van vandaag' : 'Open de Core-app';
+    const zin = c.intakeNodig ? 'Na je intake van een minuut plant de app je core-dagen rond dit schema.'
+      : vandaag ? (c.vandaagGedaan ? 'Je core van vandaag zit erop. Mooi.' : 'Vandaag is een core-dag. Fiets je ook? Doe hem dan vlak voor je rit, dan ben je al warm.')
+      : 'Fiets je op een core-dag, doe hem dan vlak voor je rit: dan ben je al omgekleed en warm.';
+    coreBlok = `<div class="skc"><div class="skc-kop"><span class="skc-ic">${IC.core}</span><div><b>Core deze week</b><span>${c.intakeNodig ? 'nog niet gestart' : cd.length + ' keer, rond je schema'}</span></div></div>
+      ${c.intakeNodig ? '' : `<div class="skc-dagen">${chips}</div>`}<p class="skc-zin">${zin}</p>
+      <a class="knop skc-knop" href="${esc(c.link)}${c.intakeNodig || vandaag ? '#vandaag' : ''}">${knop}</a></div>`;
+  }
   return `<div class="sk">${kop('Week ' + s.week + ' van ' + s.weken, (s.niveau ? esc(s.niveau) + ' &middot; ' : '') + 'je traint in TrainingPeaks')}
-    <a class="knop sk-tpgroot" href="https://app.trainingpeaks.com/#calendar" target="_blank" rel="noopener">Open je training in TrainingPeaks</a>
+    <div class="sk-dag"><a class="knop sk-tpgroot" href="https://app.trainingpeaks.com/#calendar" target="_blank" rel="noopener">Open je training in TrainingPeaks</a>
     <p class="sk-tpzin">Daar staat altijd je actuele schema, ook als Michel het voor jou heeft aangepast.</p>
-    ${coreRegel}
-    <div class="sk-acties">${coreVandaag ? `<a class="knop" href="${esc(d.core.link)}">Doe je core-sessie</a>` : ''}<button class="knop leeg" data-sk="vraag" data-titel="">Vraag je coach over je schema</button></div></div>`;
+    ${coreBlok}
+    <div class="sk-acties"><button class="knop leeg" data-sk="vraag" data-titel="">Vraag je coach over je schema</button></div></div></div>`;
 }
 async function skSchuif(r) {
   if (D && D.beheer && BEKIJK === 'zelf' && SIM.schema !== 'echt') return;
