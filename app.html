@@ -138,6 +138,9 @@
   .pm-tegoed { display:flex; gap:12px; align-items:center; margin:12px 0; padding:12px 14px; border:1px solid rgba(255,107,26,.45); background:rgba(255,107,26,.07); border-radius:12px; } .pm-tg-n { flex-shrink:0; width:42px; height:42px; border-radius:50%; background:#FF6B1A; color:#0A0A0A; font-family:'Bebas Neue',sans-serif; font-size:24px; display:flex; align-items:center; justify-content:center; } .pm-tegoed b { display:block; font-size:15px; } .pm-tegoed span { font-size:12.5px; color:var(--muted); line-height:1.45; }
   .md-tg { margin:10px 0; padding:8px 10px; border-radius:8px; background:rgba(255,107,26,.12); color:#FF6B1A; font-weight:700; font-size:13.5px; text-align:center; }
   .core-doe .knop { display:inline-block; margin-top:4px; padding:10px 14px; font-size:14px; }
+  .dr-pacing { display:flex; gap:10px; align-items:center; margin-top:8px; padding:10px 12px; border:1px dashed rgba(255,107,26,.45); border-radius:10px; font-size:12.5px; color:var(--muted); line-height:1.4; } .dr-pacing > svg { width:22px; height:22px; flex-shrink:0; color:#FF6B1A; } .dr-pacing span { flex:1; } .dr-pacing b { display:block; color:var(--white); font-size:13.5px; } .dr-pacing em { font-style:normal; color:#7fe0a0; white-space:nowrap; } .dr-pacing .sb-link { white-space:nowrap; margin:0; }
+  .pc-kaart .knop[disabled] { opacity:.45; cursor:default; }
+  .pc-kaart { max-width:480px; margin:30px auto; padding:0 16px; } .pc-kaart .kaart-in p { line-height:1.55; }
   .hklap { margin-top:12px; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
   .hklap > summary { list-style:none; cursor:pointer; display:flex; align-items:baseline; gap:10px; padding:13px 14px; } .hklap > summary::-webkit-details-marker { display:none; }
   .hklap > summary b { font-family:'Bebas Neue',sans-serif; font-size:19px; letter-spacing:.03em; font-weight:400; }
@@ -1558,7 +1561,7 @@ document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-interesse]'); if (!k) return;
   const product = k.dataset.interesse; k.disabled = true;
   try { const j = await (await fetch(API + '?actie=interesse', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), product }) })).json();
-    if (j.ok) { D.interesse = { ...(D.interesse || {}), [product]: true }; k.outerHTML = opDeHoogteHtml(product); return; } } catch (er) {}
+    if (j.ok) { D.interesse = { ...(D.interesse || {}), [product]: true }; k.outerHTML = k.closest('.dr-pacing') ? '<em>&#10003; Op de lijst</em>' : opDeHoogteHtml(product); return; } } catch (er) {}
   k.disabled = false;
 });
 function afvalKaart() {
@@ -2726,7 +2729,8 @@ function doelHtml(d) {
     // Jouw doel in een licht oranje vak, duidelijk in beeld (12-10-2026)
     const hoofd = dl.doel === 'evenement' ? esc(dl.naam) : DOEL_NAMEN[dl.doel];
     const aftel = dl.doel === 'evenement' && nog > 0 ? `<span class="dr-nog"><b>${nog}</b>${nog === 1 ? 'dag' : 'dagen'}</span>` : '';
-    const regel = inVandaag ? '' : `<div class="doelregel"><div class="dr-tekst"><span class="dr-l">Jouw doel</span><b>${hoofd}</b><a href="#" data-doel="wijzig">aanpassen</a></div>${aftel}</div>`;
+    const pacingRij = dl.doel === 'evenement' && nog > 1 && !(d.lid && d.lid.bron === 'coaching') ? `<div class="dr-pacing">${IC.pacing}<span><b>Pacingplan voor deze tocht</b>Je tempo per klim en je voeding, uit je eigen trainingen. Je krijgt het 5 dagen ervoor.</span>${d.interesse && d.interesse.pacing ? '<em>&#10003; Op de lijst</em>' : '<button type="button" class="sb-link" data-interesse="pacing">Zet me op de lijst</button>'}</div>` : '';
+    const regel = inVandaag ? '' : `<div class="doelregel"><div class="dr-tekst"><span class="dr-l">Jouw doel</span><b>${hoofd}</b><a href="#" data-doel="wijzig">aanpassen</a></div>${aftel}</div>${pacingRij}`;
     if (!DOELV.bevestig) return regel;
     const zin = { sneller: 'Top! Over een paar weken laat ik je zien hoe je meet of je echt sneller wordt.', evenement: `Top, op naar ${esc(dl.naam)}! Ik herinner je 4 weken, 1 week en de dag ervoor, met tips voor die dag.`, afvallen: 'Top! Je krijgt tips om lichter te worden zonder watts te verliezen, en je hoort als eerste over het Afvalprogramma.', fit: 'Top! Ik stuur je af en toe een tip om het leuk te houden en door te blijven rijden.' }[dl.doel];
     const pushVraag = pushKan() && PUSH.key && PUSH.inst && !PUSH.inst.aan && !(typeof Notification !== 'undefined' && Notification.permission === 'denied');
@@ -3557,7 +3561,7 @@ function paginaHtml(d) {
   if (VIEW === 'schema') return appBalkHtml('Mijn schema') + `<div class="kaarten">${schemaKaart(d)}</div>` + voet;
   if (VIEW === 'core') return appBalkHtml('Core-app') + `<div class="kaarten">${coreKaart(dz.core)}</div>` + voet;
   if (VIEW === 'kracht') return appBalkHtml() + krachtPagina(dz) + voet;
-  if (VIEW === 'beheer') { if (!D || !D.beheer) return null; const d = D; return appBalkHtml('Beheer') + beheerHtml(d) + (d.kracht && d.kracht.open ? '<button type="button" class="bh-knop" data-view="kracht"><b>Kracht</b><span>Preview van het krachtprogramma, alleen voor jou</span><i>&#8250;</i></button>' : '') + `<div class="bh-groep bh-pagina"><div id="bhdash">${bhDashHtml()}</div><div class="bh-sec">Te doen</div>${opvolgHtml()}${nakijkHtml()}<div class="bh-sec">Mensen</div>${ledenHtml()}${doelenBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}<div class="bh-sec">Groei en gebruik</div>${gebruikHtml()}${badgeBeheerHtml()}<div class="bh-sec">Berichten versturen</div>${aankondigHtml()}${pushOpnieuwHtml()}</div>` + voet; }
+  if (VIEW === 'beheer') { if (!D || !D.beheer) return null; const d = D; return appBalkHtml('Beheer') + beheerHtml(d) + '<button type="button" class="bh-knop" data-actie="pacingtest"><b>Pacinglink</b><span>Testlink voor je eigen tocht-doel bekijken</span><i>&#8250;</i></button>' + (d.kracht && d.kracht.open ? '<button type="button" class="bh-knop" data-view="kracht"><b>Kracht</b><span>Preview van het krachtprogramma, alleen voor jou</span><i>&#8250;</i></button>' : '') + `<div class="bh-groep bh-pagina"><div id="bhdash">${bhDashHtml()}</div><div class="bh-sec">Te doen</div>${opvolgHtml()}${nakijkHtml()}<div class="bh-sec">Mensen</div>${ledenHtml()}${doelenBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}<div class="bh-sec">Groei en gebruik</div>${gebruikHtml()}${badgeBeheerHtml()}<div class="bh-sec">Berichten versturen</div>${aankondigHtml()}${pushOpnieuwHtml()}</div>` + voet; }
   if (VIEW === 'krachtteaser') return appBalkHtml() + krachtPagina({ ...dz, kracht: null }) + voet; // zo zien leden het tot 1 november
   if (VIEW === 'kiestraining') return appBalkHtml() + krKiesHtml(dz) + voet;
   if (VIEW === 'analyse') return appBalkHtml('Strava-analyse') + (dz.analyse ? (dz.analyse.datum ? `<p class="klein" style="margin:14px 0 -4px">Gemeten op ${esc(dz.analyse.datum)}${analyseWeken(dz.analyse) >= 1 ? ' &middot; ' + analyseWeken(dz.analyse) + (analyseWeken(dz.analyse) === 1 ? ' week' : ' weken') + ' geleden' : ''}</p>` : '') + analyseBlok(dz.analyse, true) + analyseCoachHtml(dz) + naAnalyseHtml(dz) + (inCoaching() ? '<p class="klein" style="margin-top:14px">Een nieuwe meting regelt Michel binnen je coaching.</p>' : `<a class="knop ${analyseWeken(dz.analyse) >= 8 ? '' : 'leeg'}" href="${analyseKoop()}" style="margin-top:14px">${analyseWeken(dz.analyse) >= 8 ? 'Tijd voor een nieuwe meting' : 'Doe een nieuwe analyse'}${analysePrijs() < 29 ? ' &middot; &euro;' + analysePrijs() : ''}</a><p class="klein">Na een paar weken gericht trainen zie je met een nieuwe analyse of je vooruit bent gegaan.</p>`) : `<div class="kaarten">${analyseKaart(null)}</div>`) + voet;
@@ -3630,6 +3634,7 @@ document.addEventListener('click', (e) => {
   if (actie === 'simreset') { SIM = { core: 'echt', analyse: 'echt', lid: 'echt', lancering: 'echt', schema: 'echt' }; simBewaar(); SK.dag = null; teken(); }
   if (actie === 'wordlid') wordLid(k);
   if (actie === 'startcore') startCore(k);
+  if (actie === 'pacingtest') { e.preventDefault(); fetch(API + '?actie=pacingtest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken() }) }).then((r) => r.json()).then((j) => { if (j.ok) window.open(j.link, '_blank'); else alert(j.fout || 'Lukte niet.'); }).catch(() => {}); return; }
   if (actie === 'naargast') { e.preventDefault(); try { localStorage.setItem('mkcGastKeuze', '1'); } catch (er) {} return toonGast(); }
   if (actie === 'gastlogin' || (actie === 'naarlid' && D && D.gast)) { e.preventDefault(); const m = gastMail(); return toonLogin(); }
   if (actie === 'naarmaten') {
@@ -5685,7 +5690,19 @@ document.addEventListener('change', async (e) => {
   if (PUSH.inst.aan) { await pushOpslaan({}); sbTeken(); }
 });
 
+// Pacingplan-link (15-10-2026): /app?pacing=<token>. Werkt zonder inloggen, net als de analyselink.
+async function toonPacing(p) {
+  $('#app').innerHTML = '<div class="pc-kaart"><p class="klein">Even laden...</p></div>';
+  let j = null; try { j = await (await fetch(API + '?actie=pacinglink&p=' + encodeURIComponent(p))).json(); } catch (e) {}
+  const dag = (iso) => new Date(iso).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' });
+  const inhoud = !j || !j.ok ? `<h2>Deze link werkt niet</h2><p>${esc((j && j.fout) || 'Probeer het zo nog eens.')}</p>`
+    : j.status === 'te-vroeg' ? `<span class="tag oranje">Opent ${esc(dag(j.opent))}</span><h2>Je pacingplan${j.tocht ? ' voor ' + esc(j.tocht) : ''}</h2><p>We maken je plan pas 5 dagen voor je tocht, zodat al je trainingen erin zitten. Op ${esc(dag(j.opent))} krijg je een berichtje, dan koppel je Strava en staat je plan meteen klaar.</p>`
+    : j.status === 'open' ? `<span class="tag oranje">Nu te maken</span><h2>Je pacingplan${j.tocht ? ' voor ' + esc(j.tocht) : ''}</h2><p>Koppel je Strava. We halen je ritten op, rekenen je tempo per klim en je voeding uit en ontkoppelen daarna meteen.</p><p class="klein">Zet bij Strava het vinkje voor je privé-ritten aan, anders missen we juist je trainingen.</p><button type="button" class="knop" disabled>Koppel je Strava (komt binnenkort)</button>`
+    : `<h2>Deze link is verlopen</h2><p>Je tocht is begonnen of voorbij. Ging hij niet door? Stuur Michel een berichtje, dan zetten we je plan over.</p>`;
+  $('#app').innerHTML = `<div class="pc-kaart"><div class="login-kop" style="margin-bottom:18px"><div class="logo">MKC<span>.</span></div><div class="van">Michel Kreder Coaching</div></div><div class="kaart actief"><div class="kaart-in">${inhoud}</div></div><p class="klein" style="text-align:center;margin-top:16px"><a href="/app" style="color:var(--accent)">Naar de MKC-app</a></p></div>`;
+}
 async function laadOverzicht() {
+  { const pc = new URLSearchParams(location.search).get('pacing'); if (pc) return toonPacing(pc); }
   const t = leesToken();
   // Zonder inlog (13-10-2026): /app is de ingang voor nieuwe mensen (inloggen of gratis account maken).
   // De bandencheck zonder account staat op /banden, een groepsrit op /rit/..., en ?banden blijft werken.

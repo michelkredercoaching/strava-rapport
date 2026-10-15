@@ -58,6 +58,7 @@ import { kledingAdvies, kledingBijstel, kledingKort } from '../lib/kleding.js';
 import { bandenAdvies, leesInvoer, nl, HOOKLESS_MAX } from '../lib/bandendruk.js';
 import { stuurPush } from '../lib/webpush.js';
 import { schemaPrijs, naLancering } from '../lib/schema-prijzen.js';
+import { maakPacingToken, leesPacingToken, pacingVenster } from '../lib/pacing-link.js';
 
 const SECRET      = process.env.PP_TOKEN_SECRET || '';
 const REDIS_URL   = process.env.UPSTASH_REDIS_REST_URL   || process.env.KV_REST_API_URL;
@@ -800,7 +801,51 @@ async function routeInteresse(req, res) {
   if (!email) return res.status(401).json({ ok: false });
   if (!INTERESSE[body.product]) return res.status(400).json({ ok: false });
   await zetInteresse(email, body.product);
+  if (body.product === 'pacing') { const dl = await haalDoel(email).catch(() => null); if (dl && dl.doel === 'evenement' && dl.datum) await redis(['SET', `app:pacing:tocht:${email}`, JSON.stringify({ naam: dl.naam || '', datum: dl.datum, op: new Date().toISOString() })]); }
   return res.status(200).json({ ok: true });
+}
+
+// ---- Pacingplan-link (15-10-2026, eerste deel) ----
+// Kopers krijgen een persoonlijke link die 5 dagen voor hun tocht opengaat (lib/pacing-link.js).
+// Bestellingen komen straks in app:pacing:bestellingen (hash email -> {naam, datum, id}); de
+// pushcron stuurt dan op de openingsdag de link en een dag later één herinnering.
+// Het uitrekenen (Strava koppelen, pacing en voeding) bouwen we als het pacingplan er is.
+async function routePacingLink(req, res) {
+  const tk = leesPacingToken(String(req.query?.p || ''));
+  if (!tk) return res.status(400).json({ ok: false, fout: 'Deze link klopt niet. Kijk in je mail of vraag het Michel.' });
+  const v = pacingVenster(tk.datum);
+  const best = await redis(['HGET', 'app:pacing:bestellingen', tk.email]);
+  let b = null; try { b = best.ok && best.result ? JSON.parse(best.result) : null; } catch (e) {}
+  if (v.status === 'open') await redis(['SET', `app:pacing:geopend:${tk.id}`, '1', 'EX', String(30 * 86400)]);
+  return res.status(200).json({ ok: true, tocht: (b && b.naam) || '', datum: tk.datum, status: v.status, opent: new Date(v.opent).toISOString(), klaar: false });
+}
+// Alleen Michel: een testlink voor zijn eigen tocht-doel, om de pagina te bekijken.
+async function routePacingTest(req, res) {
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  if (!email || !BEHEER.includes(email)) return res.status(403).json({ ok: false });
+  const dl = await haalDoel(email);
+  const datum = /^\d{4}-\d{2}-\d{2}$/.test(String(body.datum || '')) ? body.datum : dl && dl.datum;
+  if (!datum) return res.status(400).json({ ok: false, fout: 'Zet eerst een tocht als doel.' });
+  const t = maakPacingToken(email, datum);
+  return res.status(200).json({ ok: true, link: `/app?pacing=${t}`, venster: pacingVenster(datum) });
+}
+async function pacingCron() {
+  const r = await redis(['HGETALL', 'app:pacing:bestellingen']);
+  const l = (r.ok && r.result) || [];
+  for (let i = 0; i < l.length; i += 2) {
+    let b = null; try { b = JSON.parse(l[i + 1]); } catch (e) { continue; }
+    const email = l[i], v = b && pacingVenster(b.datum); if (!v || v.status !== 'open' || !b.id) continue;
+    const link = `/app?pacing=${maakPacingToken(email, b.datum, b.id)}`;
+    const eerst = await redis(['SET', `app:pacing:verstuurd:${b.id}`, String(Date.now()), 'NX', 'EX', String(30 * 86400)]);
+    if (eerst.ok && eerst.result === 'OK') { await appMelding(email, { soort: 'pacing', titel: 'Je pacingplan staat klaar om te maken', tekst: `Over 5 dagen rijd je ${b.naam || 'je tocht'}. Koppel je Strava, dan rekenen we je tempo en voeding uit met al je trainingen erin.`, link }).catch(() => {}); continue; }
+    const vs = await redis(['GET', `app:pacing:verstuurd:${b.id}`]);
+    if (Date.now() - Number((vs.ok && vs.result) || Date.now()) > 864e5) { // pas een dag na de eerste melding
+      const g = await redis(['GET', `app:pacing:geopend:${b.id}`]); if (g.ok && g.result) continue;
+      const h = await redis(['SET', `app:pacing:herinnerd:${b.id}`, '1', 'NX', 'EX', String(30 * 86400)]);
+      if (h.ok && h.result === 'OK') await appMelding(email, { soort: 'pacing', titel: 'Je pacingplan wacht op je Strava', tekst: 'Eén tik en we maken je plan. Dat kan tot de dag voor je tocht.', link }).catch(() => {});
+    }
+  }
 }
 async function zetInteresse(email, product) {
   const tag = INTERESSE[product];
@@ -1198,6 +1243,8 @@ export default async function handler(req, res) {
     if (actie === 'aitegoed') return await routeAiTegoed(req, res);
     if (actie === 'nuttig') return await routeNuttig(req, res);
     if (actie === 'interesse') return await routeInteresse(req, res);
+    if (actie === 'pacinglink') return await routePacingLink(req, res);
+    if (actie === 'pacingtest') return await routePacingTest(req, res);
     if (actie === 'groepsritmee') return await routeGroepsritMee(req, res);
     if (actie === 'ritpagina') return await routeRitPagina(req, res);
     if (actie === 'doel') return await routeDoel(req, res);
@@ -2196,6 +2243,7 @@ async function lanceerBericht(email) {
 async function routePushCron(req, res) {
   const auth = String(req.headers?.authorization || '');
   if (!CRON_SECRET || auth !== `Bearer ${CRON_SECRET}`) return res.status(401).json({ ok: false });
+  await pacingCron().catch((e) => console.error('pacingcron', e && e.message));
   // Kracht gaat open (14-10-2026): wie op de lijst stond krijgt één bericht, vanaf 9:00 op de openingsdag.
   if (KRACHT_VOOR_LEDEN() && nlNu().minuten >= 9 * 60) {
     const eerst = await redis(['SET', 'app:kracht:aangekondigd', '1', 'NX']);
