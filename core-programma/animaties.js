@@ -162,6 +162,21 @@
     houdingen: { voor: plankOA, achter: lang }
   };
 
+  // Gevorderden (15-10-2026): plank met been heffen, plank met arm en been.
+  function beenOp(h, enkel, wie, graden) { var b = kopie(h); var hk = hoekVan(h.heup, enkel); b[wie] = { naar: op(h.heup, hk - graden, 75.5), buig: 1, voet: 100 }; return b; }
+  A['plank-been'] = {
+    spier: 'romp', beweeg: 700,
+    reeks: [{ h: 'hold', vast: 500 }, { h: 'ver', vast: 600 }, { h: 'hold', vast: 300 }, { h: 'dicht', vast: 600 }],
+    houdingen: { hold: plankOA, ver: beenOp(plankOA, [235, V - 6], 'beenVer', 14), dicht: beenOp(plankOA, [235, V - 6], 'beenDicht', 14) }
+  };
+  var abLinks = beenOp(hoog, [235, V - 6], 'beenVer', 14); abLinks.armDicht = { naar: [hoogS[0] - 54, hoogS[1] - 4], buig: 1 };
+  var abRechts = beenOp(hoog, [235, V - 6], 'beenDicht', 14); abRechts.armVer = { naar: [hoogS[0] - 52, hoogS[1] - 4], buig: 1 };
+  A['plank-arm-been'] = {
+    spier: 'romp', beweeg: 800,
+    reeks: [{ h: 'hoog', vast: 400 }, { h: 'links', vast: 900 }, { h: 'hoog', vast: 300 }, { h: 'rechts', vast: 900 }],
+    houdingen: { hoog: hoog, links: abLinks, rechts: abRechts }
+  };
+
   // Bird dog (zelfde houdingen als de proef).
   var BD = {
     basis:  { heup: [176, V - 44], romp: 196, hoofd: 192, armDicht: { naar: [124, V - 5], buig: 1 }, armVer: { naar: [127, V - 5], buig: 1 }, beenDicht: { naar: [214, V - 6], buig: 1, voet: 180 }, beenVer: { naar: [211, V - 6], buig: 1, voet: 180 } },
@@ -233,6 +248,7 @@
     houdingen: { rust: zpRust, hold: zpHold, dip: zpLaag }
   };
   var zpBeen = kopie(zpHold); zpBeen.beenDicht = { naar: op(zpHold.heup, -28, 75.5), buig: 1, voet: -60 };
+  A['zijplank-ster'] = { spier: 'zij', beweeg: 900, reeks: [{ h: 'rust', vast: 600 }, { h: 'hold', vast: 300 }, { h: 'ster', vast: 2600 }], houdingen: { rust: zpRust, hold: zpHold, ster: zpBeen } };
   A['zijplank-been'] = {
     spier: 'zij', beweeg: 900,
     reeks: [{ h: 'rust', vast: 600 }, { h: 'hold', vast: 300 }, { h: 'been', vast: 400 }, { h: 'hold', vast: 300 }],

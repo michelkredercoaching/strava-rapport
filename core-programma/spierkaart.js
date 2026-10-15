@@ -39,11 +39,14 @@
     'plank-schoudertik': { buik: 'p', schuin: 'p', schouders: 's' },
     'plank-lang':        { buik: 'p', schouders: 's', bil: 's' },
     'body-saw':          { buik: 'p', schouders: 'p' },
+    'plank-been':        { buik: 'p', bil: 'p', schouders: 's' },
+    'plank-arm-been':    { buik: 'p', schuin: 'p', bil: 's', schouders: 's' },
     // Lijn 3: zijkant
     'zijplank-knieen':   { schuin: 'p', heupzij: 's', schouders: 's' },
     'zijplank':          { schuin: 'p', heupzij: 's', schouders: 's' },
     'zijplank-heupdip':  { schuin: 'p', heupzij: 'p', schouders: 's' },
     'zijplank-been':     { schuin: 'p', heupzij: 'p', schouders: 's' },
+    'zijplank-ster':     { schuin: 'p', heupzij: 'p', schouders: 's' },
     // Lijn 4: bil
     'bridge':            { bil: 'p', hamstring: 's', onderrug: 's' },
     'bridge-mars':       { bil: 'p', hamstring: 's', buik: 's' },
