@@ -143,6 +143,7 @@
   .pc-kaart { max-width:480px; margin:30px auto; padding:0 16px; } .pc-kaart .kaart-in p { line-height:1.55; }
   .gr-tip { margin:8px 0 4px; padding:8px 10px; border-left:3px solid rgba(255,107,26,.6); background:rgba(255,107,26,.06); } .gr-tip p { margin:0; line-height:1.45; }
   .plan-extra { margin:6px 0 10px; font-size:13px; font-weight:700; color:#7fe0a0; }
+  .sb-voorbreedte { display:flex; align-items:center; gap:8px; margin:6px 0; font-size:13px; color:var(--muted); } .sb-voorbreedte select { flex:1; }
   .hklap { margin-top:12px; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
   .hklap > summary { list-style:none; cursor:pointer; display:flex; align-items:baseline; gap:10px; padding:13px 14px; } .hklap > summary::-webkit-details-marker { display:none; }
   .hklap > summary b { font-family:'Bebas Neue',sans-serif; font-size:19px; letter-spacing:.03em; font-weight:400; }
@@ -1779,9 +1780,12 @@ function sbFiets() {
 function sbNat() { const k = sbKeuze(); return k.natHand != null ? k.natHand : !!(SB.weer && SB.weer.nat); }
 function sbGrond(f) { const k = sbKeuze(), lijst = SB_GROND[f.type]; return lijst.find((g) => g[0] === k['grond_' + f.type]) || lijst[0]; }
 
+// Andere maat voor dan achter (15-10-2026): de voorband krijgt zijn eigen berekening.
+function voorEigen(a, f, gewicht) { if (!a || !f || !f.breedteVoor || f.breedteVoor === f.breedte) return a; const av = BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: f.type, gewicht, breedte: f.breedteVoor, tubeless: f.tubeless ? 'tubeless' : 'binnenband' })); return av ? { ...a, voor: av.voor } : a; }
+const bandMaat = (f) => f && f.breedteVoor && f.breedteVoor !== f.breedte ? f.breedteVoor + '/' + f.breedte + ' mm' : (f ? f.breedte + ' mm' : '');
 function sbReken(f) {
   if (!BT_LIB || !f || !SB.profiel.gewicht) return null;
-  const a = BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: f.type, gewicht: SB.profiel.gewicht, breedte: f.breedte, tubeless: f.tubeless ? 'tubeless' : 'binnenband' }));
+  const a = voorEigen(BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: f.type, gewicht: SB.profiel.gewicht, breedte: f.breedte, tubeless: f.tubeless ? 'tubeless' : 'binnenband' })), f, SB.profiel.gewicht);
   if (!a) return null;
   const nat = sbNat(), grond = sbGrond(f);
   const corr = (nat ? -0.3 : 0) + grond[2];
@@ -1885,7 +1889,8 @@ function sbBewerkHtml() {
       <div class="sb-rij"><input data-sbv="naam" data-i="${i}" type="text" maxlength="30" value="${esc(f.naam)}" placeholder="Naam, bijv. Canyon">
       <button type="button" class="sb-weg" data-sb="fietsweg" data-i="${i}" aria-label="Verwijder">&times;</button></div>
       <div class="bt-keuze">${['weg', 'gravel'].map((t) => `<button type="button" data-sb="fietstype" data-i="${i}" data-w="${t}" class="${f.type === t ? 'aan' : ''}">${t === 'weg' ? 'Racefiets' : 'Gravel'}</button>`).join('')}
-      <select data-sbv="breedte" data-i="${i}">${BT_BREEDTES[f.type].map((b) => `<option value="${b}" ${f.breedte === b ? 'selected' : ''}>${b} mm</option>`).join('')}</select></div>
+      <select data-sbv="breedte" data-i="${i}" aria-label="Bandbreedte">${BT_BREEDTES[f.type].map((b) => `<option value="${b}" ${f.breedte === b ? 'selected' : ''}>${b} mm</option>`).join('')}</select></div>
+      <div class="sb-voorbreedte"><label>Voorband</label><select data-sbv="breedteVoor" data-i="${i}"><option value="">zelfde maat</option>${BT_BREEDTES[f.type].filter((b) => b !== f.breedte).map((b) => `<option value="${b}" ${f.breedteVoor === b ? 'selected' : ''}>${b} mm</option>`).join('')}</select></div>
       <div class="bt-keuze"><button type="button" data-sb="fietsvlag" data-v="tubeless" data-i="${i}" class="${f.tubeless ? 'aan' : ''}">Tubeless</button>
       <button type="button" data-sb="fietsvlag" data-v="hookless" data-i="${i}" class="${f.hookless ? 'aan' : ''}">Hookless velg</button></div></div>`;
   return `<div class="sb-bewerk">
@@ -1911,7 +1916,7 @@ function slimBandenKaart() {
   if (SB.bewerk) return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}<p>Zet je fietsen erin. Dan hoef je straks alleen nog te kiezen op welke je rijdt.</p>${sbBewerkHtml()}</div></div>`;
   const f = sbFiets(), uit = sbReken(f), nat = sbNat();
   const gNu = f ? sbGrond(f) : null;
-  const instel = f ? `<details class="klap rv-instel" data-klap="bandinstel"${klapOpen('bandinstel', false) ? ' open' : ''}><summary><b>Je fiets</b><span>${esc(f.naam)} ${f.breedte} mm &middot; ${esc(gNu[1].toLowerCase())} &middot; ${nat ? 'nat' : 'droog'}</span></summary><div class="klap-in gr-maak">
+  const instel = f ? `<details class="klap rv-instel" data-klap="bandinstel"${klapOpen('bandinstel', false) ? ' open' : ''}><summary><b>Je fiets</b><span>${esc(f.naam)} ${bandMaat(f)} &middot; ${esc(gNu[1].toLowerCase())} &middot; ${nat ? 'nat' : 'droog'}</span></summary><div class="klap-in gr-maak">
     ${p.fietsen.length > 1 ? `<label for="sbFietsSel">Fiets</label><select id="sbFietsSel">${p.fietsen.map((x) => `<option value="${x.id}" ${x.id === f.id ? 'selected' : ''}>${esc(x.naam)} (${x.breedte} mm)</option>`).join('')}</select>` : ''}
     <div class="rij2"><div><label for="sbGrondSel">Ondergrond</label><select id="sbGrondSel">${SB_GROND[f.type].map((g) => `<option value="${g[0]}" ${gNu[0] === g[0] ? 'selected' : ''}>${g[1]}</option>`).join('')}</select></div>
       <div><label for="sbNatSel">Wegdek</label><select id="sbNatSel"><option value="false">Droog</option><option value="true" ${nat ? 'selected' : ''}>Nat</option></select></div></div>
@@ -1997,7 +2002,7 @@ function sbContext() {
   if (!f) return '';
   return [
     `Renner: ${SB.profiel.gewicht || '?'} kg.`,
-    `Fiets: ${f.naam}, ${f.type === 'gravel' ? 'gravel' : 'racefiets'}, ${f.breedte} mm, ${f.tubeless ? 'tubeless' : 'binnenband'}${f.hookless ? ', hookless velg' : ''}.`,
+    `Fiets: ${f.naam}, ${f.type === 'gravel' ? 'gravel' : 'racefiets'}, ${bandMaat(f)}${f.breedteVoor ? ' (voor/achter)' : ''}, ${f.tubeless ? 'tubeless' : 'binnenband'}${f.hookless ? ', hookless velg' : ''}.`,
     w ? `Weer nu: ${w.temp} graden (laagste komende uren ${w.laagste}), ${w.nat ? 'nat wegdek' : 'droog'}${w.regenStraks ? ', regen op komst' : ''}, wind ${w.wind} km/u.` : 'Weer onbekend.',
     u ? `Berekend advies op de weg: voor ${BT_LIB.nl(u.voor)} bar, achter ${BT_LIB.nl(u.achter)} bar (ondergrond: ${u.grond[1]}${u.nat ? ', nat' : ''}).${u.binnenA != null ? ` Binnen pompen: ${BT_LIB.nl(u.binnenV)} voor, ${BT_LIB.nl(u.binnenA)} achter.` : ''}` : ''
   ].join('\n');
@@ -2025,7 +2030,7 @@ document.addEventListener('click', async (e) => {
   if (a === 'bewerk') { SB.bewerk = true; return sbTeken(); }
   if (a === 'fietserbij') { p.fietsen.push({ id: 'f' + Date.now().toString(36), naam: '', type: 'weg', breedte: 28, tubeless: false, hookless: false }); return sbTeken(); }
   if (a === 'fietsweg') { p.fietsen.splice(i, 1); return sbTeken(); }
-  if (a === 'fietstype') { p.fietsen[i].type = k.dataset.w; p.fietsen[i].breedte = k.dataset.w === 'gravel' ? 40 : 28; if (k.dataset.w === 'gravel') p.fietsen[i].tubeless = true; return sbTeken(); }
+  if (a === 'fietstype') { p.fietsen[i].type = k.dataset.w; p.fietsen[i].breedte = k.dataset.w === 'gravel' ? 40 : 28; p.fietsen[i].breedteVoor = null; if (k.dataset.w === 'gravel') p.fietsen[i].tubeless = true; return sbTeken(); }
   if (a === 'fietsvlag') { p.fietsen[i][k.dataset.v] = !p.fietsen[i][k.dataset.v]; return sbTeken(); }
   if (a === 'opslaan') {
     if (!(Number(p.gewicht) >= 40 && Number(p.gewicht) <= 150)) return alert('Vul je gewicht in (40 tot 150 kg).');
@@ -2060,7 +2065,7 @@ let sbZoekTimer = null;
 document.addEventListener('input', (e) => {
   const p = SB.profiel; if (!p) return;
   if (e.target.id === 'sbGewicht') p.gewicht = Number(e.target.value) || null;
-  if (e.target.dataset && e.target.dataset.sbv) { const f = p.fietsen[Number(e.target.dataset.i)]; f[e.target.dataset.sbv] = e.target.dataset.sbv === 'breedte' ? Number(e.target.value) : e.target.value; }
+  if (e.target.dataset && e.target.dataset.sbv) { const f = p.fietsen[Number(e.target.dataset.i)]; const sv = e.target.dataset.sbv; f[sv] = sv === 'breedte' ? Number(e.target.value) : sv === 'breedteVoor' ? (Number(e.target.value) || null) : e.target.value; if (sv === 'breedte' && f.breedteVoor === f.breedte) f.breedteVoor = null; if (sv === 'breedte' || sv === 'breedteVoor') sbTeken(); }
   if (e.target.id === 'sbZoek') {
     clearTimeout(sbZoekTimer);
     const q = e.target.value.trim(); if (q.length < 2) return;
@@ -5041,10 +5046,10 @@ function grBanden(uren) {
   if (D && !D.gast && toonSlim(d) && SB.profiel && SB.profiel.gewicht) { f = sbFiets(); gewicht = SB.profiel.gewicht; }
   if (!f) { const v = btWaarden(); if (Number(v.gewicht) >= 40) { f = { type: v.type, breedte: Number(v.breedte), tubeless: !!v.tubeless && String(v.tubeless) !== 'false', naam: v.type === 'gravel' ? 'Gravel' : 'Racefiets' }; gewicht = Number(v.gewicht); } }
   if (!f || !gewicht) return null;
-  const a = BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: f.type, gewicht, breedte: f.breedte, tubeless: f.tubeless ? 'tubeless' : 'binnenband' }));
+  const a = voorEigen(BT_LIB.bandenAdvies(BT_LIB.leesInvoer({ bandtype: f.type, gewicht, breedte: f.breedte, tubeless: f.tubeless ? 'tubeless' : 'binnenband' })), f, gewicht);
   if (!a) return null;
   const min = f.type === 'gravel' ? 1.3 : 2.5, eraf = nat ? 0.3 : 0;
-  return { voor: Math.max(min, a.voor - eraf), achter: Math.max(min, a.achter - eraf), nat, fiets: f.naam + ' ' + f.breedte + ' mm' };
+  return { voor: Math.max(min, a.voor - eraf), achter: Math.max(min, a.achter - eraf), nat, fiets: f.naam + ' ' + bandMaat(f) };
 }
 // Samen rijden (15-10-2026, Blocken e.a.): uit de wind scheelt veel, en bij harde zijwind kans op waaiers.
 function grGroepTip(wind) {

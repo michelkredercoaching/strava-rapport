@@ -1641,10 +1641,11 @@ function schoonProfiel(p) {
   const fietsen = (Array.isArray(p.fietsen) ? p.fietsen : []).slice(0, MAX_FIETSEN).map((f, i) => {
     const type = f.type === 'gravel' ? 'gravel' : 'weg';
     const breedte = breedtes[type].includes(Number(f.breedte)) ? Number(f.breedte) : (type === 'gravel' ? 40 : 28);
+    const breedteVoor = breedtes[type].includes(Number(f.breedteVoor)) && Number(f.breedteVoor) !== breedte ? Number(f.breedteVoor) : null;
     return {
       id: String(f.id || 'f' + i).replace(/[^a-z0-9]/gi, '').slice(0, 12) || 'f' + i,
       naam: String(f.naam || (type === 'gravel' ? 'Gravelbike' : 'Racefiets')).slice(0, 30),
-      type, breedte, tubeless: !!f.tubeless, hookless: !!f.hookless
+      type, breedte, breedteVoor, tubeless: !!f.tubeless, hookless: !!f.hookless
     };
   });
   // Kledingadvies: heb je het snel koud of snel warm? En het ochtendbericht.
@@ -1847,7 +1848,7 @@ async function coachContext(email) {
     regels.push('Zijn FTP of omslagpunt uit de Strava-analyse is berekend uit zijn eigen ritten. Noem het geen schatting en raad geen extra test aan, tenzij hij er zelf naar vraagt of zijn schema met een test begint.');
   } else regels.push('Strava-analyse: niet gedaan.');
   if (banden && banden.fietsen && banden.fietsen.length) {
-    regels.push(`Gewicht: ${banden.gewicht || '?'} kg. Fietsen: ${banden.fietsen.map((f) => `${f.naam} (${f.type === 'gravel' ? 'gravel' : 'racefiets'}, ${f.breedte} mm, ${f.tubeless ? 'tubeless' : 'binnenband'}${f.hookless ? ', hookless' : ''})`).join('; ')}.`);
+    regels.push(`Gewicht: ${banden.gewicht || '?'} kg. Fietsen: ${banden.fietsen.map((f) => `${f.naam} (${f.type === 'gravel' ? 'gravel' : 'racefiets'}, ${f.breedteVoor ? 'voor ' + f.breedteVoor + ' mm, achter ' + f.breedte + ' mm' : f.breedte + ' mm'}, ${f.tubeless ? 'tubeless' : 'binnenband'}${f.hookless ? ', hookless' : ''})`).join('; ')}.`);
   }
   return regels.join('\n');
 }
@@ -2188,7 +2189,8 @@ function ochtendTekst(profiel, weer, bijstel = 0, duurUur = 2) {
   let banden = '';
   const f = (profiel.fietsen || [])[0];
   if (f && profiel.gewicht) {
-    const a = bandenAdvies(leesInvoer({ bandtype: f.type, gewicht: profiel.gewicht, breedte: f.breedte, tubeless: f.tubeless ? 'tubeless' : 'binnenband' }));
+    let a = bandenAdvies(leesInvoer({ bandtype: f.type, gewicht: profiel.gewicht, breedte: f.breedte, tubeless: f.tubeless ? 'tubeless' : 'binnenband' }));
+    if (a && f.breedteVoor) { const av = bandenAdvies(leesInvoer({ bandtype: f.type, gewicht: profiel.gewicht, breedte: f.breedteVoor, tubeless: f.tubeless ? 'tubeless' : 'binnenband' })); if (av) a = { ...a, voor: av.voor }; }
     if (a) {
       const eraf = weer.nat ? 0.3 : 0, min = f.type === 'gravel' ? 1.3 : 2.5, max = f.hookless ? HOOKLESS_MAX : 99;
       const k = (x) => nl(Math.min(max, Math.max(min, x - eraf)));
