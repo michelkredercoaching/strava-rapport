@@ -700,7 +700,18 @@ async function routeCoreOverzicht(req, res) {
   if (!beheerEmail(req, req.query?.t)) return res.status(403).json({ ok: false });
   const l = await coreOverzicht().catch(() => []);
   for (const x of l) { const lm = await haalLid(x.email).catch(() => null); x.coaching = lm && lm.coaching ? lm.coaching : null; const lb = lm ? lidBeeld(lm) : null; x.lid = !!(lb && lb.open); x.bron = lb && lb.open ? (lb.bron || lm.bron || '') : ''; }
-  return res.status(200).json({ ok: true, deelnemers: l.filter((x) => !BEHEER.includes(x.email)) });
+  const zicht = l.filter((x) => !BEHEER.includes(x.email));
+  // Contact gehad (15-10-2026): Michel tikt af wie hij sprak; een week uit de aandachtlijst.
+  if (zicht.length) { const c = await redis(['MGET', ...zicht.map((x) => `app:corecontact:${x.email}`)]); zicht.forEach((x, i) => { x.contactOp = (c.ok && c.result && c.result[i]) || null; }); }
+  return res.status(200).json({ ok: true, deelnemers: zicht });
+}
+async function routeCoreContact(req, res) {
+  const body = req.method === 'POST' ? await leesBody(req) : {};
+  if (!beheerEmail(req, body.t)) return res.status(403).json({ ok: false });
+  const email = String(body.email || '').trim().toLowerCase(); if (!geldigMail(email)) return res.status(400).json({ ok: false });
+  if (body.weg) await redis(['DEL', `app:corecontact:${email}`]);
+  else await redis(['SET', `app:corecontact:${email}`, new Date().toISOString(), 'EX', String(30 * 86400)]);
+  return res.status(200).json({ ok: true });
 }
 
 async function routeGebruik(req, res) {
@@ -1281,6 +1292,7 @@ export default async function handler(req, res) {
     if (actie === 'rangbeheer') return await routeRangBeheer(req, res);
     if (actie === 'schemabeheer') return await routeSchemaBeheer(req, res);
     if (actie === 'coreoverzicht') return await routeCoreOverzicht(req, res);
+    if (actie === 'corecontact') return await routeCoreContact(req, res);
     if (actie === 'schema') return await routeSchema(req, res);
     if (actie === 'melding') return await routeMelding(req, res);
     if (actie === 'leden') return await routeLeden(req, res);

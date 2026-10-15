@@ -583,7 +583,11 @@ export async function coreOverzicht() {
       reeks: b ? b.reeks || 0 : 0, frequentie: b ? b.frequentie : null,
       rompStart: tests[0] ? tests[0].score : null, rompNu: tests.length ? tests[tests.length - 1].score : null, tests: tests.length,
       pijnMax: pijn.length ? Math.max(...pijn.map((x) => x.score || 0)) : null,
-      klachten: (d.intake && d.intake.klachten) || [], doel: b && b.doel ? (b.doel.naam || b.doel.doel || '') : ''
+      klachten: (d.intake && d.intake.klachten) || [], doel: b && b.doel ? (b.doel.naam || b.doel.doel || '') : '',
+      // Werklijst (15-10-2026): start, intake, herinneringen van de app en sessies per week (oud -> nieuw).
+      startOp: d.besteldOp || d.proefSinds || null, intakeOp: (d.intake && d.intake.op) || null, proef: !isBetaald(d),
+      herinnerOp: [d.laatsteHerinnering, d.herinner && d.herinner.laatste ? d.herinner.laatste + 'T12:00:00Z' : null].filter(Boolean).sort().pop() || null, herinnerVast: !!d.herinner,
+      weken: [3, 2, 1, 0].map((w) => s.filter((x) => { const t = nuMs - Date.parse(x.op); return t >= w * 7 * 864e5 && t < (w + 1) * 7 * 864e5; }).length)
     });
   }
   return l.sort((a, b) => String(b.laatste || '').localeCompare(String(a.laatste || '')));
@@ -1399,6 +1403,7 @@ async function routeHerinner(req, res) {
       tekst: `Fase ${FASES[weekRij(d.week).fase] || ''}.${doel && doel.dagenTotDoel > 0 ? ` Nog ${doel.wekenTotDoel} weken tot ${d.doel.naam}.` : ''} Tik om te starten.`,
       link: linkVoor(d.id)
     });
+    d.laatsteHerinnering = nu(); await bewaarDossier(d);
     gemaild++; if (r.push) push++;
   }
   return res.status(200).json({ ok: true, klaargezet: gemaild, push, overgeslagen });
