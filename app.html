@@ -138,6 +138,7 @@
   .tegel.foto .tg-pijl { color:#fff; }
   .tegel.foto.vec { background:radial-gradient(circle at 50% 32%, rgba(201,112,52,.55) 0%, rgba(92,48,20,.55) 34%, rgba(20,13,9,0) 70%), linear-gradient(180deg, #2a1a10 0%, #1c120b 60%, #1a110b 100%); overflow:hidden; }
   .rv-wissel { display:block; margin:14px 0 2px; }
+  .tip-boven { margin:14px 0 18px; } .tip-boven .hklap { margin:0; }
   .route.rt-door { display:block; width:100%; text-align:left; position:relative; cursor:pointer; color:inherit; font-family:inherit; padding-right:40px; } .route.rt-door .rt-sum { display:block; margin-top:4px; color:var(--muted); } .route.rt-door .rt-pijl { position:absolute; right:16px; top:50%; transform:translateY(-50%); font-style:normal; font-size:24px; color:var(--accent); }
   .na-deed { flex-wrap:wrap; }
   .tegel .tg-voed svg { height:92%; width:auto; margin-top:6px; filter:drop-shadow(0 8px 16px rgba(0,0,0,.5)); }
@@ -1358,7 +1359,7 @@ document.addEventListener('click', (e) => {
   if (c === 'core') { if (d && d.core && d.core.link) { location.href = d.core.link + '#vandaag'; return; } return naar('core'); }
   if (c === 'schema') return d && d.schema ? naar('schema') : window.open(SITE + '/trainingsschemas/', '_blank');
   if (c === 'kleedkamer') { if (typeof RL === 'object') { RL.maak = true; RL.keuze = null; } naar('palmares'); setTimeout(() => document.getElementById('ranglijst')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 600); return; }
-  if (c === 'doel') { naar('home'); DOELV = { open: true, kies: d && d.doel && d.doel.doel, fout: '', bezig: false }; teken(); setTimeout(() => document.getElementById('doelvak')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); return; }
+  if (c === 'doel') { naar('lid'); DOELV = { open: true, kies: d && d.doel && d.doel.doel, fout: '', bezig: false }; teken(); setTimeout(() => document.getElementById('doelvak')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); return; }
   if (c === 'meldingen') { naar('home'); setTimeout(() => (document.getElementById('meldvraag')?.innerHTML ? document.getElementById('meldvraag') : document.getElementById('meldinst'))?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); return; }
   if (c === 'coaching') return naar(d && d.lid && d.lid.bron === 'coaching' ? 'coaching' : 'lid');
   naar(c);
@@ -2857,7 +2858,7 @@ function naarAnker() {
   const schoon = () => { try { history.replaceState({ v: 'home' }, '', location.pathname + location.search); } catch (e) {} };
   if (['rijden', 'schema', 'core', 'analyse', 'afval', 'pacing', 'lid', 'palmares'].includes(h)) { schoon(); return naar(h); }
   if (h === 'coach') { schoon(); setTimeout(() => { const f = document.getElementById('ccFab'); if (f) f.click(); }, 300); return; }
-  if (h === 'doel') { schoon(); DOELV = { open: true, kies: null, fout: '', bezig: false }; VIEW = 'home'; teken(); setTimeout(() => document.getElementById('doelvraag')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200); return; }
+  if (h === 'doel') { schoon(); DOELV = { open: true, kies: null, fout: '', bezig: false }; VIEW = 'lid'; teken(); setTimeout(() => document.getElementById('doelvraag')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 200); return; }
   naarLidAnker();
 }
 window.addEventListener('hashchange', naarAnker);
@@ -2991,7 +2992,7 @@ function onderaanHtml(d) {
   const lidT = isLid(d) ? `<div class="tegels kort" style="margin-top:14px">${tegel({ v: 'lid', ic: 'lid', nm: 'Mijn Pro', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' vriend' : ' vrienden') + ' via jouw link' : 'Status, facturen en vrienden uitnodigen'), tag: '', breed: true })}</div>` : (STAP_ROUTE ? '' : lidBalkHtml(d));
   const bk = `<div class="bk-rij"><span>Binnenkort</span>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}<button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${(!d.kracht || d.beheer) && Date.now() < KRACHT_OPEN_APP ? `<button type="button" data-view="krachtteaser">${IC.kracht}Kracht</button>` : ''}</div>`;
   const doel = d.gast ? '' : `<div id="doelvak" class="onder-doel">${doelVakHtml(d)}</div>`;
-  return lidT + doel + hklap('tipdicht', 'Tip van Michel', tipKop(d), tipHtml(d), false) + (eersteWeekHtml(d) ? '' : bk);
+  return lidT + (eersteWeekHtml(d) ? '' : bk); // tip van Michel staat sinds 16-10-2026 boven de tegels
 }
 // "Doe je core" met de reden, op jouw doel (besluit Michel 15-10-2026): gratis, lid en schema, niet coaching.
 // Eén keer per dag weg te tikken. Kracht gekozen of Core nog dicht: geen kaart.
@@ -3246,7 +3247,7 @@ document.addEventListener('click', async (e) => {
   const a = k.dataset.ew;
   if (a === 'weg') { try { localStorage.setItem('mkcEersteWeekWeg', '1'); } catch (er) {} document.getElementById('eersteweek')?.remove(); return; }
   if (a === 'spanning' || a === 'core') return naar(a === 'spanning' ? 'rijden' : 'core');
-  if (a === 'doel') { DOELV = { open: true, kies: null, fout: '', bezig: false }; teken(); setTimeout(() => document.getElementById('doelvraag')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150); return; }
+  if (a === 'doel') { DOELV = { open: true, kies: null, fout: '', bezig: false }; naar('lid'); teken(); setTimeout(() => document.getElementById('doelvraag')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150); return; }
   if (a === 'coach') return coachOpen(true);
   if (a === 'tip') { if (iosZonderApp()) { installGids(false); return; } const b = document.createElement('button'); b.dataset.push = 'aan'; b.style.display = 'none'; document.body.appendChild(b); b.click(); b.remove(); setTimeout(() => teken(), 1500); return; }
   if (a === 'scherm') {
@@ -3751,9 +3752,10 @@ function paginaHtml(d) {
   if (VIEW === 'lid') {
     const lid = isLid(d), tijdelijk = lid && d.lid && ['schema', 'cadeau'].includes(d.lid.bron);
     const pitch = binnenkortNu() && !d.voorverkoop ? binnenkortPitchHtml() : kanLidNu(d) ? lidPitchHtml() : '';
-    if (!lid) return appBalkHtml() + (pitch || '<p class="klein">Pro worden kan op dit moment niet.</p>') + planKeuzeHtml() + `<div id="ochtendvak" style="margin-top:16px">${pushHtml()}</div>` + voet;
+    const doelvak = d.gast ? '' : `<div id="doelvak" class="onder-doel" style="margin-top:16px">${doelVakHtml(d)}</div>`; // 16-10-2026: doel en pacingplan staan op Mijn Pro
+    if (!lid) return appBalkHtml() + (pitch || '<p class="klein">Pro worden kan op dit moment niet.</p>') + planKeuzeHtml() + doelvak + `<div id="ochtendvak" style="margin-top:16px">${pushHtml()}</div>` + voet;
     const daarna = tijdelijk ? `<details class="daarna" ${location.hash === '#lid' ? 'open' : ''}><summary><b>Daarna Pro blijven</b><span>vanaf &euro;${APP_PRIJS.jaarPerMaand} per maand, per jaar met een gratis Strava-analyse${binnenkortNu() && !d.voorverkoop ? ' &middot; kan vanaf 16 oktober' : ''}</span></summary>${pitch}</details>` : '';
-    return appBalkHtml() + lidStatusHtml(d.lid) + lidExtraHtml(d.lid) + `<div id="ochtendvak" style="margin-top:16px">${pushHtml()}</div>` + daarna + voet;
+    return appBalkHtml() + lidStatusHtml(d.lid) + lidExtraHtml(d.lid) + doelvak + `<div id="ochtendvak" style="margin-top:16px">${pushHtml()}</div>` + daarna + voet;
   }
   return null;
 }
@@ -3778,6 +3780,7 @@ function teken() {
     ${!d.gast ? '<div class="rang-plek">' + palmaresChipHtml(d) + rangChipHtml(d) + '</div>' : ''}
     <div id="groepsrit">${grHtml()}</div>
     ${meldingenHtml(d)}
+    ${d.gast ? '' : '<div class="tip-boven">' + hklap('tipdicht', 'Tip van Michel', tipKop(d), tipHtml(d), false) + '</div>'}
     ${tegelsHtml(d)}
     <div id="eenstap">${stapHtml(d)}</div>
     ${onderaanHtml(d)}
@@ -5834,7 +5837,7 @@ document.addEventListener('click', (e) => {
   const a = k.dataset.start;
   if (a === 'weg') { try { localStorage.setItem('mkcStartlijstWeg', '1'); } catch (er) {} const el = document.getElementById('startlijst'); if (el) el.innerHTML = ''; return; }
   if (a === 'fiets') { naar('rijden'); setTimeout(() => { const b = document.getElementById('banden'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 300); }
-  if (a === 'doel') { DOELV = { open: true, kies: null, fout: '', bezig: false }; teken(); setTimeout(() => document.getElementById('doelvraag')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150); }
+  if (a === 'doel') { DOELV = { open: true, kies: null, fout: '', bezig: false }; naar('lid'); teken(); setTimeout(() => document.getElementById('doelvraag')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 150); }
   if (a === 'push') { const v = document.querySelector('[data-push="aan"]'); if (v) v.click(); else { const m = document.getElementById('meldinst') || document.getElementById('banden'); if (m) m.scrollIntoView({ behavior: 'smooth', block: 'center' }); } }
   if (a === 'kiestraining' || a === 'kracht') return naar(a);
   if (a === 'core') { const c = zicht() && zicht().core; if (c && c.link) location.href = c.link + (c.intakeNodig ? '' : '#vandaag'); else startCore(k); }
