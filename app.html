@@ -1815,11 +1815,12 @@ function bandenKaart(d) {
     ${btKnop}
     <div id="btUit"></div>
     ${d.gast ? gastPoortHtml() : ''}</div></div>
-    <div class="kaart"><div class="kaart-in">
-    ${d.gast ? `<div class="sb-vraag" style="margin:0;border:0;padding:0"><label>Vraag het je bandencoach</label><p class="klein" style="margin:0">Rijd je morgen over kasseien of in de regen? Met een gratis account stel je je vraag aan de bandencoach. <a href="#" data-actie="gastlogin" style="color:var(--accent)">Maak je account</a></p></div>` : `<div class="sb-vraag" style="margin:0;border:0;padding:0"><label for="btVraag">Vraag het je bandencoach</label>
-      ${gratisOver() === 0 && !tegoedNu() ? '' : `<div class="sb-rij"><input id="btVraag" type="text" maxlength="300" placeholder="bijv. kasseien morgen" value="${esc(BTV.vraag)}"><button type="button" class="knop" data-btv="vraag" ${BTV.bezig ? 'disabled' : ''}>${BTV.bezig ? '...' : 'Vraag'}</button></div>`}
-      ${BTV.antwoord ? `<div class="sb-antwoord">${opmaak(BTV.antwoord)}</div>${nuttigHtml(BTV.aid, BTV.nuttig)}` : ''}
-      ${gratisTellerHtml('btVraagTeller')}</div>`}</div></div>
+    <div class="kaart"><div class="kaart-in"><span class="tag oranje">Pro</span><div class="label">Vraag het je bandencoach</div><div class="bt-slot" style="margin-top:12px"><div class="achter">
+      <div class="sb-rij"><input type="text" placeholder="bijv. kasseien morgen" disabled><button type="button" class="knop" disabled>Vraag</button></div>
+      <div class="sb-antwoord">Op kasseien rijd je beter iets zachter. Voor jouw fiets en gewicht kom je dan uit op een spanning die grip en comfort geeft.</div></div>
+    <div class="voor">${SLOT}<b>Je eigen bandencoach</b><span>Kasseien, regen of een lange tocht: met Pro vraag je hier alles over je banden, met je eigen fiets en het weer erbij.</span>
+      ${kanLid ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met Pro</button>' : BINNENKORT}</div></div>
+    ${d.gast ? '' : '<button type="button" class="sb-link" data-view="coach" style="margin-top:12px">Zonder Pro: stel je vraag aan de coach (3 gratis per week) &rsaquo;</button>'}</div></div>
     <div class="kaart"><div class="kaart-in"><span class="tag oranje">Pro</span>${slim}</div></div>
     <div class="kaart"><div class="kaart-in"><span class="tag oranje">Pro</span><div class="label">Bandenlogboek</div><div class="bt-slot" style="margin-top:12px"><div class="achter">
       <div class="lb-maanden"><div class="lb-maand"><span><b>Oktober</b><em>6 ritten &middot; 4x precies goed</em></span><i>&#8250;</i></div><div class="lb-maand"><span><b>September</b><em>9 ritten &middot; 7x precies goed</em></span><i>&#8250;</i></div></div>
