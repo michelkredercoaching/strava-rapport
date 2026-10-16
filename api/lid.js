@@ -737,6 +737,7 @@ async function routeStart(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   if (!MOLLIE_KEY) return res.status(500).json({ ok: false, fout: 'Betalen lukt nu even niet.' });
   const body = await leesBody(req);
+  const proBron = /^[a-z0-9-]{2,30}$/.test(String(body.proBron || '')) ? String(body.proBron) : '';
   const email = leesAppToken(String(body.t || ''));
   if (!email) return res.status(401).json({ ok: false, fout: 'Log eerst opnieuw in.' });
 
@@ -796,11 +797,13 @@ async function routeStart(req, res) {
       // vaak in Safari uit, en die heeft eigen opslag (zie api/app.js).
       redirectUrl: `${APP_URL}?lid=terug&t=${encodeURIComponent(String(body.t))}`,
       webhookUrl: WEBHOOK_URL,
-      metadata: { email, soort: herstel ? 'lid-herstel' : automatisch ? 'lid-eerste' : 'lid-periode', plan, akkoord: lid.akkoord.op, ...(badgeKorting ? { badgeKorting: String(badgeKorting) } : {}), ...(vriendVan ? { vriend: vriendVan } : {}), ...(terug ? { terug: true } : {}) }
+      metadata: { email, soort: herstel ? 'lid-herstel' : automatisch ? 'lid-eerste' : 'lid-periode', plan, akkoord: lid.akkoord.op, ...(proBron ? { proBron } : {}), ...(badgeKorting ? { badgeKorting: String(badgeKorting) } : {}), ...(vriendVan ? { vriend: vriendVan } : {}), ...(terug ? { terug: true } : {}) }
     })
   });
   if (!p.ok) return res.status(502).json({ ok: false, fout: 'Betalen lukt nu even niet. Probeer het zo nog eens.' });
   // Toestemming en klik-ID voor Meta vastleggen; de webhook stuurt de Purchase.
+  // Pro-trechter (16-10-2026): via welk duwtje kwam iemand bij afrekenen.
+  if (proBron && !BEHEER_LID.includes(email)) { try { await redis(['SADD', `app:pro:start:${proBron}`, email]); await redis(['SADD', 'app:pro:bronnen', proBron]); } catch (e) {} }
   try { await redis(['SET', `lid:meta:${p.j.id}`, JSON.stringify(browserContext(req, body.fbclid, { meting: body.meting, fbp: body.fbp, fbc: body.fbc })), 'EX', '2592000']); } catch (e) {}
   return res.status(200).json({ ok: true, url: p.j._links && p.j._links.checkout && p.j._links.checkout.href });
 }
@@ -938,6 +941,7 @@ async function verwerkBetaald(req, res, p, id, lidEmail) {
     }
     // Nieuwe aankoop (geen verlenging): Purchase naar Meta, event_id = betaal-id.
     if ((p.sequenceType === 'first' && soort !== 'lid-herstel') || soort === 'lid-periode') {
+      if (p.metadata && /^[a-z0-9-]{2,30}$/.test(String(p.metadata.proBron || ''))) { try { await redis(['SADD', `app:pro:betaald:${p.metadata.proBron}`, lidEmail]); await redis(['SADD', 'app:pro:bronnen', p.metadata.proBron]); } catch (e) {} }
       const m = await redis(['GET', `lid:meta:${id}`]);
       let ctx = null; try { ctx = m.ok && m.result ? JSON.parse(m.result) : null; } catch (e) {}
       await stuurPurchase({ ctx, email: lidEmail, naam: lid.naam, waarde: p.amount && p.amount.value, eventId: id, product: 'MKC Pro (' + planVan(p.metadata && p.metadata.plan) + ')', bronUrl: APP_URL });

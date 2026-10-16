@@ -177,6 +177,7 @@
   .lid-wat { margin-top:22px; } .lid-vrklap { margin-top:16px; }
   /* Keuzelijsten herkenbaar als keuzelijst (16-10-2026): pijltje rechts. */
   select:not([multiple]) { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23FF6B1A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 12px center !important; padding-right:34px !important; cursor:pointer; -webkit-appearance:none !important; -moz-appearance:none !important; appearance:none !important; }
+  .bhd-tabel { width:100%; border-collapse:collapse; font-size:13px; } .bhd-tabel th { text-align:left; color:var(--muted); font-weight:600; padding:6px 4px; border-bottom:1px solid var(--border); } .bhd-tabel td { padding:7px 4px; border-bottom:1px solid rgba(255,255,255,.06); } .bhd-tabel small { color:var(--muted); }
   .betaalwacht { display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; padding:40px 20px; } .betaalwacht b { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.03em; } .betaalwacht span { color:var(--muted); font-size:14px; max-width:300px; } .betaalwacht.in-modal { padding:16px 6px; }
   .bw-ring { width:42px; height:42px; border-radius:50%; border:3px solid rgba(255,107,26,.25); border-top-color:var(--accent); animation:bwDraai .9s linear infinite; margin-bottom:8px; } @keyframes bwDraai { to { transform:rotate(360deg); } }
   .wp-stappen { display:grid; gap:8px; margin:14px 0 4px; text-align:left; } .wp-stappen button { display:flex; gap:12px; align-items:center; width:100%; padding:12px; border-radius:10px; background:var(--surface2); border:1px solid rgba(255,107,26,.35); color:inherit; font-family:inherit; text-align:left; cursor:pointer; } .wp-stappen i { font-style:normal; flex:none; width:28px; height:28px; border-radius:50%; background:var(--accent); color:#000; font-weight:700; display:grid; place-items:center; } .wp-stappen span { font-size:12.5px; color:var(--muted); } .wp-stappen b { display:block; color:var(--white); font-size:14px; }
@@ -2274,6 +2275,7 @@ function bhDashHtml() {
     ${x.ritten && !x.ritten.fout && (x.ritten.lijst.length || x.ritten.makers.length) ? `<details class="klap bhd-ritten"><summary><b>Wie plande een groepsrit</b><span>${x.ritten.makers.length} ${x.ritten.makers.length === 1 ? 'persoon' : 'mensen'}</span></summary><div class="klap-in">${x.ritten.lijst.length ? '<div class="rv-sub">Ritten die nu in de app staan</div><ul class="bhd-lijst">' + x.ritten.lijst.map((r) => `<li><b>${esc(r.naam)}</b> &middot; ${new Date(r.start).toLocaleString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}${r.plaats ? ' &middot; ' + esc(r.plaats) : ''}<small>${esc(r.door ? r.door + ' (' + r.maker + ')' : r.maker)} &middot; ${r.mee} rijden mee${r.nog ? '' : ' &middot; geweest'}</small></li>`).join('') + '</ul>' : ''}${x.ritten.makers.length ? '<div class="rv-sub">Iedereen die plande (laatste 120 dagen)</div><ul class="bhd-lijst">' + x.ritten.makers.map((m) => `<li><b>${esc(m.naam || m.email)}</b> &middot; ${m.ritten} ${m.ritten === 1 ? 'rit' : 'ritten'}<small>${esc(m.email)}</small></li>`).join('') + '</ul>' : ''}</div></details>` : ''}
     ${x.interesse ? `<div class="bhd-rij">${cel(x.interesse.pacingAantal, 'interesse pacingplan')}${cel(x.interesse.afvalAantal, 'interesse afvalprogramma')}${cel(x.interesse.krachtAantal, 'interesse kracht')}</div>
     <details class="klap bhd-ritten"><summary><b>Wie wil wat er nog komt</b><span>${x.interesse.pacingAantal + x.interesse.afvalAantal + x.interesse.krachtAantal} aanmeldingen</span></summary><div class="klap-in">${[['pacing', 'Pacingplan (verwacht eind 2026)'], ['afval', 'Afvalprogramma (verwacht begin 2027)'], ['kracht', 'Kracht (verwacht eind 2027)']].map(([k, t]) => `<div class="rv-sub">${t} &middot; ${x.interesse[k + 'Aantal']}</div>${x.interesse[k].length ? '<ul class="bhd-lijst">' + x.interesse[k].map((p) => `<li><b>${esc(p.naam || p.email)}</b><small>${p.naam ? esc(p.email) : ''}${p.tocht ? (p.naam ? ' &middot; ' : '') + 'tocht: ' + esc(p.tocht) : ''}</small></li>`).join('') + '</ul>' : '<p class="klein">Nog niemand.</p>'}`).join('')}</div></details>` : ''}
+    ${x.proTrechter ? `<details class="klap bhd-ritten"><summary><b>Wat verkoopt Pro</b><span>${x.proTrechter.reduce((n, r) => n + r.betaald, 0)} betaald via een duwtje</span></summary><div class="klap-in">${x.proTrechter.length ? '<table class="bhd-tabel"><tr><th>Duwtje</th><th>Gezien</th><th>Getikt</th><th>Afrekenen</th><th>Betaald</th></tr>' + x.proTrechter.map((r) => '<tr><td>' + esc(PRO_NAAM[r.bron] || r.bron) + '</td><td>' + r.zien + '</td><td>' + r.tik + (r.zien ? ' <small>' + Math.round(r.tik / r.zien * 100) + '%</small>' : '') + '</td><td>' + r.start + '</td><td><b>' + r.betaald + '</b></td></tr>').join('') + '</table><p class="klein">Aantal verschillende mensen per stap, sinds 16 oktober. Michels eigen account telt niet mee.</p>' : '<p class="klein">Nog geen metingen. Vanaf nu telt elk duwtje mee.</p>'}</div></details>` : ''}
     ${x.analyseKijk ? `<details class="klap bhd-ritten"><summary><b>Wie keek bij zijn Strava-analyse</b><span>${x.analyseKijk.aantal} ${x.analyseKijk.aantal === 1 ? 'persoon' : 'mensen'} (30 dagen)</span></summary><div class="klap-in">${x.analyseKijk.lijst.length ? '<ul class="bhd-lijst">' + x.analyseKijk.lijst.map((p) => `<li><b>${esc(p.naam || p.email)}</b> &middot; ${p.dagen} ${p.dagen === 1 ? 'dag' : 'dagen'}<small>${p.naam ? esc(p.email) + ' &middot; ' : ''}laatst ${p.laatst === 0 ? 'vandaag' : p.laatst === 1 ? 'gisteren' : p.laatst + ' dagen geleden'}</small></li>`).join('') + '</ul>' : '<p class="klein">Nog niemand.</p>'}</div></details>` : ''}
     ${x.maten && x.maten.fout ? '<p class="klein" style="color:#ff8a5c">Vriendenlink: laden lukte niet (' + esc(x.maten.fout) + ')</p>' : ''}${x.ritten && x.ritten.fout ? '<p class="klein" style="color:#ff8a5c">Groepsritten: laden lukte niet (' + esc(x.ritten.fout) + ')</p>' : ''}${x.maten && x.maten.lijst && !x.maten.lijst.length ? '<details class="klap bhd-ritten"><summary><b>Wie deelden hun vriendenlink</b><span>nog niemand</span></summary><div class="klap-in"><p class="klein" style="margin:0">Nog niemand heeft zijn link gedeeld of iemand uitgenodigd. Vanaf nu telt elke keer delen via WhatsApp, delen of een story.</p></div></details>' : ''}${x.maten && x.maten.lijst && x.maten.lijst.length ? `<details class="klap bhd-ritten"><summary><b>Wie deelden hun vriendenlink</b><span>${x.maten.lijst.length} ${x.maten.lijst.length === 1 ? 'persoon' : 'mensen'}</span></summary><div class="klap-in"><ul class="bhd-lijst">${x.maten.lijst.map((p) => { const st = { verstuurd: 'uitgenodigd', account: 'heeft account', lid: 'Pro' }; return `<li><b>${esc(p.naam || p.email)}</b>${p.keer ? ' &middot; ' + p.keer + 'x gedeeld' : ''}<small>${p.naam ? esc(p.email) + ' &middot; ' : ''}${p.maten.length ? p.maten.length + ' uitgenodigd: ' + p.maten.map((m) => esc(m.naam) + ' (' + (st[m.status] || 'uitgenodigd') + ')').join(', ') : 'gedeeld, nog niemand via de link'}</small></li>`; }).join('')}</ul></div></details>` : ''}
     <button type="button" class="sb-link" data-bhd="ververs" style="margin:6px 0 0">Ververs</button></div>`;
@@ -3626,8 +3628,30 @@ function verkoopMoment(d) {
   l.push({ k: 'ochtend', t: 'Zo begint je ochtend met Pro', ochtend: true, knop: 'Bekijk wat je krijgt' });
   return l.find((x) => !vkWeg(x.k)) || null;
 }
+// Pro-trechter (16-10-2026): gezien (1x per dag per bron) en aangetikt, plus de laatste bron mee naar afrekenen.
+const PRO_NAAM = { 'vk-proef': 'Proefweek Core klaar', 'vk-vragen': 'Vragen op', 'vk-tocht': 'Tocht in zicht', 'vk-coremee': 'Core die meebeweegt', 'vk-coach': 'Smaakt naar meer (coach)', 'vk-spanning': 'Spanning vaak gecheckt', 'vk-kou': 'Kou / kleding', 'vk-ochtend': 'Ochtend met Pro', lidbalk: 'Word Pro-balk', coach: 'Knop in coachantwoord', tegel: 'Tegel / menu', rijden: 'Slot bij Rijden', overig: 'Overig' };
+function proStat(stap, bron) {
+  if (!bron || (D && D.beheer)) return;
+  if (stap === 'zien') { try { const k = 'mkcPro:' + bron + ':' + new Date().toISOString().slice(0, 10); if (localStorage.getItem(k)) return; localStorage.setItem(k, '1'); } catch (e) {} }
+  try { fetch(API + '?actie=prostat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), stap, bron }), keepalive: true }); } catch (e) {}
+}
+function proBronLs() { try { const v = JSON.parse(localStorage.getItem('mkcProBron') || 'null'); return v && Date.now() - v.op < 7 * 864e5 ? v.bron : ''; } catch (e) { return ''; } }
+document.addEventListener('click', (e) => {
+  const t = e.target; if (!t || !t.closest || !D || isLid(D) || (D.lid && D.lid.bron === 'coaching')) return;
+  let bron = '';
+  const vk = t.closest('.vk');
+  if (vk && t.closest('[data-actie="naarlid"]')) bron = 'vk-' + vk.dataset.vk;
+  else if (t.closest('.lidbalk')) bron = 'lidbalk';
+  else if (t.closest('[data-ccknop="lid"]')) bron = 'coach';
+  else if (t.closest('.sb-slot') && t.closest('[data-view="lid"], [data-actie="naarlid"]')) bron = 'rijden';
+  else if (t.closest('[data-view="lid"], [data-actie="naarlid"]')) bron = 'tegel';
+  if (!bron) return;
+  proStat('tik', bron);
+  try { localStorage.setItem('mkcProBron', JSON.stringify({ bron, op: Date.now() })); } catch (er) {}
+}, true);
 function verkoopMomentHtml(d) {
   const m = verkoopMoment(d); if (!m) return '';
+  proStat('zien', 'vk-' + m.k);
   return `<div class="vk" data-vk="${m.k}"><button type="button" class="vk-x" data-vkweg="${m.k}" aria-label="Sluiten">&times;</button>
     <b>${m.t}</b>${m.ochtend ? lidOchtendHtml() : m.mee ? coreMeeHtml(d, true) : '<p>' + m.p + '</p>'}
     <button type="button" class="knop" data-actie="naarlid">${m.knop}</button><span class="vk-prijs">&euro;${APP_PRIJS.maand} per maand, of &euro;${APP_PRIJS.jaar} per jaar met een gratis Strava-analyse</span><span class="vk-bewijs">&#9733; 4,9 uit 48 Google-reviews &middot; 1000+ renners trainen met mijn schema&rsquo;s</span></div>`;
@@ -3637,6 +3661,7 @@ document.addEventListener('click', (e) => { const k = e.target.closest('[data-vk
 function lidBalkHtml(d) {
   if (isLid(d) || (d.lid && d.lid.bron === 'coaching')) return '';
   if (!binnenkortNu() && !kanLidNu(d)) return '';
+  if (kanLidNu(d)) proStat('zien', 'lidbalk');
   return `<button type="button" class="lidbalk" data-view="lid"><span><b>Word Pro</b><em>${d.voorverkoop ? 'Voorverkoop &middot; je eerste maand start pas vrijdag 16 oktober' : binnenkortNu() ? 'Open vanaf vrijdag 16 oktober &middot; bekijk wat je krijgt' : '&euro;' + APP_PRIJS.maand + ' per maand &middot; alles ontgrendeld'}</em></span><i>&#8250;</i></button>`;
 }
 // Na je analyse (12-10-2026): heb je nog geen schema of coaching, dan onderaan
@@ -3801,7 +3826,7 @@ async function wordLid(knop) {
   if (vink && !vink.checked) { const l = vink.closest('.lid-akkoord'); l.classList.add('fout'); l.scrollIntoView({ behavior: 'smooth', block: 'center' }); setTimeout(() => l.classList.remove('fout'), 2500); return; }
   knop.disabled = true; const oud = knop.textContent; knop.textContent = 'Even naar betalen...';
   try {
-    const r = await fetch('/api/lid?actie=start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: (fact && fact.naam) || (D && D.naam), factuur: fact, plan: knop.dataset.plan === 'jaar' ? 'jaar' : 'maand', akkoord: !vink || vink.checked, fbclid: (() => { try { return localStorage.getItem('mkcFbclid') || ''; } catch (e) { return ''; } })(), vriend: vriendCodeLs(), ...metingVelden() }) });
+    const r = await fetch('/api/lid?actie=start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: (fact && fact.naam) || (D && D.naam), factuur: fact, plan: knop.dataset.plan === 'jaar' ? 'jaar' : 'maand', akkoord: !vink || vink.checked, fbclid: (() => { try { return localStorage.getItem('mkcFbclid') || ''; } catch (e) { return ''; } })(), vriend: vriendCodeLs(), proBron: proBronLs(), ...metingVelden() }) });
     const j = await r.json();
     if (j.ok && j.url) { location.href = j.url; return; }
     if (j.ok && j.alLid) { return laadOverzicht(); }

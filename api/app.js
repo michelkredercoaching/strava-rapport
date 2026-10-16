@@ -964,6 +964,29 @@ async function routeVoorverkoop(req, res) {
   if (req.method === 'POST') await redis(['DEL', 'lid:voorverkoop']); // voorverkoop geschrapt (14-10-2026)
   return res.status(200).json({ ok: true, aan: await voorverkoopAan(), voorLancering: Date.now() < LANCERING });
 }
+// Pro-trechter (16-10-2026, Michel: meten welk duwtje werkt). Per bron (verkoopmoment, balk,
+// coachknop, tegel) unieke mensen per stap: gezien, aangetikt, afrekenen, betaald.
+// Zien en tikken komen van de app, afrekenen en betaald uit api/lid.js.
+const PRO_STAPPEN = ['zien', 'tik', 'start', 'betaald'];
+async function routeProStat(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ ok: false });
+  const body = await leesBody(req);
+  const email = leesAppToken(String(body.t || ''));
+  const bron = String(body.bron || ''), stap = String(body.stap || '');
+  if (!email || BEHEER.includes(email) || !['zien', 'tik'].includes(stap) || !/^[a-z0-9-]{2,30}$/.test(bron)) return res.status(200).json({ ok: true });
+  await redis(['SADD', 'app:pro:' + stap + ':' + bron, email]);
+  await redis(['SADD', 'app:pro:bronnen', bron]);
+  return res.status(200).json({ ok: true });
+}
+async function dashProTrechter() {
+  const b = await redis(['SMEMBERS', 'app:pro:bronnen']);
+  const bronnen = (b.ok && b.result) || [];
+  const rijen = await Promise.all(bronnen.map(async (bron) => {
+    const n = await Promise.all(PRO_STAPPEN.map((s) => redis(['SCARD', 'app:pro:' + s + ':' + bron])));
+    const r = { bron }; PRO_STAPPEN.forEach((s, i) => { r[s] = Number(n[i].result) || 0; }); return r;
+  }));
+  return rijen.sort((a, b) => b.betaald - a.betaald || b.tik - a.tik || b.zien - a.zien);
+}
 async function routeBeheerDash(req, res) {
   if (!beheerEmail(req, req.query?.t)) return res.status(403).json({ ok: false });
   const nlDag = (t) => new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
@@ -975,8 +998,9 @@ async function routeBeheerDash(req, res) {
   const pushLijst = await redis(['SMEMBERS', 'app:push:alle']);
   const zonder = (r) => ((r.ok && r.result) || []).filter((e) => !BEHEER.includes(e)).length;
   const tel = (leden && leden.tel) || {};
+  const proTrechter = await dashProTrechter().catch(() => null);
   const [ritten, maten, interesse, analyseKijk] = await Promise.all([dashRitten().catch((e) => ({ fout: String(e && e.message || e) })), dashMaten().catch((e) => ({ fout: String(e && e.message || e) })), dashInteresse().catch(() => null), dashAnalyseKijk().catch(() => null)]);
-  return res.status(200).json({ ok: true, ritten, maten, interesse, analyseKijk,
+  return res.status(200).json({ ok: true, ritten, maten, interesse, analyseKijk, proTrechter,
     accounts: Math.max(0, (Number(acc.result) || 0) - BEHEER.length), vandaag: zonder(vandaag), week: zonder(w7), maand: zonder(w30),
     betaald: (tel['betaald-maand'] || 0) + (tel['betaald-jaar'] || 0), maandLeden: tel['betaald-maand'] || 0, jaarLeden: tel['betaald-jaar'] || 0,
     coaching: (tel['coaching-flex'] || 0) + (tel['coaching-premium'] || 0), schema: (tel.schema || 0) + (tel.cadeau || 0),
@@ -1339,6 +1363,7 @@ export default async function handler(req, res) {
     if (actie === 'doel') return await routeDoel(req, res);
     if (actie === 'aankondig') return await routeAankondig(req, res);
     if (actie === 'beheerdash') return await routeBeheerDash(req, res);
+    if (actie === 'prostat') return await routeProStat(req, res);
     if (actie === 'foutlog') { const sl = process.env.TRECHTER_SLEUTEL || ''; if (!sl || String(req.headers?.['x-sleutel'] || '') !== sl) return res.status(403).json({ ok: false }); const l = await redis(['LRANGE', 'app:fouten', '0', '49']); return res.status(200).json({ ok: true, fouten: ((l.ok && l.result) || []).map((x) => { try { return JSON.parse(x); } catch { return x; } }) }); }
     if (actie === 'voorverkoop') return await routeVoorverkoop(req, res);
     if (actie === 'pushopnieuw') return await routePushOpnieuw(req, res);
