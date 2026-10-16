@@ -1426,7 +1426,7 @@ async function routeOverzicht(req, res) {
     lid: lidBeeld(lidmaatschap),
     uitgenodigd,
     uitnodigingen,
-    mijnCode: (mcode.ok && mcode.result) || null,
+    mijnCode: mcode.ok && mcode.result && /[0-9]/.test(mcode.result) ? mcode.result : null, // oude codes zonder cijfers niet meer tonen (16-10)
     vriendAccounts: Number(vacc.ok && vacc.result) || 0,
     lidOpen: kanLid,
     // Vóór de Instagram-lancering staat alles behalve de bandenspanning op

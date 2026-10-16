@@ -371,10 +371,12 @@ const waTekst = (naam, url) => `${naam ? 'Hoi ' + naam + '! ' : ''}Ik train met 
 // Leesbare maat-code (13-10-2026): "SANNE", "SANNE2"... voor op stories en om te noemen.
 // Verwijst naar de gewone (hex) uitnodigcode; eerste die hem claimt houdt hem.
 async function leesbareCode(email, voornaam, code) {
-  const al = await redis(['GET', `lid:mijncode:${email}`]); if (al.ok && al.result) return al.result;
+  // 16-10-2026 (Michel): voornaam plus twee cijfers (SANNE48) in plaats van alleen de voornaam. Wie al een
+  // code zonder cijfers had krijgt een nieuwe; de oude blijft werken (lid:vriendcode blijft staan).
+  const al = await redis(['GET', `lid:mijncode:${email}`]); if (al.ok && al.result && /[0-9]/.test(al.result)) return al.result;
   const basis = String(voornaam || '').normalize('NFD').replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 8) || 'MKC';
   for (let i = 1; i < 300; i++) {
-    const c = i === 1 ? basis : basis + i;
+    const c = basis + (i < 200 ? String(10 + Math.floor(Math.random() * 90)) : String(100 + Math.floor(Math.random() * 900)));
     const z = await redis(['SET', `lid:vriendcode:${c}`, code, 'NX']);
     const van = z.ok && z.result === 'OK' ? code : (await redis(['GET', `lid:vriendcode:${c}`])).result;
     if (van === code) { await redis(['SET', `lid:mijncode:${email}`, c]); return c; }
