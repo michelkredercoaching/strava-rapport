@@ -2892,7 +2892,7 @@ const TG_W = 'https://michelkredercoaching.nl/wp-content/uploads/';
 const TG_FOTO = {
   // [foto, uitsnede, zoom] (16-10: hele beeld passend in de tegel; banden een wegband)
   rijden: ['/app-fotos/banden.webp', 'center 30%', '86%'], // eigen foto Michel (16-10-2026)
-  analyse: [TG_W + '2026/09/ChatGPT-Image-22-sep-2026-11_28_20-510x510.png', '112% 34%', '128%'], // telefoon uit de hero van /power-profile-analyse/
+  analyse: [TG_W + '2026/09/ChatGPT-Image-22-sep-2026-11_28_20-510x510.png', '90% 40%', '92%'], // 16-10: iets verder weg, hele telefoon in beeld // telefoon uit de hero van /power-profile-analyse/
   coach: TG_W + '2026/08/michel-hier-510x510.jpeg',
   coaching: TG_W + '2026/03/WhatsApp-Image-2026-03-24-at-09.24.28-510x510.jpeg',
   schema: [TG_W + '2026/03/WhatsApp-Image-2026-03-23-at-19.21.18-768x512.jpeg', '50% 22%', 'cover']
@@ -2959,7 +2959,7 @@ function tegelsHtml(d) {
   const tgv = tegoedNu(), wkMax = gvo != null ? ((D && D.gratisMax) || 3) : ((D && D.lidMax) || 25), wk = gvo != null ? gvo : lvo;
   const coach = tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: wk != null ? '<b>' + wk + '/' + wkMax + '</b> deze week' + (tgv ? '<br>+' + tgv + ' extra deze maand' : '') : 'Antwoord met Michels kennis', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Pro') : '3 gratis', tagKlas: 'or' });
   // 16-10-2026 (Coen): de coach zit al in de zwevende knop; deze plek is nu Voeding.
-  const voeding = tegel({ v: 'voeding', ic: 'voeding', nm: 'Voeding', sub: 'Wat je eet en drinkt voor je rit', tag: slim ? (inbegrepen ? 'Inbegrepen' : 'Pro') : 'Pro', tagKlas: 'or' });
+  const voeding = tegel({ v: 'voeding', ic: 'voeding', nm: 'Voeding', sub: 'Wat je eet en drinkt voor je rit', tag: slim ? (inbegrepen ? 'Inbegrepen' : 'Pro') : SLOT + ' Pro', tagKlas: 'or' });
   const t = [trein, banden, derde, voeding];
   if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: schemaTegelSub(d.schema), tag: d.schema.status === 'klaar' ? 'Afgerond' : 'Actief', tagKlas: 'gr', breed: true }));
   // Michel ziet Kracht tot de opening altijd als voorbeeld, ook als hij zelf Core doet.
