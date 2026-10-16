@@ -1348,8 +1348,7 @@ document.addEventListener('click', (e) => {
   if (document.getElementById('ccPaneel')?.classList.contains('open')) coachOpen(false);
   if (o.tab) {
     if (o.klap) { try { localStorage.setItem('mkcKlap:' + o.klap, '1'); } catch (er) {} }
-    naar(o.tab === 'voeding' ? 'voeding' : 'rijden'); // 16-10-2026: Voeding is een eigen pagina
-    if (o.tab !== 'voeding') { try { sbBewaarKeuze({ tab: o.tab }); btBewaar({ ...btLees(), tab: o.tab }); } catch (er) {} }
+    naar({ voeding: 'voeding', kleding: 'kleding', groep: 'groep' }[o.tab] || 'rijden'); // 16-10-2026: eigen pagina's
     teken();
     if (o.klap) setTimeout(() => document.querySelector('[data-klap="' + o.klap + '"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 600);
     return;
@@ -1768,10 +1767,10 @@ function bandenKaart(d) {
       <div class="sb-kou">Het wordt 6&deg;. Pomp je binnen, pomp dan iets harder. Buiten zit je dan precies goed.</div></div>
     <div class="voor">${SLOT}<b>${slimKop}</b><span>${slimUitleg}</span>
       ${kanLid ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met Pro</button>' : BINNENKORT}</div></div>`;
-  const vtab = VIEW === 'voeding' ? 'voeding' : ['kleding', 'groep'].includes(btLees().tab) ? btLees().tab : 'banden';
-  const vtabs = `<div class="vr-tabs"><button type="button" data-kl="vrijtab" data-w="banden" class="${vtab === 'banden' ? 'aan' : ''}">Banden</button><button type="button" data-kl="vrijtab" data-w="kleding" class="${vtab === 'kleding' ? 'aan' : ''}">Kleding ${SLOT.replace('<svg', '<svg class="tab-slot"')}</button><button type="button" data-kl="vrijtab" data-w="groep" class="${vtab === 'groep' ? 'aan' : ''}">Groepsrit</button></div>`;
+  const vtab = RIJ_TAB[VIEW] || 'banden';
+  const vtabs = ''; // 16-10-2026: geen tabs meer, elk onderdeel een eigen pagina
   if (vtab === 'groep') { if (!d.gast) grZorg(); return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag open">Gratis</span>
-    <div class="label">Vandaag rijden</div><h2>Rij je samen?</h2>${vtabs}
+    <div class="label">Groepsrit</div><h2>Rij je samen?</h2>${vtabs}
     ${d.gast ? '<p>Plan een rit en deel de link in je groepsapp. Iedereen ziet het weer, de wind en zijn eigen bandenspanning voor jullie rit.</p><button type="button" class="knop" data-actie="gastlogin" style="margin-top:12px">Maak je gratis account</button>' : '<div id="grmaak">' + grMaakHtml() + '</div>' + grVriendHtml(d)}</div></div>`; }
   if (vtab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag oranje">Pro</span>
     <div class="label">Voeding</div><h2>Wat neem je mee?</h2>
@@ -1780,7 +1779,7 @@ function bandenKaart(d) {
     <div class="voor">${SLOT}<b>${weerNu() ? 'Je voeding voor een rit van 2 uur staat klaar' : 'Nooit meer de man met de hamer'}</b><span>Voor jouw rit precies hoeveel koolhydraten en bidons je meeneemt, afgestemd op hoe lang en hoe hard je rijdt en hoe warm het wordt. Met Michels eigen regels.</span>
       ${kanLidNu(d) ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met Pro</button>' : BINNENKORT}</div></div></div></div>`;
   if (vtab === 'kleding') return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag oranje">Pro</span>
-    <div class="label">Vandaag rijden</div><h2>Wat trek je aan?</h2>${vtabs}
+    <div class="label">Kleding</div><h2>Wat trek je aan?</h2>${vtabs}
     ${vrijWeerRegel()}<div class="bt-slot"><div class="achter">
       ${vrijKledingAchter()}</div>
     <div class="voor">${SLOT}<b>${weerNu() ? 'Je kledingadvies voor vandaag staat klaar' : 'Wat trek je aan voor jouw rit?'}</b><span>Op basis van het weer tijdens je hele rit, wind en regen, hoe hard je rijdt en of je het snel koud hebt. Met Michels eigen kledingindeling uit 9 jaar prof.</span>
@@ -1976,9 +1975,9 @@ function slimBandenKaart() {
     p.fietsen = [{ id: 'f' + Date.now().toString(36), naam: v.type === 'gravel' ? 'Gravelbike' : 'Racefiets', type: v.type, breedte: Number(v.breedte), tubeless: !!v.tubeless, hookless: false }];
     SB.bewerk = true;
   }
-  const tab = VIEW === 'voeding' ? 'voeding' : ['kleding', 'groep'].includes(sbKeuze().tab) ? sbKeuze().tab : 'banden';
-  const kop = `<span class="tag oranje">Pro</span><div class="label">Vandaag rijden</div><h2>${SB.bewerk && VIEW !== 'voeding' ? 'Wat pomp je vandaag?' : tab === 'kleding' ? 'Wat trek je aan?' : tab === 'voeding' ? 'Wat neem je mee?' : tab === 'groep' ? 'Rij je samen?' : 'Wat pomp je vandaag?'}</h2>`;
-  if (SB.bewerk && VIEW !== 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}<p>Zet je fietsen erin. Dan hoef je straks alleen nog te kiezen op welke je rijdt.</p>${sbBewerkHtml()}</div></div>`;
+  const tab = RIJ_TAB[VIEW] || 'banden';
+  const kop = `<span class="tag oranje">Pro</span><div class="label">${{ banden: 'Vandaag rijden', voeding: 'Voeding', kleding: 'Kleding', groep: 'Groepsrit' }[tab]}</div><h2>${SB.bewerk && tab === 'banden' ? 'Wat pomp je vandaag?' : tab === 'kleding' ? 'Wat trek je aan?' : tab === 'voeding' ? 'Wat neem je mee?' : tab === 'groep' ? 'Rij je samen?' : 'Wat pomp je vandaag?'}</h2>`;
+  if (SB.bewerk && (VIEW === 'rijden' || !isRijView())) return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}<p>Zet je fietsen erin. Dan hoef je straks alleen nog te kiezen op welke je rijdt.</p>${sbBewerkHtml()}</div></div>`;
   const f = sbFiets(), uit = sbReken(f), nat = sbNat();
   const gNu = f ? sbGrond(f) : null;
   const instel = f ? `<details class="klap rv-instel" data-klap="bandinstel"${klapOpen('bandinstel', false) ? ' open' : ''}><summary><b>Je fiets</b><span>${esc(f.naam)} ${bandMaat(f)} &middot; ${esc(gNu[1].toLowerCase())} &middot; ${nat ? 'nat' : 'droog'}</span></summary><div class="klap-in gr-maak">
@@ -1991,13 +1990,13 @@ function slimBandenKaart() {
     ${sbGeheugenHtml(uit)}
     ${uit.redenen.length ? `<p class="klein">Meegerekend: ${uit.redenen.join(', ')}.</p>` : ''}
     ${sbRijdHtml(f, uit)}`;
-  const tabs = `<div class="vr-tabs"><button type="button" data-kl="tab" data-w="banden" class="${tab === 'banden' ? 'aan' : ''}">Banden</button><button type="button" data-kl="tab" data-w="kleding" class="${tab === 'kleding' ? 'aan' : ''}">Kleding</button><button type="button" data-kl="tab" data-w="groep" class="${tab === 'groep' ? 'aan' : ''}">Groepsrit</button></div>`;
+  const tabs = ''; // 16-10-2026: elke onderdeel is een eigen pagina
   if (tab === 'groep') { grZorg(); return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${tabs}
     <div id="grmaak">${grMaakHtml()}</div>
     ${grVriendHtml(zicht())}
     <button type="button" class="sb-link" data-sb="bewerk" style="margin-top:14px">Mijn fietsen en gewicht</button></div></div>`; }
-  if (tab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop.replace('Vandaag rijden', 'Voeding')}
+  if (tab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${sbWeerHtml()}
     ${sbOordeelHtml()}
     ${voedingTabHtml()}
@@ -2763,6 +2762,8 @@ const IC = {
   kracht: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8.6 10.4V7.6a3.4 3.4 0 0 1 6.8 0v2.8"/><path d="M8 20.5a6.3 6.3 0 1 1 8 0z"/></svg>',
   core: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="6" width="3.5" height="12" rx="1.2"/><rect x="15.5" y="6" width="3.5" height="12" rx="1.2"/><path d="M2.5 9.5v5M21.5 9.5v5M8.5 12h7"/></svg>',
   analyse: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M6 16l4-5 3 3 5-7"/></svg>',
+  kleding: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4 4 7l2 4 2-1v10h8V10l2 1 2-4-4-3c-1 1.5-2.5 2-4 2s-3-.5-4-2z"/></svg>',
+  groep: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 14.5c3 0 6 2 6 5.5"/></svg>',
   voeding: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v3M14 3v3M8 8h8l1 13H7z"/></svg>',
   coach: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg>',
   afval: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20h14l-1.5-11h-11zM9 9a3 3 0 0 1 6 0"/></svg>',
@@ -2869,7 +2870,9 @@ const KOPPEN = {
   home: ['MKC-App', 'Michel Kreder Coaching'],
   palmares: ['MKC-Palmares', 'Je badges, verdiend met wat je echt doet'],
   coaching: ['MKC-Coaching', 'Zo werkt het, en zo bereik je mij'],
-  rijden: ['MKC-Rijden', 'Banden, kleding en wind voor je rit'],
+  rijden: ['MKC-Banden', 'Je spanning en de wind voor je rit'],
+  kleding: ['MKC-Kleding', 'Wat je aantrekt voor het weer van vandaag'],
+  groep: ['MKC-Groepsrit', 'Plan een rit en deel hem met je groep'],
   voeding: ['MKC-Voeding', 'Wat je eet en drinkt voor en tijdens je rit'],
   schema: ['MKC-Schema', 'Je schema in TrainingPeaks'],
   core: ['MKC-Core', 'Core stability voor wielrenners'],
@@ -2892,7 +2895,8 @@ const TG_W = 'https://michelkredercoaching.nl/wp-content/uploads/';
 const TG_FOTO = {
   // [foto, uitsnede, zoom] (16-10: hele beeld passend in de tegel; banden een wegband)
   rijden: ['/app-fotos/banden.webp', 'center 32%', 'cover'], // eigen foto Michel (16-10-2026); cover = geen randen
-  voeding: ['/app-fotos/voeding.jpg', 'center 38%', 'cover'], // bidon + gel, aangeleverd door Michel (16-10-2026)
+  voeding: ['/app-fotos/voeding.jpg', 'center 38%', 'cover'],
+  groep: ['/app-fotos/groepsrit.jpg', '70% 40%', 'cover'], // drie renners in het avondlicht (site, 16-10-2026) // bidon + gel, aangeleverd door Michel (16-10-2026)
   analyse: [TG_W + '2026/09/ChatGPT-Image-22-sep-2026-11_28_20-510x510.png', '85% 40%', 'cover'], // 16-10: cover = zo ver mogelijk uitgezoomd zonder zwarte randen // telefoon uit de hero van /power-profile-analyse/
   coach: TG_W + '2026/08/michel-hier-510x510.jpeg',
   coaching: TG_W + '2026/03/WhatsApp-Image-2026-03-24-at-09.24.28-510x510.jpeg',
@@ -2903,6 +2907,14 @@ const TG_FOTO = {
 // de analyse als telefoon met vermogenscurve en glans.
 const TG_CORE = '<svg viewBox="26 22 152 92" aria-hidden="true"><defs><linearGradient id="tcRing" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB47E"/><stop offset=".45" stop-color="#FF6B1A" stop-opacity=".55"/><stop offset="1" stop-color="#5a2a0e" stop-opacity=".2"/></linearGradient><linearGradient id="tcLijf" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#F2E6DA"/></linearGradient><linearGradient id="tcVloer" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF6B1A" stop-opacity="0"/><stop offset=".5" stop-color="#FF9A5C" stop-opacity=".7"/><stop offset="1" stop-color="#FF6B1A" stop-opacity="0"/></linearGradient><filter id="tcGloed" x="-40%" y="-80%" width="180%" height="260%"><feGaussianBlur stdDeviation="4"/></filter></defs><circle cx="100" cy="72" r="62" fill="none" stroke="url(#tcRing)" stroke-width="1.6"/><circle cx="100" cy="72" r="54" fill="none" stroke="#FF9A5C" stroke-opacity=".18" stroke-width="1" stroke-dasharray="2 5"/><line x1="34" y1="99" x2="166" y2="99" stroke="url(#tcVloer)" stroke-width="1.4"/><path class="tc-gloed" d="M66 72 L120 78" stroke="#FF6B1A" stroke-width="12" stroke-linecap="round" filter="url(#tcGloed)" opacity=".85"/><g fill="none" stroke="url(#tcLijf)" stroke-linecap="round" stroke-linejoin="round"><path d="M64 71 L121 78 L158 92" stroke-width="6.5"/><path d="M64 71 L61 96 L80 97" stroke-width="5"/><path d="M158 92 L161 98" stroke-width="4.5"/></g><circle cx="54" cy="66" r="7.5" fill="#FFFFFF"/><path d="M66 72 L120 78" stroke="#FF6B1A" stroke-width="3" stroke-linecap="round"/><circle cx="100" cy="10" r="2" fill="#FFB47E"/></svg>';
 const TG_TEL = '<svg viewBox="0 0 96 176" aria-hidden="true"><defs><linearGradient id="ttKast" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a3a3a"/><stop offset=".35" stop-color="#121212"/><stop offset="1" stop-color="#2a2a2a"/></linearGradient><linearGradient id="ttScherm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#161210"/><stop offset="1" stop-color="#0a0a0a"/></linearGradient><linearGradient id="ttCurve" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF6B1A"/><stop offset="1" stop-color="#FFB47E"/></linearGradient><linearGradient id="ttVlak" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF6B1A" stop-opacity=".35"/><stop offset="1" stop-color="#FF6B1A" stop-opacity="0"/></linearGradient><linearGradient id="ttGlans" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><rect x="1" y="1" width="94" height="174" rx="16" fill="url(#ttKast)"/><rect x="4.5" y="4.5" width="87" height="167" rx="13" fill="url(#ttScherm)"/><rect x="36" y="9" width="24" height="6.5" rx="3.25" fill="#000"/><text x="12" y="31" font-family="DM Sans,Arial" font-size="5.6" font-weight="700" fill="#FF6B1A" letter-spacing="1">POWER PROFILE</text><text x="12" y="54" font-family="Bebas Neue,Impact" font-size="25" fill="#F5F3EF">248</text><text x="45" y="54" font-family="DM Sans,Arial" font-size="6.5" fill="#9B978F">W  FTP</text><text x="12" y="64" font-family="DM Sans,Arial" font-size="5.6" fill="#9B978F">3,4 W/kg  ·  Klimmer</text><path d="M12 104 C 18 76, 24 80, 32 86 S 50 96, 62 98 S 78 101, 84 102 L84 112 L12 112 Z" fill="url(#ttVlak)"/><path d="M12 104 C 18 76, 24 80, 32 86 S 50 96, 62 98 S 78 101, 84 102" fill="none" stroke="url(#ttCurve)" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="112.5" x2="84" y2="112.5" stroke="#2a2a2a" stroke-width="1"/><rect x="12" y="122" width="72" height="3.5" rx="1.75" fill="#1f1f1f"/><rect x="12" y="122" width="58" height="3.5" rx="1.75" fill="#4CC38A"/><rect x="12" y="131" width="72" height="3.5" rx="1.75" fill="#1f1f1f"/><rect x="12" y="131" width="40" height="3.5" rx="1.75" fill="#E2C84A"/><rect x="12" y="140" width="72" height="3.5" rx="1.75" fill="#1f1f1f"/><rect x="12" y="140" width="24" height="3.5" rx="1.75" fill="#FF6B1A"/><rect x="12" y="152" width="72" height="12" rx="6" fill="#FF6B1A"/><text x="48" y="160" font-family="DM Sans,Arial" font-size="5.6" font-weight="700" fill="#0a0a0a" text-anchor="middle" letter-spacing=".6">JOUW ACTIEPLAN</text><path d="M5 18 Q 5 5 18 5 L 60 5 L 5 92 Z" fill="url(#ttGlans)"/><rect x="1" y="1" width="94" height="174" rx="16" fill="none" stroke="#FF9A5C" stroke-opacity=".35" stroke-width="1"/></svg>';
+// Rijden is opgesplitst in eigen pagina's (16-10-2026); dit is de vaste tab per pagina.
+const RIJ_TAB = { rijden: 'banden', voeding: 'voeding', kleding: 'kleding', groep: 'groep' };
+const isRijView = (v) => !!RIJ_TAB[v || VIEW];
+const TG_KLEED = '<svg viewBox="0 0 120 120" aria-hidden="true"><defs><linearGradient id="tkJ" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a3a3a"/><stop offset="1" stop-color="#121212"/></linearGradient></defs>'
+  + '<ellipse cx="60" cy="106" rx="42" ry="5" fill="#000" opacity=".35"/>'
+  + '<path d="M44 18 L36 22 L14 40 L24 58 L34 50 L34 100 L86 100 L86 50 L96 58 L106 40 L84 22 L76 18 Q70 28 60 28 Q50 28 44 18 Z" fill="url(#tkJ)" stroke="#FF9A5C" stroke-opacity=".35" stroke-width="1.2"/>'
+  + '<path d="M34 62 L86 62 L86 70 L34 70 Z" fill="#FF6B1A"/><path d="M60 28 L60 100" stroke="#F5F3EF" stroke-opacity=".5" stroke-width="1.5" stroke-dasharray="3 3"/>'
+  + '<text x="60" y="88" text-anchor="middle" font-family="Bebas Neue,Impact" font-size="13" fill="#F5F3EF" letter-spacing="1">MKC</text></svg>';
 const TG_VOED = '<svg viewBox="0 0 120 120" aria-hidden="true"><defs><linearGradient id="tvB" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF8A3D"/><stop offset=".55" stop-color="#FF6B1A"/><stop offset="1" stop-color="#C24E0E"/></linearGradient><linearGradient id="tvR" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F5F3EF"/><stop offset="1" stop-color="#D9CFC4"/></linearGradient></defs>'
   + '<ellipse cx="60" cy="104" rx="40" ry="5" fill="#000" opacity=".35"/>'
   + '<rect x="51" y="14" width="18" height="7" rx="2" fill="#2a2a2a"/><rect x="55" y="8" width="10" height="8" rx="2" fill="#3a3a3a"/>'
@@ -2912,6 +2924,7 @@ const TG_VOED = '<svg viewBox="0 0 120 120" aria-hidden="true"><defs><linearGrad
   + '<g transform="rotate(-18 92 88)"><rect x="70" y="80" width="44" height="15" rx="4" fill="url(#tvR)"/><rect x="70" y="80" width="10" height="15" rx="3" fill="#FF6B1A"/><path d="M84 84 L108 84 M84 89 L104 89" stroke="#9b978f" stroke-width="1.6" stroke-linecap="round"/></g></svg>';
 function tegelBeeld(v, ic) {
   if (ic === 'voeding') return '<span class="tg-beeld tg-voed">' + TG_VOED + '</span>';
+  if (ic === 'kleding') return '<span class="tg-beeld tg-voed">' + TG_KLEED + '</span>';
   if (ic === 'core' || v === 'kiestraining' || ic === 'kracht') return '<span class="tg-beeld tg-fig" data-tgfig="1"></span>';
   if (ic === 'analyse') return '';
   return '';
@@ -2953,7 +2966,7 @@ function tegelsHtml(d) {
   else if (d.core) trein = (tegel({ href: d.core.link + '#vandaag', ic: 'core', nm: 'Core-app', sub: d.core.intakeNodig ? 'Start met je intake, 1 minuut' : d.core.opSlot ? 'Je proefweek zit erop' : d.core.volgende ? 'Vandaag: ' + esc(d.core.volgende.naam) + ' &middot; ' + d.core.volgende.minuten + ' min' : 'Deze week klaar' + (d.core.rompscore ? ' &middot; Rompscore ' + d.core.rompscore : ''), tag: d.core.intakeNodig || (d.core.volgende && !d.core.opSlot) ? 'Start' : 'Actief', tagKlas: 'gr' }));
   else trein = (tegel({ v: 'core', ic: 'core', nm: 'Core-app', sub: 'Thuis, 10 tot 20 minuten', tag: binnenkortNu() ? 'Binnenkort' : lid ? 'Inbegrepen' : 'Week 1 gratis', tagKlas: 'or', dim: binnenkortNu() }));
   if (d.kracht && d.kracht.open && vorm === 'kracht') { const kb = d.kracht.beeld; trein = (tegel({ v: 'kracht', ic: 'kracht', nm: 'Kracht', sub: !kb ? 'Sportschool, 2x per week een uur, met gewichten' : kb.seizoen ? (kb.volgende ? 'Seizoen &middot; onderhoud, ongeveer ' + kb.volgende.minuten + ' min' : 'Seizoen &middot; onderhoud deze week gedaan') : kb.volgende ? 'Week ' + kb.week + ' &middot; sessie ' + kb.volgende.letter + ', ongeveer ' + kb.volgende.minuten + ' min' : 'Week ' + kb.week + ' rond, volgende week staat klaar', tag: kb ? (kb.volgende ? 'Start' : 'Klaar') : 'Nieuw', tagKlas: kb && kb.volgende ? 'gr' : 'or' })); }
-  const banden = tegel({ v: 'rijden', ic: 'rijden', nm: 'Bandenspanning', sub: mijnSp ? 'Jouw spanning: ' + mijnSp : slim ? 'Check je spanning en kleding' : 'Check je spanning voor vandaag', tag: slim ? (inbegrepen ? 'Inbegrepen' : 'Pro') : 'Gratis', tagKlas: slim ? 'or' : 'gr' });
+  const banden = tegel({ v: 'rijden', ic: 'rijden', nm: 'Bandenspanning', sub: mijnSp ? 'Jouw spanning: ' + mijnSp : 'Check je spanning voor vandaag', tag: slim ? (inbegrepen ? 'Inbegrepen' : 'Pro') : 'Gratis', tagKlas: slim ? 'or' : 'gr' });
   const analyseT = tegel({ v: 'analyse', ic: 'analyse', nm: 'Strava-analyse', sub: d.analyse ? esc([d.analyse.meet === 'hartslag' ? (d.analyse.omslag ? 'Omslag ' + d.analyse.omslag + ' bpm' : '') : (d.analyse.ftp ? 'FTP ' + d.analyse.ftp + ' W' : ''), analyseWeken(d.analyse) >= 8 ? analyseWeken(d.analyse) + ' weken oud' : d.analyse.type].filter(Boolean).join(' · ') || 'Bekijk je uitslag') : 'Je FTP en zones uit je eigen ritten', tag: d.analyse ? (analyseWeken(d.analyse) >= 8 ? 'Nieuwe?' : 'Open') : (d.jaarAnalyse ? 'Gratis' : SLOT + ' €' + (d.ledenAnalyse ? LEDEN.analyse : 29)), tagKlas: d.analyse && analyseWeken(d.analyse) < 8 ? 'gr' : 'or' });
   const derde = coaching ? tegel({ v: 'coaching', ic: 'schema', nm: 'Jouw coaching', sub: 'TrainingPeaks en hoe je mij bereikt', tag: 'Michel', tagKlas: 'or' }) : analyseT;
   const gvo = gratisOver(), lvo = lidOverNu();
@@ -2961,7 +2974,9 @@ function tegelsHtml(d) {
   const coach = tegel({ v: 'coach', ic: 'coach', nm: 'Vraag je coach', sub: wk != null ? '<b>' + wk + '/' + wkMax + '</b> deze week' + (tgv ? '<br>+' + tgv + ' extra deze maand' : '') : 'Antwoord met Michels kennis', tag: lid ? (inbegrepen ? 'Inbegrepen' : 'Pro') : '3 gratis', tagKlas: 'or' });
   // 16-10-2026 (Coen): de coach zit al in de zwevende knop; deze plek is nu Voeding.
   const voeding = tegel({ v: 'voeding', ic: 'voeding', nm: 'Voeding', sub: 'Wat je eet en drinkt voor je rit', tag: slim ? (inbegrepen ? 'Inbegrepen' : 'Pro') : SLOT + ' Pro', tagKlas: 'or' });
-  const t = [trein, banden, derde, voeding];
+  const kleding = tegel({ v: 'kleding', ic: 'kleding', nm: 'Kleding', sub: 'Wat je aantrekt voor het weer', tag: slim ? (inbegrepen ? 'Inbegrepen' : 'Pro') : SLOT + ' Pro', tagKlas: 'or' });
+  const groep = tegel({ v: 'groep', ic: 'groep', nm: 'Groepsrit', sub: 'Plan een rit, deel de link', tag: 'Gratis', tagKlas: 'gr' });
+  const t = [trein, banden, derde, voeding, kleding, groep];
   if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: schemaTegelSub(d.schema), tag: d.schema.status === 'klaar' ? 'Afgerond' : 'Actief', tagKlas: 'gr', breed: true }));
   // Michel ziet Kracht tot de opening altijd als voorbeeld, ook als hij zelf Core doet.
   const wissel = vorm === 'core' && d.kracht && Date.now() >= KRACHT_OPEN_APP ? `<p class="klein tg-wissel">Liever kracht in de sportschool? <button type="button" class="sb-link" data-wisselvorm="kracht" style="display:inline;margin:0">Wissel naar Kracht</button></p>` : '';
@@ -3716,7 +3731,7 @@ function paginaHtml(d) {
   const voet = `<div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
   const dz = d.beheer && BEKIJK === 'alles' ? voorbeeldData(d) : d;
   if (VIEW === 'rijden') return appBalkHtml('Vandaag rijden') + `<div class="kaarten">${bandenKaart(d)}${toonSlim(d) ? '' : windKaartHtml()}</div>` + voet;
-  if (VIEW === 'voeding') return appBalkHtml('Voeding') + `<div class="kaarten">${bandenKaart(d)}</div>` + voet;
+  if (VIEW === 'voeding' || VIEW === 'kleding' || VIEW === 'groep') return appBalkHtml() + `<div class="kaarten">${bandenKaart(d)}</div>` + voet;
   if (VIEW === 'schema') return appBalkHtml('Mijn schema') + `<div class="kaarten">${schemaKaart(d)}</div>` + voet;
   if (VIEW === 'core') return appBalkHtml('Core-app') + `<div class="kaarten">${coreKaart(dz.core)}</div>` + voet;
   if (VIEW === 'kracht') return appBalkHtml() + krachtPagina(dz) + voet;
@@ -3738,14 +3753,14 @@ function paginaHtml(d) {
   return null;
 }
 function teken() {
-  document.body.classList.toggle('geen-fab', VIEW === 'rijden' || VIEW === 'voeding');
+  document.body.classList.toggle('geen-fab', isRijView());
   if (D && D.gast) return tekenGast();
   if (VIEW !== 'home') {
     const dd = zicht(), html = paginaHtml(dd);
     if (html == null) VIEW = 'home';
     else {
       $('#app').innerHTML = html;
-      if (VIEW === 'rijden' || VIEW === 'voeding') { if (toonSlim(dd)) sbStart(); else { btReken(); if (WK.plaats && !WK.uren) wkLaad(); else if (WK.plaats) rvLaadLib().then(wkTeken); if ((VIEW === 'voeding' || btLees().tab === 'kleding') && WK.plaats && (!KL_LIB || !RV_LIB)) Promise.all([klLaadLib(), rvLaadLib()]).then(() => { if (VIEW === 'rijden') teken(); }); } }
+      if (isRijView()) { if (toonSlim(dd)) sbStart(); else { btReken(); if (WK.plaats && !WK.uren) wkLaad(); else if (WK.plaats) rvLaadLib().then(wkTeken); if ((VIEW === 'voeding' || VIEW === 'kleding') && WK.plaats && (!KL_LIB || !RV_LIB)) Promise.all([klLaadLib(), rvLaadLib()]).then(() => { if (isRijView()) teken(); }); } }
       coachBouw();
       return;
     }
