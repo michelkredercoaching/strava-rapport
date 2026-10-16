@@ -176,7 +176,7 @@
   .sk-coachtegel .tegel { width:100%; flex:1 1 100%; min-height:130px !important; }
   .lid-wat { margin-top:22px; } .lid-vrklap { margin-top:16px; }
   /* Keuzelijsten herkenbaar als keuzelijst (16-10-2026): pijltje rechts. */
-  select:not([multiple]) { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23FF6B1A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 12px center !important; padding-right:34px !important; cursor:pointer; }
+  select:not([multiple]) { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23FF6B1A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 12px center !important; padding-right:34px !important; cursor:pointer; -webkit-appearance:none !important; -moz-appearance:none !important; appearance:none !important; }
   .betaalwacht { display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; padding:40px 20px; } .betaalwacht b { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.03em; } .betaalwacht span { color:var(--muted); font-size:14px; max-width:300px; } .betaalwacht.in-modal { padding:16px 6px; }
   .bw-ring { width:42px; height:42px; border-radius:50%; border:3px solid rgba(255,107,26,.25); border-top-color:var(--accent); animation:bwDraai .9s linear infinite; margin-bottom:8px; } @keyframes bwDraai { to { transform:rotate(360deg); } }
   .wp-stappen { display:grid; gap:8px; margin:14px 0 4px; text-align:left; } .wp-stappen button { display:flex; gap:12px; align-items:center; width:100%; padding:12px; border-radius:10px; background:var(--surface2); border:1px solid rgba(255,107,26,.35); color:inherit; font-family:inherit; text-align:left; cursor:pointer; } .wp-stappen i { font-style:normal; flex:none; width:28px; height:28px; border-radius:50%; background:var(--accent); color:#000; font-weight:700; display:grid; place-items:center; } .wp-stappen span { font-size:12.5px; color:var(--muted); } .wp-stappen b { display:block; color:var(--white); font-size:14px; }
@@ -1923,7 +1923,7 @@ function sbRijdHtml(f, u) {
   const vandaag = new Date().toISOString().slice(0, 10);
   const al = (SB.ritten || []).find((r) => r.fiets === f.id && String(r.op).slice(0, 10) === vandaag && r.voor === u.voor && r.achter === u.achter);
   if (al) return '<div class="sb-bewaard">&#10003; Bewaard. Na je rit vraag ik hoe het was.</div>' + RK_BLOK();
-  return '<div class="sb-rijd"><button type="button" class="knop leeg" data-sb="rijd">Ik rijd hiermee</button><p class="klein">Dan vraag ik na je rit hoe je banden en je kleding waren, en onthoud ik het voor de volgende keer.</p></div>' + RK_BLOK();
+  return '<div class="sb-rijd">' + (SB.opgeslagen && Date.now() - SB.opgeslagen < 5000 ? '<button type="button" class="knop" disabled>Opgeslagen &#10003;</button>' : '<button type="button" class="knop" data-sb="rijd">Opslaan voor mijn rit</button>') + '<p class="klein">Dan vraag ik na je rit hoe je banden en je kleding waren, en onthoud ik het voor de volgende keer.</p></div>' + RK_BLOK();
 }
 
 function sbWeerHtml() {
@@ -2081,7 +2081,7 @@ document.addEventListener('click', async (e) => {
     k.disabled = true;
     try {
       const j = await (await fetch(`${API}?actie=bandenritten`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
-      if (j.ok) { SB.ritten = j.ritten; if (D) D.bandenRitten = j.ritten; } else alert(j.fout || 'Bewaren lukte niet.');
+      if (j.ok) { SB.ritten = j.ritten; if (D) D.bandenRitten = j.ritten; if (a === 'rijd') { SB.opgeslagen = Date.now(); setTimeout(() => { if (document.querySelector('.sb-rijd')) sbTeken(); }, 5100); } } else alert(j.fout || 'Bewaren lukte niet.');
     } catch (e) { alert('Verbinding mislukt.'); }
     return sbTeken();
   }
@@ -4269,7 +4269,7 @@ function badgeModal(id, nieuwNiveau) {
     <ul class="md-rijen">${[0, 1, 2].map(rij).join('')}</ul>
     ${vrij.length ? `<div class="kk-nieuw"><b>Nieuw in je kleedkamer</b><span>${vrij.map(esc).join(', ')}</span></div>` : ''}
     ${b.goudKlaar || b.goudLid ? `<p class="klein">${esc(b.nog)}</p>${kanLidNu(zicht()) ? '<button type="button" class="sb-link" data-actie="naarlid" style="margin:0 0 8px">Bekijk Pro</button>' : ''}` : ''}
-    ${b.niveau ? `<button type="button" class="knop" data-badgedeel="${b.id}">Deel als story</button>` : b.lid && !(isLid(zicht()) || ((zicht() || {}).lid || {}).bron === 'coaching') ? `<p class="klein">Deze badge verdien je met Pro: met de ${b.groep === 'Core' ? 'Core-app' : 'slimme bandenspanning en Ik rijd hiermee'}.</p>${kanLidNu(zicht()) ? '<button type="button" class="knop" data-actie="naarlid">Bekijk Pro</button>' : ''}` : `<p class="klein">${esc(b.nog)}</p>`}
+    ${b.niveau ? `<button type="button" class="knop" data-badgedeel="${b.id}">Deel als story</button>` : b.lid && !(isLid(zicht()) || ((zicht() || {}).lid || {}).bron === 'coaching') ? `<p class="klein">Deze badge verdien je met Pro: met de ${b.groep === 'Core' ? 'Core-app' : 'slimme bandenspanning en Opslaan voor mijn rit'}.</p>${kanLidNu(zicht()) ? '<button type="button" class="knop" data-actie="naarlid">Bekijk Pro</button>' : ''}` : `<p class="klein">${esc(b.nog)}</p>`}
     <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">${nieuwNiveau ? 'Top!' : 'Sluiten'}</button>${nieuwNiveau ? '<button type="button" class="sb-link" data-view="palmares" style="display:block;margin:4px auto 0">Bekijk je palmares</button>' : ''}</div>`);
 }
 function beloningModal(id, nieuw) {
