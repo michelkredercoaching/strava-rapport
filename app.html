@@ -1820,7 +1820,12 @@ function bandenKaart(d) {
       ${gratisOver() === 0 && !tegoedNu() ? '' : `<div class="sb-rij"><input id="btVraag" type="text" maxlength="300" placeholder="bijv. kasseien morgen" value="${esc(BTV.vraag)}"><button type="button" class="knop" data-btv="vraag" ${BTV.bezig ? 'disabled' : ''}>${BTV.bezig ? '...' : 'Vraag'}</button></div>`}
       ${BTV.antwoord ? `<div class="sb-antwoord">${opmaak(BTV.antwoord)}</div>${nuttigHtml(BTV.aid, BTV.nuttig)}` : ''}
       ${gratisTellerHtml('btVraagTeller')}</div>`}</div></div>
-    <div class="kaart"><div class="kaart-in"><span class="tag oranje">Pro</span>${slim}</div></div></div>`;
+    <div class="kaart"><div class="kaart-in"><span class="tag oranje">Pro</span>${slim}</div></div>
+    <div class="kaart"><div class="kaart-in"><span class="tag oranje">Pro</span><div class="label">Bandenlogboek</div><div class="bt-slot" style="margin-top:12px"><div class="achter">
+      <div class="lb-maanden"><div class="lb-maand"><span><b>Oktober</b><em>6 ritten &middot; 4x precies goed</em></span><i>&#8250;</i></div><div class="lb-maand"><span><b>September</b><em>9 ritten &middot; 7x precies goed</em></span><i>&#8250;</i></div></div>
+      <div class="lb-rit"><div class="lb-kop"><b>za 10 okt</b><span>08:30 &middot; Racefiets</span></div><div class="lb-sp"><b>4,9</b><small>voor</small><b>5,3</b><small>achter (bar)</small></div><div class="lb-weer">7&deg; &middot; nat wegdek</div></div></div>
+    <div class="voor">${SLOT}<b>Onthoud wat werkt</b><span>Elke rit bewaard met je spanning, het weer en hoe het voelde. Bij hetzelfde weer en dezelfde fiets rekent de app je oordeel van toen mee in je advies van vandaag.</span>
+      ${kanLid ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met Pro</button>' : BINNENKORT}</div></div></div></div></div>`;
 }
 let BT_LIB = null;
 // Vraag in de gratis bandentool (telt mee voor de 3 gratis vragen per week).
