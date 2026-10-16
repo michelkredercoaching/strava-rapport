@@ -138,6 +138,7 @@
   .tegel.foto .tg-pijl { color:#fff; }
   .tegel.foto.vec { background:radial-gradient(circle at 50% 32%, rgba(201,112,52,.55) 0%, rgba(92,48,20,.55) 34%, rgba(20,13,9,0) 70%), linear-gradient(180deg, #2a1a10 0%, #150e09 60%, #0d0907 100%); overflow:hidden; }
   .tegel .tg-beeld { position:absolute; left:0; right:0; top:0; height:64%; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+  .tegel .tg-fig svg { width:100%; height:auto; margin-top:10px; filter:drop-shadow(0 6px 14px rgba(255,107,26,.25)); }
   .tegel .tg-core { height:54%; }
   .tegel .tg-core svg { width:100%; height:100%; padding:8px 14px 0; box-sizing:border-box; }
   .tegel .tg-core .tc-gloed { animation:tcAdem 3.2s ease-in-out infinite; }
@@ -2880,6 +2881,7 @@ const TG_W = 'https://michelkredercoaching.nl/wp-content/uploads/';
 const TG_FOTO = {
   // [foto, uitsnede, zoom] (16-10: hele beeld passend in de tegel; banden een wegband)
   rijden: ['/app-fotos/banden.webp', 'center 30%', '86%'], // eigen foto Michel (16-10-2026)
+  analyse: [TG_W + '2026/09/ChatGPT-Image-22-sep-2026-11_28_20-510x510.png', '96% 30%', '165%'], // telefoon uit de hero van /power-profile-analyse/
   coach: TG_W + '2026/08/michel-hier-510x510.jpeg',
   coaching: TG_W + '2026/03/WhatsApp-Image-2026-03-24-at-09.24.28-510x510.jpeg',
   schema: [TG_W + '2026/03/WhatsApp-Image-2026-03-23-at-19.21.18-768x512.jpeg', '50% 22%', 'cover']
@@ -2890,8 +2892,8 @@ const TG_FOTO = {
 const TG_CORE = '<svg viewBox="26 22 152 92" aria-hidden="true"><defs><linearGradient id="tcRing" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFB47E"/><stop offset=".45" stop-color="#FF6B1A" stop-opacity=".55"/><stop offset="1" stop-color="#5a2a0e" stop-opacity=".2"/></linearGradient><linearGradient id="tcLijf" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#F2E6DA"/></linearGradient><linearGradient id="tcVloer" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF6B1A" stop-opacity="0"/><stop offset=".5" stop-color="#FF9A5C" stop-opacity=".7"/><stop offset="1" stop-color="#FF6B1A" stop-opacity="0"/></linearGradient><filter id="tcGloed" x="-40%" y="-80%" width="180%" height="260%"><feGaussianBlur stdDeviation="4"/></filter></defs><circle cx="100" cy="72" r="62" fill="none" stroke="url(#tcRing)" stroke-width="1.6"/><circle cx="100" cy="72" r="54" fill="none" stroke="#FF9A5C" stroke-opacity=".18" stroke-width="1" stroke-dasharray="2 5"/><line x1="34" y1="99" x2="166" y2="99" stroke="url(#tcVloer)" stroke-width="1.4"/><path class="tc-gloed" d="M66 72 L120 78" stroke="#FF6B1A" stroke-width="12" stroke-linecap="round" filter="url(#tcGloed)" opacity=".85"/><g fill="none" stroke="url(#tcLijf)" stroke-linecap="round" stroke-linejoin="round"><path d="M64 71 L121 78 L158 92" stroke-width="6.5"/><path d="M64 71 L61 96 L80 97" stroke-width="5"/><path d="M158 92 L161 98" stroke-width="4.5"/></g><circle cx="54" cy="66" r="7.5" fill="#FFFFFF"/><path d="M66 72 L120 78" stroke="#FF6B1A" stroke-width="3" stroke-linecap="round"/><circle cx="100" cy="10" r="2" fill="#FFB47E"/></svg>';
 const TG_TEL = '<svg viewBox="0 0 96 176" aria-hidden="true"><defs><linearGradient id="ttKast" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a3a3a"/><stop offset=".35" stop-color="#121212"/><stop offset="1" stop-color="#2a2a2a"/></linearGradient><linearGradient id="ttScherm" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#161210"/><stop offset="1" stop-color="#0a0a0a"/></linearGradient><linearGradient id="ttCurve" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF6B1A"/><stop offset="1" stop-color="#FFB47E"/></linearGradient><linearGradient id="ttVlak" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF6B1A" stop-opacity=".35"/><stop offset="1" stop-color="#FF6B1A" stop-opacity="0"/></linearGradient><linearGradient id="ttGlans" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><rect x="1" y="1" width="94" height="174" rx="16" fill="url(#ttKast)"/><rect x="4.5" y="4.5" width="87" height="167" rx="13" fill="url(#ttScherm)"/><rect x="36" y="9" width="24" height="6.5" rx="3.25" fill="#000"/><text x="12" y="31" font-family="DM Sans,Arial" font-size="5.6" font-weight="700" fill="#FF6B1A" letter-spacing="1">POWER PROFILE</text><text x="12" y="54" font-family="Bebas Neue,Impact" font-size="25" fill="#F5F3EF">248</text><text x="45" y="54" font-family="DM Sans,Arial" font-size="6.5" fill="#9B978F">W  FTP</text><text x="12" y="64" font-family="DM Sans,Arial" font-size="5.6" fill="#9B978F">3,4 W/kg  ·  Klimmer</text><path d="M12 104 C 18 76, 24 80, 32 86 S 50 96, 62 98 S 78 101, 84 102 L84 112 L12 112 Z" fill="url(#ttVlak)"/><path d="M12 104 C 18 76, 24 80, 32 86 S 50 96, 62 98 S 78 101, 84 102" fill="none" stroke="url(#ttCurve)" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="112.5" x2="84" y2="112.5" stroke="#2a2a2a" stroke-width="1"/><rect x="12" y="122" width="72" height="3.5" rx="1.75" fill="#1f1f1f"/><rect x="12" y="122" width="58" height="3.5" rx="1.75" fill="#4CC38A"/><rect x="12" y="131" width="72" height="3.5" rx="1.75" fill="#1f1f1f"/><rect x="12" y="131" width="40" height="3.5" rx="1.75" fill="#E2C84A"/><rect x="12" y="140" width="72" height="3.5" rx="1.75" fill="#1f1f1f"/><rect x="12" y="140" width="24" height="3.5" rx="1.75" fill="#FF6B1A"/><rect x="12" y="152" width="72" height="12" rx="6" fill="#FF6B1A"/><text x="48" y="160" font-family="DM Sans,Arial" font-size="5.6" font-weight="700" fill="#0a0a0a" text-anchor="middle" letter-spacing=".6">JOUW ACTIEPLAN</text><path d="M5 18 Q 5 5 18 5 L 60 5 L 5 92 Z" fill="url(#ttGlans)"/><rect x="1" y="1" width="94" height="174" rx="16" fill="none" stroke="#FF9A5C" stroke-opacity=".35" stroke-width="1"/></svg>';
 function tegelBeeld(v, ic) {
-  if (ic === 'core' || v === 'kiestraining' || ic === 'kracht') return '<span class="tg-beeld tg-core">' + TG_CORE + '</span>';
-  if (ic === 'analyse') return '<span class="tg-beeld tg-tel">' + TG_TEL + '</span>';
+  if (ic === 'core' || v === 'kiestraining' || ic === 'kracht') return '<span class="tg-beeld tg-fig" data-tgfig="1"></span>';
+  if (ic === 'analyse') return '';
   return '';
 }
 let TG_FIG_LIB = null, TG_FIG_LOOP = [];
@@ -2947,7 +2949,7 @@ function tegelsHtml(d) {
 function onderaanHtml(d) {
   if (d.beheer && BEKIJK === 'alles') d = voorbeeldData(d);
   const coaching = !!(d.lid && d.lid.bron === 'coaching');
-  const lidT = isLid(d) ? `<div class="tegels kort" style="margin-top:14px">${tegel({ v: 'lid', ic: 'lid', nm: 'Mijn Pro', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' vriend' : ' vrienden') + ' via jouw link' : 'Status, facturen en vrienden uitnodigen'), tag: '', breed: true })}</div>` : (routeHtml(d) ? '' : lidBalkHtml(d));
+  const lidT = isLid(d) ? `<div class="tegels kort" style="margin-top:14px">${tegel({ v: 'lid', ic: 'lid', nm: 'Mijn Pro', sub: coaching ? 'Inbegrepen bij je coaching' : ['schema', 'cadeau'].includes(d.lid.bron) ? 'Je hebt alles tot ' + esc(datumNl(d.lid.tot)) : (d.lid.vriendAantal ? VR_RANG.find(([m]) => d.lid.vriendAantal >= m)[1] + ' &middot; ' + d.lid.vriendAantal + (d.lid.vriendAantal === 1 ? ' vriend' : ' vrienden') + ' via jouw link' : 'Status, facturen en vrienden uitnodigen'), tag: '', breed: true })}</div>` : (STAP_ROUTE ? '' : lidBalkHtml(d));
   const bk = `<div class="bk-rij"><span>Binnenkort</span>${coaching ? '' : `<button type="button" data-view="pacing">${IC.pacing}Pacingplan</button>`}<button type="button" data-view="afval">${IC.afval}Afvalprogramma</button>${(!d.kracht || d.beheer) && Date.now() < KRACHT_OPEN_APP ? `<button type="button" data-view="krachtteaser">${IC.kracht}Kracht</button>` : ''}</div>`;
   const doel = d.gast ? '' : `<div id="doelvak" class="onder-doel">${doelVakHtml(d)}</div>`;
   return lidT + doel + hklap('tipdicht', 'Tip van Michel', tipKop(d), tipHtml(d), false) + (eersteWeekHtml(d) ? '' : bk);
@@ -2982,9 +2984,12 @@ function stapHtml(d) {
   const opties = [() => schemaEindeHtml(d), () => coreDoeHtml(d), () => reviewHtml(d), () => krachtNieuwHtml(d), () => analyseNudgeHtml(d),
     () => { const m = meldVraagHtml(); return m && m.trim() ? `<div id="meldvraag">${m}</div>` : ''; }];
   if (!rustigBegin(d)) opties.push(() => verkoopMomentHtml(d), () => routeHtml(d) || volgendeStapHtml(d), () => vriendMomentHtml(d), () => appHtml() || '');
-  for (const f of opties) { const h = f(); if (h && String(h).trim()) return h; }
+  STAP_ROUTE = false;
+  for (const f of opties) { const h = f(); if (h && String(h).trim()) { STAP_ROUTE = /class="route/.test(String(h)); return h; } }
   return '';
 }
+// Welke volgende stap er staat: is dat de route (met Word Pro erin), dan geen losse Word Pro-balk onderaan.
+let STAP_ROUTE = false;
 // Bovenaan in één zin wat de app is. Schema en coaching: je training blijft in TrainingPeaks (14-10-2026).
 function appZinHtml(d) {
   if (!d || d.gast) return '';
