@@ -1959,6 +1959,19 @@ async function routeCoach(req, res) {
     return res.status(200).json({ ok: true, berichten: (await haalCoachBerichten(email)).slice(-30), gratisOver: lid ? null : await gratisOver(email), lidOver: lid ? await lidOver(email) : null, vraagTegoed: await tegoedAantal(email) });
   }
   const body = await leesBody(req);
+  // Herhaalde vraag (16-10-2026): dezelfde vraag binnen 10 minuten (vaak drie keer op een voorgestelde vraag getikt)
+  // krijgt gewoon het vorige antwoord. Telt niet als vraag en kost geen nieuw antwoord.
+  {
+    const em = leesAppToken(String(body.t || '')), tk = String(body.tekst || '').trim().slice(0, 1000);
+    const zelfde = (x, y) => String(x || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() === String(y || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    if (em && tk.length >= 3) {
+      const b = await haalCoachBerichten(em), i = b.length - 2;
+      if (i >= 0 && b[i].van === 'ik' && b[i + 1].van === 'coach' && !b[i + 1].storing && zelfde(b[i].tekst, tk) && Date.now() - Date.parse(b[i].op) < 10 * 60000) {
+        const lid = await magSlim(em);
+        return res.status(200).json({ ok: true, berichten: b.slice(-30), herhaald: true, gratisOver: lid ? null : await gratisOver(em), lidOver: lid ? await lidOver(em) : null, vraagTegoed: await tegoedAantal(em) });
+      }
+    }
+  }
   const recht = await vraagRecht(res, body.t); if (!recht) return;
   const email = recht.email;
   const tekst = String(body.tekst || '').trim().slice(0, 1000);
