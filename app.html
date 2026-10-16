@@ -130,6 +130,12 @@
   .tegel .tg-pijl { position:absolute; right:12px; bottom:10px; color:var(--accent); font-size:20px; }
   .tegel.dimmed { opacity:.75; }
   .tegels.kort .tegel:not(.breed) { min-height:118px; }
+  .tegel.foto { justify-content:flex-end; min-height:158px !important; border-color:rgba(255,255,255,.12); background:linear-gradient(180deg, rgba(10,10,10,.05) 0%, rgba(10,10,10,.45) 45%, rgba(10,10,10,.93) 100%), var(--foto) center/cover no-repeat, var(--surface); }
+  .tegel.foto.breed { min-height:130px !important; background:linear-gradient(90deg, rgba(10,10,10,.92) 0%, rgba(10,10,10,.55) 55%, rgba(10,10,10,.15) 100%), var(--foto) center/cover no-repeat, var(--surface); border-color:rgba(255,107,26,.45); }
+  .tegel.foto .tg-nm { font-size:23px; text-shadow:0 1px 6px rgba(0,0,0,.6); }
+  .tegel.foto .tg-sub { color:rgba(245,243,239,.88); padding-right:18px; }
+  .tegel.foto .tg-tag { background:rgba(10,10,10,.72); }
+  .tegel.foto .tg-pijl { color:#fff; }
   .tegels.kort .tg-sub { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; padding-right:14px; }
   .tegel .tg-tag svg { width:10px; height:10px; vertical-align:-1px; }
   .app-zin { margin:4px 0 0; font-size:13.5px; line-height:1.5; color:var(--muted); } .app-zin a { color:var(--accent); white-space:nowrap; } .app-zin b { color:var(--white); font-weight:600; }
@@ -2859,10 +2865,22 @@ function appBalkHtml() {
   const uit = '';
   return `<div class="appbalk">${terug}<span class="cc-av"><img src="/icoon-192.png" alt=""></span><div class="ab-tekst"><div class="nm">${nm}</div><div class="st">${st}</div></div>${uit}</div>`;
 }
+const TG_W = 'https://michelkredercoaching.nl/wp-content/uploads/';
+const TG_FOTO = {
+  core: TG_W + '2026/10/core-app-product-510x510.png',
+  kracht: TG_W + '2026/10/core-app-product-510x510.png',
+  rijden: TG_W + '2024/06/Schwalbe2-510x510.jpg',
+  analyse: TG_W + '2026/09/ChatGPT-Image-22-sep-2026-11_28_20-510x510.png',
+  coach: TG_W + '2026/08/michel-hier-510x510.jpeg',
+  coaching: TG_W + '2026/03/WhatsApp-Image-2026-03-24-at-09.24.28-510x510.jpeg',
+  schema: TG_W + '2026/03/WhatsApp-Image-2026-03-23-at-19.21.18-768x512.jpeg'
+};
 function tegel({ v, href, ic, nm, sub, tag, tagKlas, breed, dim }) {
-  const bin = `<span class="tg-ic">${IC[ic] || ''}</span><span class="tg-nm">${nm}</span><span class="tg-sub">${sub}</span>${tag ? `<span class="tg-tag ${tagKlas || ''}">${tag}</span>` : ''}<span class="tg-pijl">&#8250;</span>`;
-  const kl = 'tegel' + (breed ? ' breed' : '') + (dim ? ' dimmed' : '');
-  return href ? `<a class="${kl}" href="${esc(href)}">${bin}</a>` : `<button type="button" class="${kl}" data-view="${v}">${bin}</button>`;
+  const foto = TG_FOTO[v === 'coaching' ? 'coaching' : v === 'kiestraining' ? 'core' : ic] || '';
+  const bin = `${foto ? '' : `<span class="tg-ic">${IC[ic] || ''}</span>`}<span class="tg-nm">${nm}</span><span class="tg-sub">${sub}</span>${tag ? `<span class="tg-tag ${tagKlas || ''}">${tag}</span>` : ''}<span class="tg-pijl">&#8250;</span>`;
+  const kl = 'tegel' + (breed ? ' breed' : '') + (dim ? ' dimmed' : '') + (foto ? ' foto' : '');
+  const st = foto ? ` style="--foto:url('${foto}')"` : '';
+  return href ? `<a class="${kl}"${st} href="${esc(href)}">${bin}</a>` : `<button type="button" class="${kl}"${st} data-view="${v}">${bin}</button>`;
 }
 function tegelsHtml(d) {
   // Minimalistisch beginscherm (besluit Michel 14-10-2026, na Dennis): bovenaan vier even grote tegels.
