@@ -177,6 +177,9 @@
   .lid-wat { margin-top:22px; } .lid-vrklap { margin-top:16px; }
   /* Keuzelijsten herkenbaar als keuzelijst (16-10-2026): pijltje rechts. */
   select:not([multiple]) { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23FF6B1A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 12px center !important; padding-right:34px !important; cursor:pointer; }
+  .betaalwacht { display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; padding:40px 20px; } .betaalwacht b { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:.03em; } .betaalwacht span { color:var(--muted); font-size:14px; max-width:300px; } .betaalwacht.in-modal { padding:16px 6px; }
+  .bw-ring { width:42px; height:42px; border-radius:50%; border:3px solid rgba(255,107,26,.25); border-top-color:var(--accent); animation:bwDraai .9s linear infinite; margin-bottom:8px; } @keyframes bwDraai { to { transform:rotate(360deg); } }
+  .wp-stappen { display:grid; gap:8px; margin:14px 0 4px; text-align:left; } .wp-stappen button { display:flex; gap:12px; align-items:center; width:100%; padding:12px; border-radius:10px; background:var(--surface2); border:1px solid rgba(255,107,26,.35); color:inherit; font-family:inherit; text-align:left; cursor:pointer; } .wp-stappen i { font-style:normal; flex:none; width:28px; height:28px; border-radius:50%; background:var(--accent); color:#000; font-weight:700; display:grid; place-items:center; } .wp-stappen span { font-size:12.5px; color:var(--muted); } .wp-stappen b { display:block; color:var(--white); font-size:14px; }
   .hklap { margin-top:12px; background:var(--surface); border:1px solid var(--border); border-radius:10px; }
   .hklap > summary { list-style:none; cursor:pointer; display:flex; align-items:baseline; gap:10px; padding:13px 14px; } .hklap > summary::-webkit-details-marker { display:none; }
   .hklap > summary b { font-family:'Bebas Neue',sans-serif; font-size:19px; letter-spacing:.03em; font-weight:400; }
@@ -5960,10 +5963,28 @@ async function laadOverzicht() {
 
 // Na de betaling (13-10-2026): een welkom met de eerste stappen, of uitleg als het (nog) niet lukte.
 let NA_BETALING = null;
+// Welkomststappen: eerst het venster dicht, dan doet de knop zijn werk.
+document.addEventListener('click', (e) => { if (e.target.closest('.wp-stappen [data-ccknop]')) lxDicht(); }, true);
 function naBetalingTonen() {
   if (!NA_BETALING || !D || D.gast) return;
   const soort = NA_BETALING; NA_BETALING = null;
-  if (soort === 'welkom') return modal(`<div class="md-modal"><div class="md-unlock">Welkom met Pro</div><h3 style="margin-top:8px">Je hebt nu alles</h3><p>Fijn dat je erbij bent. Met deze drie stappen staat je app helemaal goed:</p>
+  if (soort === 'wacht') {
+    // Mollie heeft soms iets langer nodig: rustig doorkijken, en pas na 2 minuten zeggen dat het niet lukte.
+    modal('<div class="betaalwacht in-modal"><div class="bw-ring"></div><b>Bijna klaar</b><span>Je bank heeft iets langer nodig. Zodra je betaling binnen is, staat je Pro hier vanzelf klaar.</span></div>');
+    let n = 0;
+    const kijk = async () => {
+      n++;
+      try { const st = await (await fetch('/api/lid?actie=status&t=' + encodeURIComponent(leesToken()))).json(); if (st.ok && st.lid && st.lid.status === 'actief') { lxDicht(); NA_BETALING = 'welkom'; return laadOverzicht(); } } catch (e) {}
+      if (n < 24) return setTimeout(kijk, 5000);
+      lxDicht(); NA_BETALING = 'niet'; naBetalingTonen();
+    };
+    setTimeout(kijk, 3000);
+    return;
+  }
+  if (soort === 'welkom') return modal(`<div class="md-modal"><div class="md-unlock">Welkom bij MKC Pro</div><h3 style="margin-top:8px">Je hebt nu alles${D && D.naam ? ', ' + esc(String(D.naam).split(' ')[0]) : ''}</h3><p>Je betaling is gelukt en je factuur staat bij Mijn Pro. Tik de drie stappen aan, dan staat je app helemaal goed:</p>
+    <div class="wp-stappen"><button type="button" data-ccknop="rijden"><i>1</i><span><b>Zet je fiets erin</b>Dan zie je elke dag je spanning, kleding en voeding.</span></button><button type="button" data-ccknop="core"><i>2</i><span><b>Start je Core-intake</b>Eén minuut, dan staat je eerste sessie klaar.</span></button><button type="button" data-ccknop="meldingen"><i>3</i><span><b>Zet je meldingen aan</b>Elke ochtend om 7:00 alles voor je rit.</span></button></div>
+    <button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:10px auto 0">Later</button></div>`);
+  if (false) return modal(`<div class="md-modal"><div class="md-unlock">Welkom met Pro</div><h3 style="margin-top:8px">Je hebt nu alles</h3><p>Fijn dat je erbij bent. Met deze drie stappen staat je app helemaal goed:</p>
     <ol class="pm-stappen" style="text-align:left"><li><b>Zet je fiets erin</b><span>Bij Vandaag rijden: dan zie je elke dag je spanning, kleding en voeding.</span></li><li><b>Start de Core-app</b><span>${D && D.voorLancering ? 'Gaat open op vrijdag 16 oktober om 12:00. Je eerste maand begint ook pas dan.' : 'Een korte intake van een minuut, dan staat je eerste sessie klaar.'}</span></li><li><b>Zet je ochtendbericht aan</b><span>Elke ochtend om 7:00 alles voor je rit op je telefoon.</span></li></ol>
     <button type="button" class="knop" data-view="rijden">Begin met je fiets</button><button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:8px auto 0">Later</button></div>`);
   modal(`<h3>Je betaling is nog niet binnen</h3><p>Dat kan gebeuren als je de betaling hebt afgebroken, of als je bank er even over doet. Zonder geslaagde betaling wordt er niets afgeschreven.</p><p class="klein">Kwam de betaling wel door? Dan staat je Pro er binnen een paar minuten. Ververs de app dan even.</p><button type="button" class="knop" data-view="lid">Opnieuw proberen</button><button type="button" class="sb-link" data-lx="dicht" style="display:block;margin:8px auto 0">Sluiten</button>`);
@@ -5979,15 +6000,15 @@ async function start() {
     } catch (e) {}
   }
   if (p.get('lid') === 'terug') {
-    $('#app').innerHTML = '<div class="laden">Bedankt! Je betaling wordt verwerkt...</div>';
+    $('#app').innerHTML = '<div class="laden betaalwacht"><div class="bw-ring"></div><b>Bedankt!</b><span>We checken je betaling en zetten je Pro klaar…</span></div>';
     let gelukt = false;
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 20; i++) {
       await new Promise((r) => setTimeout(r, 1500));
       try { const s = await (await fetch('/api/lid?actie=status&t=' + encodeURIComponent(leesToken()))).json(); if (s.ok && s.lid && s.lid.status === 'actief') { gelukt = true; break; } } catch (e) {}
     }
     // Na betalen terug op Mijn Pro (16-10-2026, Michel): status, facturen en vrienden uitnodigen, met de welkomstuitleg erover.
     try { history.replaceState(null, '', location.pathname + '#lid'); } catch (e) {}
-    NA_BETALING = gelukt ? 'welkom' : 'niet';
+    NA_BETALING = gelukt ? 'welkom' : 'wacht';
   }
   return laadOverzicht();
 }
