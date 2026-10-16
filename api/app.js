@@ -1347,8 +1347,7 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('app fout:', e);
     // Foutlogboek (16-10-2026, Gert kreeg 'serverfout'): Vercel bewaart geen oude logs, dus de laatste 50 in Redis.
-    try { const wie = leesAppToken(String(req.query?.t || '')) || ''; await redis(['LPUSH', 'app:fouten', JSON.stringify({ op: new Date().toISOString(), actie, wie, fout: String((e && e.message) || e).slice(0, 300), stack: String((e && e.stack) || '').split('
-').slice(1, 5).join(' | ').slice(0, 600) })]); await redis(['LTRIM', 'app:fouten', '0', '49']); } catch (x) {}
+    try { const wie = leesAppToken(String(req.query?.t || '')) || ''; await redis(['LPUSH', 'app:fouten', JSON.stringify({ op: new Date().toISOString(), actie, wie, fout: String((e && e.message) || e).slice(0, 300), stack: String((e && e.stack) || '').split(String.fromCharCode(10)).slice(1, 5).join(' | ').slice(0, 600) })]); await redis(['LTRIM', 'app:fouten', '0', '49']); } catch (x) {}
     return res.status(500).json({ ok: false, fout: 'Er ging iets mis aan onze kant. Probeer het over een minuut nog eens.' });
   }
 }
@@ -1474,7 +1473,7 @@ async function routeVerifieer(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   const body = await leesBody(req);
   const email = String(body.email || '').trim().toLowerCase();
-  const code = String(body.code || '').replace(/D/g, '');
+  const code = String(body.code || '').replace(/[^0-9]/g, '');
   if (!geldigMail(email) || code.length !== 6) return res.status(400).json({ ok: false, fout: 'Vul je mailadres en de 6 cijfers uit de mail in.' });
   // Maximaal 5 pogingen per code, anders kun je hem raden.
   const p = await redis(['INCR', `app:pogingen:${email}`]);
