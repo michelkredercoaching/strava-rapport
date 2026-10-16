@@ -103,6 +103,7 @@
   .rij2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   /* Keuzelijsten herkenbaar als keuzelijst (16-10-2026, Luus): pijltje rechts. */
   select:not([multiple]) { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23FF6B1A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 12px center !important; padding-right:34px !important; cursor:pointer; }
+  .sp-muziek { display:flex; align-items:center; gap:10px; margin-top:12px; padding:10px 12px; border-radius:8px; background:rgba(30,215,96,.1); border:1px solid rgba(30,215,96,.4); color:#1ED760; text-decoration:none; font-size:13px; } .sp-muziek span { color:rgba(245,243,239,.8); } .sp-muziek b { display:block; color:#f5f3ef; font-size:14px; }
   .dk2 { display:grid; grid-template-columns:64px 1fr; gap:6px; } .dk2 select { width:100%; min-height:46px; padding:10px 8px; background:var(--surface2); border:1px solid rgba(255,255,255,.14); border-radius:5px; color:var(--white); font-size:16px; font-family:inherit; } .dk2-tekst { grid-column:1 / -1; font-size:12px; color:#FF6B1A; }
   /* Sessies */
   .sessies { display:grid; gap:12px; }
@@ -1623,9 +1624,11 @@ function toonOverzicht(el, sessie) {
   o.innerHTML = `<div class="sp-ovz-in"><div class="soort">Dit ga je doen</div><div class="naam" style="font-size:30px">${esc(sessie.naam)}</div>
     <p class="klein muted" style="margin:4px 0 12px">${sessie.minuten} min &middot; warming-up, dan ${r} ${r === 1 ? 'ronde' : 'rondes'} van ${sessie.werk} s werk en ${sessie.rust} s rust</p>
     <div class="sp-ovz-lijst">${sessie.oefeningen.map((x, i) => `<div class="sp-ovz-rij"><div class="sp-ovz-beeld" data-ovzanim="${x.id}"></div><div><b>${i + 1}. ${esc(x.naam)}</b><span>${x.perKant ? 'per kant, ' : ''}${esc(x.cue || '')}</span></div></div>`).join('')}</div>
+    <a class="sp-muziek" data-ovz="muziek" href="https://open.spotify.com/playlist/2SionNpdgzTWbSvNrf718X" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.6 14.4a.6.6 0 0 1-.9.2c-2.4-1.5-5.4-1.8-9-1-.4.1-.7-.2-.8-.5-.1-.4.2-.7.5-.8 3.9-.9 7.2-.5 9.9 1.1.3.2.4.6.3 1zm1.2-2.7c-.2.4-.7.5-1.1.3-2.7-1.7-6.9-2.2-10.2-1.2-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.7-1.1 8.4-.6 11.5 1.3.4.3.5.8.3 1.1zm.1-2.8C14.7 9 9.4 8.8 6.3 9.7c-.5.2-1-.1-1.2-.6-.2-.5.1-1 .6-1.2 3.5-1.1 9.4-.8 13.1 1.4.5.3.6.9.4 1.3-.3.4-.9.6-1.3.3z"/></svg><span><b>Zet je muziek aan</b>De MKC Core-playlist op Spotify</span></a>
     <button class="knop" data-ovz="begin" style="margin-top:14px;width:100%">Begin</button></div>`;
   el.appendChild(o);
   try { o.querySelectorAll('[data-ovzanim]').forEach((b) => { const a = window.CoreAnimaties && window.CoreAnimaties[b.dataset.ovzanim]; if (a) window.CoreFiguur.speel(b, a); }); } catch (e) {}
+  o.querySelector('[data-ovz=muziek]').onclick = (e) => e.stopPropagation();
   o.querySelector('[data-ovz=begin]').onclick = (e) => { e.stopPropagation(); o.remove(); sp.pauze = false; naarStap(0); };
 }
 function naarStap(i) {
