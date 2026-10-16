@@ -1330,7 +1330,9 @@ function ccKnopRegel(t) {
 function ccKnoppenHtml(codes) {
   const d = D && !D.gast ? zicht() : null;
   const klant = !!(d && ((d.lid && ['coaching', 'schema'].includes(d.lid.bron)) || d.schema));
-  return codes.filter((c) => !(CC_KNOPPEN[c][1].verkoop && klant)).map((c) => { const [t, o] = CC_KNOPPEN[c];
+  return codes.filter((c) => !(CC_KNOPPEN[c][1].verkoop && klant)).map((c) => { const [t0, o] = CC_KNOPPEN[c];
+    // Nog geen Pro: de knop heet Word Pro (16-10-2026).
+    const t = c === 'lid' && !(D && !D.gast && isLid(zicht())) ? 'Word Pro' : t0;
     return o.href ? `<a class="wa-coach cc-prod" href="${SITE}${o.href}" target="_blank" rel="noopener">${t}</a>` : `<button type="button" class="wa-coach cc-prod" data-ccknop="${c}">${t}</button>`; }).join('');
 }
 document.addEventListener('click', (e) => {
