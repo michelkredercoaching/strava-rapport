@@ -345,11 +345,18 @@ async function routeFactuurPdf(req, res) {
   const lid = await haalLid(email);
   const f = ((lid && lid.facturen) || []).find((x) => x.id === String(req.query?.id || ''));
   if (!f) return res.status(404).json({ ok: false, fout: 'Factuur niet gevonden.' });
+  // Eerst een pagina met terugknop (16-10-2026, Luus kwam niet meer uit de pdf in de app op het beginscherm).
+  if (req.query?.pdf !== '1') {
+    const nr = String(f.nr || 'Factuur').replace(/[<>&"]/g, '');
+    const pdf = '/api/lid?actie=factuur&pdf=1&id=' + encodeURIComponent(f.id) + '&t=' + encodeURIComponent(String(req.query?.t || ''));
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.status(200).send('<!doctype html><html lang="nl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>' + nr + '</title><style>body{margin:0;background:#0a0a0a;color:#f5f3ef;font-family:Arial,sans-serif;display:flex;flex-direction:column;height:100vh}.k{display:flex;justify-content:space-between;align-items:center;padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;border-bottom:1px solid rgba(255,255,255,.12)}a{color:#FF6B1A;font-weight:700;text-decoration:none;font-size:15px}iframe{flex:1;border:0;width:100%;background:#fff}</style></head><body><div class="k"><a href="/app" onclick="if(history.length>1){event.preventDefault();history.back();}">&lsaquo; Terug naar de app</a><a href="' + pdf + '&dl=1">Download</a></div><iframe src="' + pdf + '" title="' + nr + '"></iframe></body></html>');
+  }
   const r = await fetch(`https://api.mollie.com/v2/sales-invoices/${encodeURIComponent(f.id)}/pdf`, { headers: { Authorization: `Bearer ${MOLLIE_KEY}` } }); // los /pdf-endpoint: Accept-header gaf JSON terug (lege pagina, Luus 16-10)
   if (!r.ok || !/pdf/.test(r.headers.get('content-type') || '')) return res.status(502).json({ ok: false, fout: 'De factuur ophalen lukte niet.' });
   const buf = Buffer.from(await r.arrayBuffer());
   res.setHeader('Content-Type', 'application/pdf');
-  res.setHeader('Content-Disposition', `inline; filename="Factuur-${(f.nr || f.id).replace(/[^A-Za-z0-9-]/g, '')}.pdf"`);
+  res.setHeader('Content-Disposition', `${req.query?.dl === '1' ? 'attachment' : 'inline'}; filename="Factuur-${(f.nr || f.id).replace(/[^A-Za-z0-9-]/g, '')}.pdf"`);
   return res.status(200).send(buf);
 }
 // Maat uitnodigen: persoonlijke link. De maat betaalt de eerste maand de helft,
