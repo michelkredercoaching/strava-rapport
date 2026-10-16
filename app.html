@@ -2033,11 +2033,12 @@ function slimBandenKaart() {
     ${uit.redenen.length ? `<p class="klein">Meegerekend: ${uit.redenen.join(', ')}.</p>` : ''}
     ${sbRijdHtml(f, uit)}`;
   const tabs = ''; // 16-10-2026: elke onderdeel is een eigen pagina
-  if (tab === 'groep') { grZorg(); return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
-    ${tabs}
-    <div id="grmaak">${grMaakHtml()}</div>
+  // 16-10-2026: onder de link losse blokken: vrienden uitnodigen, wind, ritkaart.
+  if (tab === 'groep') { grZorg(); return `<div id="sbBlokken" style="display:contents"><div class="kaart actief" id="banden"><div class="kaart-in">${kop}
+    <div id="grmaak">${grMaakHtml()}</div></div></div>
+    ${grVriendHtml(zicht())}
     ${windRegelHtml()}
-    ${RK_BLOK()}</div></div>`; }
+    ${RK_BLOK()}</div>`; }
   if (tab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${sbWeerHtml()}
     ${sbOordeelHtml()}
@@ -3788,7 +3789,7 @@ function paginaHtml(d) {
   const voet = `<div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
   const dz = d.beheer && BEKIJK === 'alles' ? voorbeeldData(d) : d;
   if (VIEW === 'rijden') return appBalkHtml('Vandaag rijden') + `<div class="kaarten">${bandenKaart(d)}</div>` + voet;
-  if (VIEW === 'voeding' || VIEW === 'kleding' || VIEW === 'groep') return appBalkHtml() + `<div class="kaarten">${bandenKaart(d)}${VIEW === 'groep' ? (toonSlim(d) ? '' : windKaartHtml()) + (d.gast ? '' : grVriendHtml(d)) : ''}</div>` + voet;
+  if (VIEW === 'voeding' || VIEW === 'kleding' || VIEW === 'groep') return appBalkHtml() + `<div class="kaarten">${bandenKaart(d)}${VIEW === 'groep' && !toonSlim(d) ? (d.gast ? '' : grVriendHtml(d)) + windKaartHtml() : ''}</div>` + voet;
   if (VIEW === 'schema') return appBalkHtml('Mijn schema') + `<div class="kaarten">${schemaKaart(d)}</div>` + voet;
   if (VIEW === 'core') return appBalkHtml('Core-app') + `<div class="kaarten">${coreKaart(dz.core)}</div>` + voet;
   if (VIEW === 'kracht') return appBalkHtml() + krachtPagina(dz) + voet;
