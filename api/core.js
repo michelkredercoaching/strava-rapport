@@ -614,11 +614,25 @@ export async function coreTrechter() {
   }
   return t;
 }
+// Hele functie afgevangen (16-10-2026): Core-fouten mogen inloggen en het overzicht nooit blokkeren.
 export async function coreVoorEmail(email) {
+  try { return await coreVoorEmailRuw(email); } catch (e) {
+    console.error('coreVoorEmail', e);
+    try { await redis(['LPUSH', 'app:fouten', JSON.stringify({ op: new Date().toISOString(), actie: 'coreVoorEmail', wie: email, fout: String((e && e.message) || e).slice(0, 300), stack: String((e && e.stack) || '').split(String.fromCharCode(10)).slice(1, 6).join(' | ').slice(0, 800) })]); } catch (x) {}
+    return null;
+  }
+}
+async function coreVoorEmailRuw(email) {
   if (!email) return null;
   const d = await dossierVoorEmail(String(email).toLowerCase());
   if (!d) return null;
-  const b = klantBeeld(d);
+  let b;
+  try { b = klantBeeld(d); } catch (e) {
+    // 16-10-2026: een kapot dossier mag inloggen niet blokkeren (Gert kreeg 'serverfout'). Fout naar app:fouten.
+    console.error('coreVoorEmail', email, e);
+    try { await redis(['LPUSH', 'app:fouten', JSON.stringify({ op: new Date().toISOString(), actie: 'coreVoorEmail', wie: email, fout: String((e && e.message) || e).slice(0, 300), stack: String((e && e.stack) || '').split(String.fromCharCode(10)).slice(1, 6).join(' | ').slice(0, 800) })]); } catch (x) {}
+    return null;
+  }
   const tests = b.tests || [];
   return {
     link: linkVoor(d.id), naam: b.naam, nogDicht: b.nogDicht,
