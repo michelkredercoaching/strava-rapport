@@ -101,6 +101,8 @@
   .datum:focus-within { border-color:var(--accent); }
   textarea { min-height:90px; resize:vertical; }
   .rij2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  /* Keuzelijsten herkenbaar als keuzelijst (16-10-2026, Luus): pijltje rechts. */
+  select:not([multiple]) { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23FF6B1A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 12px center !important; padding-right:34px !important; cursor:pointer; }
   .dk2 { display:grid; grid-template-columns:64px 1fr; gap:6px; } .dk2 select { width:100%; min-height:46px; padding:10px 8px; background:var(--surface2); border:1px solid rgba(255,255,255,.14); border-radius:5px; color:var(--white); font-size:16px; font-family:inherit; } .dk2-tekst { grid-column:1 / -1; font-size:12px; color:#FF6B1A; }
   /* Sessies */
   .sessies { display:grid; gap:12px; }
@@ -570,7 +572,7 @@ function intakeHtml() {
       ${optie('beperking', 'schouders', 'Steunen op mijn ellebogen of schouders', 'checkbox')}${optie('beperking', 'rugligging', 'Plat op mijn rug liggen', 'checkbox')}
       ${optie('beperking', 'staan', 'Voorover buigen of op één been staan', 'checkbox')}${optie('beperking', 'geen', 'Alles gaat prima', 'checkbox')}</div>
     <div class="vraag" data-stap="8"><div class="v">Wat rijd je vooral?</div>
-      <select name="discipline"><option value="">Weet ik niet</option><option value="toer">Lange toertochten of granfondo's</option><option value="bergen">Bergen en lange klimmen</option><option value="kasseien">Kasseien en klassiekers</option><option value="gravel">Gravel</option><option value="crit">Criteriums en wedstrijden</option></select></div>
+      <select name="discipline"><option value="">Kies wat je vooral rijdt</option><option value="toer">Lange toertochten of granfondo's</option><option value="bergen">Bergen en lange klimmen</option><option value="kasseien">Kasseien en klassiekers</option><option value="gravel">Gravel</option><option value="crit">Criteriums en wedstrijden</option><option value="">Van alles wat / weet ik niet</option></select></div>
     <div class="vraag" data-stap="8"><div class="v">Train je naar iets toe? <span class="muted" style="font-weight:400">(mag je overslaan)</span></div>
       <div class="rij2"><input type="text" name="doelNaam" placeholder="Bijv. Amstel Gold Race" maxlength="60" value="${S.doel ? esc(S.doel.naam) : ''}">${datumVeld('name="doelDatum"', S.doel ? S.doel.datum : '')}</div>
       <p class="klein muted" style="margin-top:6px">Dit doel staat ook in je MKC-app, zodat je overal hetzelfde aftelt.</p></div>
