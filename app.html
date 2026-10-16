@@ -130,13 +130,13 @@
   .tegel .tg-pijl { position:absolute; right:12px; bottom:10px; color:var(--accent); font-size:20px; }
   .tegel.dimmed { opacity:.75; }
   .tegels.kort .tegel:not(.breed) { min-height:118px; }
-  .tegel.foto { justify-content:flex-end; min-height:158px !important; border-color:rgba(255,255,255,.12); background:linear-gradient(180deg, rgba(10,10,10,.05) 0%, rgba(10,10,10,.45) 45%, rgba(10,10,10,.93) 100%), var(--foto) var(--fpos, center)/var(--fmaat, cover) no-repeat, var(--fkleur, var(--surface)); }
+  .tegel.foto { justify-content:flex-end; min-height:158px !important; border-color:rgba(255,255,255,.12); background:linear-gradient(180deg, rgba(10,10,10,0) 0%, rgba(10,10,10,.25) 45%, rgba(10,10,10,.8) 100%), var(--foto) var(--fpos, center)/var(--fmaat, cover) no-repeat, var(--fkleur, var(--surface)); } /* 16-10: onderkant minder zwart */
   .tegel.foto.breed { min-height:160px !important; background:linear-gradient(0deg, rgba(10,10,10,.92) 0%, rgba(10,10,10,.4) 45%, rgba(10,10,10,0) 75%), var(--foto) var(--fpos, center)/var(--fmaat, cover) no-repeat, var(--surface); border-color:rgba(255,107,26,.45); }
   .tegel.foto .tg-nm { font-size:23px; text-shadow:0 1px 6px rgba(0,0,0,.6); }
   .tegel.foto .tg-sub { color:rgba(245,243,239,.88); padding-right:18px; }
   .tegel.foto .tg-tag { background:rgba(10,10,10,.72); }
   .tegel.foto .tg-pijl { color:#fff; }
-  .tegel.foto.vec { background:radial-gradient(circle at 50% 32%, rgba(201,112,52,.55) 0%, rgba(92,48,20,.55) 34%, rgba(20,13,9,0) 70%), linear-gradient(180deg, #2a1a10 0%, #150e09 60%, #0d0907 100%); overflow:hidden; }
+  .tegel.foto.vec { background:radial-gradient(circle at 50% 32%, rgba(201,112,52,.55) 0%, rgba(92,48,20,.55) 34%, rgba(20,13,9,0) 70%), linear-gradient(180deg, #2a1a10 0%, #1c120b 60%, #1a110b 100%); overflow:hidden; }
   .rv-wissel { display:block; margin:14px 0 2px; }
   .tegel .tg-voed svg { height:92%; width:auto; margin-top:6px; filter:drop-shadow(0 8px 16px rgba(0,0,0,.5)); }
   .tegel .tg-beeld { position:absolute; left:0; right:0; top:0; height:64%; display:flex; align-items:center; justify-content:center; pointer-events:none; }
@@ -2891,7 +2891,8 @@ function appBalkHtml() {
 const TG_W = 'https://michelkredercoaching.nl/wp-content/uploads/';
 const TG_FOTO = {
   // [foto, uitsnede, zoom] (16-10: hele beeld passend in de tegel; banden een wegband)
-  rijden: ['/app-fotos/banden.webp', 'center 30%', '86%'], // eigen foto Michel (16-10-2026)
+  rijden: ['/app-fotos/banden.webp', 'center 32%', 'cover'], // eigen foto Michel (16-10-2026); cover = geen randen
+  voeding: ['/app-fotos/voeding.jpg', 'center 38%', 'cover'], // bidon + gel, aangeleverd door Michel (16-10-2026)
   analyse: [TG_W + '2026/09/ChatGPT-Image-22-sep-2026-11_28_20-510x510.png', '85% 40%', 'cover'], // 16-10: cover = zo ver mogelijk uitgezoomd zonder zwarte randen // telefoon uit de hero van /power-profile-analyse/
   coach: TG_W + '2026/08/michel-hier-510x510.jpeg',
   coaching: TG_W + '2026/03/WhatsApp-Image-2026-03-24-at-09.24.28-510x510.jpeg',
