@@ -2045,7 +2045,7 @@ async function routeCoach(req, res) {
   const nieuw = berichten.concat(
     { van: 'ik', tekst, op: nu },
     { van: 'coach', tekst: antwoord || COACH_STORING, op: new Date().toISOString(), medisch, storing: !antwoord, ...(aid ? { aid } : {}) }
-  ).slice(-60);
+  ).filter((b) => !b.op || Date.now() - Date.parse(b.op) < 365 * 864e5).slice(-60); // bewaartermijn 12 maanden
   await redis(['SET', `app:coach:${email}`, JSON.stringify(nieuw)]);
   if (medisch) {
     const [core, mc] = await Promise.all([coreVoorEmail(email), mcLid(email)]);

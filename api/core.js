@@ -815,7 +815,7 @@ async function routePijn(req, res) {
   const plek = KLACHTEN.includes(body.plek) ? body.plek : null;
   const oefening = String(body.oefening || '').slice(0, 80) || null;
   const waar = body.waar === 'tijdens' ? 'tijdens' : 'voor';
-  d.pijn = (d.pijn || []).concat({ score, plek, oefening, waar, niveau: d.week, op: nu() }).slice(-60);
+  d.pijn = (d.pijn || []).concat({ score, plek, oefening, waar, niveau: d.week, op: nu() }).filter((x) => Date.now() - Date.parse(x.op) < 365 * 864e5).slice(-60); // bewaartermijn 12 maanden
   const advies = score >= 6 ? 'mobiliteit' : score >= 4 ? 'licht' : 'normaal';
   let seintje = false;
   if (score >= 6 && (oefening || waar === 'tijdens' || body.melden)) {

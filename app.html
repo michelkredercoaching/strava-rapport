@@ -2517,7 +2517,7 @@ function lidStap2Html() {
 document.addEventListener('click', (e) => { const k = e.target.closest('[data-lidplan="terug"]'); if (!k) return; LV.plan = null; const s2 = document.getElementById('lidStap2'); if (s2) s2.innerHTML = ''; document.querySelector('.plannen')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
 function vriendCodeVeld() {
   if (vriendActief()) return '';
-  return `<details class="vr-codeveld"><summary>Heb je een code van een maat? <span>50% korting</span></summary><div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:8px"><input id="vrCodeIn" maxlength="12" placeholder="Bijv. SANNE" autocomplete="off" style="text-transform:uppercase"><button type="button" class="knop" data-vrcode="1" style="width:auto;padding:0 18px">Toepassen</button></div><p class="klein" id="vrCodeFout" style="margin:6px 0 0"></p></details>`;
+  return `<details class="vr-codeveld"><summary>Heb je een code van een maat? <span>eerste maand 50% korting</span></summary><div style="display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:8px"><input id="vrCodeIn" maxlength="12" placeholder="Bijv. SANNE" autocomplete="off" style="text-transform:uppercase"><button type="button" class="knop" data-vrcode="1" style="width:auto;padding:0 18px">Toepassen</button></div><p class="klein" id="vrCodeFout" style="margin:6px 0 0"></p></details>`;
 }
 document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-vrcode]'); if (!k) return;
@@ -3818,7 +3818,7 @@ function vriendKaartHtml(l, compact) {
   return `<div class="vr-kaart"><div class="vr-kop"><div><small>Jouw rang</small><b>${rang}</b></div><div class="vr-n"><b>${n}</b><small>${n === 1 ? 'maat' : 'maten'} via jouw link</small></div></div>
     <h3>${l.gratis ? 'Krijg gratis Pro via je maten' : 'Nodig je maten uit'}</h3>
     ${D && D.mijnCode ? `<div class="vr-code">Jouw code <b>${esc(D.mijnCode)}</b><span>Noem hem gewoon, je maat vult hem in bij Pro worden.</span></div>` : ''}
-    <div class="vr-geef"><div><small>Jouw maat krijgt</small><b>50% korting</b><span>eerste maand &euro;${APP_PRIJS.half}, of een jaar voor &euro;${APP_PRIJS.jaarMaat}</span></div><div><small>Jij krijgt</small><b>${zelf ? '2 weken' : coaching ? 'Een rang' : 'Analyse'}</b><span>${zelf ? (gratisLid ? 'gratis Pro per maat, plus de mijlpalen hieronder' : 'extra per maat, plus de mijlpalen hieronder') : coaching ? 'van Gangmaker tot Ploegleider' : 'gratis bij 3 maten, plus je rang'}</span></div></div>
+    <div class="vr-geef"><div><small>Jouw maat krijgt</small><b>1e maand &euro;${APP_PRIJS.half}</b><span>50% korting op de eerste maand, of een jaar voor &euro;${APP_PRIJS.jaarMaat}</span></div><div><small>Jij krijgt</small><b>${zelf ? '2 weken' : coaching ? 'Een rang' : 'Analyse'}</b><span>${zelf ? (gratisLid ? 'gratis Pro per maat, plus de mijlpalen hieronder' : 'extra per maat, plus de mijlpalen hieronder') : coaching ? 'van Gangmaker tot Ploegleider' : 'gratis bij 3 maten, plus je rang'}</span></div></div>
     ${ladder}<p class="vr-doel">${doel}</p>
     ${l.vriendAnalyse ? `<a class="knop" href="${esc(l.vriendAnalyse)}" target="_blank" rel="noopener" style="margin-bottom:10px">Claim je gratis analyse</a>` : ''}
     ${knoppen}
@@ -4189,7 +4189,7 @@ async function rennerStory() {
   g2.fillStyle = 'rgba(245,243,239,.75)'; g2.font = dm(40, 500); g2.fillText('Medailles verdienen met elke rit en elke Core-sessie.', W / 2, 1420);
   storyVoet(g2, W, H, sl.code);
   const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.92));
-  await storyDelen(blob, 'mkc-renner.jpg', 'Mijn wielren-avatar in de MKC-app.' + (sl.code ? ' Met code ' + sl.code + ' krijg je 50% korting:' : ' Train mee met 50% korting:'), sl.url);
+  await storyDelen(blob, 'mkc-renner.jpg', 'Mijn wielren-avatar in de MKC-app.' + (sl.code ? ' Met code ' + sl.code + ' krijg je je eerste maand voor de helft:' : ' Train mee, je eerste maand voor de helft:'), sl.url);
 }
 function medailleSlot() { return '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>'; }
 function badgeModal(id, nieuwNiveau) {
@@ -4236,7 +4236,7 @@ async function badgeStory(b) {
   if (nm) { x.fillStyle = WIT; x.font = dm(44, 700); x.fillText(nm + ' in de MKC-app', W / 2, 1490); }
   storyVoet(x, W, H, sl.code);
   const blob = await new Promise((ok) => c.toBlob(ok, 'image/jpeg', 0.92));
-  await storyDelen(blob, 'mkc-medaille-' + b.id + '.jpg', b.naam + ' (' + MD_NAAM[b.niveau - 1].toLowerCase() + ') in de MKC-app.' + (sl.code ? ' Met code ' + sl.code + ' krijg je 50% korting:' : ' Train mee met 50% korting:'), sl.url);
+  await storyDelen(blob, 'mkc-medaille-' + b.id + '.jpg', b.naam + ' (' + MD_NAAM[b.niveau - 1].toLowerCase() + ') in de MKC-app.' + (sl.code ? ' Met code ' + sl.code + ' krijg je je eerste maand voor de helft:' : ' Train mee, je eerste maand voor de helft:'), sl.url);
 }
 document.addEventListener('click', async (e) => {
   const t = e.target.closest('[data-badge]'); if (t) { e.preventDefault(); return badgeModal(t.dataset.badge); }
@@ -5314,7 +5314,7 @@ function grStandaardDag() { const u = Number(new Date().toLocaleString('en-GB', 
 function grZorg() { if (GR.maak) return; const vn = String((D && D.naam) || '').trim().split(' ')[0]; GR.maak = { door: vn, datum: grStandaardDag(), tijd: '09:00', duur: 3, tempo: 'rustig', plaats: (SB.profiel && SB.profiel.plaats) || WK.plaats || null }; }
 function grVriendHtml(d) {
   const l = vriendLid(d); if (!l) return '';
-  return `<div class="gr-vriend"><b>Rijden je maten nog zonder de app?</b><p>Met jouw link krijgen ze 50% korting${l.vriendBeloning === false ? '' : l.gratis || l.vriendCadeau ? ', en jij 2 weken gratis Pro per maat' : ', en jij 2 weken extra per maat'}.</p>${vriendKaartHtml(l, true)}</div>`;
+  return `<div class="gr-vriend"><b>Rijden je maten nog zonder de app?</b><p>Met jouw link krijgen ze 50% korting op hun eerste maand${l.vriendBeloning === false ? '' : l.gratis || l.vriendCadeau ? ', en jij 2 weken gratis Pro per maat' : ', en jij 2 weken extra per maat'}.</p>${vriendKaartHtml(l, true)}</div>`;
 }
 function grPlanKnop() { return '<button type="button" class="gr-plan-knop" data-gr="open">Rij je samen? <b>Plan een groepsrit en deel de link</b></button>'; }
 function grMaakHtml() {
