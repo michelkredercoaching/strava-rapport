@@ -2881,7 +2881,7 @@ const TG_W = 'https://michelkredercoaching.nl/wp-content/uploads/';
 const TG_FOTO = {
   // [foto, uitsnede, zoom] (16-10: hele beeld passend in de tegel; banden een wegband)
   rijden: ['/app-fotos/banden.webp', 'center 30%', '86%'], // eigen foto Michel (16-10-2026)
-  analyse: [TG_W + '2026/09/ChatGPT-Image-22-sep-2026-11_28_20-510x510.png', '96% 30%', '165%'], // telefoon uit de hero van /power-profile-analyse/
+  analyse: [TG_W + '2026/09/ChatGPT-Image-22-sep-2026-11_28_20-510x510.png', '112% 34%', '128%'], // telefoon uit de hero van /power-profile-analyse/
   coach: TG_W + '2026/08/michel-hier-510x510.jpeg',
   coaching: TG_W + '2026/03/WhatsApp-Image-2026-03-24-at-09.24.28-510x510.jpeg',
   schema: [TG_W + '2026/03/WhatsApp-Image-2026-03-23-at-19.21.18-768x512.jpeg', '50% 22%', 'cover']
@@ -2914,7 +2914,7 @@ function tegel({ v, href, ic, nm, sub, tag, tagKlas, breed, dim }) {
   const beeld = !foto && !breed ? tegelBeeld(v, ic) : '';
   const bin = `${beeld}${foto || beeld ? '' : `<span class="tg-ic">${IC[ic] || ''}</span>`}<span class="tg-nm">${nm}</span><span class="tg-sub">${sub}</span>${tag ? `<span class="tg-tag ${tagKlas || ''}">${tag}</span>` : ''}<span class="tg-pijl">&#8250;</span>`;
   const kl = 'tegel' + (breed ? ' breed' : '') + (dim ? ' dimmed' : '') + (foto ? ' foto' : '') + (beeld ? ' foto vec' : '');
-  const st = foto ? ` style="--foto:url('${foto}');--fpos:${fpos};--fmaat:${fmaat}${ic === 'rijden' ? ';--fkleur:#1c130d' : ''}"` : '';
+  const st = foto ? ` style="--foto:url('${foto}');--fpos:${fpos};--fmaat:${fmaat}${ic === 'rijden' ? ';--fkleur:#1c130d' : ic === 'analyse' ? ';--fkleur:#120d0a' : ''}"` : '';
   return href ? `<a class="${kl}"${st} href="${esc(href)}">${bin}</a>` : `<button type="button" class="${kl}"${st} data-view="${v}">${bin}</button>`;
 }
 function tegelsHtml(d) {
