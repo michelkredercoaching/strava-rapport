@@ -2179,7 +2179,7 @@ async function routeBandenRitten(req, res) {
     ritten = ritten.filter((x) => !(x.fiets === rit.fiets && String(x.op).slice(0, 10) === dag && !x.oordeel));
     ritten.unshift(rit);
   }
-  ritten = ritten.slice(0, 40);
+  ritten = ritten.slice(0, 200); // 16-10-2026: logboek per maand, ruim een jaar terug
   await redis(['SET', `app:bandenritten:${email}`, JSON.stringify(ritten)]);
   return res.status(200).json({ ok: true, ritten });
 }

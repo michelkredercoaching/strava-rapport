@@ -630,6 +630,20 @@
   .acc-badge b { color:#7fe0a0; font-weight:600; }
   .acc-badge a { color:var(--accent); }
   .logboek { margin-top:12px; border-top:1px solid var(--border); padding-top:10px; }
+  .lb-knop { margin-top:10px; }
+  .lb-maanden { display:flex; flex-direction:column; gap:8px; }
+  .lb-maand { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; text-align:left; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:14px 16px; color:var(--white); font:inherit; cursor:pointer; }
+  .lb-maand span { display:flex; flex-direction:column; gap:2px; }
+  .lb-maand em { font-style:normal; font-size:13px; color:var(--muted); }
+  .lb-maand i { font-style:normal; font-size:22px; color:var(--accent); }
+  .lb-rit { border:1px solid var(--border); border-radius:12px; padding:12px 14px; margin-top:10px; }
+  .lb-kop { display:flex; justify-content:space-between; gap:10px; font-size:14px; }
+  .lb-kop span { color:var(--muted); font-size:13px; text-align:right; }
+  .lb-sp { display:flex; align-items:baseline; gap:6px; margin:8px 0 4px; }
+  .lb-sp b { font-family:'Bebas Neue', Impact, sans-serif; font-size:26px; line-height:1; color:var(--accent); }
+  .lb-sp small { color:var(--muted); font-size:12px; margin-right:10px; }
+  .lb-weer { font-size:13px; color:var(--muted); margin-bottom:8px; }
+  .lb-rit .w2 { font-size:12px; color:var(--muted); margin:8px 0 4px; }
   .logboek summary { cursor:pointer; font-size:13px; color:var(--accent); list-style:none; }
   .logboek .lr { display:flex; justify-content:space-between; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; }
   .logboek .lr span { color:var(--muted); }
@@ -1918,15 +1932,37 @@ function sbGeheugenHtml(u) {
   if (g.oordeel === 'goed') return `<div class="sb-geheugen">Bij ${sbWeerTekst(g)} reed je op ${sbDatum(g.op)} ${oud}, en dat was precies goed. Dit is dus jouw spanning.<small>Volgens de berekening zou het ${nl(g.berekend.voor)} en ${nl(g.berekend.achter)} zijn.</small></div>`;
   return `<div class="sb-geheugen bij">Op ${sbDatum(g.op)} (${sbWeerTekst(g)}) vond je ${oud} te ${g.oordeel === 'hard' ? 'hard' : 'zacht'}. Daarom nu 0,2 bar ${g.oordeel === 'hard' ? 'minder' : 'meer'}.<small>Rijd het en zeg daarna weer hoe het voelde, dan wordt het steeds preciezer.</small></div>`;
 }
-// Bandenlogboek (09-10-2026): terugkijken wat je eerder reed, bij welk weer, en hoe het voelde.
-function logboekHtml() {
-  const l = (SB.ritten || []).slice().sort((a, b) => String(b.op).localeCompare(String(a.op))).slice(0, 10);
-  if (!l.length) return '';
-  const fiets = (id) => { const f = ((SB.profiel && SB.profiel.fietsen) || []).find((x) => x.id === id); return f ? f.naam : 'Fiets'; };
-  const oord = { goed: 'precies goed', hard: 'te hard', zacht: 'te zacht' };
+// Bandenlogboek (09-10-2026, eigen pagina sinds 16-10-2026): per maand terugkijken wat je reed,
+// bij welk weer, en hoe het voelde.
+let LB_MAAND = null;
+const lbRitten = () => ((typeof SB === 'object' && SB.ritten) || (D && D.bandenRitten) || []).slice().sort((a, b) => String(b.op).localeCompare(String(a.op)));
+const lbMaandNaam = (k) => { const [j, m] = k.split('-').map(Number); const t = new Date(j, m - 1, 1).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' }); return t.charAt(0).toUpperCase() + t.slice(1); };
+function logboekPagina() {
+  const l = lbRitten();
   const nl = (v) => String(Number(v).toFixed(1)).replace('.', ',');
-  return `<details class="logboek klap" data-klap="logboek" ${klapOpen('logboek', false) ? 'open' : ''}><summary><b>Mijn bandenlogboek</b><span>${l.length} ${l.length === 1 ? 'rit' : 'ritten'}</span></summary><div class="klap-in">${l.map((r) => `<div class="lr"><div>${esc(sbDatum(r.op))} &middot; ${esc(fiets(r.fiets))}<br><span>${r.temp != null ? Math.round(r.temp) + '&deg;' : ''}${r.nat ? ' &middot; nat' : ' &middot; droog'}${r.grond && r.grond !== 'normaal' ? ' &middot; ' + esc(r.grond) : ''}</span></div><div style="text-align:right">${nl(r.voor)} / ${nl(r.achter)}<br><span>${r.oordeel ? oord[r.oordeel] || '' : 'nog geen oordeel'}</span></div></div>`).join('')}<p class="klein" style="margin-top:8px">Bij hetzelfde weer en dezelfde fiets gebruikt de app je oordeel van toen voor je advies van vandaag.</p></div></details>`;
+  const fiets = (r) => { const x = ((SB.profiel || (D && D.bandenProfiel) || {}).fietsen || []).find((y) => y.id === r.fiets); return x ? x.naam : r.fietsNaam || 'Fiets'; };
+  const oord = { goed: 'Precies goed', hard: 'Te hard', zacht: 'Te zacht' }, oordK = { goed: 'Precies goed', koud: 'Te koud', warm: 'Te warm' };
+  const telGoed = (x) => x.filter((r) => r.oordeel === 'goed').length;
+  if (VIEW === 'logmaand' && LB_MAAND) {
+    const m = l.filter((r) => String(r.op).slice(0, 7) === LB_MAAND);
+    return `<div class="kaart actief"><div class="kaart-in"><div class="label">Bandenlogboek</div><h2>${lbMaandNaam(LB_MAAND)}</h2>
+      <p class="klein" style="margin-top:0">${m.length} ${m.length === 1 ? 'rit' : 'ritten'}${telGoed(m) ? ' &middot; ' + telGoed(m) + 'x precies goed' : ''}</p>
+      ${m.map((r) => { const d = new Date(r.op); return `<div class="lb-rit"><div class="lb-kop"><b>${esc(d.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' }))}</b><span>${esc(d.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' }))} &middot; ${esc(fiets(r))}</span></div>
+        <div class="lb-sp"><b>${nl(r.voor)}</b><small>voor</small><b>${nl(r.achter)}</b><small>achter (bar)</small></div>
+        <div class="lb-weer">${[r.temp != null ? Math.round(r.temp) + '&deg;' : '', r.nat ? 'nat wegdek' : 'droog', r.grond && r.grond !== 'normaal' ? esc(r.grond) : ''].filter(Boolean).join(' &middot; ')}</div>
+        <div class="w2">Je banden</div><div class="bt-keuze lb-k">${[['zacht', 'Te zacht'], ['goed', 'Goed'], ['hard', 'Te hard']].map(([w, t]) => `<button type="button" data-sb="oordeel" data-id="${esc(r.id)}" data-w="${w}" class="${r.oordeel === w ? 'aan' : ''}">${t}</button>`).join('')}</div>
+        ${r.kleding ? `<div class="w2">Je kleding${r.kleding.gevoel != null ? ` (voelde als ${r.kleding.gevoel}&deg;)` : ''}</div><div class="bt-keuze lb-k">${[['koud', 'Te koud'], ['goed', 'Goed'], ['warm', 'Te warm']].map(([w, t]) => `<button type="button" data-sb="oordeel" data-soort="kleding" data-id="${esc(r.id)}" data-w="${w}" class="${r.oordeelKleding === w ? 'aan' : ''}">${t}</button>`).join('')}</div>` : ''}
+        ${!r.oordeel ? '<p class="klein" style="margin:8px 0 0">Hoe reed het? Je oordeel maakt je volgende advies preciezer.</p>' : ''}</div>`; }).join('') || '<p>Geen ritten in deze maand.</p>'}</div></div>`;
+  }
+  const maanden = [];
+  l.forEach((r) => { const k = String(r.op).slice(0, 7); let g = maanden.find((x) => x.k === k); if (!g) maanden.push(g = { k, r: [] }); g.r.push(r); });
+  return `<div class="kaart actief"><div class="kaart-in"><div class="label">Bandenlogboek</div><h2>Wat je reed</h2>
+    ${l.length ? `<p class="klein" style="margin-top:0">${l.length} ${l.length === 1 ? 'rit' : 'ritten'} bewaard${telGoed(l) ? ', ' + telGoed(l) + 'x precies goed' : ''}. Tik op een maand om je ritten te zien.</p>
+    <div class="lb-maanden">${maanden.map((g) => `<button type="button" class="lb-maand" data-lbmaand="${g.k}"><span><b>${lbMaandNaam(g.k)}</b><em>${g.r.length} ${g.r.length === 1 ? 'rit' : 'ritten'}${telGoed(g.r) ? ' &middot; ' + telGoed(g.r) + 'x precies goed' : ''}</em></span><i>&#8250;</i></button>`).join('')}</div>`
+    : '<p>Nog geen ritten bewaard. Tik bij je spanning op <b>Opslaan voor mijn rit</b>, dan komt hij hier te staan met het weer en hoe het voelde.</p>'}
+    <p class="klein" style="margin-top:14px">Bij hetzelfde weer en dezelfde fiets gebruikt de app je oordeel van toen voor je advies van vandaag.</p></div></div>`;
 }
+document.addEventListener('click', (e) => { const k = e.target.closest('[data-lbmaand]'); if (!k) return; LB_MAAND = k.dataset.lbmaand; naar('logmaand'); });
 const RK_BLOK = () => `<details class="klap" data-klap="ritkaart" ${klapOpen('ritkaart', false) ? 'open' : ''}><summary><b>Deel je ritkaart</b><span>Insta of Strava</span></summary><div class="klap-in"><p class="klein" style="margin-top:0">Je bandenspanning, het weer en je windrichting als plaatje. Deel het in je story of zet het bij je rit op Strava.</p>${RK_KNOP}</div></details>`;
 function sbRijdHtml(f, u) {
   const vandaag = new Date().toISOString().slice(0, 10);
@@ -2012,17 +2048,18 @@ function slimBandenKaart() {
     ${sbOordeelHtml()}
     ${kledingTabHtml()}
     ${uit && SB.weer ? sbRijdHtml(f, uit) : ''}</div></div>`;
-  return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
+  // 16-10-2026: eerst een knop naar je spanning, daaronder je logboek; de bandencoach is een eigen blok.
+  const toon = SB_TOON || !uit;
+  return `<div id="sbBlokken" style="display:contents"><div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${sbWeerHtml()}
-    ${tabs}
     ${sbOordeelHtml()}
     ${instel}
-    ${res}
-    ${uit && SB.weer ? ritVoorNaHtml('banden') : ''}
-    <details class="klap" data-klap="bandvraag" ${SB.antwoord || SB.vraagBezig || klapOpen('bandvraag', false) ? 'open' : ''}><summary><b>Vraag het je bandencoach</b><span>kasseien, regen, tocht</span></summary><div class="klap-in sb-vraag" style="margin:0;border:0;padding-top:0">
+    ${toon ? res : '<button type="button" class="knop" data-actie="sbtoon" style="margin-top:14px">Bekijk mijn spanning</button>'}</div></div>
+    ${toon && uit && SB.weer ? ritVoorNaHtml('banden') : ''}
+    <div class="kaart"><div class="kaart-in"><div class="sb-vraag" style="margin:0;border:0;padding:0"><label for="sbVraag">Vraag het je bandencoach</label>
       <div class="sb-rij"><input id="sbVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen de Ronde met kasseien" value="${esc(SB.vraag)}"><button type="button" class="knop" data-sb="vraag" ${SB.vraagBezig ? 'disabled' : ''}>${SB.vraagBezig ? '...' : 'Vraag'}</button></div>
-      ${SB.antwoord ? `<div class="sb-antwoord">${opmaak(SB.antwoord)}</div>${nuttigHtml(SB.aid, SB.nuttig)}` : ''}</div></details>
-    ${logboekHtml()}</div></div>`;
+      ${SB.antwoord ? `<div class="sb-antwoord">${opmaak(SB.antwoord)}</div>${nuttigHtml(SB.aid, SB.nuttig)}` : ''}</div></div></div>
+    <div class="kaart"><div class="kaart-in"><div class="label">Bandenlogboek</div><p class="klein" style="margin:6px 0 0">Wat je reed, bij welk weer en hoe het voelde. Hier geef je ook je oordeel over een rit.</p><button type="button" class="knop leeg lb-knop" data-view="logboek">Check je bandenlogboek</button></div></div></div>`;
 }
 
 function sbTeken() {
@@ -2032,9 +2069,11 @@ function sbTeken() {
   vdTeken();
   if (GR.data) grTeken();
   grLeesVelden();
-  const el = document.getElementById('banden'); if (!el) return;
+  const el = document.getElementById('sbBlokken') || document.getElementById('banden'); if (!el) return;
   el.outerHTML = slimBandenKaart();
 }
+let SB_TOON = false;
+document.addEventListener('click', (e) => { if (!e.target.closest('[data-actie="sbtoon"]')) return; SB_TOON = true; sbTeken(); });
 async function sbLaadLib() { if (!BT_LIB) { try { BT_LIB = await import('/lib/bandendruk.js'); } catch (e) {} } }
 async function sbHaalWeer() {
   const p = SB.profiel && SB.profiel.plaats; if (!p) return;
@@ -2084,6 +2123,7 @@ document.addEventListener('click', async (e) => {
       const j = await (await fetch(`${API}?actie=bandenritten`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
       if (j.ok) { SB.ritten = j.ritten; if (D) D.bandenRitten = j.ritten; if (a === 'rijd') { SB.opgeslagen = Date.now(); setTimeout(() => { if (document.querySelector('.sb-rijd')) sbTeken(); }, 5100); } } else alert(j.fout || 'Bewaren lukte niet.');
     } catch (e) { alert('Verbinding mislukt.'); }
+    if (VIEW === 'logboek' || VIEW === 'logmaand') { sbTeken(); return teken(); }
     return sbTeken();
   }
   if (a === 'ritweg') { const w = sbVerborgen(); w.push(k.dataset.id); try { localStorage.setItem('mkcRitWeg', JSON.stringify(w.slice(-50))); } catch (e) {} return sbTeken(); }
@@ -2877,7 +2917,9 @@ const KOPPEN = {
   home: ['MKC-App', 'Michel Kreder Coaching'],
   palmares: ['MKC-Palmares', 'Je badges, verdiend met wat je echt doet'],
   coaching: ['MKC-Coaching', 'Zo werkt het, en zo bereik je mij'],
-  rijden: ['MKC-Banden', 'Je spanning en de wind voor je rit'],
+  rijden: ['MKC-Banden', 'Je spanning voor vandaag'],
+  logboek: ['MKC-Logboek', 'Wat je reed en hoe het voelde'],
+  logmaand: ['MKC-Logboek', 'Wat je reed en hoe het voelde'],
   kleding: ['MKC-Kleding', 'Wat je aantrekt voor het weer van vandaag'],
   groep: ['MKC-Groepsrit', 'Plan een rit en deel hem met je groep'],
   volgende: ['MKC-Plan', 'Jouw volgende stap'],
@@ -3757,6 +3799,7 @@ function paginaHtml(d) {
   if (VIEW === 'afval') return appBalkHtml('Afvalprogramma') + `<div class="kaarten">${afvalKaart()}</div>` + voet;
   if (VIEW === 'pacing') return appBalkHtml('Pacingplan') + `<div class="kaarten">${pacingKaart()}</div>` + voet;
   if (VIEW === 'palmares') return appBalkHtml() + palmaresHtml(d) + voet;
+  if (VIEW === 'logboek' || VIEW === 'logmaand') return appBalkHtml() + `<div class="kaarten">${logboekPagina()}</div>` + voet;
   if (VIEW === 'volgende') { const r = routeHtml(d, true); return r ? appBalkHtml() + r + voet : null; }
   if (VIEW === 'coaching') return appBalkHtml() + coachingPaginaHtml(dz) + voet;
   if (VIEW === 'lid') {
