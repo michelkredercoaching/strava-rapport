@@ -5925,7 +5925,8 @@ async function start() {
       await new Promise((r) => setTimeout(r, 1500));
       try { const s = await (await fetch('/api/lid?actie=status&t=' + encodeURIComponent(leesToken()))).json(); if (s.ok && s.lid && s.lid.status === 'actief') { gelukt = true; break; } } catch (e) {}
     }
-    try { history.replaceState(null, '', location.pathname + '#' + (gelukt ? '' : 'lid')); } catch (e) {}
+    // Na betalen terug op Mijn Pro (16-10-2026, Michel): status, facturen en vrienden uitnodigen, met de welkomstuitleg erover.
+    try { history.replaceState(null, '', location.pathname + '#lid'); } catch (e) {}
     NA_BETALING = gelukt ? 'welkom' : 'niet';
   }
   return laadOverzicht();
