@@ -1762,7 +1762,7 @@ function bandenKaart(d) {
   const kanLid = kanLidNu(d);
   const wn = weerNu(), anders = wn && (wn.nat || wn.temp < 10);
   const slimKop = wn ? (anders ? 'Vandaag in ' + esc(wn.plaats || 'jouw plaats') + ': je slimme spanning is anders' : 'Je fietsen en het weer van vandaag, meegerekend') : 'Weer, kou en je fietsen meegerekend';
-  const slimUitleg = wn ? (wn.nat ? 'Het wegdek is nat. De slimme versie pompt een paar tienden zachter voor meer grip, en zegt je precies hoeveel.' : wn.temp < 10 ? 'Het wordt ' + wn.temp + '&deg;. Pomp je binnen, dan klopt het buiten niet meer. De slimme versie rekent het voor je uit.' : 'De slimme versie onthoudt je fietsen en past je spanning elke dag aan op het weer.') : 'Nat wegdek, kasseien of een koude ochtend: de slimme versie past je spanning zelf aan. Zoek hieronder bij Windadvies je woonplaats, dan zie je wat hij vandaag voor jou anders doet.';
+  const slimUitleg = wn ? (wn.nat ? 'Het wegdek is nat. De slimme versie pompt een paar tienden zachter voor meer grip, en zegt je precies hoeveel.' : wn.temp < 10 ? 'Het wordt ' + wn.temp + '&deg;. Pomp je binnen, dan klopt het buiten niet meer. De slimme versie rekent het voor je uit.' : 'De slimme versie onthoudt je fietsen en past je spanning elke dag aan op het weer.') : 'Nat wegdek, kasseien of een koude ochtend: de slimme versie past je spanning zelf aan.';
   const slim = `${wn ? `<div class="sb-weer bt-echtweer"><span>Vandaag in ${esc(wn.plaats || 'jouw plaats')}: <b>${wn.temp}&deg;</b> &middot; ${wn.nat ? '<b class="nat">nat wegdek</b>' : 'droog'}${wn.wind ? ', wind ' + wn.wind + ' km/u' : ''}</span></div>` : ''}<div class="bt-slot"><div class="achter">
       <div class="sb-weer"><span>${wn ? '<b>' + wn.temp + '&deg;</b> in ' + esc(wn.plaats || 'jouw plaats') + ' &middot; ' + (wn.nat ? '<b class="nat">nat wegdek</b>' : 'droog') : '<b>6&deg;</b> in jouw plaats &middot; <b class="nat">nat wegdek</b>'}</span></div>
       <div class="sb-chips"><button class="aan">Racefiets <small>28</small></button><button>Gravel <small>40</small></button></div>
@@ -1774,7 +1774,7 @@ function bandenKaart(d) {
   const vtabs = ''; // 16-10-2026: geen tabs meer, elk onderdeel een eigen pagina
   if (vtab === 'groep') { if (!d.gast) grZorg(); return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag open">Gratis</span>
     <div class="label">Groepsrit</div><h2>Rij je samen?</h2>${vtabs}
-    ${d.gast ? '<p>Plan een rit en deel de link in je groepsapp. Iedereen ziet het weer, de wind en zijn eigen bandenspanning voor jullie rit.</p><button type="button" class="knop" data-actie="gastlogin" style="margin-top:12px">Maak je gratis account</button>' : '<div id="grmaak">' + grMaakHtml() + '</div>' + grVriendHtml(d)}</div></div>`; }
+    ${d.gast ? '<p>Plan een rit en deel de link in je groepsapp. Iedereen ziet het weer, de wind en zijn eigen bandenspanning voor jullie rit.</p><button type="button" class="knop" data-actie="gastlogin" style="margin-top:12px">Maak je gratis account</button>' : '<div id="grmaak">' + grMaakHtml() + '</div>'}</div></div>`; }
   if (vtab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag oranje">Pro</span>
     <div class="label">Voeding</div><h2>Wat neem je mee?</h2>
     ${vrijWeerRegel()}<div class="bt-slot"><div class="achter">
@@ -1787,7 +1787,8 @@ function bandenKaart(d) {
       ${vrijKledingAchter()}</div>
     <div class="voor">${SLOT}<b>${weerNu() ? 'Je kledingadvies voor vandaag staat klaar' : 'Wat trek je aan voor jouw rit?'}</b><span>Op basis van het weer tijdens je hele rit, wind en regen, hoe hard je rijdt en of je het snel koud hebt. Met Michels eigen kledingindeling uit 9 jaar prof.</span>
       ${kanLidNu(d) ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met Pro</button>' : BINNENKORT}</div></div></div></div>`;
-  return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag open">Gratis</span>
+  const btKnop = !d.gast && !BT_TOON ? '<button type="button" class="knop" data-actie="bttoon" style="margin-top:14px">Bekijk mijn spanning</button>' : '';
+  return `<div id="btBlokken" style="display:contents"><div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag open">Gratis</span>
     <div class="label">Vandaag rijden</div><h2>Wat pomp je vandaag?</h2>${vtabs}
     <p>Jouw gewicht en band, direct de juiste spanning voor en achter.</p>
     <div class="bt">
@@ -1797,13 +1798,15 @@ function bandenKaart(d) {
       <div class="bt-keuze">${knop('tubeless', 'false', 'Binnenband')}${knop('tubeless', 'true', 'Tubeless')}</div>
       ${v.type === 'weg' ? `<div class="bt-keuze">${knop('hookless', 'false', 'Gewone velg')}${knop('hookless', 'true', 'Hookless velg')}</div>` : ''}
     </div>
+    ${btKnop}
     <div id="btUit"></div>
-    ${d.gast ? gastPoortHtml() : ''}
-    ${d.gast ? `<div class="sb-vraag"><label>Vraag het je bandencoach</label><p class="klein" style="margin:0">Rijd je morgen over kasseien of in de regen? Met een gratis account stel je je vraag aan de bandencoach. <a href="#" data-actie="gastlogin" style="color:var(--accent)">Maak je account</a></p></div>` : `<div class="sb-vraag"><label for="btVraag">Vraag het je bandencoach</label>
+    ${d.gast ? gastPoortHtml() : ''}</div></div>
+    <div class="kaart"><div class="kaart-in">
+    ${d.gast ? `<div class="sb-vraag" style="margin:0;border:0;padding:0"><label>Vraag het je bandencoach</label><p class="klein" style="margin:0">Rijd je morgen over kasseien of in de regen? Met een gratis account stel je je vraag aan de bandencoach. <a href="#" data-actie="gastlogin" style="color:var(--accent)">Maak je account</a></p></div>` : `<div class="sb-vraag" style="margin:0;border:0;padding:0"><label for="btVraag">Vraag het je bandencoach</label>
       ${gratisOver() === 0 && !tegoedNu() ? '' : `<div class="sb-rij"><input id="btVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen over kasseien" value="${esc(BTV.vraag)}"><button type="button" class="knop" data-btv="vraag" ${BTV.bezig ? 'disabled' : ''}>${BTV.bezig ? '...' : 'Vraag'}</button></div>`}
       ${BTV.antwoord ? `<div class="sb-antwoord">${opmaak(BTV.antwoord)}</div>${nuttigHtml(BTV.aid, BTV.nuttig)}` : ''}
-      ${gratisTellerHtml('btVraagTeller')}</div>`}
-    ${slim}</div></div>`;
+      ${gratisTellerHtml('btVraagTeller')}</div>`}</div></div>
+    <div class="kaart"><div class="kaart-in"><span class="tag oranje">Pro</span>${slim}</div></div></div>`;
 }
 let BT_LIB = null;
 // Vraag in de gratis bandentool (telt mee voor de 3 gratis vragen per week).
@@ -1998,8 +2001,7 @@ function slimBandenKaart() {
     ${tabs}
     <div id="grmaak">${grMaakHtml()}</div>
     ${windRegelHtml()}
-    ${RK_BLOK()}
-    ${grVriendHtml(zicht())}</div></div>`; }
+    ${RK_BLOK()}</div></div>`; }
   if (tab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${sbWeerHtml()}
     ${sbOordeelHtml()}
@@ -2142,9 +2144,17 @@ document.addEventListener('input', (e) => {
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'sbVraag') { e.preventDefault(); document.querySelector('[data-sb="vraag"]')?.click(); } });
 
+let BT_TOON = (() => { try { return !!localStorage.getItem('mkcLaatsteSpanning'); } catch (e) { return false; } })();
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-actie="bttoon"]'); if (!k) return;
+  const v = btWaarden();
+  if (!(Number(v.gewicht) >= 40 && Number(v.gewicht) <= 150)) { const uit = document.getElementById('btUit'); if (uit) uit.innerHTML = '<p class="klein">Vul eerst je gewicht in.</p>'; document.getElementById('btGewicht')?.focus(); return; }
+  BT_TOON = true; k.remove(); btReken();
+});
 async function btReken() {
   const uit = document.getElementById('btUit'); if (!uit) return;
   const v = btWaarden();
+  if (D && !D.gast && !BT_TOON) { uit.innerHTML = ''; return; }
   if (!(Number(v.gewicht) >= 40 && Number(v.gewicht) <= 150)) { uit.innerHTML = '<p class="klein">Vul je gewicht in, dan zie je je spanning.</p>'; return; }
   if (D && D.gast) { gastStat('banden-gast'); uit.innerHTML = ''; return; } else statEens('banden');
   try { BT_LIB = BT_LIB || await import('/lib/bandendruk.js'); } catch (e) { uit.innerHTML = '<p class="klein">Rekenen lukt nu even niet.</p>'; return; }
@@ -2156,7 +2166,7 @@ async function btReken() {
   try { localStorage.setItem('mkcLaatsteSpanning', BT_LIB.nl(voor) + ' / ' + BT_LIB.nl(achter) + ' bar'); localStorage.setItem('mkcLaatsteSpVoor', String(voor)); localStorage.setItem('mkcLaatsteSpAchter', String(achter)); } catch (e) {}
   spTel();
   uit.innerHTML = `<div class="bt-uit"><div><span>Voor</span><b>${BT_LIB.nl(voor)}</b><small>bar &middot; ${BT_LIB.psi(voor)} psi</small></div><div><span>Achter</span><b>${BT_LIB.nl(achter)}</b><small>bar &middot; ${BT_LIB.psi(achter)} psi</small></div></div>
-    <p class="klein">${begrensd ? 'Hookless velg: nooit boven de 5,0 bar, dus ik heb hem daarop gezet.' : ''}</p>${RK_KNOP}`;
+    ${begrensd ? '<p class="klein">Hookless velg: nooit boven de 5,0 bar, dus ik heb hem daarop gezet.</p>' : ''}`;
   if (GR.data) grTeken();
 }
 document.addEventListener('click', (e) => {
@@ -3736,7 +3746,7 @@ function paginaHtml(d) {
   const voet = `<div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
   const dz = d.beheer && BEKIJK === 'alles' ? voorbeeldData(d) : d;
   if (VIEW === 'rijden') return appBalkHtml('Vandaag rijden') + `<div class="kaarten">${bandenKaart(d)}</div>` + voet;
-  if (VIEW === 'voeding' || VIEW === 'kleding' || VIEW === 'groep') return appBalkHtml() + `<div class="kaarten">${bandenKaart(d)}${VIEW === 'groep' && !toonSlim(d) ? windKaartHtml() : ''}</div>` + voet;
+  if (VIEW === 'voeding' || VIEW === 'kleding' || VIEW === 'groep') return appBalkHtml() + `<div class="kaarten">${bandenKaart(d)}${VIEW === 'groep' ? (toonSlim(d) ? '' : windKaartHtml()) + (d.gast ? '' : grVriendHtml(d)) : ''}</div>` + voet;
   if (VIEW === 'schema') return appBalkHtml('Mijn schema') + `<div class="kaarten">${schemaKaart(d)}</div>` + voet;
   if (VIEW === 'core') return appBalkHtml('Core-app') + `<div class="kaarten">${coreKaart(dz.core)}</div>` + voet;
   if (VIEW === 'kracht') return appBalkHtml() + krachtPagina(dz) + voet;
@@ -3791,7 +3801,7 @@ function teken() {
   if (WK.plaats && !WK.uren && !isLid(d) && kanLidNu(d)) wkLaad();
   if (d.schema && !(d.beheer && BEKIJK !== 'klant')) statEens('schema');
   if (GR.id && !GR.data) grLaad();
-  if (NA_POORT) { NA_POORT = false; VIEW = 'rijden'; teken(); setTimeout(() => { const el = document.getElementById('banden'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); const m = document.getElementById('btUit'); if (m) m.insertAdjacentHTML('afterbegin', '<p class="gp-welkom">Welkom in de MKC-app! Dit is jouw spanning. Hij staat ook in je mail als pdf.</p>'); }, 700); }
+  if (NA_POORT) { NA_POORT = false; BT_TOON = true; VIEW = 'rijden'; teken(); setTimeout(() => { const el = document.getElementById('banden'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); const m = document.getElementById('btUit'); if (m) m.insertAdjacentHTML('afterbegin', '<p class="gp-welkom">Welkom in de MKC-app! Dit is jouw spanning. Hij staat ook in je mail als pdf.</p>'); }, 700); }
   coachBouw();
   if (document.getElementById('ccPaneel').classList.contains('open')) coachLijst();
 }
@@ -4871,7 +4881,7 @@ async function wkLaad() {
   try { const j = await (await fetch(API + '?actie=wind&lat=' + WK.plaats.lat + '&lon=' + WK.plaats.lon)).json(); if (j.ok) WK.uren = j.uren; else WK.fout = j.fout || ''; } catch (e) {}
   wkTeken();
   const dz = zicht(), bk = document.getElementById('banden');
-  if (bk && dz && !toonSlim(dz) && !['kleding', 'voeding', 'groep'].includes(btLees().tab)) { bk.outerHTML = bandenKaart(dz); btReken(); }
+  if (bk && dz && !toonSlim(dz) && VIEW !== 'groep') { (document.getElementById('btBlokken') || bk).outerHTML = bandenKaart(dz); btReken(); }
   if (VIEW === 'home' && dz && !isLid(dz)) { const v = document.querySelector('.vk'); if (v) v.outerHTML = verkoopMomentHtml(dz); }
 }
 document.addEventListener('click', async (e) => {
