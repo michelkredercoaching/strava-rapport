@@ -707,8 +707,12 @@ export default async function handler(req, res) {
       // bedankpagina, homepage, checkout) vragen dit, zodat het oude aanbod
       // van €49/€29 vanzelf verdwijnt zodra de incasso is goedgekeurd.
       res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Cache-Control', 'public, max-age=300');
-      return res.status(200).json({ ok: true, open: await lidOpen(), bedrag: BEDRAG, jaarBedrag: PLANNEN.jaar.bedrag });
+      // Lanceerdag 16-10-2026 (besluit Michel): het Core-vinkje van 29 euro op de checkout gaat nu al weg, want wie
+      // vandaag een schema koopt krijgt de app met Core er toch bij. Alleen de vraag van de WordPress-server zelf
+      // (de checkout-snippet) krijgt open; de pagina's in de browser blijven tot 12:00 zoals ze zijn.
+      const wpServer = String(req.headers?.['user-agent'] || '').startsWith('WordPress/') || /^WordPress\//.test(String(req.headers?.['user-agent'] || ''));
+      res.setHeader('Cache-Control', wpServer ? 'no-store' : 'public, max-age=300');
+      return res.status(200).json({ ok: true, open: wpServer || await lidOpen(), bedrag: BEDRAG, jaarBedrag: PLANNEN.jaar.bedrag });
     }
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
