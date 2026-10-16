@@ -4725,13 +4725,13 @@ function rvInvoer(k, temp) {
   const vertrek = new Date(Date.now() + (k.over || 0) * 36e5);
   const dag = vertrek.getFullYear() + '-' + String(vertrek.getMonth() + 1).padStart(2, '0') + '-' + String(vertrek.getDate()).padStart(2, '0');
   const doelDag = !!(dl && dl.doel === 'evenement' && dl.datum === dag);
-  return { duur: k.duur, temp, hard: k.hard, gewend: (SB.profiel && SB.profiel.rvGewend) || null, zweet: (SB.profiel && SB.profiel.zweet) || null, doelDag, doelNaam: doelDag ? dl.naam : '', afvallen: !!(dl && dl.doel === 'afvallen') };
+  return { duur: k.duur, temp, hard: k.hard, koers: !!k.koers, gewend: (SB.profiel && SB.profiel.rvGewend) || null, zweet: (SB.profiel && SB.profiel.zweet) || null, doelDag, doelNaam: doelDag ? dl.naam : '', afvallen: !!(dl && dl.doel === 'afvallen') };
 }
 function rvGewendHtml() {
   const g = (SB.profiel && SB.profiel.rvGewend) || '';
   const knop = (w, t) => `<button type="button" data-kl="gewend" data-w="${w}" class="${g === w ? 'aan' : ''}">${t}</button>`;
   return `<div class="kl-kou${g ? '' : ' nieuw'}"><b>${g ? 'Zoveel eet je onderweg' : 'Hoeveel eet jij onderweg per uur?'}</b>${g ? '' : '<span>Dan krijg je wat jouw maag aankan, en hoe je verder opbouwt.</span>'}
-    <div class="bt-keuze">${knop('weinig', 'Weinig')}${knop('60', 'Rond 60 g')}${knop('80', '80 g of meer')}</div><small class="rv-gewendhulp">Een reep is ongeveer 40 gram, een gel 25, een bidon sportdrank 40.</small></div>`;
+    <div class="bt-keuze">${knop('weinig', 'Weinig')}${knop('60', 'Rond 60 g')}${knop('80', 'Rond 80 g')}${knop('100', '100 g of meer')}</div><small class="rv-gewendhulp">Een reep is ongeveer 40 gram, een gel 25, een bidon sportdrank 40.</small></div>`;
 }
 // Eten vandaag (15-10-2026): eet naar het werk van vandaag. Soort dag uit je schema, anders kies je zelf.
 const DV_KEUZES = [['rust', 'Rustdag'], ['licht', 'Rustig'], ['matig', 'Duurrit'], ['zwaar', 'Hard'], ['lang', 'Lang']];
@@ -4837,7 +4837,7 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.
 let KL_LIB = null;
 async function klLaadLib() { if (!KL_LIB) { try { KL_LIB = await import('/lib/kleding.js'); } catch (e) {} } }
 const KL_DUUR = [[1, '1 uur'], [1.5, '1,5 uur'], [2, '2 uur'], [3, '3 uur'], [4, '4 uur'], [5, '5 uur of meer']];
-function klKeuze() { const k = sbKeuze(); const over = k.klOverUur != null ? Math.max(0, k.klOverUur - Math.floor(Date.now() / 36e5)) : Number(k.klOver || 0); return { over, duur: Number(k.klDuur || 2), hard: !!k.klHard }; }
+function klKeuze() { const k = sbKeuze(); const over = k.klOverUur != null ? Math.max(0, k.klOverUur - Math.floor(Date.now() / 36e5)) : Number(k.klOver || 0); return { over, duur: Number(k.klDuur || 2), hard: !!k.klHard || !!k.klKoers, koers: !!k.klKoers }; }
 // Uurlabel: "8:00" vandaag of "morgen 8:00" (13-10-2026).
 function uurDag(uren, i) { let dag = 0; for (let j = 1; j <= i && j < uren.length; j++) if (uren[j].uur === '00') dag++; return dag; }
 function uurLabel(uren, i) { if (!uren[i]) return 'later'; return (uurDag(uren, i) ? 'morgen ' : '') + Number(uren[i].uur) + ':00'; }
@@ -4862,12 +4862,12 @@ function sbRitInstelHtml(metKou) {
   const kt = (SB.profiel && SB.profiel.kouType) || 'normaal';
   const vertrekNaam = k.over === 0 ? 'nu' : uurLabel(uren, k.over);
   const duurNaam = (KL_DUUR.find((x) => x[0] === k.duur) || [0, k.duur + ' uur'])[1];
-  const sam = ['vertrek ' + vertrekNaam, duurNaam, k.hard ? 'hard' : 'rustig'].concat(metKou && kt !== 'normaal' ? [kt === 'koud' ? 'snel koud' : 'snel warm'] : []).join(' &middot; ');
+  const sam = ['vertrek ' + vertrekNaam, duurNaam, k.koers ? 'wedstrijd' : k.hard ? 'hard' : 'rustig'].concat(metKou && kt !== 'normaal' ? [kt === 'koud' ? 'snel koud' : 'snel warm'] : []).join(' &middot; ');
   const vertrek = ['<option value="0"' + (k.over === 0 ? ' selected' : '') + '>Nu</option>'].concat(uren.map((u, i) => { const dag = uurDag(uren, i), h = Number(u.uur); return i && dag < 2 && h >= 5 && h <= 22 && !(dag === 1 && h > 12) ? `<option value="${i}" ${k.over === i ? 'selected' : ''}>${uurLabel(uren, i)}</option>` : ''; })).join('');
   return `<details class="klap rv-instel" data-klap="ritinstel"${klapOpen('ritinstel', false) ? ' open' : ''}><summary><b>Je rit</b><span>${sam.replace(/ &middot; snel (koud|warm)$/, '')}</span></summary><div class="klap-in gr-maak">
     <div class="rij2"><div><label for="klOver">Vertrek</label><select id="klOver">${vertrek}</select></div>
       <div><label for="klDuur">Hoe lang</label><select id="klDuur">${KL_DUUR.map(([v, t]) => `<option value="${v}" ${k.duur === v ? 'selected' : ''}>${t}</option>`).join('')}</select></div></div>
-    <div class="rij2"><div><label for="klTempo">Tempo</label><select id="klTempo"><option value="0">Rustige rit</option><option value="1" ${k.hard ? 'selected' : ''}>Harde training</option></select></div>
+    <div class="rij2"><div><label for="klTempo">Tempo</label><select id="klTempo"><option value="0">Rustige rit</option><option value="1" ${k.hard && !k.koers ? 'selected' : ''}>Harde training</option><option value="2" ${k.koers ? 'selected' : ''}>Wedstrijd</option></select></div>
       <div></div></div></div></details>`;
 }
 function klKouHtml() {
@@ -4941,7 +4941,7 @@ function kledingTabHtml() {
 }
 document.addEventListener('click', async (e) => {
   const k = e.target.closest('[data-kl]'); if (!k) return;
-  if (k.dataset.kl === 'hard') { sbBewaarKeuze({ klHard: k.dataset.w === '1' }); return sbTeken(); }
+  if (k.dataset.kl === 'hard') { sbBewaarKeuze({ klHard: k.dataset.w === '1', klKoers: false }); return sbTeken(); }
   if (k.dataset.kl === 'kou') { SB.profiel.kouType = k.dataset.w; SB.profiel.kouGekozen = true; sbTeken(); await sbBewaarProfiel(true); }
   if (k.dataset.kl === 'rvmodus') { sbBewaarKeuze({ rvModus: k.dataset.w }); return sbTeken(); }
   if (k.dataset.kl === 'dvsoort') { sbBewaarKeuze({ dvSoort: k.dataset.w, dvDag: dvVandaagStr(0) }); return sbTeken(); }
@@ -4961,7 +4961,7 @@ document.addEventListener('click', async (e) => {
   if (k.dataset.kl === 'vrijtab') { btBewaar({ ...btLees(), tab: k.dataset.w }); return teken(); }
 });
 document.addEventListener('change', async (e) => {
-  if (e.target.id === 'klTempo') { sbBewaarKeuze({ klHard: e.target.value === '1' }); return sbTeken(); }
+  if (e.target.id === 'klTempo') { sbBewaarKeuze({ klHard: e.target.value === '1', klKoers: e.target.value === '2' }); return sbTeken(); }
   if (e.target.id === 'klKou') { SB.profiel.kouType = e.target.value; sbTeken(); return sbBewaarProfiel(true); }
   if (e.target.id === 'sbFietsSel') { sbBewaarKeuze({ fiets: e.target.value }); SB.antwoord = ''; return sbTeken(); }
   if (e.target.id === 'sbGrondSel') { const f = sbFiets(); sbBewaarKeuze({ ['grond_' + f.type]: e.target.value }); return sbTeken(); }

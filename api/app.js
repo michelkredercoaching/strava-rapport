@@ -1795,7 +1795,7 @@ function schoonProfiel(p) {
   // Kledingadvies: heb je het snel koud of snel warm? En het ochtendbericht.
   const kouType = ['koud', 'warm'].includes(p.kouType) ? p.kouType : 'normaal';
   // Wat je onderweg gewend bent te eten (ritvoeding, 15-10-2026).
-  const rvGewend = ['weinig', '60', '80'].includes(p.rvGewend) ? p.rvGewend : null;
+  const rvGewend = ['weinig', '60', '80', '100'].includes(p.rvGewend) ? p.rvGewend : null;
   // Eigen zweettest: liters per uur bij een temperatuur (15-10-2026).
   const z = p.zweet && typeof p.zweet === 'object' ? p.zweet : null;
   const zweet = z && Number(z.lpu) >= 0.2 && Number(z.lpu) <= 3 ? { lpu: Math.round(Number(z.lpu) * 100) / 100, temp: Math.max(-10, Math.min(45, Math.round(Number(z.temp) || 15))), op: String(z.op || '').slice(0, 10) } : null;
