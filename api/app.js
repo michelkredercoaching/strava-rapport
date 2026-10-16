@@ -39,7 +39,7 @@ import crypto from 'crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { coreVoorEmail, emailVoorCoreToken, coreTrechter, coreOverzicht } from './core.js';
-import { lidOpenApp, voorverkoopAan, lidBeeld, haalLid, lidOpen, LANCERING, incassoKlaar, haalSchema, ledenOverzicht, lidZoek, geefToegang } from './lid.js';
+import { lidOpenApp, voorverkoopAan, lidBeeld, haalLid, lidOpen, LANCERING, LANCERING_PLAN, incassoKlaar, haalSchema, ledenOverzicht, lidZoek, geefToegang } from './lid.js';
 import { schemaBeeld, schemaContext, planStart, PLANNEN as SCHEMA_PLANNEN, laadPlan } from '../lib/schema-app.js';
 import { haalMeldingen, leesMelding, appMelding, logPush } from '../lib/app-melding.js';
 import { leesDoel, nieuwDoel, volgendeStap, doelContext } from '../lib/doelen.js';
@@ -2384,7 +2384,7 @@ async function routePushCron(req, res) {
         if (rr.ok) { p.laatsteReeks = nu.datum; await redis(['SET', `app:push:${email}`, JSON.stringify(p)]); await logPush(email, rb); verstuurd++; }
       }
     }
-    if (Date.now() >= LANCERING && Date.now() - LANCERING < 90 * 60000) {
+    if (Date.now() >= LANCERING_PLAN && Date.now() - LANCERING_PLAN < 90 * 60000) {
       const lb = await lanceerBericht(email).catch(() => null);
       if (lb) {
         const al = await redis(['SET', `app:push:lancering:${email}`, '1', 'NX', 'EX', String(30 * 86400)]);

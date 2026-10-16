@@ -654,7 +654,10 @@ function lidBeeld(lid) {
 // Lancering op Instagram (besluit Michel 08-10-2026): vóór dit moment is lid
 // worden voor niemand open, ook niet als Mollie al goedkeurde. De app, /core/,
 // de bedankpagina, homepage en checkout schakelen hierdoor allemaal tegelijk om.
-export const LANCERING = Date.parse('2026-10-16T12:00:00+02:00');
+// 16-10-2026: om 10:00 open gezet (besluit Michel). LANCERING_PLAN = het oorspronkelijke 12:00 voor push,
+// cadeaumail en inhaalslag (de WordPress-webhook neemt pas orders vanaf 12:00).
+export const LANCERING = Date.parse('2026-10-16T10:00:00+02:00');
+export const LANCERING_PLAN = Date.parse('2026-10-16T12:00:00+02:00');
 const voorLancering = () => Date.now() < LANCERING;
 // Michel kan vóór de lancering wel zelf Pro worden (live test met echte betaling).
 const BEHEER_LID = ['michel.kredercoaching@gmail.com', 'michel.kreder@gmail.com', 'info@michelkredercoaching.nl'];
@@ -1274,7 +1277,7 @@ async function routeSchemaInhaal(req, res) {
   const basis = (process.env.WC_URL || 'https://michelkredercoaching.nl').replace(/\/$/, '');
   const ck = process.env.WC_CONSUMER_KEY, cs = process.env.WC_CONSUMER_SECRET, geheim = process.env.WOO_WEBHOOK_SECRET;
   if (!ck || !cs || !geheim) return res.status(500).json({ ok: false, fout: 'WooCommerce- of webhookgegevens ontbreken' });
-  const r = await fetch(`${basis}/wp-json/wc/v3/orders?after=2026-10-08T22:00:00&before=${new Date(LANCERING).toISOString().slice(0, 19)}&dates_are_gmt=true&per_page=100&status=processing,completed`, { headers: { Authorization: 'Basic ' + Buffer.from(ck + ':' + cs).toString('base64') }, signal: AbortSignal.timeout(20000) });
+  const r = await fetch(`${basis}/wp-json/wc/v3/orders?after=2026-10-08T22:00:00&before=${new Date(LANCERING_PLAN).toISOString().slice(0, 19)}&dates_are_gmt=true&per_page=100&status=processing,completed`, { headers: { Authorization: 'Basic ' + Buffer.from(ck + ':' + cs).toString('base64') }, signal: AbortSignal.timeout(20000) });
   if (!r.ok) return res.status(502).json({ ok: false, fout: 'WooCommerce HTTP ' + r.status });
   const orders = await r.json();
   const uit = [];
@@ -1301,7 +1304,7 @@ async function routeSchemaInhaal(req, res) {
 async function routeCadeauMail(req, res) {
   const cron = process.env.CRON_SECRET || '';
   if (!cron || String(req.headers?.authorization || '') !== `Bearer ${cron}`) return res.status(401).json({ ok: false });
-  if (voorLancering()) return res.status(200).json({ ok: true, nogNiet: true });
+  if (Date.now() < LANCERING_PLAN) return res.status(200).json({ ok: true, nogNiet: true });
   const key = process.env.RESEND_API_KEY;
   const lijst = await redis(['SMEMBERS', 'lid:cadeau']);
   // Resend gratis = 100 per dag: standaard 35 per run, zodat inlogcodes altijd

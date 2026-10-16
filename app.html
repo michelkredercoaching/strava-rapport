@@ -3280,7 +3280,7 @@ function coachingPaginaHtml(d) {
 const OPEN_SLOT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>';
 // Pro worden kan ook via een plan (14-10-2026): bij een schema of coaching zit Pro erbij.
 function planKeuzeHtml() {
-  const na = Date.now() >= 1792144800000;
+  const na = Date.now() >= 1792137600000;
   return `<div class="plankeuze"><div class="label">Of meteen met een plan</div><h3>Pro via je schema of coaching</h3>
     <p>Koop je een trainingsschema of start je met coaching, dan zit het MKC Pro er gewoon bij. Apart Pro worden hoeft dan niet.</p>
     <div class="pk-opties"><a href="${SITE}/trainingsschemas/" target="_blank" rel="noopener"><b>Trainingsschema</b><span>8, 12 of 16 weken in TrainingPeaks${na ? ' &middot; vanaf &euro;59' : ''}</span><em>Pro voor de hele looptijd, plus 2 weken</em></a>
@@ -3296,7 +3296,7 @@ function routeHtml(d) {
   if (!d || d.gast || (d.lid && d.lid.bron === 'coaching')) return '';
   const schema = !!(d.schema || (d.lid && d.lid.bron === 'schema'));
   const nu = schema ? 2 : isLid(d) ? 1 : 0;
-  const naLancering = Date.now() >= 1792144800000;
+  const naLancering = Date.now() >= 1792137600000;
   const stappen = [
     { nm: 'Gratis account', wat: 'Bandenspanning, wind en 3 coachvragen per week' },
     { nm: 'MKC Pro', wat: 'Slimme bandenspanning, kleding en voeding voor elke rit, je eigen coach en de Core-app.', prijs: '&euro;' + APP_PRIJS.maand + ' per maand, altijd opzegbaar', knop: `<button type="button" class="knop" data-view="lid">${kanLidNu(d) ? 'Word Pro' : 'Bekijk wat je krijgt'}</button>` },
@@ -5488,7 +5488,7 @@ const RK_KNOP = '<button type="button" class="knop rk-knop" data-ritkaart><svg v
 // Wie de app opent zonder account (of via /banden), krijgt meteen de gratis
 // bandentool: invullen, direct je spanning. Daaronder: uitkomst mailen (lead,
 // zelfde route als de website), app op je beginscherm, en wat er nog meer in zit.
-const GAST_LANCERING = 1792144800000;
+const GAST_LANCERING = 1792137600000;
 function gastAnon() { try { let a = localStorage.getItem('mkcAnon'); if (!a) { a = Math.random().toString(36).slice(2, 12) + Date.now().toString(36); localStorage.setItem('mkcAnon', a); } return a; } catch (e) { return ''; } }
 function gastStat(e) {
   try { const k = 'mkcStat:' + e + ':' + new Date().toISOString().slice(0, 10); if (localStorage.getItem(k)) return; localStorage.setItem(k, '1'); } catch (er) {}
