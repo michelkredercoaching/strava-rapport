@@ -345,8 +345,8 @@ async function routeFactuurPdf(req, res) {
   const lid = await haalLid(email);
   const f = ((lid && lid.facturen) || []).find((x) => x.id === String(req.query?.id || ''));
   if (!f) return res.status(404).json({ ok: false, fout: 'Factuur niet gevonden.' });
-  const r = await fetch(`https://api.mollie.com/v2/sales-invoices/${f.id}`, { headers: { Authorization: `Bearer ${MOLLIE_KEY}`, Accept: 'application/pdf' } });
-  if (!r.ok) return res.status(502).json({ ok: false, fout: 'De factuur ophalen lukte niet.' });
+  const r = await fetch(`https://api.mollie.com/v2/sales-invoices/${encodeURIComponent(f.id)}/pdf`, { headers: { Authorization: `Bearer ${MOLLIE_KEY}` } }); // los /pdf-endpoint: Accept-header gaf JSON terug (lege pagina, Luus 16-10)
+  if (!r.ok || !/pdf/.test(r.headers.get('content-type') || '')) return res.status(502).json({ ok: false, fout: 'De factuur ophalen lukte niet.' });
   const buf = Buffer.from(await r.arrayBuffer());
   res.setHeader('Content-Type', 'application/pdf');
   res.setHeader('Content-Disposition', `inline; filename="Factuur-${(f.nr || f.id).replace(/[^A-Za-z0-9-]/g, '')}.pdf"`);
