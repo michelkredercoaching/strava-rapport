@@ -103,6 +103,7 @@
   .rij2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   /* Keuzelijsten herkenbaar als keuzelijst (16-10-2026, Luus): pijltje rechts. */
   select:not([multiple]) { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23FF6B1A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 12px center !important; padding-right:34px !important; cursor:pointer; }
+  .sp-appmuziek { display:block; width:100%; text-align:left; margin-top:12px; padding:10px 12px; border-radius:8px; background:var(--surface2); border:1px solid rgba(255,255,255,.14); color:inherit; font-family:inherit; cursor:pointer; } .sp-appmuziek b { display:block; font-size:14px; } .sp-appmuziek span { font-size:12.5px; color:var(--muted, #9b978f); } .sp-appmuziek.aan { border-color:#FF6B1A; background:rgba(255,107,26,.1); }
   .sp-muziek { display:flex; align-items:center; gap:10px; margin-top:12px; padding:10px 12px; border-radius:8px; background:rgba(30,215,96,.1); border:1px solid rgba(30,215,96,.4); color:#1ED760; text-decoration:none; font-size:13px; } .sp-muziek span { color:rgba(245,243,239,.8); } .sp-muziek b { display:block; color:#f5f3ef; font-size:14px; }
   .dk2 { display:grid; grid-template-columns:64px 1fr; gap:6px; } .dk2 select { width:100%; min-height:46px; padding:10px 8px; background:var(--surface2); border:1px solid rgba(255,255,255,.14); border-radius:5px; color:var(--white); font-size:16px; font-family:inherit; } .dk2-tekst { grid-column:1 / -1; font-size:12px; color:#FF6B1A; }
   /* Sessies */
@@ -1548,6 +1549,54 @@ function piep(freq = 880, duur = .12, vol = .25) {
 }
 
 // ===========================================================================
+// MUZIEK (16-10-2026): achtergrondritme in de app zelf, met Web Audio gemaakt.
+// Geen bestand en geen rechten. 118 bpm, vier akkoorden (Am F C G), kick, hihat,
+// bas en een zachte pad. Gaat zachter als de stem praat en stil bij pauze.
+// ===========================================================================
+const MUZ = { iv: null, master: null, stap: 0, volgende: 0, noise: null };
+function muziekAan() { try { return localStorage.getItem('mkcCoreMuziek') !== '0'; } catch (e) { return true; } }
+function muziekZet(aan) { try { localStorage.setItem('mkcCoreMuziek', aan ? '1' : '0'); } catch (e) {} }
+const MUZ_BPM = 118, MUZ_16 = 60 / MUZ_BPM / 4;
+const MUZ_AKK = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]]; // Am F C G (midi)
+const hz = (m) => 440 * Math.pow(2, (m - 69) / 12);
+function muzKick(t) { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(130, t); o.frequency.exponentialRampToValueAtTime(42, t + 0.18); g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.28); o.connect(g).connect(MUZ.master); o.start(t); o.stop(t + 0.3); }
+function muzHat(t, vol) { const b = ac.createBufferSource(); b.buffer = MUZ.noise; const fl = ac.createBiquadFilter(); fl.type = 'highpass'; fl.frequency.value = 7000; const g = ac.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.05); b.connect(fl).connect(g).connect(MUZ.master); b.start(t); b.stop(t + 0.06); }
+function muzBas(t, m) { const o = ac.createOscillator(), g = ac.createGain(), fl = ac.createBiquadFilter(); o.type = 'sawtooth'; o.frequency.value = hz(m - 24); fl.type = 'lowpass'; fl.frequency.value = 420; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.32, t + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + MUZ_16 * 1.8); o.connect(fl).connect(g).connect(MUZ.master); o.start(t); o.stop(t + MUZ_16 * 2); }
+function muzPad(t, akk) { const duur = MUZ_16 * 16; for (const m of akk) for (const d of [-6, 6]) { const o = ac.createOscillator(), g = ac.createGain(), fl = ac.createBiquadFilter(); o.type = 'sawtooth'; o.frequency.value = hz(m); o.detune.value = d; fl.type = 'lowpass'; fl.frequency.value = 900; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.022, t + 0.4); g.gain.setValueAtTime(0.022, t + duur - 0.3); g.gain.linearRampToValueAtTime(0.0001, t + duur); o.connect(fl).connect(g).connect(MUZ.master); o.start(t); o.stop(t + duur + 0.05); } }
+function muzPlan() {
+  if (!MUZ.master) return;
+  // Volume: stil bij pauze, zacht als de stem praat.
+  const praat = (() => { try { return speechSynthesis.speaking; } catch (e) { return false; } })();
+  const doel = speler && speler.pauze ? 0 : praat ? 0.05 : 0.14;
+  MUZ.master.gain.setTargetAtTime(doel, ac.currentTime, 0.15);
+  while (MUZ.volgende < ac.currentTime + 0.12) {
+    const t = MUZ.volgende, i = MUZ.stap % 16, maat = Math.floor(MUZ.stap / 16) % 4, akk = MUZ_AKK[maat];
+    if (i % 4 === 0) muzKick(t);
+    if (i % 2 === 0) muzHat(t, i % 4 === 2 ? 0.16 : 0.07);
+    if ([0, 3, 6, 8, 11, 14].includes(i)) muzBas(t, akk[0]);
+    if (i === 0) muzPad(t, akk);
+    MUZ.stap++; MUZ.volgende += MUZ_16;
+  }
+}
+function muziekStart() {
+  if (MUZ.iv) return;
+  try {
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+    if (!MUZ.noise) { const b = ac.createBuffer(1, ac.sampleRate * 0.1, ac.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; MUZ.noise = b; }
+    MUZ.master = ac.createGain(); MUZ.master.gain.value = 0; MUZ.master.connect(ac.destination);
+    MUZ.stap = 0; MUZ.volgende = ac.currentTime + 0.1;
+    MUZ.iv = setInterval(muzPlan, 30); muzPlan();
+  } catch (e) {}
+}
+function muziekStop() {
+  if (!MUZ.iv) return;
+  clearInterval(MUZ.iv); MUZ.iv = null;
+  try { const m = MUZ.master; m.gain.setTargetAtTime(0, ac.currentTime, 0.2); setTimeout(() => { try { m.disconnect(); } catch (e) {} }, 900); } catch (e) {}
+  MUZ.master = null;
+}
+
+// ===========================================================================
 // SPELER: meetrainen met de timer
 // ===========================================================================
 function bouwStappen(s) {
@@ -1591,7 +1640,7 @@ async function startSpeler(sessie, hervat) {
   const stappen = bouwStappen(sessie);
   const totaal = stappen.reduce((n, s) => n + s.sec, 0);
   const el = document.createElement('div'); el.className = 'speler';
-  el.innerHTML = `<div class="balk"><div class="t">${NR[sessie.letter] ? 'Sessie ' + NR[sessie.letter] + ' &middot; ' : ''}${esc(sessie.naam)}</div><button class="spk" data-sp="pijn">Pijn?</button><button class="spk" data-sp="stop">Stoppen</button></div>
+  el.innerHTML = `<div class="balk"><div class="t">${NR[sessie.letter] ? 'Sessie ' + NR[sessie.letter] + ' &middot; ' : ''}${esc(sessie.naam)}</div><button class="spk" data-sp="muziek">${muziekAan() ? '&#9835; Muziek aan' : '&#9835; Muziek uit'}</button><button class="spk" data-sp="pijn">Pijn?</button><button class="spk" data-sp="stop">Stoppen</button></div>
     <details class="stemklap"><summary>${stemSamen()}</summary><div class="stemkeuze" role="radiogroup" aria-label="Stem"><span>Stem</span>${['vrouw', 'man', 'uit'].map((x) => `<button type="button" data-sp="stem" data-stem="${x}" class="${stemKeuze() === x ? 'aan' : ''}" role="radio">${{ vrouw: 'Vrouw', man: 'Man', uit: 'Uit' }[x]}</button>`).join('')}</div><div class="stemhint"></div></details>
     <div class="voortgang"><i></i></div>
     <div class="midden"><div class="soort"></div><div class="naam"></div><div class="kant"></div><div class="beeld"></div><div class="spieren"></div><div class="klok"></div><div class="cue"></div><div class="straks"></div><div class="uitleg"></div></div>
@@ -1624,12 +1673,14 @@ function toonOverzicht(el, sessie) {
   o.innerHTML = `<div class="sp-ovz-in"><div class="soort">Dit ga je doen</div><div class="naam" style="font-size:30px">${esc(sessie.naam)}</div>
     <p class="klein muted" style="margin:4px 0 12px">${sessie.minuten} min &middot; warming-up, dan ${r} ${r === 1 ? 'ronde' : 'rondes'} van ${sessie.werk} s werk en ${sessie.rust} s rust</p>
     <div class="sp-ovz-lijst">${sessie.oefeningen.map((x, i) => `<div class="sp-ovz-rij"><div class="sp-ovz-beeld" data-ovzanim="${x.id}"></div><div><b>${i + 1}. ${esc(x.naam)}</b><span>${x.perKant ? 'per kant, ' : ''}${esc(x.cue || '')}</span></div></div>`).join('')}</div>
+    <button type="button" class="sp-appmuziek ${muziekAan() ? 'aan' : ''}" data-ovz="appmuziek"><b>&#9835; Muziek in de app</b><span>${muziekAan() ? 'Aan: een opgewekt ritme onder de stem door' : 'Uit'}</span></button>
     <a class="sp-muziek" data-ovz="muziek" href="https://open.spotify.com/playlist/2SionNpdgzTWbSvNrf718X" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm4.6 14.4a.6.6 0 0 1-.9.2c-2.4-1.5-5.4-1.8-9-1-.4.1-.7-.2-.8-.5-.1-.4.2-.7.5-.8 3.9-.9 7.2-.5 9.9 1.1.3.2.4.6.3 1zm1.2-2.7c-.2.4-.7.5-1.1.3-2.7-1.7-6.9-2.2-10.2-1.2-.4.1-.9-.1-1-.5-.1-.4.1-.9.5-1 3.7-1.1 8.4-.6 11.5 1.3.4.3.5.8.3 1.1zm.1-2.8C14.7 9 9.4 8.8 6.3 9.7c-.5.2-1-.1-1.2-.6-.2-.5.1-1 .6-1.2 3.5-1.1 9.4-.8 13.1 1.4.5.3.6.9.4 1.3-.3.4-.9.6-1.3.3z"/></svg><span><b>Zet je muziek aan</b>De MKC Core-playlist op Spotify</span></a>
     <button class="knop" data-ovz="begin" style="margin-top:14px;width:100%">Begin</button></div>`;
   el.appendChild(o);
   try { o.querySelectorAll('[data-ovzanim]').forEach((b) => { const a = window.CoreAnimaties && window.CoreAnimaties[b.dataset.ovzanim]; if (a) window.CoreFiguur.speel(b, a); }); } catch (e) {}
-  o.querySelector('[data-ovz=muziek]').onclick = (e) => e.stopPropagation();
-  o.querySelector('[data-ovz=begin]').onclick = (e) => { e.stopPropagation(); o.remove(); sp.pauze = false; naarStap(0); };
+  o.querySelector('[data-ovz=muziek]').onclick = (e) => { e.stopPropagation(); muziekZet(false); };
+  o.querySelector('[data-ovz=appmuziek]').onclick = (e) => { e.stopPropagation(); const aan = !muziekAan(); muziekZet(aan); const b = e.currentTarget; b.classList.toggle('aan', aan); b.querySelector('span').textContent = aan ? 'Aan: een opgewekt ritme onder de stem door' : 'Uit'; const kn = sp.el.querySelector('[data-sp=muziek]'); if (kn) kn.innerHTML = aan ? '&#9835; Muziek aan' : '&#9835; Muziek uit'; };
+  o.querySelector('[data-ovz=begin]').onclick = (e) => { e.stopPropagation(); o.remove(); sp.pauze = false; if (muziekAan()) muziekStart(); naarStap(0); };
 }
 function naarStap(i) {
   const sp = speler; if (!sp) return;
@@ -1797,6 +1848,7 @@ function spelerKlik(e) {
   if (k.dataset.sp === 'verder' && S.beheer) naarStap(sp.i + 1);
   if (k.dataset.sp === 'terug') naarStap(sp.over < st.sec - 2 ? sp.i : sp.i - 1);
   if (k.dataset.sp === 'stop') { if (confirm('Sessie stoppen? Hij wordt dan niet afgevinkt.')) { wisVoortgang(); sluitSpeler(); } }
+  if (k.dataset.sp === 'muziek') { const aan = !muziekAan(); muziekZet(aan); k.innerHTML = aan ? '&#9835; Muziek aan' : '&#9835; Muziek uit'; if (aan) muziekStart(); else muziekStop(); }
 }
 
 // Pagina onder de speler vastzetten (14-10-2026): op de iPhone scrollde en zoomde hij mee, waardoor alles
@@ -1806,6 +1858,7 @@ function zetPaginaVast() { PAGINA_Y = window.scrollY; const b = document.body.st
 function laatPaginaLos() { const b = document.body.style; b.position = ''; b.top = ''; b.left = ''; b.right = ''; b.overflow = ''; window.scrollTo(0, PAGINA_Y); }
 function sluitSpeler() {
   const sp = speler; if (!sp) return;
+  muziekStop();
   clearInterval(sp.iv); if (sp.stopAnim) sp.stopAnim();
   try { sp.wakeLock?.release(); } catch {}
   sp.el.remove(); laatPaginaLos(); speler = null;
@@ -1893,6 +1946,7 @@ function plaatjeUitleg() { stravaMelding('Bewaar het plaatje. Open daarna je act
 })();
 async function klaarSpeler() {
   const sp = speler;
+  muziekStop();
   clearInterval(sp.iv); if (sp.stopAnim) sp.stopAnim();
   if (!sp.sessie.extra && !sp.bevestigd && (sp.gepland || 0) > 180 && (sp.echt || 0) < sp.gepland * 0.3) {
     $('.midden', sp.el).innerHTML = '<div class="soort">Sessie ' + NR[sp.sessie.letter] + '</div><div class="naam" style="font-size:40px">Dat ging snel</div><p class="cue">Je hebt de oefeningen doorgeklikt. Heb je de sessie wel echt gedaan? Alleen dan vink ik hem af.</p>';
