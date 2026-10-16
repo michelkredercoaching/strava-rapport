@@ -163,6 +163,7 @@
   .skc-dag.nu { outline:1px solid var(--accent); }
   .skc-zin { margin:10px 0 12px; font-size:13px; color:rgba(245,243,239,.85); }
   .skc-knop { display:block; width:100%; text-align:center; box-sizing:border-box; background:#4CC38A; border-color:#4CC38A; color:#0a0a0a; }
+  .sk-coachtegel .tegel { width:100%; flex:1 1 100%; min-height:130px !important; }
   .lid-wat { margin-top:22px; } .lid-vrklap { margin-top:16px; }
   /* Keuzelijsten herkenbaar als keuzelijst (16-10-2026): pijltje rechts. */
   select:not([multiple]) { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23FF6B1A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 12px center !important; padding-right:34px !important; cursor:pointer; }
@@ -2343,7 +2344,7 @@ function schemaKaart(d) {
     <div class="sk-dag"><a class="knop sk-tpgroot" href="https://app.trainingpeaks.com/#calendar" target="_blank" rel="noopener">Open je training in TrainingPeaks</a>
     <p class="sk-tpzin">Daar staat altijd je actuele schema, ook als Michel het voor jou heeft aangepast.</p>
     ${coreBlok}
-    <div class="sk-acties"><button class="knop leeg" data-sk="vraag" data-titel="">Vraag je coach over je schema</button></div></div></div>`;
+    <div class="sk-acties sk-coachtegel"><button type="button" class="tegel foto breed" data-sk="vraag" data-titel="" style="--foto:url('${TG_W}2026/08/michel-hier-510x510.jpeg');--fpos:center 35%;--fmaat:cover"><span class="tg-nm">Vraag je coach</span><span class="tg-sub">Over je schema, je week of een training</span><span class="tg-pijl">&#8250;</span></button></div></div></div>`;
 }
 async function skSchuif(r) {
   if (D && D.beheer && BEKIJK === 'zelf' && SIM.schema !== 'echt') return;
