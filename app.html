@@ -1764,7 +1764,7 @@ function bandenKaart(d) {
       <div class="bt-keuze"><button class="aan">Droog</button><button>Nat wegdek</button></div>
       <div class="sb-kou">Het wordt 6&deg;. Pomp je binnen, pomp dan iets harder. Buiten zit je dan precies goed.</div></div>
     <div class="voor">${SLOT}<b>${slimKop}</b><span>${slimUitleg}</span>
-      ${kanLid ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met de MKC-app</button>' : BINNENKORT}</div></div>`;
+      ${kanLid ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met Pro</button>' : BINNENKORT}</div></div>`;
   const vtab = ['kleding', 'voeding', 'groep'].includes(btLees().tab) ? btLees().tab : 'banden';
   const vtabs = `<div class="vr-tabs"><button type="button" data-kl="vrijtab" data-w="banden" class="${vtab === 'banden' ? 'aan' : ''}">Banden</button><button type="button" data-kl="vrijtab" data-w="kleding" class="${vtab === 'kleding' ? 'aan' : ''}">Kleding ${SLOT.replace('<svg', '<svg class="tab-slot"')}</button><button type="button" data-kl="vrijtab" data-w="voeding" class="${vtab === 'voeding' ? 'aan' : ''}">Voeding ${SLOT.replace('<svg', '<svg class="tab-slot"')}</button><button type="button" data-kl="vrijtab" data-w="groep" class="${vtab === 'groep' ? 'aan' : ''}">Groepsrit</button></div>`;
   if (vtab === 'groep') { if (!d.gast) grZorg(); return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag open">Gratis</span>
@@ -1775,13 +1775,13 @@ function bandenKaart(d) {
     ${vrijWeerRegel()}<div class="bt-slot"><div class="achter">
       ${vrijVoedingAchter()}</div>
     <div class="voor">${SLOT}<b>${weerNu() ? 'Je voeding voor een rit van 2 uur staat klaar' : 'Nooit meer de man met de hamer'}</b><span>Voor jouw rit precies hoeveel koolhydraten en bidons je meeneemt, afgestemd op hoe lang en hoe hard je rijdt en hoe warm het wordt. Met Michels eigen regels.</span>
-      ${kanLidNu(d) ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met de MKC-app</button>' : BINNENKORT}</div></div></div></div>`;
+      ${kanLidNu(d) ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met Pro</button>' : BINNENKORT}</div></div></div></div>`;
   if (vtab === 'kleding') return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag oranje">Pro</span>
     <div class="label">Vandaag rijden</div><h2>Wat trek je aan?</h2>${vtabs}
     ${vrijWeerRegel()}<div class="bt-slot"><div class="achter">
       ${vrijKledingAchter()}</div>
     <div class="voor">${SLOT}<b>${weerNu() ? 'Je kledingadvies voor vandaag staat klaar' : 'Wat trek je aan voor jouw rit?'}</b><span>Op basis van het weer tijdens je hele rit, wind en regen, hoe hard je rijdt en of je het snel koud hebt. Met Michels eigen kledingindeling uit 9 jaar prof.</span>
-      ${kanLidNu(d) ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met de MKC-app</button>' : BINNENKORT}</div></div></div></div>`;
+      ${kanLidNu(d) ? '<button type="button" class="knop" data-actie="naarlid">Ontgrendel met Pro</button>' : BINNENKORT}</div></div></div></div>`;
   return `<div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag open">Gratis</span>
     <div class="label">Vandaag rijden</div><h2>Wat pomp je vandaag?</h2>${vtabs}
     <p>Jouw gewicht en band, direct de juiste spanning voor en achter.</p>
@@ -5326,7 +5326,7 @@ function grHtml() {
   } else if (uren && uren.length && !lid) {
     lidBlok = `<div class="gr-blok"><h4>Wat trek je aan</h4><div class="gr-slot">${SLOT}<p>Je kleding voor precies deze rit, op basis van het weer van start tot finish, de wind en het tempo. Met Pro.</p></div></div>
       <div class="gr-blok"><h4>Wat neem je mee</h4><div class="gr-slot">${SLOT}<p>Hoeveel koolhydraten en bidons je meeneemt voor deze rit, afgestemd op de duur, het tempo en de temperatuur. Met Pro.</p></div>
-      ${kanLidNu(d) ? '<button type="button" class="knop leeg" data-actie="naarlid" style="margin-top:10px">Ontgrendel met de MKC-app</button>' : ''}</div>`;
+      ${kanLidNu(d) ? '<button type="button" class="knop leeg" data-actie="naarlid" style="margin-top:10px">Ontgrendel met Pro</button>' : ''}</div>`;
   }
   return `<div class="gr"><div class="label">Groepsrit${rit.eigen ? ' &middot; jouw rit' : ''}</div><h3>${esc(rit.naam)}</h3>
     <div class="gr-wanneer">${esc(grDag(rit.start).replace(/^./, (c) => c.toUpperCase()))} &middot; ${grTijd(rit.start)} tot ${grTijd(eind)}</div>
