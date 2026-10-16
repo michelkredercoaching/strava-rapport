@@ -234,7 +234,7 @@ async function routeWeekoverzicht(req, res) {
   const nieuw = [], weg = [], mislukt = [], terug = [];
   for (const email of (l.ok && l.result) || []) {
     const lid = await haalLid(email); if (!lid) continue;
-    if (binnen(lid.sinds) && lid.bron === 'betaald') nieuw.push(`${lid.naam || email} (${planVan(lid.plan) === 'jaar' ? 'jaar' : 'maand'}${lid.vriendVan ? ', via een maat' : ''})`);
+    if (binnen(lid.sinds) && lid.bron === 'betaald') nieuw.push(`${lid.naam || email} (${planVan(lid.plan) === 'jaar' ? 'jaar' : 'maand'}${lid.vriendVan ? ', via een uitnodiging' : ''})`);
     if (binnen(lid.opgezegdOp)) weg.push(`${lid.naam || email}: ${OPZEG_NAMEN_MAIL[(lid.opzegReden && lid.opzegReden.reden) || 'geen'] || 'geen reden'}${lid.opzegReden && lid.opzegReden.toelichting ? ' (&ldquo;' + lid.opzegReden.toelichting + '&rdquo;)' : ''}`);
     if (lid.mislukt && binnen(lid.mislukt.op)) mislukt.push(lid.naam || email);
     if (binnen(lid.winbackGemaild)) terug.push(lid.naam || email);
@@ -363,7 +363,7 @@ async function uitnLijst(email) { const r = await redis(['GET', `lid:uitnodiging
 async function uitnStatus(email, { u, naam, status }) {
   const l = await uitnLijst(email);
   let x = u ? l.find((y) => y.id === u) : null;
-  if (!x) { x = { id: crypto.randomBytes(4).toString('hex'), naam: schoonNaam(naam) || 'Een maat', op: new Date().toISOString(), status: 'verstuurd', zelf: true }; l.unshift(x); }
+  if (!x) { x = { id: crypto.randomBytes(4).toString('hex'), naam: schoonNaam(naam) || 'Iemand', op: new Date().toISOString(), status: 'verstuurd', zelf: true }; l.unshift(x); }
   if (UITN_STAP[status] > UITN_STAP[x.status || 'verstuurd']) { x.status = status; x[status + 'Op'] = new Date().toISOString(); }
   await redis(['SET', `lid:uitnodigingen:${email}`, JSON.stringify(l.slice(0, 60))]);
 }
@@ -491,14 +491,14 @@ async function vriendMijlpalen(lid, email, meldingen) {
       if (!t) { await meldIntern(`MIJLPAAL ANALYSE - ${email}`, `${email} heeft 3 maten aangebracht, maar de gratis analyselink kon niet gemaakt worden. Stuur hem met de hand een gratis analyselink.`); continue; }
       lid.vriendAnalyse = `https://rapport.michelkredercoaching.nl/?korting=${t}`;
       lid.vriendMijlpalen.push(m.n);
-      meldingen.push({ titel: 'Mijlpaal: gratis Strava-analyse', tekst: '3 maten via jouw link. Je gratis Strava-analyse staat klaar bij Mijn Pro.' });
+      meldingen.push({ titel: 'Mijlpaal: gratis Strava-analyse', tekst: '3 vrienden via jouw link. Je gratis Strava-analyse staat klaar bij Mijn Pro.' });
     } else {
       if (!zelf) { lid.vriendMijlpalen.push(m.n); continue; }
       const zin = await vriendTijdErbij(lid, email, m.soort === 'jaar' ? { maanden: 12 } : { maanden: 1 }, m.titel);
       if (!zin) continue;
       lid.vriendDagen = (lid.vriendDagen || 0) + (m.soort === 'jaar' ? 365 : 30);
       lid.vriendMijlpalen.push(m.n);
-      meldingen.push({ titel: 'Mijlpaal: ' + m.titel.toLowerCase(), tekst: `${m.n} maten via jouw link. ${m.titel}: ${zin}.` });
+      meldingen.push({ titel: 'Mijlpaal: ' + m.titel.toLowerCase(), tekst: `${m.n} vrienden via jouw link. ${m.titel}: ${zin}.` });
     }
     await meldIntern(`MIJLPAAL ${m.n} MATEN - ${email}`, `${lid.naam || email} heeft ${m.n} maten aangebracht en kreeg: ${m.titel}.`);
   }
@@ -520,7 +520,7 @@ async function beloonVriend(code, maatEmail, maatNaam, meteenBevestigd = false) 
   const email = v.ok && v.result; if (!email || email === maatEmail) return;
   const lid = (await haalLid(email)) || {};
   if (lid.status === 'verwijderd') return;
-  const vn = String(maatNaam || '').split(' ')[0] || 'Je maat';
+  const vn = String(maatNaam || '').split(' ')[0] || 'Je vriend of vriendin';
   lid.vriendAantal = (lid.vriendAantal || 0) + 1;
   if (meteenBevestigd) lid.vriendBevestigd = (lid.vriendBevestigd || 0) + 1;
   // Gratis account (of verlopen): wordt gratis lid via zijn maten, 2 weken per maat.
@@ -780,7 +780,7 @@ async function routeStart(req, res) {
     method: 'POST',
     body: JSON.stringify({
       amount: { currency: 'EUR', value: badgeKorting ? (Number(PLANNEN[plan].bedrag) - badgeKorting).toFixed(2) : vriendVan ? vriendBedrag(plan) : terug ? halve(herstel ? prijzenVan(lid).maand : PLANNEN.maand.bedrag) : (herstel ? prijzenVan(lid)[plan] : PLANNEN[plan].bedrag) },
-      description: herstel ? `${OMSCHRIJVING}, betaling bijwerken` : badgeKorting ? `${OMSCHRIJVING}, ${plan === 'jaar' ? 'eerste jaar' : 'eerste maand'} (badgekorting ${euro(badgeKorting)})` : vriendVan ? (plan === 'jaar' ? `${OMSCHRIJVING}, eerste jaar (via een maat, ${euro(VRIEND_JAAR_KORTING)} korting)` : `${OMSCHRIJVING}, eerste maand (via een maat, 50% korting)`) : automatisch
+      description: herstel ? `${OMSCHRIJVING}, betaling bijwerken` : badgeKorting ? `${OMSCHRIJVING}, ${plan === 'jaar' ? 'eerste jaar' : 'eerste maand'} (badgekorting ${euro(badgeKorting)})` : vriendVan ? (plan === 'jaar' ? `${OMSCHRIJVING}, eerste jaar (via een uitnodiging, ${euro(VRIEND_JAAR_KORTING)} korting)` : `${OMSCHRIJVING}, eerste maand (via een uitnodiging, 50% korting)`) : automatisch
         ? (plan === 'jaar' ? `${OMSCHRIJVING}, eerste jaar` : `${OMSCHRIJVING}, eerste maand`)
         : (plan === 'jaar' ? `${OMSCHRIJVING}, 1 jaar` : `${OMSCHRIJVING}, 1 maand`),
       customerId: lid.customerId,
@@ -944,7 +944,7 @@ async function verwerkBetaald(req, res, p, id, lidEmail) {
         const pv = periodeVanaf || new Date(betaaldOp);
         const maand = new Date(pv).toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' });
         const periode = planVan(lid.plan) === 'jaar' ? `jaar vanaf ${new Date(pv).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' })}` : maand;
-        const f = await maakMollieFactuur({ naam: (lid.factuur && lid.factuur.naam) || lid.naam || lidEmail.split('@')[0], postcode: lid.factuur && lid.factuur.postcode, huisnummer: lid.factuur && lid.factuur.huisnummer, land: lid.factuur && lid.factuur.land, straat: lid.factuur && lid.factuur.straat, plaats: lid.factuur && lid.factuur.plaats, email: lidEmail, bedrag: (p.amount && p.amount.value) || PLANNEN[planVan(lid.plan)].bedrag, betaalId: id, omschrijving: `${OMSCHRIJVING}, ${periode}${p.metadata && p.metadata.vriend ? (planVan(lid.plan) === 'jaar' ? ', via een maat (' + euro(VRIEND_JAAR_KORTING) + ' korting)' : ', via een maat (50% korting)') : p.metadata && p.metadata.badgeKorting ? ', badgekorting ' + euro(p.metadata.badgeKorting) : p.metadata && p.metadata.terug ? ', welkom terug (50% korting)' : ''}` });
+        const f = await maakMollieFactuur({ naam: (lid.factuur && lid.factuur.naam) || lid.naam || lidEmail.split('@')[0], postcode: lid.factuur && lid.factuur.postcode, huisnummer: lid.factuur && lid.factuur.huisnummer, land: lid.factuur && lid.factuur.land, straat: lid.factuur && lid.factuur.straat, plaats: lid.factuur && lid.factuur.plaats, email: lidEmail, bedrag: (p.amount && p.amount.value) || PLANNEN[planVan(lid.plan)].bedrag, betaalId: id, omschrijving: `${OMSCHRIJVING}, ${periode}${p.metadata && p.metadata.vriend ? (planVan(lid.plan) === 'jaar' ? ', via een uitnodiging (' + euro(VRIEND_JAAR_KORTING) + ' korting)' : ', via een uitnodiging (50% korting)') : p.metadata && p.metadata.badgeKorting ? ', badgekorting ' + euro(p.metadata.badgeKorting) : p.metadata && p.metadata.terug ? ', welkom terug (50% korting)' : ''}` });
         if (f.ok && f.id) { lid.facturen = [{ id: f.id, nr: f.nummer || '', bedrag: (p.amount && p.amount.value) || '', op: betaaldOp.slice(0, 10), omschrijving: periode }, ...(lid.facturen || [])].slice(0, 60); await bewaarLid(lidEmail, lid); }
         if (!f.ok) { console.error('Factuur lidmaatschap mislukt:', lidEmail, id, f.fout); await meldIntern(`FACTUUR MISLUKT - lidmaatschap - ${lidEmail}`, `Automatische factuur voor ${id} (${lidEmail}) mislukte: ${f.fout || 'onbekende fout'}. De toegang staat wel open. Maak de factuur even handmatig aan in Mollie.`); }
       } catch (e) { console.error('Factuur lidmaatschap fout:', e); }

@@ -1048,7 +1048,7 @@ async function dashMaten() {
   const mensen = new Set(), st = { verstuurd: 0, account: 0, lid: 0 }, perMens = {};
   if (keys.length) {
     const r = await redis(['MGET', ...keys]);
-    ((r.ok && r.result) || []).forEach((x, i) => { let l = []; try { l = JSON.parse(x) || []; } catch (e) {} const e = keys[i].slice('lid:uitnodigingen:'.length); if (l.length) { mensen.add(e); perMens[e] = l.map((u) => ({ naam: u.naam || 'Een maat', status: u.status || 'verstuurd' })); } for (const u of l) st[u.status in st ? u.status : 'verstuurd']++; });
+    ((r.ok && r.result) || []).forEach((x, i) => { let l = []; try { l = JSON.parse(x) || []; } catch (e) {} const e = keys[i].slice('lid:uitnodigingen:'.length); if (l.length) { mensen.add(e); perMens[e] = l.map((u) => ({ naam: u.naam || 'Iemand', status: u.status || 'verstuurd' })); } for (const u of l) st[u.status in st ? u.status : 'verstuurd']++; });
   }
   const [gedeeld, keer] = await Promise.all([redis(['SMEMBERS', 'app:maatdeel:mensen']), redis(['GET', 'app:maatdeel:keer'])]);
   for (const e of (gedeeld.ok && gedeeld.result) || []) if (!BEHEER.includes(e)) mensen.add(e);
