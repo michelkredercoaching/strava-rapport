@@ -975,8 +975,8 @@ async function routeBeheerDash(req, res) {
   const pushLijst = await redis(['SMEMBERS', 'app:push:alle']);
   const zonder = (r) => ((r.ok && r.result) || []).filter((e) => !BEHEER.includes(e)).length;
   const tel = (leden && leden.tel) || {};
-  const [ritten, maten] = await Promise.all([dashRitten().catch((e) => ({ fout: String(e && e.message || e) })), dashMaten().catch((e) => ({ fout: String(e && e.message || e) }))]);
-  return res.status(200).json({ ok: true, ritten, maten,
+  const [ritten, maten, interesse, analyseKijk] = await Promise.all([dashRitten().catch((e) => ({ fout: String(e && e.message || e) })), dashMaten().catch((e) => ({ fout: String(e && e.message || e) })), dashInteresse().catch(() => null), dashAnalyseKijk().catch(() => null)]);
+  return res.status(200).json({ ok: true, ritten, maten, interesse, analyseKijk,
     accounts: Math.max(0, (Number(acc.result) || 0) - BEHEER.length), vandaag: zonder(vandaag), week: zonder(w7), maand: zonder(w30),
     betaald: (tel['betaald-maand'] || 0) + (tel['betaald-jaar'] || 0), maandLeden: tel['betaald-maand'] || 0, jaarLeden: tel['betaald-jaar'] || 0,
     coaching: (tel['coaching-flex'] || 0) + (tel['coaching-premium'] || 0), schema: (tel.schema || 0) + (tel.cadeau || 0),
@@ -994,6 +994,29 @@ async function dashNaam(email) {
   const core = await coreVoorEmail(email).catch(() => null); if (core && core.naam) return core.naam;
   const l = await haalLid(email).catch(() => null); if (l && l.naam) return l.naam;
   const mc = await mcLid(email).catch(() => null); return (mc && mc.merge_fields && mc.merge_fields.FNAME) || '';
+}
+// Interesse in wat nog komt (16-10-2026): pacingplan, afvalprogramma en kracht, met namen.
+async function dashInteresse() {
+  const uit = {};
+  for (const p of ['pacing', 'afval', 'kracht']) {
+    const r = await redis(['SMEMBERS', `app:interesse:${p}`]);
+    const l = ((r.ok && r.result) || []).filter((e) => !BEHEER.includes(e));
+    uit[p] = await Promise.all(l.slice(0, 100).map(async (email) => {
+      const x = { email, naam: await dashNaam(email) };
+      if (p === 'pacing') { const t = await redis(['GET', `app:pacing:tocht:${email}`]); try { const j = t.ok && t.result ? JSON.parse(t.result) : null; if (j) x.tocht = [j.naam, j.datum].filter(Boolean).join(' · '); } catch (e) { x.tocht = String(t.result || '').slice(0, 60); } }
+      return x;
+    }));
+    uit[p + 'Aantal'] = l.length;
+  }
+  return uit;
+}
+// Wie keek in de app bij zijn Strava-analyse (gebeurtenis 'analyse', laatste 30 dagen), met het aantal dagen.
+async function dashAnalyseKijk() {
+  const nlDag = (t) => new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+  const sets = await Promise.all(Array.from({ length: 30 }, (_, i) => redis(['SMEMBERS', `stat:${nlDag(Date.now() - i * 864e5)}:analyse:u`])));
+  const tel = {}; sets.forEach((r, i) => { for (const e of (r.ok && r.result) || []) if (!BEHEER.includes(e)) { tel[e] = tel[e] || { dagen: 0, laatst: i }; tel[e].dagen++; tel[e].laatst = Math.min(tel[e].laatst, i); } });
+  const l = Object.entries(tel).sort((a, b) => a[1].laatst - b[1].laatst || b[1].dagen - a[1].dagen).slice(0, 80);
+  return { aantal: Object.keys(tel).length, lijst: await Promise.all(l.map(async ([email, v]) => ({ email, naam: await dashNaam(email), dagen: v.dagen, laatst: v.laatst }))) };
 }
 async function dashRitten() {
   const nlDag = (t) => new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
