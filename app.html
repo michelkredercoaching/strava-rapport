@@ -138,6 +138,7 @@
   .tegel.foto .tg-pijl { color:#fff; }
   .tegel.foto.vec { background:radial-gradient(circle at 50% 32%, rgba(201,112,52,.55) 0%, rgba(92,48,20,.55) 34%, rgba(20,13,9,0) 70%), linear-gradient(180deg, #2a1a10 0%, #1c120b 60%, #1a110b 100%); overflow:hidden; }
   .rv-wissel { display:block; margin:14px 0 2px; }
+  .na-deed { flex-wrap:wrap; }
   .tegel .tg-voed svg { height:92%; width:auto; margin-top:6px; filter:drop-shadow(0 8px 16px rgba(0,0,0,.5)); }
   .tegel .tg-beeld { position:absolute; left:0; right:0; top:0; height:64%; display:flex; align-items:center; justify-content:center; pointer-events:none; }
   .tegel .tg-fig svg { width:100%; height:auto; margin-top:10px; filter:drop-shadow(0 6px 14px rgba(255,107,26,.25)); }
@@ -1925,8 +1926,8 @@ const RK_BLOK = () => `<details class="klap" data-klap="ritkaart" ${klapOpen('ri
 function sbRijdHtml(f, u) {
   const vandaag = new Date().toISOString().slice(0, 10);
   const al = (SB.ritten || []).find((r) => r.fiets === f.id && String(r.op).slice(0, 10) === vandaag && r.voor === u.voor && r.achter === u.achter);
-  if (al) return '<div class="sb-bewaard">&#10003; Bewaard. Na je rit vraag ik hoe het was.</div>' + RK_BLOK();
-  return '<div class="sb-rijd">' + (SB.opgeslagen && Date.now() - SB.opgeslagen < 5000 ? '<button type="button" class="knop" disabled>Opgeslagen &#10003;</button>' : '<button type="button" class="knop" data-sb="rijd">Opslaan voor mijn rit</button>') + '<p class="klein">Dan vraag ik na je rit hoe je banden en je kleding waren, en onthoud ik het voor de volgende keer.</p></div>' + RK_BLOK();
+  if (al) return '<div class="sb-bewaard">&#10003; Bewaard. Na je rit vraag ik hoe het was.</div>' ;
+  return '<div class="sb-rijd">' + (SB.opgeslagen && Date.now() - SB.opgeslagen < 5000 ? '<button type="button" class="knop" disabled>Opgeslagen &#10003;</button>' : '<button type="button" class="knop" data-sb="rijd">Opslaan voor mijn rit</button>') + '<p class="klein">Dan vraag ik na je rit hoe je banden en je kleding waren, en onthoud ik het voor de volgende keer.</p></div>';
 }
 
 function sbWeerHtml() {
@@ -1994,23 +1995,19 @@ function slimBandenKaart() {
   if (tab === 'groep') { grZorg(); return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${tabs}
     <div id="grmaak">${grMaakHtml()}</div>
-    ${grVriendHtml(zicht())}
-    <button type="button" class="sb-link" data-sb="bewerk" style="margin-top:14px">Mijn fietsen en gewicht</button></div></div>`; }
+    ${windRegelHtml()}
+    ${RK_BLOK()}
+    ${grVriendHtml(zicht())}</div></div>`; }
   if (tab === 'voeding') return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${sbWeerHtml()}
     ${sbOordeelHtml()}
-    ${voedingTabHtml()}
-    ${uit && SB.weer ? sbRijdHtml(f, uit) : ''}
-    ${windRegelHtml()}
-    ${pushHtml()}</div></div>`;
+    ${voedingTabHtml()}</div></div>`;
   if (tab === 'kleding') return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${sbWeerHtml()}
     ${tabs}
     ${sbOordeelHtml()}
     ${kledingTabHtml()}
-    ${uit && SB.weer ? sbRijdHtml(f, uit) : ''}
-    ${windRegelHtml()}
-    ${pushHtml()}</div></div>`;
+    ${uit && SB.weer ? sbRijdHtml(f, uit) : ''}</div></div>`;
   return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}
     ${sbWeerHtml()}
     ${tabs}
@@ -2018,12 +2015,10 @@ function slimBandenKaart() {
     ${instel}
     ${res}
     ${uit && SB.weer ? ritVoorNaHtml('banden') : ''}
-    ${windRegelHtml()}
     <details class="klap" data-klap="bandvraag" ${SB.antwoord || SB.vraagBezig || klapOpen('bandvraag', false) ? 'open' : ''}><summary><b>Vraag het je bandencoach</b><span>kasseien, regen, tocht</span></summary><div class="klap-in sb-vraag" style="margin:0;border:0;padding-top:0">
       <div class="sb-rij"><input id="sbVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen de Ronde met kasseien" value="${esc(SB.vraag)}"><button type="button" class="knop" data-sb="vraag" ${SB.vraagBezig ? 'disabled' : ''}>${SB.vraagBezig ? '...' : 'Vraag'}</button></div>
       ${SB.antwoord ? `<div class="sb-antwoord">${opmaak(SB.antwoord)}</div>${nuttigHtml(SB.aid, SB.nuttig)}` : ''}</div></details>
-    ${logboekHtml()}
-    ${pushHtml()}</div></div>`;
+    ${logboekHtml()}</div></div>`;
 }
 
 function sbTeken() {
@@ -2899,7 +2894,7 @@ const TG_FOTO = {
   groep: ['/app-fotos/groepsrit.jpg?v=3', '62% 45%', 'cover'], // MKC-groep langs de kust, aangeleverd door Michel (16-10-2026)
   kleding: ['/app-fotos/kleding.jpg', '42% 40%', 'cover'],
   core: ['/app-fotos/core.jpg', '38% 45%', 'cover'], // Core-app op telefoon + plank, aangeleverd door Michel (16-10-2026) // MKC-kleding in warm licht, aangeleverd door Michel (16-10-2026) // bidon + gel, aangeleverd door Michel (16-10-2026)
-  analyse: ['/app-fotos/analyse.jpg', '40% 40%', 'cover'], // Power Profile op telefoon bij zonsondergang, aangeleverd door Michel (16-10-2026)
+  analyse: ['/app-fotos/analyse.jpg', '28% 10%', 'cover'], // Power Profile op telefoon bij zonsondergang, aangeleverd door Michel (16-10-2026)
   coach: TG_W + '2026/08/michel-hier-510x510.jpeg',
   coaching: TG_W + '2026/03/WhatsApp-Image-2026-03-24-at-09.24.28-510x510.jpeg',
   schema: [TG_W + '2026/03/WhatsApp-Image-2026-03-23-at-19.21.18-768x512.jpeg', '50% 22%', 'cover']
@@ -3735,8 +3730,8 @@ function volgendeStapHtml(d) {
 function paginaHtml(d) {
   const voet = `<div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
   const dz = d.beheer && BEKIJK === 'alles' ? voorbeeldData(d) : d;
-  if (VIEW === 'rijden') return appBalkHtml('Vandaag rijden') + `<div class="kaarten">${bandenKaart(d)}${toonSlim(d) ? '' : windKaartHtml()}</div>` + voet;
-  if (VIEW === 'voeding' || VIEW === 'kleding' || VIEW === 'groep') return appBalkHtml() + `<div class="kaarten">${bandenKaart(d)}</div>` + voet;
+  if (VIEW === 'rijden') return appBalkHtml('Vandaag rijden') + `<div class="kaarten">${bandenKaart(d)}</div>` + voet;
+  if (VIEW === 'voeding' || VIEW === 'kleding' || VIEW === 'groep') return appBalkHtml() + `<div class="kaarten">${bandenKaart(d)}${VIEW === 'groep' && !toonSlim(d) ? windKaartHtml() : ''}</div>` + voet;
   if (VIEW === 'schema') return appBalkHtml('Mijn schema') + `<div class="kaarten">${schemaKaart(d)}</div>` + voet;
   if (VIEW === 'core') return appBalkHtml('Core-app') + `<div class="kaarten">${coreKaart(dz.core)}</div>` + voet;
   if (VIEW === 'kracht') return appBalkHtml() + krachtPagina(dz) + voet;
@@ -3751,9 +3746,9 @@ function paginaHtml(d) {
   if (VIEW === 'lid') {
     const lid = isLid(d), tijdelijk = lid && d.lid && ['schema', 'cadeau'].includes(d.lid.bron);
     const pitch = binnenkortNu() && !d.voorverkoop ? binnenkortPitchHtml() : kanLidNu(d) ? lidPitchHtml() : '';
-    if (!lid) return appBalkHtml() + (pitch || '<p class="klein">Pro worden kan op dit moment niet.</p>') + planKeuzeHtml() + voet;
+    if (!lid) return appBalkHtml() + (pitch || '<p class="klein">Pro worden kan op dit moment niet.</p>') + planKeuzeHtml() + `<div id="ochtendvak" style="margin-top:16px">${pushHtml()}</div>` + voet;
     const daarna = tijdelijk ? `<details class="daarna" ${location.hash === '#lid' ? 'open' : ''}><summary><b>Daarna Pro blijven</b><span>vanaf &euro;${APP_PRIJS.jaarPerMaand} per maand, per jaar met een gratis Strava-analyse${binnenkortNu() && !d.voorverkoop ? ' &middot; kan vanaf 16 oktober' : ''}</span></summary>${pitch}</details>` : '';
-    return appBalkHtml() + lidStatusHtml(d.lid) + lidExtraHtml(d.lid) + daarna + voet;
+    return appBalkHtml() + lidStatusHtml(d.lid) + lidExtraHtml(d.lid) + `<div id="ochtendvak" style="margin-top:16px">${pushHtml()}</div>` + daarna + voet;
   }
   return null;
 }
@@ -4816,7 +4811,21 @@ function voedingTabHtml() {
   // 16-10-2026: geen knoppenrij meer, 'Eten vandaag' is een linkje onder je ritvoeding.
   return modus === 'dag'
     ? '<button type="button" class="sb-link rv-wissel" data-kl="rvmodus" data-w="rit">&lsaquo; Terug naar voor je rit</button>' + dagVoedingHtml()
-    : ritVoedingHtml() + '<button type="button" class="sb-link rv-wissel" data-kl="rvmodus" data-w="dag">Wat eet ik vandaag? &rsaquo;</button>';
+    : ritVoedingHtml() + naTrainingHtml() + '<button type="button" class="sb-link rv-wissel" data-kl="rvmodus" data-w="dag">Wat eet ik vandaag? &rsaquo;</button>';
+}
+// Na je training (16-10-2026, Michel): kies wat je deed, dan zie je wat je nu eet en waar je op let.
+const NA_DEED = [
+  ['rustig', 'Rustig rondje', ['Geen extra herstelvoeding nodig: je normale maaltijd is genoeg.', 'Drink een groot glas water, zeker als je zweette.']],
+  ['duur', 'Duurrit', ['Eet binnen een uur koolhydraten met zo\'n 20 gram eiwit, zoals boterhammen met kwark of yoghurt met muesli.', 'Drink tot je plas weer licht van kleur is.']],
+  ['zwaar', 'Zware training', ['Binnen een half uur 20 tot 30 gram eiwit met koolhydraten: chocolademelk, of kwark met banaan.', 'Vanavond gewoon een goede maaltijd met extra groente, en ga op tijd slapen. In je slaap word je sterker.']],
+  ['lang', 'Lange rit (3 uur+)', ['Je voorraad is leeg: eet binnen een half uur flink koolhydraten met eiwit, en na een uur of twee nog een maaltijd.', 'Zweette je veel? Neem wat zout erbij, zoals een kop bouillon of een handje chips.', 'Morgen rustig aan of een rustdag, en blijf goed eten.']],
+  ['koers', 'Wedstrijd', ['Eet binnen een half uur koolhydraten met eiwit, ook als je geen honger hebt. Dat is het moment dat je spieren het snelst aanvullen.', 'Drink met wat zout erbij, en eet vanavond een stevige maaltijd.', 'Morgen herstel: rustig fietsen of rust. Niet meteen weer hard.']]
+];
+function naTrainingHtml() {
+  const k = sbKeuze().naDeed, keuze = NA_DEED.find((x) => x[0] === k);
+  return `<details class="klap" data-klap="nadeed"${klapOpen('nadeed', !!keuze) ? ' open' : ''}><summary><b>Na je training</b><span>${keuze ? esc(keuze[1].toLowerCase()) : 'wat deed je?'}</span></summary><div class="klap-in">
+    <div class="bt-keuze na-deed">${NA_DEED.map(([w, t]) => `<button type="button" data-kl="nadeed" data-w="${w}" class="${k === w ? 'aan' : ''}">${t}</button>`).join('')}</div>
+    ${keuze ? '<div class="kl-tips">' + keuze[2].map((t) => '<p>' + esc(t) + '</p>').join('') + '</div>' : '<p class="klein" style="margin:8px 0 0">Kies wat je net deed, dan zie je wat je nu het beste eet en waar je op let.</p>'}</div></details>`;
 }
 function ritVoedingHtml() {
   if (!SB.weer) return '<p class="klein" style="margin-top:12px">Kies hierboven je plek, dan reken ik met de temperatuur tijdens je rit.</p>';
@@ -4824,7 +4833,7 @@ function ritVoedingHtml() {
   const k = klKeuze(), stuk = ritUren();
   const temp = stuk.length ? Math.round(stuk.reduce((t, u) => t + u.temp, 0) / stuk.length) : SB.weer.temp;
   const a = RV_LIB.voedingAdvies(rvInvoer(k, temp));
-  const tips = (temp <= 5 ? ['Koud weer: een thermosbidon met warme thee of sportdrank drinkt een stuk prettiger, en dan drink je ook echt genoeg.'] : []).concat(a.tips.filter((t) => !/^(Ontbijt|Na afloop)/.test(t)));
+  const tips = a.tips.filter((t) => !/^(Ontbijt|Na afloop)/.test(t)); // koud-weertip zit sinds 16-10 in de berekening zelf
   return sbRitInstelHtml(false) + `<div class="rv-uit">
     <div class="rv-kop"><div><b>${a.gPerUur || '0'}</b><span>gram per uur</span></div><div><b>${a.bidons}</b><span>${a.bidons === 1 ? 'bidon' : 'bidons'}</span></div><div><b>${temp}&deg;</b><span>onderweg</span></div></div>${a.totaalG ? `<p class="klein rv-uitleg">Vanaf ongeveer 20 minuten na de start, samen ${a.totaalG} gram.</p>` : ''}
     ${a.doelDag ? '<p class="rv-tochtdag">Tochtdag: ' + esc(a.doelNaam) + '. Ik reken met wat de dag vraagt.</p>' : ''}${a.opbouw ? `<p class="klein rv-opbouw">${esc(a.opbouw)}</p>` : ''}
@@ -4950,13 +4959,15 @@ function ritVoorNa(tab) {
   if (tab === 'voeding') {
     if (uur < 8) voor.push("Vroeg weg? Eet een uur van tevoren iets kleins, zoals een banaan of een boterham met jam, en begin na twintig minuten al met eten.");
     else if (k.duur >= 2 || k.hard) voor.push("Eet 2 tot 3 uur voor vertrek een ontbijt met koolhydraten, zoals havermout of brood met jam.");
+    if (k.duur >= 3 || k.koers) voor.unshift("De avond ervoor: eet een flink bord pasta, rijst of aardappelen. Zo vul je je voorraad alvast aan voor een lange rit of wedstrijd.");
     voor.push("Drink voor vertrek een groot glas water. Wie droog begint, haalt dat onderweg niet meer in.");
+    if (k.duur >= 1.5) voor.push("Rij je in een groep? Begin na een half uur al met eten. In een groep ga je vaak harder dan je van plan was, en dan kom je sneller tekort.");
     if (hoog >= 20) voor.push("Warm vandaag: zet je bidons halfvol in de vriezer en vul ze voor vertrek aan. Dan blijft je drinken langer koel.");
     na.push("Eet binnen een half uur na je rit iets met eiwit en koolhydraten, zoals kwark met fruit of een boterham met ei.");
     if (lang || k.hard || hoog >= 20) na.push("Weeg jezelf voor en na je rit. Per kilo die je kwijt bent, drink je ongeveer anderhalve liter.");
     if (laag < 8) na.push("Na een koude rit is warme chocolademelk helemaal niet gek: koolhydraten, eiwit en het warmt op.");
   }
-  return { voor: voor.slice(0, 4), na: na.slice(0, 3) };
+  return { voor: voor.slice(0, tab === 'voeding' ? 6 : 4), na: na.slice(0, 3) };
 }
 function ritVoorNaHtml(tab) {
   const v = ritVoorNa(tab); if (!v) return '';
@@ -4983,6 +4994,7 @@ document.addEventListener('click', async (e) => {
   if (k.dataset.kl === 'hard') { sbBewaarKeuze({ klHard: k.dataset.w === '1', klKoers: false }); return sbTeken(); }
   if (k.dataset.kl === 'kou') { SB.profiel.kouType = k.dataset.w; SB.profiel.kouGekozen = true; sbTeken(); await sbBewaarProfiel(true); }
   if (k.dataset.kl === 'rvmodus') { sbBewaarKeuze({ rvModus: k.dataset.w }); return sbTeken(); }
+  if (k.dataset.kl === 'nadeed') { sbBewaarKeuze({ naDeed: k.dataset.w }); try { localStorage.setItem('mkcKlap:nadeed', '1'); } catch (er) {} return sbTeken(); }
   if (k.dataset.kl === 'dvsoort') { sbBewaarKeuze({ dvSoort: k.dataset.w, dvDag: dvVandaagStr(0) }); return sbTeken(); }
   if (k.dataset.kl === 'dvmorgen') { sbBewaarKeuze({ dvMorgen: k.checked, dvMorgenDag: dvVandaagStr(0) }); return sbTeken(); }
   if (k.dataset.kl === 'zweetweg') { e.preventDefault(); SB.profiel.zweet = null; sbTeken(); await sbBewaarProfiel(true); return; }
@@ -5444,7 +5456,7 @@ function grStandaardDag() { const u = Number(new Date().toLocaleString('en-GB', 
 function grZorg() { if (GR.maak) return; const vn = String((D && D.naam) || '').trim().split(' ')[0]; GR.maak = { door: vn, datum: grStandaardDag(), tijd: '09:00', duur: 3, tempo: 'rustig', plaats: (SB.profiel && SB.profiel.plaats) || WK.plaats || null }; }
 function grVriendHtml(d) {
   const l = vriendLid(d); if (!l) return '';
-  return `<div class="gr-vriend"><b>Rijden je vrienden nog zonder de app?</b><p>Met jouw link krijgen ze 50% korting op hun eerste maand${l.vriendBeloning === false ? '' : l.gratis || l.vriendCadeau ? ', en jij 2 weken gratis Pro per aanmelding' : ', en jij 2 weken extra per aanmelding'}.</p>${vriendKaartHtml(l, true)}</div>`;
+  return `<details class="klap" data-klap="grvriend"${klapOpen('grvriend', false) ? ' open' : ''}><summary><b>Rijden je vrienden nog zonder de app?</b><span>stuur een uitnodiging</span></summary><div class="klap-in gr-vriend"><p>Met jouw link krijgen ze 50% korting op hun eerste maand${l.vriendBeloning === false ? '' : l.gratis || l.vriendCadeau ? ', en jij 2 weken gratis Pro per aanmelding' : ', en jij 2 weken extra per aanmelding'}.</p>${vriendKaartHtml(l, true)}</div></details>`;
 }
 function grPlanKnop() { return '<button type="button" class="gr-plan-knop" data-gr="open">Rij je samen? <b>Plan een groepsrit en deel de link</b></button>'; }
 function grMaakHtml() {
@@ -5926,8 +5938,10 @@ async function pushLaad() {
   if (PUSH.geladen) return; PUSH.geladen = true;
   try { const j = await (await fetch(`${API}?actie=push&t=${encodeURIComponent(leesToken())}`)).json(); if (j.ok) { PUSH.key = j.publicKey; PUSH.inst = j.instelling; } } catch (e) {}
   await pushStilKoppelen();
-  sbTeken(); meldTeken();
+  pushHerteken(); meldTeken();
 }
+// Ochtendbericht staat sinds 16-10-2026 op Mijn Pro; daar hertekent sbTeken niets, dus ook dit vak bijwerken.
+function pushHerteken() { sbTeken(); const o = document.getElementById('ochtendvak'); if (o) o.innerHTML = pushHtml(); }
 function pushHtml() {
   const i = PUSH.inst || { aan: false, tijd: '07:00', dagen: [0, 1, 2, 3, 4, 5, 6] };
   let inhoud;
@@ -5960,11 +5974,11 @@ document.addEventListener('click', async (e) => {
   if (a === 'dag') {
     const d = Number(k.dataset.d), l = PUSH.inst.dagen;
     PUSH.inst.dagen = l.includes(d) ? l.filter((x) => x !== d) : l.concat(d);
-    if (PUSH.inst.aan) await pushOpslaan({}); return sbTeken();
+    if (PUSH.inst.aan) await pushOpslaan({}); return pushHerteken();
   }
   if (a === 'vraagweg') { try { const v = pushWegStand() || { n: 0 }; localStorage.setItem('mkcPushVraagWeg', JSON.stringify({ n: (v.n || 0) + 1, op: Date.now() })); } catch (er) {} return meldTeken(); }
   if (a === 'aan') {
-    PUSH.bezig = true; sbTeken(); meldTeken();
+    PUSH.bezig = true; pushHerteken(); meldTeken();
     try {
       const reg = await navigator.serviceWorker.register('/sw.js');
       const toestemming = await Notification.requestPermission();
@@ -5974,21 +5988,21 @@ document.addEventListener('click', async (e) => {
         if (await pushOpslaan({ sub: sub.toJSON() })) PUSH.melding = 'Gelukt. Tik op "Stuur nu een test" om te zien hoe hij eruitziet.';
       }
     } catch (er) { PUSH.melding = 'Aanzetten lukte niet op dit toestel.'; }
-    PUSH.bezig = false; sbTeken(); return meldTeken();
+    PUSH.bezig = false; pushHerteken(); return meldTeken();
   }
-  if (a === 'uit') { await pushOpslaan({ uit: true }); sbTeken(); return meldTeken(); }
+  if (a === 'uit') { await pushOpslaan({ uit: true }); pushHerteken(); return meldTeken(); }
   if (a === 'test') {
-    PUSH.bezig = true; sbTeken();
+    PUSH.bezig = true; pushHerteken();
     try { const j = await (await fetch(`${API}?actie=pushtest`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken() }) })).json(); PUSH.melding = j.ok ? 'Verstuurd. Je melding komt zo binnen.' : (j.fout || 'Versturen lukte niet.'); }
     catch (er) { PUSH.melding = 'Verbinding mislukt.'; }
-    PUSH.bezig = false; return sbTeken();
+    PUSH.bezig = false; return pushHerteken();
   }
 });
 document.addEventListener('change', async (e) => {
   if (e.target.id !== 'pushTijd') return;
   PUSH.inst = PUSH.inst || { aan: false, tijd: '07:00', dagen: [0, 1, 2, 3, 4, 5, 6] };
   PUSH.inst.tijd = e.target.value;
-  if (PUSH.inst.aan) { await pushOpslaan({}); sbTeken(); }
+  if (PUSH.inst.aan) { await pushOpslaan({}); pushHerteken(); }
 });
 
 // Pacingplan-link (15-10-2026): /app?pacing=<token>. Werkt zonder inloggen, net als de analyselink.
