@@ -136,6 +136,12 @@
   .tegel.foto .tg-sub { color:rgba(245,243,239,.88); padding-right:18px; }
   .tegel.foto .tg-tag { background:rgba(10,10,10,.72); }
   .tegel.foto .tg-pijl { color:#fff; }
+  .tegel.foto.vec { background:radial-gradient(circle at 50% 32%, rgba(201,112,52,.55) 0%, rgba(92,48,20,.55) 34%, rgba(20,13,9,0) 70%), linear-gradient(180deg, #2a1a10 0%, #150e09 60%, #0d0907 100%); overflow:hidden; }
+  .tegel .tg-beeld { position:absolute; left:0; right:0; top:0; height:64%; display:flex; align-items:center; justify-content:center; pointer-events:none; }
+  .tegel .tg-fig svg { width:96%; height:auto; margin-top:14px; filter:drop-shadow(0 6px 14px rgba(255,107,26,.25)); }
+  .tegel .tg-tel { justify-content:flex-start; padding-left:16px; }
+  .tegel .tg-tel svg { height:92%; width:auto; transform:rotate(-8deg); filter:drop-shadow(0 8px 16px rgba(0,0,0,.55)) drop-shadow(0 0 14px rgba(255,107,26,.2)); }
+  .tegel.foto.vec .tg-nm, .tegel.foto.vec .tg-sub { position:relative; }
   .tegels.kort .tg-sub { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; padding-right:14px; }
   .tegel .tg-tag svg { width:10px; height:10px; vertical-align:-1px; }
   .app-zin { margin:4px 0 0; font-size:13.5px; line-height:1.5; color:var(--muted); } .app-zin a { color:var(--accent); white-space:nowrap; } .app-zin b { color:var(--white); font-weight:600; }
@@ -2870,19 +2876,42 @@ function appBalkHtml() {
 const TG_W = 'https://michelkredercoaching.nl/wp-content/uploads/';
 const TG_FOTO = {
   // [foto, uitsnede, zoom] (16-10: hele beeld passend in de tegel; banden een wegband)
-  core: [TG_W + '2026/10/core-app-product-510x510.png', 'center 30%', 'cover'],
-  kracht: [TG_W + '2026/10/core-app-product-510x510.png', 'center 30%', 'cover'],
   rijden: ['/app-fotos/banden.webp', 'center 30%', '86%'], // eigen foto Michel (16-10-2026)
-  analyse: [TG_W + '2026/09/ChatGPT-Image-22-sep-2026-11_28_20-510x510.png', 'center 35%', 'cover'],
   coach: TG_W + '2026/08/michel-hier-510x510.jpeg',
   coaching: TG_W + '2026/03/WhatsApp-Image-2026-03-24-at-09.24.28-510x510.jpeg',
   schema: [TG_W + '2026/03/WhatsApp-Image-2026-03-23-at-19.21.18-768x512.jpeg', '50% 22%', 'cover']
 };
+// Getekende tegels: Core met het bewegende figuurtje uit de Core-app, de analyse als telefoon met je cijfers.
+const TG_TEL = '<svg viewBox="0 0 90 160" aria-hidden="true"><defs><linearGradient id="tgRand" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF9A5C"/><stop offset=".5" stop-color="#3a2416"/><stop offset="1" stop-color="#FF6B1A"/></linearGradient></defs>'
+  + '<rect x="2" y="2" width="86" height="156" rx="14" fill="#0b0b0b" stroke="url(#tgRand)" stroke-width="2.5"/><rect x="33" y="8" width="24" height="6" rx="3" fill="#1d1d1d"/>'
+  + '<text x="10" y="30" font-family="DM Sans,Arial" font-size="6.5" font-weight="700" fill="#FF6B1A" letter-spacing=".8">POWER PROFILE</text>'
+  + '<text x="10" y="52" font-family="Bebas Neue,Impact" font-size="22" fill="#f5f3ef">248</text><text x="40" y="52" font-family="DM Sans,Arial" font-size="7" fill="#9b978f">W FTP</text>'
+  + '<text x="10" y="63" font-family="DM Sans,Arial" font-size="6" fill="#9b978f">3,4 W/kg · Klimmer</text>'
+  + ['#4CC38A:56', '#7fd36b:44', '#e2c84a:36', '#FF9A5C:28', '#FF6B1A:20'].map((x, i) => { const [k, w] = x.split(':'); return '<rect x="10" y="' + (74 + i * 11) + '" width="' + w + '" height="6" rx="3" fill="' + k + '"/><rect x="' + (12 + Number(w)) + '" y="' + (74 + i * 11) + '" width="' + (58 - Number(w)) + '" height="6" rx="3" fill="#1d1d1d"/>'; }).join('')
+  + '<rect x="10" y="134" width="70" height="14" rx="7" fill="#FF6B1A"/><text x="45" y="143.5" font-family="DM Sans,Arial" font-size="6.5" font-weight="700" fill="#0a0a0a" text-anchor="middle">JOUW ACTIEPLAN</text></svg>';
+function tegelBeeld(v, ic) {
+  if (ic === 'core' || v === 'kiestraining' || ic === 'kracht') return '<span class="tg-beeld tg-fig" data-tgfig="1"></span>';
+  if (ic === 'analyse') return '<span class="tg-beeld tg-tel">' + TG_TEL + '</span>';
+  return '';
+}
+let TG_FIG_LIB = null, TG_FIG_LOOP = [];
+async function tegelFiguren() {
+  const els = [...document.querySelectorAll('[data-tgfig="1"]')]; if (!els.length) return;
+  try {
+    if (!TG_FIG_LIB) TG_FIG_LIB = Promise.all(['/core-programma/figuur.js', '/core-programma/animaties.js'].map((src) => new Promise((ok, mis) => { if (document.querySelector('script[src="' + src + '"]')) return ok(); const sc = document.createElement('script'); sc.src = src; sc.onload = ok; sc.onerror = mis; document.head.appendChild(sc); })));
+    await TG_FIG_LIB;
+    // Oude animaties (tegel opnieuw getekend) stoppen, anders lopen ze door op een losse tegel.
+    TG_FIG_LOOP = TG_FIG_LOOP.filter((x) => { if (x.el.isConnected) return true; x.stop(); return false; });
+    for (const el of els) { el.dataset.tgfig = '2'; const a = window.CoreAnimaties && (window.CoreAnimaties['plank-arm-been'] || window.CoreAnimaties.plank); if (a && window.CoreFiguur) TG_FIG_LOOP.push({ el, stop: window.CoreFiguur.speel(el, a) }); }
+  } catch (e) {}
+}
+try { new MutationObserver(() => { if (document.querySelector('[data-tgfig="1"]')) tegelFiguren(); }).observe(document.documentElement, { childList: true, subtree: true }); } catch (e) {}
 function tegel({ v, href, ic, nm, sub, tag, tagKlas, breed, dim }) {
   const fz = TG_FOTO[v === 'coaching' ? 'coaching' : v === 'kiestraining' ? 'core' : ic] || '';
   const [foto, fpos, fmaat] = Array.isArray(fz) ? fz : [fz, 'center', 'cover'];
-  const bin = `${foto ? '' : `<span class="tg-ic">${IC[ic] || ''}</span>`}<span class="tg-nm">${nm}</span><span class="tg-sub">${sub}</span>${tag ? `<span class="tg-tag ${tagKlas || ''}">${tag}</span>` : ''}<span class="tg-pijl">&#8250;</span>`;
-  const kl = 'tegel' + (breed ? ' breed' : '') + (dim ? ' dimmed' : '') + (foto ? ' foto' : '');
+  const beeld = !foto && !breed ? tegelBeeld(v, ic) : '';
+  const bin = `${beeld}${foto || beeld ? '' : `<span class="tg-ic">${IC[ic] || ''}</span>`}<span class="tg-nm">${nm}</span><span class="tg-sub">${sub}</span>${tag ? `<span class="tg-tag ${tagKlas || ''}">${tag}</span>` : ''}<span class="tg-pijl">&#8250;</span>`;
+  const kl = 'tegel' + (breed ? ' breed' : '') + (dim ? ' dimmed' : '') + (foto ? ' foto' : '') + (beeld ? ' foto vec' : '');
   const st = foto ? ` style="--foto:url('${foto}');--fpos:${fpos};--fmaat:${fmaat}${ic === 'rijden' ? ';--fkleur:#1c130d' : ''}"` : '';
   return href ? `<a class="${kl}"${st} href="${esc(href)}">${bin}</a>` : `<button type="button" class="${kl}"${st} data-view="${v}">${bin}</button>`;
 }
