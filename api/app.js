@@ -1339,13 +1339,17 @@ export default async function handler(req, res) {
     if (actie === 'doel') return await routeDoel(req, res);
     if (actie === 'aankondig') return await routeAankondig(req, res);
     if (actie === 'beheerdash') return await routeBeheerDash(req, res);
+    if (actie === 'foutlog') { const sl = process.env.TRECHTER_SLEUTEL || ''; if (!sl || String(req.headers?.['x-sleutel'] || '') !== sl) return res.status(403).json({ ok: false }); const l = await redis(['LRANGE', 'app:fouten', '0', '49']); return res.status(200).json({ ok: true, fouten: ((l.ok && l.result) || []).map((x) => { try { return JSON.parse(x); } catch { return x; } }) }); }
     if (actie === 'voorverkoop') return await routeVoorverkoop(req, res);
     if (actie === 'pushopnieuw') return await routePushOpnieuw(req, res);
     if (actie === 'doelronde') return await routeDoelRonde(req, res);
     return res.status(400).json({ ok: false, fout: 'onbekende actie' });
   } catch (e) {
     console.error('app fout:', e);
-    return res.status(500).json({ ok: false, fout: 'serverfout' });
+    // Foutlogboek (16-10-2026, Gert kreeg 'serverfout'): Vercel bewaart geen oude logs, dus de laatste 50 in Redis.
+    try { const wie = leesAppToken(String(req.query?.t || '')) || ''; await redis(['LPUSH', 'app:fouten', JSON.stringify({ op: new Date().toISOString(), actie, wie, fout: String((e && e.message) || e).slice(0, 300), stack: String((e && e.stack) || '').split('
+').slice(1, 5).join(' | ').slice(0, 600) })]); await redis(['LTRIM', 'app:fouten', '0', '49']); } catch (x) {}
+    return res.status(500).json({ ok: false, fout: 'Er ging iets mis aan onze kant. Probeer het over een minuut nog eens.' });
   }
 }
 
