@@ -138,6 +138,7 @@
   .tegel.foto .tg-pijl { color:#fff; }
   .tegel.foto.vec { background:radial-gradient(circle at 50% 32%, rgba(201,112,52,.55) 0%, rgba(92,48,20,.55) 34%, rgba(20,13,9,0) 70%), linear-gradient(180deg, #2a1a10 0%, #1c120b 60%, #1a110b 100%); overflow:hidden; }
   .rv-wissel { display:block; margin:14px 0 2px; }
+  .route.rt-door { display:block; width:100%; text-align:left; position:relative; cursor:pointer; color:inherit; font-family:inherit; padding-right:40px; } .route.rt-door .rt-sum { display:block; margin-top:4px; color:var(--muted); } .route.rt-door .rt-pijl { position:absolute; right:16px; top:50%; transform:translateY(-50%); font-style:normal; font-size:24px; color:var(--accent); }
   .na-deed { flex-wrap:wrap; }
   .tegel .tg-voed svg { height:92%; width:auto; margin-top:6px; filter:drop-shadow(0 8px 16px rgba(0,0,0,.5)); }
   .tegel .tg-beeld { position:absolute; left:0; right:0; top:0; height:64%; display:flex; align-items:center; justify-content:center; pointer-events:none; }
@@ -2868,6 +2869,7 @@ const KOPPEN = {
   rijden: ['MKC-Banden', 'Je spanning en de wind voor je rit'],
   kleding: ['MKC-Kleding', 'Wat je aantrekt voor het weer van vandaag'],
   groep: ['MKC-Groepsrit', 'Plan een rit en deel hem met je groep'],
+  volgende: ['MKC-Plan', 'Jouw volgende stap'],
   voeding: ['MKC-Voeding', 'Wat je eet en drinkt voor en tijdens je rit'],
   schema: ['MKC-Schema', 'Je schema in TrainingPeaks'],
   core: ['MKC-Core', 'Core stability voor wielrenners'],
@@ -3393,7 +3395,7 @@ function planOptie(d, naLancering) {
   if (winter && doel !== 'evenement' && !(d.analyse && d.analyse.meet === 'hartslag')) return `<a href="${SITE}/winterprogramma/" target="_blank" rel="noopener">Winterprogramma<small>12 weken op je trainer</small></a>`;
   return `<a href="${SITE}/trainingsschemas/" target="_blank" rel="noopener">Trainingsschema<small>${naLancering ? 'vanaf &euro;59' : '8, 12 of 16 weken'}</small></a>`;
 }
-function routeHtml(d) {
+function routeHtml(d, pagina) {
   if (!d || d.gast || (d.lid && d.lid.bron === 'coaching')) return '';
   const schema = !!(d.schema || (d.lid && d.lid.bron === 'schema'));
   const nu = schema ? 2 : isLid(d) ? 1 : 0;
@@ -3414,9 +3416,11 @@ function routeHtml(d) {
   if (nu === 0) verder = open(stappen[1]) + `<div class="rt-stap of"><span class="rt-bol">${OPEN_SLOT}</span><div class="rt-of"><b>Of meteen met een plan</b><div>${planOptie(d, naLancering)}<a href="${SITE}/trainingsbegeleiding/" target="_blank" rel="noopener">1-op-1 coaching<small>vanaf &euro;79 p/m</small></a></div><span>Pro zit er dan bij in.</span></div></div>`;
   const keuze = nu === 1 ? `<div class="rt-kies">${OPEN_SLOT}Kies wat bij je past</div><div class="rt-keuze">${kaartje(sch, '8, 12 of 16 weken in TrainingPeaks, met elke dag uitleg in de app.')}${kaartje(coa, 'Michel maakt je plan en stuurt elke week bij.')}</div>` : '';
   if (nu === 2) verder = open(coa);
-  try { if (Date.now() - Number(localStorage.getItem('mkcRouteWeg') || 0) < 14 * 864e5) return ''; } catch (e) {}
+  if (!pagina) { try { if (Date.now() - Number(localStorage.getItem('mkcRouteWeg') || 0) < 14 * 864e5) return ''; } catch (e) {} }
   const binnen = `<div class="rt-lijst">${stappen.slice(0, nu + 1).map(klaar).join('')}${verder}</div>${keuze}`;
-  if (nu > 0) return `<details class="route rt-klap" data-klap="route" ${klapOpen('route', false) ? 'open' : ''}><summary><div><div class="rt-lab">Jouw volgende stap</div><div class="rt-kop">${kop}</div><small class="rt-sum">${nu === 1 ? 'Een trainingsschema of 1-op-1 coaching' : '1-op-1 coaching met Michel'}</small></div><i class="start-pijl"></i></summary>${binnen}</details>`;
+  // 16-10-2026 (Michel): voor leden geen uitklapblok meer, maar een doorklik naar een eigen pagina met dezelfde opties.
+  if (pagina) return `<div class="route"><div class="rt-lab">Jouw volgende stap</div><div class="rt-kop">${kop}</div>${binnen}</div>`;
+  if (nu > 0) return `<button type="button" class="route rt-door" data-view="volgende"><div class="rt-lab">Jouw volgende stap</div><div class="rt-kop">${kop}</div><small class="rt-sum">${nu === 1 ? 'Een trainingsschema of 1-op-1 coaching' : '1-op-1 coaching met Michel'}</small><i class="rt-pijl">&rsaquo;</i></button>`;
   return `<div class="route"><button type="button" class="welkom-x" data-actie="routeweg" aria-label="Verbergen">&times;</button><div class="rt-lab">Jouw volgende stap</div><div class="rt-kop">${kop}</div>${binnen}</div>`;
 }
 // ===========================================================================
@@ -3742,6 +3746,7 @@ function paginaHtml(d) {
   if (VIEW === 'afval') return appBalkHtml('Afvalprogramma') + `<div class="kaarten">${afvalKaart()}</div>` + voet;
   if (VIEW === 'pacing') return appBalkHtml('Pacingplan') + `<div class="kaarten">${pacingKaart()}</div>` + voet;
   if (VIEW === 'palmares') return appBalkHtml() + palmaresHtml(d) + voet;
+  if (VIEW === 'volgende') { const r = routeHtml(d, true); return r ? appBalkHtml() + r + voet : null; }
   if (VIEW === 'coaching') return appBalkHtml() + coachingPaginaHtml(dz) + voet;
   if (VIEW === 'lid') {
     const lid = isLid(d), tijdelijk = lid && d.lid && ['schema', 'cadeau'].includes(d.lid.bron);
@@ -3775,7 +3780,6 @@ function teken() {
     ${meldingenHtml(d)}
     ${tegelsHtml(d)}
     <div id="eenstap">${stapHtml(d)}</div>
-    ${hklap('vandaag', 'Vandaag', new Date().toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long' }), vandaagHtml(d), true)}
     ${onderaanHtml(d)}
     <div id="meldinst">${meldInstHtml()}</div>
     ${feedbackHtml()}
