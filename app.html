@@ -1817,7 +1817,7 @@ function bandenKaart(d) {
     ${d.gast ? gastPoortHtml() : ''}</div></div>
     <div class="kaart"><div class="kaart-in">
     ${d.gast ? `<div class="sb-vraag" style="margin:0;border:0;padding:0"><label>Vraag het je bandencoach</label><p class="klein" style="margin:0">Rijd je morgen over kasseien of in de regen? Met een gratis account stel je je vraag aan de bandencoach. <a href="#" data-actie="gastlogin" style="color:var(--accent)">Maak je account</a></p></div>` : `<div class="sb-vraag" style="margin:0;border:0;padding:0"><label for="btVraag">Vraag het je bandencoach</label>
-      ${gratisOver() === 0 && !tegoedNu() ? '' : `<div class="sb-rij"><input id="btVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen over kasseien" value="${esc(BTV.vraag)}"><button type="button" class="knop" data-btv="vraag" ${BTV.bezig ? 'disabled' : ''}>${BTV.bezig ? '...' : 'Vraag'}</button></div>`}
+      ${gratisOver() === 0 && !tegoedNu() ? '' : `<div class="sb-rij"><input id="btVraag" type="text" maxlength="300" placeholder="bijv. kasseien morgen" value="${esc(BTV.vraag)}"><button type="button" class="knop" data-btv="vraag" ${BTV.bezig ? 'disabled' : ''}>${BTV.bezig ? '...' : 'Vraag'}</button></div>`}
       ${BTV.antwoord ? `<div class="sb-antwoord">${opmaak(BTV.antwoord)}</div>${nuttigHtml(BTV.aid, BTV.nuttig)}` : ''}
       ${gratisTellerHtml('btVraagTeller')}</div>`}</div></div>
     <div class="kaart"><div class="kaart-in"><span class="tag oranje">Pro</span>${slim}</div></div></div>`;
@@ -2056,10 +2056,10 @@ function slimBandenKaart() {
     ${instel}
     ${toon ? res : '<button type="button" class="knop" data-actie="sbtoon" style="margin-top:14px">Bekijk mijn spanning</button>'}</div></div>
     ${toon && uit && SB.weer ? ritVoorNaHtml('banden') : ''}
+    <div class="kaart"><div class="kaart-in"><div class="label">Bandenlogboek</div><p class="klein" style="margin:6px 0 0">Wat je reed, bij welk weer en hoe het voelde. Hier geef je ook je oordeel over een rit.</p><button type="button" class="knop leeg lb-knop" data-view="logboek">Check je bandenlogboek</button></div></div>
     <div class="kaart"><div class="kaart-in"><div class="sb-vraag" style="margin:0;border:0;padding:0"><label for="sbVraag">Vraag het je bandencoach</label>
-      <div class="sb-rij"><input id="sbVraag" type="text" maxlength="300" placeholder="bijv. ik rijd morgen de Ronde met kasseien" value="${esc(SB.vraag)}"><button type="button" class="knop" data-sb="vraag" ${SB.vraagBezig ? 'disabled' : ''}>${SB.vraagBezig ? '...' : 'Vraag'}</button></div>
-      ${SB.antwoord ? `<div class="sb-antwoord">${opmaak(SB.antwoord)}</div>${nuttigHtml(SB.aid, SB.nuttig)}` : ''}</div></div></div>
-    <div class="kaart"><div class="kaart-in"><div class="label">Bandenlogboek</div><p class="klein" style="margin:6px 0 0">Wat je reed, bij welk weer en hoe het voelde. Hier geef je ook je oordeel over een rit.</p><button type="button" class="knop leeg lb-knop" data-view="logboek">Check je bandenlogboek</button></div></div></div>`;
+      <div class="sb-rij"><input id="sbVraag" type="text" maxlength="300" placeholder="bijv. kasseien morgen" value="${esc(SB.vraag)}"><button type="button" class="knop" data-sb="vraag" ${SB.vraagBezig ? 'disabled' : ''}>${SB.vraagBezig ? '...' : 'Vraag'}</button></div>
+      ${SB.antwoord ? `<div class="sb-antwoord">${opmaak(SB.antwoord)}</div>${nuttigHtml(SB.aid, SB.nuttig)}` : ''}</div></div></div></div>`;
 }
 
 function sbTeken() {
