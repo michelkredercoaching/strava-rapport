@@ -265,6 +265,12 @@
   .speler .voortgang { height:6px; background:rgba(255,255,255,.08); border-radius:2px; margin:10px 0 0; overflow:hidden; }
   .speler .voortgang i { display:block; height:100%; background:var(--accent); width:0; transition:width .4s; }
   .speler .midden { flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; max-width:640px; width:100%; margin:0 auto; }
+  /* 16-10-2026: lange uitleg (rust voor heupscharnier) drukte de voortgangsbalk plat en de knoppen onder het scherm.
+     Vaste delen krimpen niet meer; het midden scrollt en blijft gecentreerd via flexibele randen. */
+  .speler > .balk, .speler > .stemklap, .speler > .voortgang, .speler > .vg-tekst, .speler > .bediening { flex-shrink:0; }
+  .speler .midden { min-height:0; overflow-y:auto; justify-content:flex-start; -webkit-overflow-scrolling:touch; }
+  .speler .midden::before, .speler .midden::after { content:''; flex:1 0 0px; }
+  .speler > .bediening { padding-top:10px; }
   .speler .soort { font-size:12px; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); }
   .speler .soort.rust { color:var(--groen); }
   .speler .naam { font-family:'Bebas Neue',sans-serif; font-size:clamp(28px,7vw,42px); line-height:1.05; margin:4px 0 2px; }
