@@ -1976,7 +1976,7 @@ function slimBandenKaart() {
     SB.bewerk = true;
   }
   const tab = RIJ_TAB[VIEW] || 'banden';
-  const kop = `<span class="tag oranje">Pro</span><div class="label">${{ banden: 'Vandaag rijden', voeding: 'Voeding', kleding: 'Kleding', groep: 'Groepsrit' }[tab]}</div><h2>${SB.bewerk && tab === 'banden' ? 'Wat pomp je vandaag?' : tab === 'kleding' ? 'Wat trek je aan?' : tab === 'voeding' ? 'Wat neem je mee?' : tab === 'groep' ? 'Rij je samen?' : 'Wat pomp je vandaag?'}</h2>`;
+  const kop = `${tab === 'groep' ? '<span class="tag open">Gratis</span>' : '<span class="tag oranje">Pro</span>'}<div class="label">${{ banden: 'Vandaag rijden', voeding: 'Voeding', kleding: 'Kleding', groep: 'Groepsrit' }[tab]}</div><h2>${SB.bewerk && tab === 'banden' ? 'Wat pomp je vandaag?' : tab === 'kleding' ? 'Wat trek je aan?' : tab === 'voeding' ? 'Wat neem je mee?' : tab === 'groep' ? 'Rij je samen?' : 'Wat pomp je vandaag?'}</h2>`;
   if (SB.bewerk && (VIEW === 'rijden' || !isRijView())) return `<div class="kaart actief" id="banden"><div class="kaart-in">${kop}<p>Zet je fietsen erin. Dan hoef je straks alleen nog te kiezen op welke je rijdt.</p>${sbBewerkHtml()}</div></div>`;
   const f = sbFiets(), uit = sbReken(f), nat = sbNat();
   const gNu = f ? sbGrond(f) : null;
@@ -2976,7 +2976,10 @@ function tegelsHtml(d) {
   const voeding = tegel({ v: 'voeding', ic: 'voeding', nm: 'Voeding', sub: 'Wat je eet en drinkt voor je rit', tag: slim ? (inbegrepen ? 'Inbegrepen' : 'Pro') : SLOT + ' Pro', tagKlas: 'or' });
   const kleding = tegel({ v: 'kleding', ic: 'kleding', nm: 'Kleding', sub: 'Wat je aantrekt voor het weer', tag: slim ? (inbegrepen ? 'Inbegrepen' : 'Pro') : SLOT + ' Pro', tagKlas: 'or' });
   const groep = tegel({ v: 'groep', ic: 'groep', nm: 'Groepsrit', sub: 'Plan een rit, deel de link', tag: 'Gratis', tagKlas: 'gr' });
-  const t = [trein, banden, derde, voeding, kleding, groep];
+  // Volgorde per soort gebruiker (16-10-2026, Michel: mooie overloop van gratis naar betaald).
+  // Gratis: eerst wat gratis is, dan proberen/los kopen, onderaan de twee Pro-tegels samen.
+  // Pro, schema of coaching: naar hoe vaak je het gebruikt (dagelijks, voor elke rit, af en toe).
+  const t = slim ? [trein, banden, kleding, voeding, groep, derde] : [banden, groep, trein, derde, voeding, kleding];
   if (d.schema) t.push(tegel({ v: 'schema', ic: 'schema', nm: 'Mijn schema', sub: schemaTegelSub(d.schema), tag: d.schema.status === 'klaar' ? 'Afgerond' : 'Actief', tagKlas: 'gr', breed: true }));
   // Michel ziet Kracht tot de opening altijd als voorbeeld, ook als hij zelf Core doet.
   const wissel = vorm === 'core' && d.kracht && Date.now() >= KRACHT_OPEN_APP ? `<p class="klein tg-wissel">Liever kracht in de sportschool? <button type="button" class="sb-link" data-wisselvorm="kracht" style="display:inline;margin:0">Wissel naar Kracht</button></p>` : '';
