@@ -2330,8 +2330,9 @@ function schemaKaart(d) {
   const kop = (h2, sub) => `<div class="sk-kop"><div class="label">Jouw ${s.winter ? 'winterprogramma' : 'schema'} &middot; ${esc(s.titel)}</div><h2>${h2}</h2><div class="sk-sub">${sub}</div></div>`;
   if (s.status === 'voor') {
     return `<div class="sk">${kop('Bijna begonnen', 'Je schema start op ' + esc(datumKort(s.start)) + '.')}
-      <a class="knop sk-tpgroot" href="https://app.trainingpeaks.com/#calendar" target="_blank" rel="noopener">Bekijk je schema in TrainingPeaks</a>
-      <div class="sk-acties"><button class="knop leeg" data-sk="vraag" data-titel="">Vraag je coach</button></div></div>`;
+      <div class="sk-dag"><a class="knop sk-tpgroot" href="https://app.trainingpeaks.com/#calendar" target="_blank" rel="noopener">Bekijk je schema in TrainingPeaks</a>
+      <p class="sk-tpzin">Daar staat je eerste week al klaar. Zet je teller of Zwift alvast aan je TrainingPeaks vast.</p>
+      ${coreBlokHtml(d, null)}${coachTegelHtml('Vragen voor je start? Over je schema, je eerste test of je week')}</div></div>`;
   }
   if (s.status === 'klaar') {
     return `<div class="sk">${kop('Schema afgerond', 'Alle ' + s.weken + ' weken zitten erop. Knap gedaan.')}
@@ -2344,7 +2345,7 @@ function schemaKaart(d) {
     <div class="sk-dag"><a class="knop sk-tpgroot" href="https://app.trainingpeaks.com/#calendar" target="_blank" rel="noopener">Open je training in TrainingPeaks</a>
     <p class="sk-tpzin">Daar staat altijd je actuele schema, ook als Michel het voor jou heeft aangepast.</p>
     ${coreBlok}
-    <div class="sk-acties sk-coachtegel"><button type="button" class="tegel foto breed" data-sk="vraag" data-titel="" style="--foto:url('${TG_W}2026/08/michel-hier-510x510.jpeg');--fpos:center 35%;--fmaat:cover"><span class="tg-nm">Vraag je coach</span><span class="tg-sub">Over je schema, je week of een training</span><span class="tg-pijl">&#8250;</span></button></div></div></div>`;
+    ${coachTegelHtml('Over je schema, je week of een training')}</div></div>`;
 }
 async function skSchuif(r) {
   if (D && D.beheer && BEKIJK === 'zelf' && SIM.schema !== 'echt') return;
@@ -2361,7 +2362,7 @@ document.addEventListener('click', (e) => {
   if (a === 'schuif') skSchuif(k.dataset.r);
   if (a === 'vraag') {
     coachOpen(true);
-    setTimeout(() => { const t = document.getElementById('ccTekst'); if (t) { t.value = k.dataset.titel ? 'Over mijn training "' + k.dataset.titel + '": ' : 'Over mijn schema: '; t.focus(); } }, 250);
+    setTimeout(() => { const t = document.getElementById('ccTekst'); if (t) { t.value = k.dataset.pre != null ? k.dataset.pre : k.dataset.titel ? 'Over mijn training "' + k.dataset.titel + '": ' : 'Over mijn schema: '; t.focus(); } }, 250);
   }
 });
 
@@ -3248,6 +3249,8 @@ function tpUitlegHtml(d) {
 // Coachingpagina (14-10-2026, na vragen van Daan en Ilse): alles over app + TrainingPeaks op één plek, en vooral: benader me gewoon.
 const TP_IOS = 'https://apps.apple.com/nl/app/trainingpeaks-plan-train-lift/id408047715', TP_ANDROID = 'https://play.google.com/store/apps/details?id=com.peaksware.trainingpeaks';
 // Core-blok (15-10-2026): op Mijn schema en Jouw coaching. Met schema ook de dagstrook.
+// Vraag je coach als fototegel (16-10-2026), op Mijn schema en Jouw coaching.
+function coachTegelHtml(sub, titel, pre) { return `<div class="sk-acties sk-coachtegel"><button type="button" class="tegel foto breed" data-sk="vraag" data-titel="${esc(titel || '')}"${pre != null ? ` data-pre="${esc(pre)}"` : ''} style="--foto:url('${TG_W}2026/08/michel-hier-510x510.jpeg');--fpos:center 35%;--fmaat:cover"><span class="tg-nm">Vraag je coach</span><span class="tg-sub">${sub}</span><span class="tg-pijl">&#8250;</span></button></div>`; }
 function coreBlokHtml(d, s) {
   const c = d && d.core;
   if (!c || !c.link || c.opSlot || c.nogDicht) return '';
@@ -3274,7 +3277,7 @@ function coachingPaginaHtml(d) {
     <div class="sk"><div class="sk-kop"><div class="label">Jouw coaching</div><h2>Je plan staat in TrainingPeaks</h2><div class="sk-sub">Daar zet ik je trainingen klaar en stuur ik bij</div></div>
       <div class="sk-dag"><a class="knop sk-tpgroot" href="https://app.trainingpeaks.com/#calendar" target="_blank" rel="noopener">Open je training in TrainingPeaks</a>
       <p class="sk-tpzin">Daar staat altijd je actuele plan, ook als ik het deze week voor je heb aangepast.</p>
-      ${coreBlokHtml(d, null)}</div></div>
+      ${coreBlokHtml(d, null)}${coachTegelHtml('Snelle vraag over voeding, herstel of materiaal. Over je plan: stuur mij een bericht', '', '')}</div></div>
     <div class="kaart actief cp-michel"><div class="kaart-in">
       <h2>Is er iets? Benader me gewoon${vn ? ', ' + vn : ''}</h2>
       <p>Daar is coaching voor. Een vraag over je training, je voelt je niet fit, je week loopt anders dan gepland of je twijfelt ergens over: stuur me een bericht. Liever te vroeg dan te laat, dan pas ik je planning op tijd aan.</p>
