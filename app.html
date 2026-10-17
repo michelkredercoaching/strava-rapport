@@ -1398,6 +1398,7 @@
   .gr-meerij input { flex:1; min-width:0; margin:0; }
   .gr-meerij .knop { flex:1; margin:0; }
   .gr-compact .gr-route { margin-top:16px; }
+  .gr-mijn { margin-bottom:6px; } .gr-mijn .rit-kaart:first-of-type { margin-top:6px; }
 </style>
 </head>
 <body>
@@ -3180,7 +3181,7 @@ function tegelsHtml(d) {
   // 16-10-2026 (Coen): de coach zit al in de zwevende knop; deze plek is nu Voeding.
   const voeding = tegel({ v: 'voeding', ic: 'voeding', nm: 'Voeding', sub: 'Wat je eet en drinkt voor je rit', tag: slim ? 'Open' : SLOT + ' Pro', tagKlas: slim ? 'gr' : 'or' });
   const kleding = tegel({ v: 'kleding', ic: 'kleding', nm: 'Kleding', sub: 'Wat je aantrekt voor het weer', tag: slim ? 'Open' : SLOT + ' Pro', tagKlas: slim ? 'gr' : 'or' });
-  const groep = tegel({ v: 'groep', ic: 'groep', nm: 'Groepsrit', sub: 'Plan een rit, deel de link', tag: lid || slim ? 'Open' : 'Gratis', tagKlas: 'gr' });
+  const groep = tegel({ v: 'groep', ic: 'groep', nm: 'Groepsrit', sub: grTegelSub(), tag: grKomend() ? 'Gepland' : lid || slim ? 'Open' : 'Gratis', tagKlas: 'gr' });
   // Volgorde per soort gebruiker (16-10-2026, Michel: mooie overloop van gratis naar betaald).
   // Gratis: eerst wat gratis is, dan proberen/los kopen, onderaan de twee Pro-tegels samen.
   // Pro, schema of coaching: naar hoe vaak je het gebruikt (dagelijks, voor elke rit, af en toe).
@@ -3941,7 +3942,8 @@ function paginaHtml(d) {
   const voet = `<div class="voet">Ingelogd als ${esc(d.email)} &middot; <a href="mailto:info@michelkredercoaching.nl">Hulp nodig?</a></div>`;
   const dz = d.beheer && BEKIJK === 'alles' ? voorbeeldData(d) : d;
   if (VIEW === 'rijden') return appBalkHtml('Vandaag rijden') + `<div class="kaarten">${bandenKaart(d)}</div>` + voet;
-  if (VIEW === 'voeding' || VIEW === 'kleding' || VIEW === 'groep') return appBalkHtml() + `<div class="kaarten">${bandenKaart(d)}${VIEW === 'groep' && !toonSlim(d) ? (d.gast ? '' : grVriendHtml(d)) + windKaartHtml() : ''}</div>` + voet;
+  if (VIEW === 'groep' && !d.gast && ritLijst().length) setTimeout(rittenLaad, 0);
+  if (VIEW === 'voeding' || VIEW === 'kleding' || VIEW === 'groep') return appBalkHtml() + `<div class="kaarten">${VIEW === 'groep' && !d.gast && ritLijst().length ? '<div class="gr-mijn">' + rittenLijstHtml() + '</div>' : ''}${bandenKaart(d)}${VIEW === 'groep' && !toonSlim(d) ? (d.gast ? '' : grVriendHtml(d)) + windKaartHtml() : ''}</div>` + voet;
   if (VIEW === 'schema') { setTimeout(skwZorg, 0); return appBalkHtml('Mijn schema') + `<div class="kaarten">${schemaKaart(d)}</div>` + voet; }
   if (VIEW === 'core') return appBalkHtml('Core-app') + `<div class="kaarten">${coreKaart(dz.core)}</div>` + voet;
   if (VIEW === 'kracht') return appBalkHtml() + krachtPagina(dz) + voet;
@@ -3986,7 +3988,6 @@ function teken() {
     <div class="groet kort">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Hoi.')}</div>
     ${appZinHtml(d)}
     ${!d.gast ? '<div class="rang-plek">' + palmaresChipHtml(d) + rangChipHtml(d) + '</div>' : ''}
-    <div id="grHome">${grHomeKnopHtml()}</div>
     ${meldingenHtml(d)}
     ${d.gast ? '' : '<div class="tip-boven">' + hklap('tipdicht', 'Tip van Michel', tipKop(d), tipHtml(d), false) + '</div>'}
     ${tegelsHtml(d)}
@@ -5549,7 +5550,7 @@ async function grLaad() {
   } catch (e) { GR.fout = 'De rit laden lukte niet.'; }
   GR.laden = false; grTeken();
 }
-function grTeken() { const el = document.getElementById('groepsrit'); if (el) el.innerHTML = grHtml(); const hk = document.getElementById('grHome'); if (hk) hk.innerHTML = grHomeKnopHtml(); setTimeout(grKaartLaad, 0); }
+function grTeken() { const el = document.getElementById('groepsrit'); if (el) el.innerHTML = grHtml(); const tg = document.querySelector('.tegel[data-view="groep"]'); if (tg) { const s = tg.querySelector('.tg-sub'), t = tg.querySelector('.tg-tag'); if (s) s.innerHTML = grTegelSub(); if (t && grKomend()) t.textContent = 'Gepland'; } setTimeout(grKaartLaad, 0); }
 // Echte kaart onder de route (17-10-2026): Leaflet + OpenStreetMap, pas geladen als er een route is.
 let GR_KAART = null, LEAFLET = null;
 function grLeaflet() {
@@ -5690,7 +5691,7 @@ function grMaakHtml() {
     <button type="button" class="gr-plan-knop" data-gr="bekijk">Bekijk de rit</button>
     <button type="button" class="sb-link" data-gr="dicht">Nog een rit plannen</button></div>`;
   const pl = m.plaats;
-  return `<div class="gr-maak"><p>Je krijgt een link voor je groepsapp. Geen aanmelden of namen, gewoon het weer en het advies voor jullie rit.</p>
+  return `<div class="gr-maak"><p>Je krijgt een link voor je groepsapp. Iedereen ziet het weer, de wind, de route en wie er meerijdt.</p>
     <label for="grNaam">Naam van de rit</label><input id="grNaam" maxlength="40" placeholder="Zondagrit" value="${esc(m.naam || '')}">
     <label for="grDoor">Je voornaam</label><input id="grDoor" maxlength="30" value="${esc(m.door || '')}">
     <div class="rij2"><div><label for="grDatum">Dag</label><select id="grDatum">${grDagOpties().map(([w, t]) => `<option value="${w}" ${m.datum === w ? 'selected' : ''}>${t}</option>`).join('')}</select></div>
@@ -6460,6 +6461,12 @@ function grNamenHtml(g, voorbij) {
   if (!namen.length && !rest) return voorbij ? '' : '<div class="gr-namen"><b>Wie rijdt mee</b><p class="klein" style="margin:0">Nog niemand. Ben jij de eerste?</p></div>';
   return '<div class="gr-namen"><b>' + (voorbij ? 'Reden mee' : 'Wie rijdt mee') + ' &middot; ' + mee + '</b><div>' + namen.map((n) => '<span>' + esc(n) + '</span>').join('') + (rest ? '<span class="gr-anoniem">+' + rest + (namen.length ? (rest === 1 ? ' andere' : ' anderen') : (rest === 1 ? ' renner' : ' renners')) + '</span>' : '') + '</div></div>';
 }
+function grKomend() { const g = GR.data; return g && g.rit && g.rit.start + g.rit.duur * 3600e3 > Date.now() ? g : null; }
+function grTegelSub() {
+  const g = grKomend(); if (!g) return 'Plan een rit, deel de link';
+  const r = g.rit, dag = new Date(r.start).toLocaleDateString('nl-NL', { weekday: 'short', timeZone: 'Europe/Amsterdam' });
+  return esc(r.naam) + '<br>' + dag + ' ' + grTijd(r.start) + (g.mee ? ' &middot; ' + g.mee + ' mee' : '');
+}
 function grHomeKnopHtml() {
   const g = GR.data, n = ritLijst().length;
   if (g && g.rit && g.rit.start + g.rit.duur * 3600e3 > Date.now()) {
@@ -6477,7 +6484,7 @@ async function rittenLaad() {
     if (j.ok) RITTEN.lijst = j.ritten;
   } catch (e) {}
   RITTEN.laden = false;
-  if (VIEW === 'ritten') { const el = document.getElementById('rittenlijst'); if (el) el.outerHTML = rittenLijstHtml(); }
+  if (VIEW === 'ritten' || VIEW === 'groep') { const el = document.getElementById('rittenlijst'); if (el) el.outerHTML = rittenLijstHtml(); }
 }
 function rittenKaart(r) {
   const voorbij = r.start + r.duur * 3600e3 < Date.now();
@@ -6490,7 +6497,7 @@ function rittenKaart(r) {
 function rittenLijstHtml() {
   if (!RITTEN.lijst) return '<div id="rittenlijst"><p class="klein">Even je ritten ophalen...</p></div>';
   const nu = RITTEN.lijst.filter((r) => r.start + r.duur * 3600e3 >= Date.now()), oud = RITTEN.lijst.filter((r) => r.start + r.duur * 3600e3 < Date.now()).reverse();
-  if (!nu.length && !oud.length) return '<div id="rittenlijst"><p>Nog geen groepsritten. Plan er een, of open de link die je van iemand kreeg.</p></div>';
+  if (!nu.length && !oud.length) return VIEW === 'groep' ? '<div id="rittenlijst"></div>' : '<div id="rittenlijst"><p>Nog geen groepsritten. Plan er een, of open de link die je van iemand kreeg.</p></div>';
   return '<div id="rittenlijst">' + (nu.length ? '<div class="groepkop" style="margin-left:0">Komende ritten</div>' + nu.map(rittenKaart).join('') : '') + (oud.length ? '<div class="groepkop" style="margin-left:0">Gereden</div>' + oud.map(rittenKaart).join('') : '') + '</div>';
 }
 function rittenHtml() {
