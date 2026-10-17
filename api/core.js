@@ -51,7 +51,7 @@ import { appMelding } from '../lib/app-melding.js';
 import { tel } from '../lib/stat.js';
 // Kringverwijzing met lid.js (die gebruikt zetLidmaatschap van hier). Mag, want
 // beide gebruiken elkaars functies pas binnen een aanvraag, niet bij het laden.
-import { lidOpen, haalLid as haalLidmaatschap, haalSchema, LANCERING } from './lid.js';
+import { haalLid as haalLidmaatschap, haalSchema, LANCERING } from './lid.js';
 // Voorverkoop (14-10-2026): nieuwe leden kunnen al betalen, de Core-app opent pas bij de lancering.
 const CORE_BEHEER = ['michel.kredercoaching@gmail.com', 'michel.kreder@gmail.com'];
 const coreNogDicht = (d) => Date.now() < LANCERING && !!d.wachtOpLancering && !CORE_BEHEER.includes(String(d.email || '').toLowerCase());
@@ -72,7 +72,8 @@ const PAGINA_URL  = process.env.CORE_PAGINA_URL || 'https://rapport.michelkreder
 const BEWAAR_S    = 60 * 60 * 24 * 400;   // ruim na week 12, ook als iemand later begint
 // Waar de betaalknop na de proefweek naartoe gaat: de checkout met product
 // 13050 (Core-programma, €49). Overschrijven kan met CORE_KOOP_URL in Vercel.
-const KOOP_URL    = process.env.CORE_KOOP_URL || 'https://michelkredercoaching.nl/checkout/?add-to-cart=13050';
+// 17-10-2026: het losse product (13050) staat uit, Core loopt via MKC Pro in de app.
+const KOOP_URL    = process.env.CORE_KOOP_URL || 'https://michelkredercoaching.nl/app';
 const MC_KEY      = process.env.MAILCHIMP_API_KEY || '';
 const MC_LIST     = process.env.MAILCHIMP_LIST_ID || '';
 
@@ -710,7 +711,8 @@ export default async function handler(req, res) {
   if (req.query && !req.query.actie && req.query.state && (req.query.code || req.query.error) && leesCoreToken(String(req.query.state))) req.query.actie = 'stravaterug';
   if (String(req.query?.actie || '').startsWith('strava')) console.log('core strava', req.query.actie, Object.keys(req.query || {}).join(','));
   const actie = (req.query?.actie || '').toString();
-  try { LID_OPEN = await lidOpen(); } catch { LID_OPEN = false; }
+  // Sinds de lancering (16-10-2026) is Pro altijd open; de oude €49-muur mag nooit meer verschijnen (product staat uit).
+  LID_OPEN = true;
   try {
     switch (actie) {
       case 'nieuw':     return await routeNieuw(req, res);
