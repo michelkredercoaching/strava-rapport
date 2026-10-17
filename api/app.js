@@ -40,7 +40,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { coreVoorEmail, emailVoorCoreToken, coreTrechter, coreOverzicht } from './core.js';
 import { lidOpenApp, voorverkoopAan, lidBeeld, haalLid, lidOpen, LANCERING, LANCERING_PLAN, incassoKlaar, haalSchema, ledenOverzicht, lidZoek, geefToegang } from './lid.js';
-import { schemaBeeld, schemaContext, planStart, PLANNEN as SCHEMA_PLANNEN, laadPlan } from '../lib/schema-app.js';
+import { schemaBeeld, schemaWeek, schemaContext, planStart, PLANNEN as SCHEMA_PLANNEN, laadPlan } from '../lib/schema-app.js';
 import { haalMeldingen, leesMelding, appMelding, logPush } from '../lib/app-melding.js';
 import { leesDoel, nieuwDoel, volgendeStap, doelContext } from '../lib/doelen.js';
 import { maakKortingToken } from '../lib/korting.js';
@@ -178,6 +178,17 @@ function adviesBedragen(mf) {
 //   POST schema { t, verschuif: -1|1 } -> de klant loopt een dag achter/voor
 //   GET  schema?t=..&plan=..&dag=..    -> voorbeeld voor beheer (Zelf kiezen)
 async function routeSchema(req, res) {
+  // Eén week met uitleg (17-10-2026): alleen je eigen schema; beheer mag met &plan= een voorbeeld bekijken.
+  if (req.method === 'GET' && req.query?.week) {
+    const email = leesAppToken(String(req.query?.t || ''));
+    if (!email) return res.status(401).json({ ok: false, fout: 'Log opnieuw in.' });
+    let s = null;
+    if (BEHEER.includes(email) && SCHEMA_PLANNEN.concat(['winter-basis-w', 'winter-opbouw-w']).includes(String(req.query.plan || ''))) s = { plan: String(req.query.plan), start: String(req.query.start || '').slice(0, 10) || new Date().toISOString().slice(0, 10), verschuif: 0, startExact: true };
+    else { const d = await haalSchema(email); s = d && d.huidig && d.huidig.plan ? d.huidig : null; }
+    const w = s && schemaWeek(s, req.query.week);
+    if (!w) return res.status(404).json({ ok: false, fout: 'Geen schema gevonden.' });
+    return res.status(200).json({ ok: true, ...w });
+  }
   if (req.method === 'GET') {
     const email = leesAppToken(String(req.query?.t || ''));
     if (!email || !BEHEER.includes(email)) return res.status(403).json({ ok: false });

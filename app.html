@@ -1231,6 +1231,33 @@
   .meldinst label { display:flex; align-items:center; gap:10px; margin-top:8px; cursor:pointer; }
   .meldinst input { width:18px; height:18px; accent-color:#FF6B1A; }
   /* Schema in de app (09-10-2026) */
+  .skw { margin:16px 0 4px; }
+  .skw-titel { font-family:'Bebas Neue', Impact, sans-serif; font-size:20px; letter-spacing:.5px; color:var(--white); }
+  .skw-strook { display:flex; gap:6px; overflow-x:auto; padding:2px 0 10px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+  .skw-strook::-webkit-scrollbar { display:none; }
+  .skw-chip { flex:0 0 auto; min-width:44px; padding:8px 10px; border-radius:20px; border:1px solid var(--border); background:var(--off); color:var(--muted); font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  .skw-chip.nu { border-color:var(--accent); color:var(--accent); }
+  .skw-chip.aan { background:var(--accent-dim); color:var(--white); }
+  .skw-week { border:1px solid var(--border); border-radius:12px; margin-top:8px; background:var(--off); scroll-margin-top:80px; }
+  .skw-week.nu { border-color:rgba(255,107,26,.45); }
+  .skw-kop { display:flex; align-items:center; justify-content:space-between; width:100%; gap:10px; padding:13px 14px; background:none; border:0; color:var(--white); font:inherit; text-align:left; cursor:pointer; }
+  .skw-kop span:first-child { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 8px; }
+  .skw-kop i { font-style:normal; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--black); background:var(--accent); border-radius:10px; padding:2px 7px; }
+  .skw-kop em { font-style:normal; font-size:13px; color:var(--muted); width:100%; }
+  .skw-pijl { color:var(--accent); font-size:22px; transition:transform .2s; }
+  .skw-week.open .skw-pijl { transform:rotate(90deg); }
+  .skw-in { padding:0 14px 12px; }
+  .skw-tr { border-top:1px solid var(--border); padding:10px 0; }
+  .skw-trkop { display:flex; align-items:baseline; gap:8px; }
+  .skw-trkop b { flex:1; font-size:14px; }
+  .skw-dag { flex:0 0 26px; font-size:12px; font-weight:700; text-transform:uppercase; color:var(--accent); }
+  .skw-duur { font-size:13px; color:var(--muted); white-space:nowrap; }
+  .skw-melding { font-size:13px; color:var(--white); background:var(--accent-dim); border-radius:8px; padding:8px 10px; margin:8px 0 0; }
+  .skw-tekst { font-size:13.5px; line-height:1.55; color:rgba(245,243,239,.82); margin-top:6px; max-height:0; overflow:hidden; }
+  .skw-tekst.open { max-height:none; }
+  .skw-tekst p { margin:0 0 8px; }
+  .skw-notitie { color:var(--muted); font-style:italic; }
+  .skw-meer { margin-top:6px; font-size:13px; }
   .sk { background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
   .sk-kop { padding:18px 18px 0; }
   .sk-kop .label { margin-bottom:6px; }
@@ -2358,6 +2385,49 @@ function beheerHtml(d) {
 // Wat er vandaag op je schema staat, met Michels uitleg uit TrainingPeaks.
 // De klant traint gewoon in TrainingPeaks; dit is de uitleg en de context.
 const SK = { dag: null, open: {} };
+// Schema per week (17-10-2026): welke weken open staan, en de opgehaalde uitleg per week.
+const SKW = { open: {}, data: {}, laden: {}, fout: {} };
+function skwTekst(t) { return esc(t).replace(/\n{2,}/g, '</p><p>').replace(/\n/g, '<br>'); }
+function skwWeekHtml(s, w) {
+  const nu = s.status === 'loopt' && w.week === s.week, open = SKW.open[w.week] != null ? SKW.open[w.week] : nu;
+  const det = SKW.data[w.week];
+  const inhoud = !open ? '' : SKW.fout[w.week] ? '<p class="klein">Laden lukte niet. Probeer het zo nog eens.</p>'
+    : !det ? '<p class="klein">Even laden...</p>'
+    : det.trainingen.map((x, i) => `<div class="skw-tr"><div class="skw-trkop"><span class="skw-dag">${esc(x.dagnaam)}</span><b>${esc(x.titel)}</b><span class="skw-duur">${esc(skUren(x.duur))}</span></div>
+        ${x.melding ? `<p class="skw-melding">${esc(x.melding)}</p>` : ''}
+        ${x.tekst ? `<div class="skw-tekst${SKW.open[w.week + '-' + i] ? ' open' : ''}"><p>${skwTekst(x.tekst)}</p>${x.notitie ? `<p class="skw-notitie">${skwTekst(x.notitie)}</p>` : ''}</div><button type="button" class="sb-link skw-meer" data-skw="meer" data-k="${w.week}-${i}">${SKW.open[w.week + '-' + i] ? 'Minder' : 'Lees de uitleg'}</button>` : ''}</div>`).join('') || '<p class="klein">Rustweek: geen trainingen.</p>';
+  return `<div class="skw-week${nu ? ' nu' : ''}${open ? ' open' : ''}" id="skw${w.week}"><button type="button" class="skw-kop" data-skw="week" data-w="${w.week}"><span><b>Week ${w.week}</b>${nu ? '<i>nu</i>' : ''}<em>${w.trainingen.length} ${w.trainingen.length === 1 ? 'training' : 'trainingen'} &middot; ${esc(skUren(w.uren))}</em></span><span class="skw-pijl">&#8250;</span></button>
+    ${open ? `<div class="skw-in">${inhoud}</div>` : ''}</div>`;
+}
+function skwHtml(s) {
+  if (!s.overzicht || !s.overzicht.length) return '';
+  const strook = s.overzicht.map((w) => `<button type="button" class="skw-chip${s.status === 'loopt' && w.week === s.week ? ' nu' : ''}${SKW.open[w.week] ? ' aan' : ''}" data-skw="naar" data-w="${w.week}">W${w.week}</button>`).join('');
+  return `<div class="skw"><div class="skw-titel">Je schema per week</div>
+    <p class="klein" style="margin:4px 0 10px">Zo ziet je schema er standaard uit, met de uitleg per training. Heeft Michel iets voor je aangepast, dan staat dat in TrainingPeaks. Dat is altijd leidend.</p>
+    <div class="skw-strook">${strook}</div>
+    ${s.overzicht.map((w) => skwWeekHtml(s, w)).join('')}</div>`;
+}
+async function skwLaad(w) {
+  if (SKW.data[w] || SKW.laden[w]) return;
+  SKW.laden[w] = true; SKW.fout[w] = false;
+  try {
+    const s = (zicht() || {}).schema || {};
+    const extra = D && D.beheer && BEKIJK === 'zelf' ? '&plan=' + encodeURIComponent(s.plan || '') + '&start=' + encodeURIComponent(s.start || '') : '';
+    const j = await (await fetch(API + '?actie=schema&t=' + encodeURIComponent(leesToken()) + '&week=' + w + extra)).json();
+    if (j.ok) SKW.data[w] = j; else SKW.fout[w] = true;
+  } catch (e) { SKW.fout[w] = true; }
+  SKW.laden[w] = false; if (VIEW === 'schema') teken();
+}
+function skwZorg() { const s = (zicht() || {}).schema; if (!s || !s.overzicht) return; s.overzicht.forEach((w) => { const open = SKW.open[w.week] != null ? SKW.open[w.week] : s.status === 'loopt' && w.week === s.week; if (open) skwLaad(w.week); }); }
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-skw]'); if (!k) return;
+  const s = (zicht() || {}).schema || {}, w = Number(k.dataset.w), a = k.dataset.skw;
+  if (a === 'meer') { SKW.open[k.dataset.k] = !SKW.open[k.dataset.k]; return teken(); }
+  const isOpen = SKW.open[w] != null ? SKW.open[w] : s.status === 'loopt' && w === s.week;
+  SKW.open[w] = a === 'naar' ? true : !isOpen;
+  teken(); skwZorg();
+  if (a === 'naar') setTimeout(() => { const el = document.getElementById('skw' + w); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
+});
 function skUren(u) { if (!u) return ''; const m = Math.round(u * 60); return m >= 60 ? Math.floor(m / 60) + ':' + String(m % 60).padStart(2, '0') + ' uur' : m + ' min'; }
 function skMin(sec) { if (!sec) return ''; if (sec < 60) return sec + ' sec'; if (sec % 60) return String(Math.round(sec / 6) / 10).replace('.', ',') + ' min'; const m = sec / 60; return m >= 60 ? Math.floor(m / 60) + ' u' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : m + ' min'; }
 function skVlak(blokken) {
@@ -2416,7 +2486,8 @@ function schemaKaart(d) {
     return `<div class="sk">${kop('Bijna begonnen', 'Je schema start op ' + esc(datumKort(s.start)) + '.')}
       <div class="sk-dag"><a class="knop sk-tpgroot" href="https://app.trainingpeaks.com/#calendar" target="_blank" rel="noopener">Bekijk je schema in TrainingPeaks</a>
       <p class="sk-tpzin">Daar staat je eerste week al klaar. Zet je teller of Zwift alvast aan je TrainingPeaks vast.</p>
-      ${coreBlokHtml(d, null)}${coachTegelHtml('Vragen voor je start? Over je schema, je eerste test of je week')}</div></div>`;
+      ${coreBlokHtml(d, null)}
+      ${skwHtml(s)}${coachTegelHtml('Vragen voor je start? Over je schema, je eerste test of je week')}</div></div>`;
   }
   if (s.status === 'klaar') {
     return `<div class="sk">${kop('Schema afgerond', 'Alle ' + s.weken + ' weken zitten erop. Knap gedaan.')}
@@ -2429,6 +2500,7 @@ function schemaKaart(d) {
     <div class="sk-dag"><a class="knop sk-tpgroot" href="https://app.trainingpeaks.com/#calendar" target="_blank" rel="noopener">Open je training in TrainingPeaks</a>
     <p class="sk-tpzin">Daar staat altijd je actuele schema, ook als Michel het voor jou heeft aangepast.</p>
     ${coreBlok}
+    ${skwHtml(s)}
     ${coachTegelHtml('Over je schema, je week of een training')}</div></div>`;
 }
 async function skSchuif(r) {
@@ -3808,7 +3880,7 @@ function paginaHtml(d) {
   const dz = d.beheer && BEKIJK === 'alles' ? voorbeeldData(d) : d;
   if (VIEW === 'rijden') return appBalkHtml('Vandaag rijden') + `<div class="kaarten">${bandenKaart(d)}</div>` + voet;
   if (VIEW === 'voeding' || VIEW === 'kleding' || VIEW === 'groep') return appBalkHtml() + `<div class="kaarten">${bandenKaart(d)}${VIEW === 'groep' && !toonSlim(d) ? (d.gast ? '' : grVriendHtml(d)) + windKaartHtml() : ''}</div>` + voet;
-  if (VIEW === 'schema') return appBalkHtml('Mijn schema') + `<div class="kaarten">${schemaKaart(d)}</div>` + voet;
+  if (VIEW === 'schema') { setTimeout(skwZorg, 0); return appBalkHtml('Mijn schema') + `<div class="kaarten">${schemaKaart(d)}</div>` + voet; }
   if (VIEW === 'core') return appBalkHtml('Core-app') + `<div class="kaarten">${coreKaart(dz.core)}</div>` + voet;
   if (VIEW === 'kracht') return appBalkHtml() + krachtPagina(dz) + voet;
   if (VIEW === 'beheer') { if (!D || !D.beheer) return null; const d = D; return appBalkHtml('Beheer') + beheerHtml(d) + '<button type="button" class="bh-knop" data-actie="pacingtest"><b>Pacinglink</b><span>Testlink voor je eigen tocht-doel bekijken</span><i>&#8250;</i></button>' + (d.kracht && d.kracht.open ? '<button type="button" class="bh-knop" data-view="kracht"><b>Kracht</b><span>Preview van het krachtprogramma, alleen voor jou</span><i>&#8250;</i></button>' : '') + `<div class="bh-groep bh-pagina"><div id="bhdash">${bhDashHtml()}</div><div class="bh-sec">Te doen</div>${opvolgHtml()}${nakijkHtml()}<div class="bh-sec">Mensen</div>${ledenHtml()}${doelenBeheerHtml()}${schemaBeheerHtml()}${coreBeheerHtml()}<div class="bh-sec">Groei en gebruik</div>${gebruikHtml()}${badgeBeheerHtml()}<div class="bh-sec">Berichten versturen</div>${aankondigHtml()}${pushOpnieuwHtml()}</div>` + voet; }
