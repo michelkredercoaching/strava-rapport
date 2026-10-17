@@ -1838,7 +1838,7 @@ function pacingKaart() {
 const BT_OPSLAG = 'mkcBanden';
 function btLees() { try { return JSON.parse(localStorage.getItem(BT_OPSLAG) || '{}'); } catch (e) { return {}; } }
 function btBewaar(v) { try { localStorage.setItem(BT_OPSLAG, JSON.stringify(v)); } catch (e) {} }
-const BT_BREEDTES = { weg: [23, 25, 26, 28, 30, 32], gravel: [35, 38, 40, 42, 45, 47, 50] };
+const BT_BREEDTES = { weg: [23, 25, 26, 28, 30, 32, 34, 35], gravel: [35, 38, 40, 42, 45, 47, 50] };
 const btWaarden = () => ({ type: 'weg', breedte: 28, tubeless: false, hookless: false, nat: false, ...btLees() });
 // Leden krijgen de slimme versie. Michel ziet die in "Alles open"; als klant ziet hij de gratis versie.
 const toonSlim = (d) => !!d.bandenSlim && (isLid(d) || (d.beheer && BEKIJK === 'alles'));

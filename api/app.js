@@ -1835,7 +1835,7 @@ function schoonProfiel(p) {
   const plaats = pl && isFinite(pl.lat) && isFinite(pl.lon)
     ? { naam: String(pl.naam || '').slice(0, 60), lat: Math.round(Number(pl.lat) * 100) / 100, lon: Math.round(Number(pl.lon) * 100) / 100 }
     : null;
-  const breedtes = { weg: [23, 25, 26, 28, 30, 32], gravel: [35, 38, 40, 42, 45, 47, 50] };
+  const breedtes = { weg: [23, 25, 26, 28, 30, 32, 34, 35], gravel: [35, 38, 40, 42, 45, 47, 50] };
   const fietsen = (Array.isArray(p.fietsen) ? p.fietsen : []).slice(0, MAX_FIETSEN).map((f, i) => {
     const type = f.type === 'gravel' ? 'gravel' : 'weg';
     const breedte = breedtes[type].includes(Number(f.breedte)) ? Number(f.breedte) : (type === 'gravel' ? 40 : 28);
