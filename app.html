@@ -1424,7 +1424,12 @@ function wisToken() { try { localStorage.removeItem(OPSLAG); } catch (e) {} try 
 
 // ---- Beginscherm ----
 let installPrompt = null;
-window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; if (D) teken(); });
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault(); installPrompt = e; if (D) teken();
+  // 17-10-2026: staat de uitleg al open (Android), vervang de stappen door de knop van één tik.
+  const ol = document.querySelector('#lxModal .ig-stappen');
+  if (ol && installRoute() === 'android') { const na = ol.nextElementSibling; if (na && na.matches('p.klein')) na.remove(); ol.outerHTML = '<button type="button" class="knop" data-actie="installeer" style="margin-top:4px">Zet op beginscherm</button><p class="klein">Eén tik, dan staat het MKC-logo op je beginscherm.</p>'; }
+});
 function apparaatInfo() {
   const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua), android = /Android/.test(ua);
   const browser = /CriOS|Chrome/.test(ua) && !/Edg/.test(ua) ? 'Chrome' : /FxiOS|Firefox/.test(ua) ? 'Firefox' : /SamsungBrowser/.test(ua) ? 'Samsung Internet' : /Edg/.test(ua) ? 'Edge' : /Safari/.test(ua) ? 'Safari' : 'onbekend';
@@ -1804,10 +1809,10 @@ function bandenKaart(d) {
   const btKnop = !d.gast && !BT_TOON ? '<button type="button" class="knop" data-actie="bttoon" style="margin-top:14px">Bekijk mijn spanning</button>' : '';
   return `<div id="btBlokken" style="display:contents"><div class="kaart actief" id="banden"><div class="kaart-in"><span class="tag open">Gratis</span>
     <div class="label">Vandaag rijden</div><h2>Wat pomp je vandaag?</h2>${vtabs}
-    <p>Jouw gewicht en band, direct de juiste spanning voor en achter.</p>
+    <p>Je eigen gewicht en je band, direct de juiste spanning voor en achter. Alleen je lichaamsgewicht: je fiets en spullen reken ik zelf mee.</p>
     <div class="bt">
       <div class="bt-keuze">${knop('type', 'weg', 'Racefiets')}${knop('type', 'gravel', 'Gravel')}</div>
-      <div><label for="btGewicht">Je gewicht (kg)</label><input id="btGewicht" type="number" inputmode="numeric" min="40" max="150" placeholder="bijv. 78" value="${esc(v.gewicht || '')}"></div>
+      <div><label for="btGewicht">Lichaamsgewicht (kg)</label><input id="btGewicht" type="number" inputmode="numeric" min="40" max="150" placeholder="bijv. 78" value="${esc(v.gewicht || '')}"></div>
       <div><label for="btBreedte">Bandbreedte</label><select id="btBreedte">${BT_BREEDTES[v.type].map((b) => `<option value="${b}" ${Number(v.breedte) === b ? 'selected' : ''}>${b} mm</option>`).join('')}</select></div>
       <div class="bt-keuze">${knop('tubeless', 'false', 'Binnenband')}${knop('tubeless', 'true', 'Tubeless')}</div>
       ${v.type === 'weg' ? `<div class="bt-keuze">${knop('hookless', 'false', 'Gewone velg')}${knop('hookless', 'true', 'Hookless velg')}</div>` : ''}
@@ -2005,7 +2010,7 @@ function sbBewerkHtml() {
       <div class="bt-keuze"><button type="button" data-sb="fietsvlag" data-v="tubeless" data-i="${i}" class="${f.tubeless ? 'aan' : ''}">Tubeless</button>
       <button type="button" data-sb="fietsvlag" data-v="hookless" data-i="${i}" class="${f.hookless ? 'aan' : ''}">Hookless velg</button></div></div>`;
   return `<div class="sb-bewerk">
-    <label for="sbGewicht">Je gewicht (kg)</label><input id="sbGewicht" type="number" inputmode="numeric" min="40" max="150" value="${esc(p.gewicht || '')}" placeholder="bijv. 78">
+    <label for="sbGewicht">Je lichaamsgewicht (kg), zonder fiets</label><input id="sbGewicht" type="number" inputmode="numeric" min="40" max="150" value="${esc(p.gewicht || '')}" placeholder="bijv. 78">
     ${p.fietsen.map(fiets).join('')}
     ${p.fietsen.length < 6 ? `<button type="button" class="knop leeg" data-sb="fietserbij">+ Fiets toevoegen</button>` : ''}
     <button type="button" class="knop" data-sb="opslaan" style="margin-top:10px">Bewaar</button></div>`;
@@ -3183,7 +3188,7 @@ function onbHtml() {
   } else if (o.stap === 3) {
     inhoud = kop('Wat rij je vooral?', 'Dan reken ik je spanning uit voor de juiste fiets.') + `<div class="onb-opties twee"><button type="button" data-onb="type" data-w="weg" class="${o.type === 'weg' ? 'aan' : ''}">Racefiets</button><button type="button" data-onb="type" data-w="gravel" class="${o.type === 'gravel' ? 'aan' : ''}">Gravel</button></div>`;
   } else if (o.stap === 4) {
-    inhoud = kop('Je gewicht en je band', 'Alleen voor je bandenspanning. Het blijft op je telefoon.') + `<label class="onb-l" for="onbGewicht">Je gewicht (kg)</label><input id="onbGewicht" type="number" inputmode="numeric" min="40" max="150" placeholder="bijv. 78" value="${esc(o.gewicht)}">
+    inhoud = kop('Je gewicht en je band', 'Alleen voor je bandenspanning. Het blijft op je telefoon.') + `<label class="onb-l" for="onbGewicht">Je lichaamsgewicht (kg)</label><input id="onbGewicht" type="number" inputmode="numeric" min="40" max="150" placeholder="bijv. 78" value="${esc(o.gewicht)}">
       <label class="onb-l" for="onbBreedte">Bandbreedte</label><select id="onbBreedte">${BT_BREEDTES[o.type].map((b) => `<option value="${b}" ${Number(o.breedte) === b ? 'selected' : ''}>${b} mm</option>`).join('')}</select>
       <div class="onb-opties twee" style="margin-top:12px"><button type="button" data-onb="tubeless" data-w="false" class="${!o.tubeless ? 'aan' : ''}">Binnenband</button><button type="button" data-onb="tubeless" data-w="true" class="${o.tubeless ? 'aan' : ''}">Tubeless</button></div>`;
     if (o.fout) inhoud += `<p class="onb-sub" style="color:#ff8a5c;margin-top:10px">${esc(o.fout)}</p>`;
@@ -3899,7 +3904,7 @@ document.addEventListener('click', (e) => {
   if (actie === 'appweg') { try { localStorage.setItem('mkcAppWeg', '1'); } catch (e) {} teken(); }
   if (actie === 'vrweg') { try { localStorage.setItem('mkcVrWeg', String(Math.floor((Date.now() / 864e5 + 3) / 7))); } catch (e) {} teken(); }
   if (actie === 'welkomweg') { try { localStorage.setItem('mkcWelkomBlokWeg', '1'); } catch (e) {} teken(); }
-  if (actie === 'installeer' && installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; teken(); }); }
+  if (actie === 'installeer' && installPrompt) { installPrompt.prompt(); installPrompt.userChoice.finally(() => { installPrompt = null; if (document.querySelector('#lxModal [data-actie="installeer"]')) lxDicht(); teken(); }); }
 });
 
 // Proefweek via dezelfde route als /core-gratis/ (tag core-gratis, welkomstmail,
