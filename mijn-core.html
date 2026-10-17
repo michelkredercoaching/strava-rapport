@@ -425,7 +425,7 @@
   .thema-wissel { margin-left:auto; flex:none; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; color:var(--white); }
   .thema-wissel .tw-rond { width:34px; height:34px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--border); background:rgba(var(--ink-rgb),.06); }
   .thema-wissel .tw-rond svg { width:17px; height:17px; }
-  .thema-wissel .tw-tekst { font-size:10px; font-weight:600; letter-spacing:.04em; line-height:1; color:var(--muted); }
+  .thema-wissel .tw-tekst { white-space:nowrap; font-size:10px; font-weight:600; letter-spacing:.04em; line-height:1; color:var(--muted); }
   .thema-wissel:active .tw-rond { transform:scale(.94); }
 </style>
 </head>
@@ -2172,7 +2172,7 @@ function themaIcoon() {
     ? '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>'
     : '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>';
 }
-function themaWisselInhoud() { return '<span class="tw-rond">' + themaIcoon() + '</span><span class="tw-tekst">' + (themaIsLicht() ? 'Donker' : 'Licht') + '</span>'; }
+function themaWisselInhoud() { return '<span class="tw-rond">' + themaIcoon() + '</span><span class="tw-tekst">' + (themaIsLicht() ? 'Donkere modus' : 'Lichte modus') + '</span>'; }
 function themaWisselHtml() { return '<span class="thema-wissel" role="button" tabindex="0" data-thema-wissel aria-label="' + (themaIsLicht() ? 'Donkere modus' : 'Lichte modus') + '">' + themaWisselInhoud() + '</span>'; }
 function themaWisselBij() { document.querySelectorAll('[data-thema-wissel]').forEach((b) => { b.innerHTML = themaWisselInhoud(); b.setAttribute('aria-label', themaIsLicht() ? 'Donkere modus' : 'Lichte modus'); }); }
 document.addEventListener('click', (e) => { const k = e.target.closest('[data-thema-wissel]'); if (!k) return; e.preventDefault(); e.stopPropagation(); themaZet(themaIsLicht() ? 'donker' : 'licht'); }, true);

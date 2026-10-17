@@ -1292,8 +1292,16 @@ async function routeGroepsrit(req, res) {
     if (lim.ok && lim.result === 1) await redis(['EXPIRE', `groepsrit:maak:${email}:${new Date().toISOString().slice(0, 10)}`, 90000]);
     if (lim.ok && lim.result > 10) return res.status(429).json({ ok: false, fout: 'Je hebt vandaag al genoeg ritten gepland.' });
     const id = Array.from(crypto.randomBytes(8)).map((b) => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789'[b % 56]).join('');
+    // GPX-route (17-10-2026): in de app al ingelezen en vereenvoudigd, hier alleen gecontroleerd. Max 2000 punten.
+    let route = null;
+    if (body.route && Array.isArray(body.route.pts)) {
+      const r5 = (x) => Math.round(Number(x) * 1e5) / 1e5;
+      const pts = body.route.pts.slice(0, 2000).map((p) => (Array.isArray(p) ? [r5(p[0]), r5(p[1]), p[2] == null || !Number.isFinite(Number(p[2])) ? null : Math.max(-500, Math.min(9000, Math.round(Number(p[2]))))] : null))
+        .filter((p) => p && Number.isFinite(p[0]) && Number.isFinite(p[1]) && Math.abs(p[0]) <= 90 && Math.abs(p[1]) <= 180);
+      if (pts.length >= 2) route = { naam: schoon(body.route.naam, 40), km: Math.min(1000, Math.max(0, Math.round(Number(body.route.km) * 10) / 10 || 0)), hm: Math.min(20000, Math.max(0, Math.round(Number(body.route.hm)) || 0)), pts };
+    }
     const rit = { id, naam: schoon(body.naam, 40) || 'Groepsrit', door: schoon(body.door, 30), start, duur, tempo: body.tempo === 'hard' ? 'hard' : 'rustig',
-      plaats: { naam: schoon(pl.naam, 50), lat: Math.round(lat * 1000) / 1000, lon: Math.round(lon * 1000) / 1000 }, maker: email, op: Date.now() };
+      plaats: { naam: schoon(pl.naam, 50), lat: Math.round(lat * 1000) / 1000, lon: Math.round(lon * 1000) / 1000 }, route, maker: email, op: Date.now() };
     const ttl = Math.ceil((start - Date.now()) / 1000) + 3 * 86400;
     await redis(['SET', `groepsrit:${id}`, JSON.stringify(rit), 'EX', ttl]);
     await tel(email, 'groepsrit-maak');
@@ -1314,7 +1322,7 @@ async function routeGroepsrit(req, res) {
   let uren = null;
   try { uren = await grWeer(rit); } catch (e) {}
   const ik = leesAppToken(String(req.query?.t || ''));
-  return res.status(200).json({ ok: true, rit: { id: rit.id, naam: rit.naam, door: rit.door, start: rit.start, duur: rit.duur, tempo: rit.tempo, plaats: rit.plaats, eigen: !!ik && ik === rit.maker },
+  return res.status(200).json({ ok: true, rit: { id: rit.id, naam: rit.naam, door: rit.door, start: rit.start, duur: rit.duur, tempo: rit.tempo, plaats: rit.plaats, route: rit.route || null, eigen: !!ik && ik === rit.maker },
     uren, kijkers: n.ok ? Number(n.result) || 0 : 0, mee: mee.ok ? Number(mee.result) || 0 : 0, ikMee: !!(ikMee.ok && ikMee.result === 1) });
 }
 
