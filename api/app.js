@@ -1365,6 +1365,8 @@ export default async function handler(req, res) {
     if (actie === 'beheerdash') return await routeBeheerDash(req, res);
     if (actie === 'prostat') return await routeProStat(req, res);
     if (actie === 'foutlog') { const sl = process.env.TRECHTER_SLEUTEL || ''; if (!sl || String(req.headers?.['x-sleutel'] || '') !== sl) return res.status(403).json({ ok: false }); const l = await redis(['LRANGE', 'app:fouten', '0', '49']); return res.status(200).json({ ok: true, fouten: ((l.ok && l.result) || []).map((x) => { try { return JSON.parse(x); } catch { return x; } }) }); }
+    // Coachkosten per soort vraag (17-10-2026), voor scripts/coach-kosten.mjs.
+    if (actie === 'aikosten') { const sl = process.env.TRECHTER_SLEUTEL || ''; if (!sl || String(req.headers?.['x-sleutel'] || '') !== sl) return res.status(403).json({ ok: false }); const m = String(req.query?.m || new Date().toISOString().slice(0, 7)).replace(/[^0-9-]/g, '').slice(0, 7); const uit = {}; for (const b of ['coach', 'bandvraag', 'inkorten', 'core', 'overig']) { const r = await redis(['HGETALL', `app:ai:${m}:bron:${b}`]); const l = (r.ok && r.result) || []; if (l.length) { uit[b] = {}; for (let i = 0; i < l.length; i += 2) uit[b][l[i]] = Number(l[i + 1]) || 0; } } const oud = await Promise.all(['vragen', 'in', 'out'].map((f) => redis(['GET', `app:ai:${m}:${f}`]))); return res.status(200).json({ ok: true, maand: m, bronnen: uit, totaal: { vragen: Number(oud[0].result) || 0, in: Number(oud[1].result) || 0, out: Number(oud[2].result) || 0 } }); }
     if (actie === 'voorverkoop') return await routeVoorverkoop(req, res);
     if (actie === 'pushopnieuw') return await routePushOpnieuw(req, res);
     if (actie === 'doelronde') return await routeDoelRonde(req, res);
@@ -1707,7 +1709,7 @@ async function coachKortIn(t) {
     });
     if (!r.ok) return t;
     const j = await r.json();
-    await logVerbruik(j);
+    await logVerbruik(j, 'inkorten');
     const k = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
     if (!k || coachWoorden(k) >= coachWoorden(t)) return t;
     // De KNOP-regel moet blijven.
@@ -1715,10 +1717,16 @@ async function coachKortIn(t) {
     return knop && !/^KNOP:/m.test(k) ? k + '\n' + knop.trim() : k;
   } catch (e) { return t; }
 }
-async function logVerbruik(j) {
+async function logVerbruik(j, bron = 'overig') {
   try {
     const u = (j && j.usage) || {}, m = new Date().toISOString().slice(0, 7);
     const inn = (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0);
+    // Per soort vraag (17-10-2026): gewone input, cache schrijven (5 min / 1 uur), cache lezen en output apart,
+    // zodat scripts/coach-kosten.mjs de echte prijs per vraag kan uitrekenen.
+    const cc = u.cache_creation || {}, cw1h = cc.ephemeral_1h_input_tokens || 0, cw5 = (u.cache_creation_input_tokens || 0) - cw1h;
+    const k = `app:ai:${m}:bron:${bron}`;
+    await Promise.all([['n', 1], ['ui', u.input_tokens || 0], ['cw5', cw5], ['cw1h', cw1h], ['cr', u.cache_read_input_tokens || 0], ['out', u.output_tokens || 0]]
+      .map(([f, v]) => redis(['HINCRBY', k, f, String(v)])));
     await Promise.all([
       redis(['INCR', `app:ai:${m}:vragen`]),
       redis(['INCRBY', `app:ai:${m}:in`, String(inn)]),
@@ -1812,9 +1820,19 @@ async function routeBandenProfiel(req, res) {
     const body = await leesBody(req);
     const email = await slimEmail(req, res, body.t); if (!email) return;
     const profiel = schoonProfiel(body.profiel);
+    // Gewicht 1x per 30 dagen (17-10-2026). gewichtOp = laatste echte wijziging; binnen een uur daarna mag je corrigeren.
+    const oud = await haalBandenProfiel(email), nu = Date.now();
+    let gewichtVast = null;
+    profiel.gewichtOp = (oud && oud.gewichtOp) || null;
+    if (profiel.gewicht && oud && oud.gewicht && profiel.gewicht !== oud.gewicht && !BEHEER.includes(email)) {
+      const sinds = oud.gewichtOp ? nu - Date.parse(oud.gewichtOp) : Infinity;
+      if (sinds < 3600e3) { /* tikfout herstellen, klok loopt door */ }
+      else if (sinds < 30 * 864e5) { profiel.gewicht = oud.gewicht; gewichtVast = new Date(Date.parse(oud.gewichtOp) + 30 * 864e5).toISOString(); }
+      else profiel.gewichtOp = new Date(nu).toISOString();
+    } else if (profiel.gewicht && !(oud && oud.gewicht)) profiel.gewichtOp = new Date(nu).toISOString();
     const w = await redis(['SET', `app:banden:${email}`, JSON.stringify(profiel)]);
     if (!w.ok) return res.status(502).json({ ok: false, fout: 'Bewaren lukte niet. Probeer het zo nog eens.' });
-    return res.status(200).json({ ok: true, profiel });
+    return res.status(200).json({ ok: true, profiel, gewichtVast });
   }
   const email = await slimEmail(req, res, req.query?.t); if (!email) return;
   return res.status(200).json({ ok: true, profiel: (await haalBandenProfiel(email)) || schoonProfiel({}) });
@@ -1936,7 +1954,7 @@ async function routeBandVraag(req, res) {
     });
     if (!r.ok) { console.error('bandvraag Claude', r.status, await r.text()); throw new Error('claude'); }
     const j = await r.json();
-    await logVerbruik(j);
+    await logVerbruik(j, 'bandvraag');
     const tekst = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
     if (!tekst) throw new Error('leeg');
     const aid = await bewaarAntwoord({ email, bron: 'bandvraag', vraag, antwoord: tekst });
@@ -2050,7 +2068,7 @@ async function routeCoach(req, res) {
         body: JSON.stringify({
           model: 'claude-opus-5-5', max_tokens: 3000, output_config: { effort: 'low' }, fallbacks: 'default',
           system: [
-            { type: 'text', text: `${COACH_KENNIS}\n${COACH_PRAKTIJK}`, cache_control: { type: 'ephemeral' } },
+            { type: 'text', text: `${COACH_KENNIS}\n${COACH_PRAKTIJK}`, cache_control: { type: 'ephemeral', ttl: '1h' } }, // 1 uur (17-10-2026): weinig vragen, dus 5 minuten verliep bijna altijd
             { type: 'text', text: `OVER DEZE RENNER\n${context}\n\nREGELS\n${COACH_REGELS}${await voorbeeldenTekst('mkc-coach', tekst)}\n\n${COACH_LENGTE}` }
           ],
           messages: [...eerder, { role: 'user', content: tekst }]
@@ -2060,7 +2078,7 @@ async function routeCoach(req, res) {
       if (!r.ok) console.error('coach Claude', r.status, await r.text());
       else {
         const j = await r.json();
-        await logVerbruik(j);
+        await logVerbruik(j, 'coach');
         if (j.stop_reason === 'refusal') { antwoord = COACH_MEDISCH; medisch = true; }
         else {
           const t = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();

@@ -275,6 +275,8 @@ async function assistentAntwoord(vraag, d) {
     });
     if (!r.ok) { console.error('Claude fout:', r.status, await r.text()); return null; }
     const j = await r.json();
+    // Kosten meten, zelfde sleutels als api/app.js logVerbruik (17-10-2026).
+    try { const u = j.usage || {}, k = `app:ai:${new Date().toISOString().slice(0, 7)}:bron:core`; await Promise.all([['n', 1], ['ui', u.input_tokens || 0], ['cw5', u.cache_creation_input_tokens || 0], ['cr', u.cache_read_input_tokens || 0], ['out', u.output_tokens || 0]].map(([f, v]) => redis(['HINCRBY', k, f, String(v)]))); } catch (e) {}
     if (j.stop_reason === 'refusal') return { tekst: MEDISCH_ANTWOORD, medisch: true };
     const t = (j.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('').trim();
     if (!t) return null;

@@ -1999,6 +1999,13 @@ function sbZoekHtml() {
   return `<div class="sb-zoek">${SB.zoek.map((x, i) => SB.zoek.findIndex((y) => y.naam === x.naam && y.regio === x.regio) !== i ? '' : `<button type="button" data-sb="kiesplek" data-i="${i}">${esc(x.naam)} <small>${esc(x.regio)}</small></button>`).join('')}</div>`;
 }
 
+// Gewicht 1x per 30 dagen (17-10-2026); binnen een uur na een wijziging mag je nog corrigeren.
+function sbGewichtVast() {
+  const p = SB.profiel || {}, op = p.gewichtOp ? Date.parse(p.gewichtOp) : 0;
+  if (!op || !p.gewicht || (D && D.beheer)) return '';
+  const sinds = Date.now() - op;
+  return sinds > 3600e3 && sinds < 30 * 864e5 ? new Date(op + 30 * 864e5).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' }) : '';
+}
 function sbBewerkHtml() {
   const p = SB.profiel;
   const fiets = (f, i) => `<div class="sb-fiets">
@@ -2010,7 +2017,8 @@ function sbBewerkHtml() {
       <div class="bt-keuze"><button type="button" data-sb="fietsvlag" data-v="tubeless" data-i="${i}" class="${f.tubeless ? 'aan' : ''}">Tubeless</button>
       <button type="button" data-sb="fietsvlag" data-v="hookless" data-i="${i}" class="${f.hookless ? 'aan' : ''}">Hookless velg</button></div></div>`;
   return `<div class="sb-bewerk">
-    <label for="sbGewicht">Je lichaamsgewicht (kg), zonder fiets</label><input id="sbGewicht" type="number" inputmode="numeric" min="40" max="150" value="${esc(p.gewicht || '')}" placeholder="bijv. 78">
+    <label for="sbGewicht">Je lichaamsgewicht (kg), zonder fiets</label><input id="sbGewicht" type="number" inputmode="numeric" min="40" max="150" value="${esc(p.gewicht || '')}" placeholder="bijv. 78"${sbGewichtVast() ? ' disabled' : ''}>
+    <p class="klein" style="margin:4px 0 0">${sbGewichtVast() ? 'Je gewicht kun je weer aanpassen vanaf ' + sbGewichtVast() + '. Zo blijft je spanning echt van jou.' : 'Je gewicht pas je hooguit één keer per maand aan.'}</p>
     ${p.fietsen.map(fiets).join('')}
     ${p.fietsen.length < 6 ? `<button type="button" class="knop leeg" data-sb="fietserbij">+ Fiets toevoegen</button>` : ''}
     <button type="button" class="knop" data-sb="opslaan" style="margin-top:10px">Bewaar</button></div>`;
@@ -2098,7 +2106,7 @@ async function sbHaalWeer() {
 async function sbBewaarProfiel(stil) {
   try {
     const j = await (await fetch(`${API}?actie=bandenprofiel`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), profiel: SB.profiel }) })).json();
-    if (j.ok) { SB.profiel = j.profiel; if (D) D.bandenProfiel = j.profiel; return true; }
+    if (j.ok) { SB.profiel = j.profiel; if (D) D.bandenProfiel = j.profiel; if (j.gewichtVast) alert('Je gewicht kun je weer aanpassen vanaf ' + new Date(j.gewichtVast).toLocaleDateString('nl-NL', { day: 'numeric', month: 'long' }) + '. Zo blijft je spanning echt van jou. De rest is bewaard.'); return true; }
     if (!stil) alert(j.fout || 'Bewaren lukte niet.');
   } catch (e) { if (!stil) alert('Verbinding mislukt.'); }
   return false;
