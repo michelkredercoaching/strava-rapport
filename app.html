@@ -1366,6 +1366,8 @@
   .thema-wissel:active .tw-rond { transform:scale(.94); }
 
   .gr-route .gr-kaart { width:100%; height:auto; display:block; background:var(--surface2); border-radius:10px; margin-top:8px; }
+  .gr-kaartdoos.echt { height:260px; border-radius:10px; overflow:hidden; margin-top:8px; z-index:0; position:relative; }
+  .gr-kaartdoos .leaflet-control-attribution { font-size:9px; }
   .gr-route .gr-profiel { width:100%; height:56px; display:block; margin-top:10px; }
   .gr-profiel-as { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin-top:2px; }
   .gr-windzin { font-size:14px; margin:12px 0 8px; }
@@ -5517,7 +5519,36 @@ async function grLaad() {
   } catch (e) { GR.fout = 'De rit laden lukte niet.'; }
   GR.laden = false; grTeken();
 }
-function grTeken() { const el = document.getElementById('groepsrit'); if (el) el.innerHTML = grHtml(); }
+function grTeken() { const el = document.getElementById('groepsrit'); if (el) el.innerHTML = grHtml(); setTimeout(grKaartLaad, 0); }
+// Echte kaart onder de route (17-10-2026): Leaflet + OpenStreetMap, pas geladen als er een route is.
+let GR_KAART = null, LEAFLET = null;
+function grLeaflet() {
+  if (LEAFLET) return LEAFLET;
+  LEAFLET = new Promise((ok, nee) => {
+    const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'; document.head.appendChild(css);
+    const js = document.createElement('script'); js.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'; js.onload = () => ok(window.L); js.onerror = () => { LEAFLET = null; nee(); }; document.head.appendChild(js);
+  });
+  return LEAFLET;
+}
+async function grKaartLaad() {
+  const doos = document.getElementById('grKaart'), rit = GR.data && GR.data.rit;
+  if (GR_KAART) { try { GR_KAART.remove(); } catch (e) {} GR_KAART = null; }
+  if (!doos || !rit || !rit.route) return;
+  let L; try { L = await grLeaflet(); } catch (e) { return; }   // geen internet naar de kaart: het tekeningetje blijft staan
+  if (!document.body.contains(doos)) return;
+  const p = rit.route.pts.map((x) => [x[0], x[1]]);
+  const eind = rit.start + rit.duur * 3600e3, rw = grRouteWind(rit.route, eind < Date.now() ? null : GR.data.uren);
+  doos.innerHTML = ''; doos.classList.add('echt');
+  const kaart = L.map(doos, { scrollWheelZoom: false, attributionControl: true, zoomControl: true });
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18, attribution: '&copy; OpenStreetMap' }).addTo(kaart);
+  const kleur = { tegen: '#FF6B1A', mee: '#2FB673', zij: '#7a7a7a', geen: '#FF6B1A' };
+  let i = 1;
+  while (i < p.length) { const s = rw.seg[i - 1].soort, stuk = [p[i - 1]]; while (i < p.length && rw.seg[i - 1].soort === s) { stuk.push(p[i]); i++; } L.polyline(stuk, { color: kleur[s], weight: 5, opacity: .95, lineCap: 'round' }).addTo(kaart); }
+  L.circleMarker(p[p.length - 1], { radius: 6, color: '#151515', weight: 3, fillColor: '#ffffff', fillOpacity: 1 }).addTo(kaart);
+  L.circleMarker(p[0], { radius: 7, color: '#ffffff', weight: 3, fillColor: '#2FB673', fillOpacity: 1 }).addTo(kaart).bindTooltip('Start');
+  kaart.fitBounds(L.latLngBounds(p), { padding: [16, 16] });
+  GR_KAART = kaart;
+}
 function grBanden(uren) {
   if (!BT_LIB) return null;
   const nat = (uren || []).slice(0, 2).some((u) => u.regen >= 0.3);
@@ -6376,9 +6407,9 @@ function grRouteHtml(rit, uren) {
   const rw = grRouteWind(route, uren), kleur = { tegen: 'var(--accent)', mee: 'var(--groen)', zij: 'rgba(var(--ink-rgb),.45)', geen: 'var(--white)' };
   let lijnen = '', i = 1;
   while (i < p.length) { const s = rw.seg[i - 1].soort; let pts = P(i - 1); while (i < p.length && rw.seg[i - 1].soort === s) { pts += ' ' + P(i); i++; } lijnen += '<polyline points="' + pts + '" fill="none" stroke="' + kleur[s] + '" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>'; }
-  const kaart = '<svg class="gr-kaart" viewBox="0 0 ' + W + ' ' + H + '" aria-label="Route">' + lijnen
+  const kaart = '<div class="gr-kaartdoos" id="grKaart"><svg class="gr-kaart" viewBox="0 0 ' + W + ' ' + H + '" aria-label="Route">' + lijnen
     + '<circle cx="' + P(p.length - 1).split(',')[0] + '" cy="' + P(p.length - 1).split(',')[1] + '" r="5" fill="var(--surface)" stroke="var(--white)" stroke-width="2.5"/>'
-    + '<circle cx="' + P(0).split(',')[0] + '" cy="' + P(0).split(',')[1] + '" r="6" fill="var(--groen)" stroke="var(--surface)" stroke-width="2"/></svg>'
+    + '<circle cx="' + P(0).split(',')[0] + '" cy="' + P(0).split(',')[1] + '" r="6" fill="var(--groen)" stroke="var(--surface)" stroke-width="2"/></svg></div>'
     + '<div class="gr-windleg" style="margin-top:6px"><span><b style="background:var(--groen);border-radius:50%"></b>start</span>' + (gpxAfstand(p[0], p[p.length - 1]) > 300 ? '<span><b style="background:var(--surface);border:2px solid var(--white);border-radius:50%;box-sizing:border-box"></b>finish</span>' : '<span>rondrit: start en finish op dezelfde plek</span>') + '</div>';
   // Hoogteprofiel
   let profiel = '';
