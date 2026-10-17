@@ -1232,6 +1232,26 @@ async function grWeer(rit) {
   return uren;
 }
 // "Ik rijd mee": anonieme teller per toestel, geen namen (09-10-2026).
+// Overzicht van je groepsritten (17-10-2026): ritten die je maakte plus ritten waarvan je de link opende
+// (ids uit de app). Zonder weer, dus licht: naam, wanneer, route-kort, wie rijdt mee.
+async function routeGroepsritten(req, res) {
+  if (!(await vrijGrens(req))) return res.status(429).json({ ok: false });
+  const ik = leesAppToken(String(req.query?.t || ''));
+  const k = String(req.query?.k || '').replace(/[^a-z0-9]/gi, '').slice(0, 24);
+  let ids = String(req.query?.ids || '').split(',').filter((x) => GR_ID.test(x)).slice(0, 20);
+  if (ik) { const v = await redis(['SMEMBERS', `groepsrit:van:${ik}`]); if (v.ok && Array.isArray(v.result)) ids = [...new Set([...v.result.filter((x) => GR_ID.test(x)), ...ids])].slice(0, 30); }
+  const ritten = [];
+  for (const id of ids) {
+    const r = await redis(['GET', `groepsrit:${id}`]); if (!r.ok || !r.result) continue;
+    const rit = JSON.parse(r.result);
+    const [mee, nm, ikMee] = await Promise.all([redis(['SCARD', `groepsrit:${id}:mee`]), redis(['HVALS', `groepsrit:${id}:namen`]), k ? redis(['SISMEMBER', `groepsrit:${id}:mee`, k]) : Promise.resolve({ ok: false })]);
+    ritten.push({ id, naam: rit.naam, door: rit.door, start: rit.start, duur: rit.duur, tempo: rit.tempo, plaats: { naam: rit.plaats && rit.plaats.naam },
+      route: rit.route ? { km: rit.route.km, hm: rit.route.hm } : null, eigen: !!ik && ik === rit.maker,
+      mee: mee.ok ? Number(mee.result) || 0 : 0, namen: (nm.ok && nm.result) || [], ikMee: !!(ikMee.ok && ikMee.result === 1) });
+  }
+  ritten.sort((x, y) => x.start - y.start);
+  return res.status(200).json({ ok: true, ritten });
+}
 async function routeGroepsritMee(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ ok: false });
   if (!(await vrijGrens(req))) return res.status(429).json({ ok: false });
@@ -1242,6 +1262,10 @@ async function routeGroepsritMee(req, res) {
   const rit = JSON.parse(r.result);
   await redis([body.mee === false ? 'SREM' : 'SADD', `groepsrit:${id}:mee`, k]);
   await redis(['EXPIRE', `groepsrit:${id}:mee`, Math.max(3600, Math.ceil((rit.start - Date.now()) / 1000) + 3 * 86400)]);
+  // Wie rijdt mee (17-10-2026): voornaam per kijker, zodat de groep ziet wie er komt.
+  const naam = String(body.naam || '').replace(/[<>]/g, '').trim().slice(0, 30);
+  if (body.mee === false) await redis(['HDEL', `groepsrit:${id}:namen`, k]);
+  else if (naam) { await redis(['HSET', `groepsrit:${id}:namen`, k, naam]); await redis(['EXPIRE', `groepsrit:${id}:namen`, Math.max(3600, Math.ceil((rit.start - Date.now()) / 1000) + 3 * 86400)]); }
   const n = await redis(['SCARD', `groepsrit:${id}:mee`]);
   if (body.mee !== false && rit.maker && n.ok) { const m = await redis(['HGET', `app:teller:${rit.maker}`, 'groepMeeMax']); if ((Number(n.result) || 0) > (Number(m.result) || 0)) { await redis(['HSET', `app:teller:${rit.maker}`, 'groepMeeMax', String(n.result)]); await medailleMelding(rit.maker, 'groepMeeMax', Number(n.result) || 0); } }
   return res.status(200).json({ ok: true, mee: n.ok ? Number(n.result) || 0 : 0 });
@@ -1304,6 +1328,7 @@ async function routeGroepsrit(req, res) {
       plaats: { naam: schoon(pl.naam, 50), lat: Math.round(lat * 1000) / 1000, lon: Math.round(lon * 1000) / 1000 }, route, maker: email, op: Date.now() };
     const ttl = Math.ceil((start - Date.now()) / 1000) + 3 * 86400;
     await redis(['SET', `groepsrit:${id}`, JSON.stringify(rit), 'EX', ttl]);
+    await redis(['SADD', `groepsrit:van:${email}`, id]); await redis(['EXPIRE', `groepsrit:van:${email}`, 20 * 86400]);
     await tel(email, 'groepsrit-maak');
     await telOp(email, 'groepsritten');
     return res.status(200).json({ ok: true, id, url: `https://rapport.michelkredercoaching.nl/rit/${id}` });
@@ -1319,11 +1344,12 @@ async function routeGroepsrit(req, res) {
   const n = await redis(['SCARD', `groepsrit:${id}:kijk`]);
   const mee = await redis(['SCARD', `groepsrit:${id}:mee`]);
   const ikMee = kijker ? await redis(['SISMEMBER', `groepsrit:${id}:mee`, kijker]) : { ok: false };
+  const nm = await redis(['HVALS', `groepsrit:${id}:namen`]);
   let uren = null;
   try { uren = await grWeer(rit); } catch (e) {}
   const ik = leesAppToken(String(req.query?.t || ''));
   return res.status(200).json({ ok: true, rit: { id: rit.id, naam: rit.naam, door: rit.door, start: rit.start, duur: rit.duur, tempo: rit.tempo, plaats: rit.plaats, route: rit.route || null, eigen: !!ik && ik === rit.maker },
-    uren, kijkers: n.ok ? Number(n.result) || 0 : 0, mee: mee.ok ? Number(mee.result) || 0 : 0, ikMee: !!(ikMee.ok && ikMee.result === 1) });
+    uren, kijkers: n.ok ? Number(n.result) || 0 : 0, mee: mee.ok ? Number(mee.result) || 0 : 0, namen: (nm.ok && nm.result) || [], ikMee: !!(ikMee.ok && ikMee.result === 1) });
 }
 
 export default async function handler(req, res) {
@@ -1378,6 +1404,7 @@ export default async function handler(req, res) {
     if (actie === 'pacinglink') return await routePacingLink(req, res);
     if (actie === 'pacingtest') return await routePacingTest(req, res);
     if (actie === 'groepsritmee') return await routeGroepsritMee(req, res);
+    if (actie === 'groepsritten') return await routeGroepsritten(req, res);
     if (actie === 'ritpagina') return await routeRitPagina(req, res);
     if (actie === 'doel') return await routeDoel(req, res);
     if (actie === 'aankondig') return await routeAankondig(req, res);

@@ -1375,6 +1375,23 @@
   .gr-windleg { display:flex; flex-wrap:wrap; gap:4px 12px; font-size:12px; color:var(--muted); margin-top:6px; }
   .gr-windleg b { display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:-1px; }
   .gr-gpxknop { display:flex; align-items:center; justify-content:center; cursor:pointer; margin-top:4px; }
+
+  .gr-homeknop { display:flex; align-items:center; gap:12px; width:100%; margin:12px 0 4px; padding:13px 16px; background:var(--surface); border:1px solid rgba(255,107,26,.45); border-radius:12px; color:var(--white); font:inherit; text-align:left; cursor:pointer; }
+  .gr-homeknop .gr-hk-ic { flex:none; width:36px; height:36px; border-radius:50%; display:grid; place-items:center; background:var(--accent-dim); color:var(--accent); }
+  .gr-homeknop span:nth-child(2) { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .gr-homeknop b { font-size:15px; } .gr-homeknop em { font-style:normal; font-size:13px; color:var(--muted); }
+  .gr-homeknop i { font-style:normal; font-size:24px; color:var(--accent); }
+  .gr-namen { margin-top:12px; } .gr-namen b { display:block; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  .gr-namen div { display:flex; flex-wrap:wrap; gap:6px; }
+  .gr-namen span { font-size:13px; padding:4px 10px; border-radius:14px; background:var(--accent-dim); color:var(--white); }
+  .gr-namen .gr-anoniem { background:rgba(var(--ink-rgb),.07); color:var(--muted); }
+  .rit-kaart { position:relative; display:block; width:100%; text-align:left; margin-top:10px; padding:14px 34px 14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:12px; color:var(--white); font:inherit; cursor:pointer; }
+  .rit-kaart.voorbij { opacity:.7; }
+  .rit-kaart .rk-kop { display:flex; align-items:center; gap:8px; } .rit-kaart .rk-kop b { font-size:16px; }
+  .rit-kaart .rk-kop i { font-style:normal; font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; background:var(--accent-dim); color:var(--accent); }
+  .rit-kaart .rk-wanneer, .rit-kaart .rk-route { font-size:13px; color:var(--muted); margin-top:4px; }
+  .rit-kaart .rk-wie { font-size:13px; margin-top:8px; }
+  .rit-kaart .rk-pijl { position:absolute; right:14px; top:50%; transform:translateY(-50%); font-size:24px; color:var(--accent); }
 </style>
 </head>
 <body>
@@ -2908,7 +2925,7 @@ function isNieuw(d) { return !d.core && !d.analyse && !isLid(d); }
 // ---- Navigatie (11-10-2026) ----
 // Start = balk + tegels; elk onderdeel heeft een eigen pagina met "‹ MKC-app".
 // De terugknop van de telefoon werkt (history).
-let VIEW = 'home';
+let VIEW = /^\/rit\/[A-Za-z0-9]{8}/.test(location.pathname) ? 'rit' : 'home'; // 17-10-2026: via een ritlink meteen naar de rit
 try { if (history.state && history.state.v) VIEW = history.state.v; } catch (e) {}
 function naar(v) {
   VIEW = v;
@@ -3047,6 +3064,8 @@ const KOPPEN = {
   coaching: ['MKC-Coaching', 'Zo werkt het, en zo bereik je mij'],
   rijden: ['MKC-Banden', 'Je spanning voor vandaag'],
   logboek: ['MKC-Logboek', 'Wat je reed en hoe het voelde'],
+  ritten: ['MKC-Groepsritten', 'Wie er komt, de route en het weer'],
+  rit: ['MKC-Groepsrit', 'Wie er komt, de route en het weer'],
   logmaand: ['MKC-Logboek', 'Wat je reed en hoe het voelde'],
   kleding: ['MKC-Kleding', 'Wat je aantrekt voor het weer van vandaag'],
   groep: ['MKC-Groepsrit', 'Plan een rit en deel hem met je groep'],
@@ -3927,6 +3946,8 @@ function paginaHtml(d) {
   if (VIEW === 'afval') return appBalkHtml('Afvalprogramma') + `<div class="kaarten">${afvalKaart()}</div>` + voet;
   if (VIEW === 'pacing') return appBalkHtml('Pacingplan') + `<div class="kaarten">${pacingKaart()}</div>` + voet;
   if (VIEW === 'palmares') return appBalkHtml() + palmaresHtml(d) + voet;
+  if (VIEW === 'ritten') { setTimeout(rittenLaad, 0); return appBalkHtml() + `<div class="kaarten">${rittenHtml()}</div>` + voet; }
+  if (VIEW === 'rit') { if (GR.id && !GR.data) setTimeout(grLaad, 0); return appBalkHtml() + `<div class="kaarten"><div id="groepsrit">${grHtml()}</div></div>` + voet; }
   if (VIEW === 'logboek' || VIEW === 'logmaand') return appBalkHtml() + `<div class="kaarten">${logboekPagina()}</div>` + voet;
   if (VIEW === 'volgende') { const r = routeHtml(d, true); return r ? appBalkHtml() + r + voet : null; }
   if (VIEW === 'coaching') return appBalkHtml() + coachingPaginaHtml(dz) + voet;
@@ -3959,7 +3980,7 @@ function teken() {
     <div class="groet kort">${welkomNu() ? (voornaam ? 'Welkom ' + esc(voornaam) + '.' : 'Welkom.') : (voornaam ? 'Hoi ' + esc(voornaam) + '.' : 'Hoi.')}</div>
     ${appZinHtml(d)}
     ${!d.gast ? '<div class="rang-plek">' + palmaresChipHtml(d) + rangChipHtml(d) + '</div>' : ''}
-    <div id="groepsrit">${grHtml()}</div>
+    <div id="grHome">${grHomeKnopHtml()}</div>
     ${meldingenHtml(d)}
     ${d.gast ? '' : '<div class="tip-boven">' + hklap('tipdicht', 'Tip van Michel', tipKop(d), tipHtml(d), false) + '</div>'}
     ${tegelsHtml(d)}
@@ -5498,8 +5519,11 @@ try { const fc = new URLSearchParams(location.search).get("fbclid"); if (fc) { l
 // en voeding. Geen deelnemerslijst: alleen hoeveel renners meekeken.
 const GR_PAD = (location.pathname.match(/^\/rit\/([A-Za-z0-9]{8})/) || [])[1] || null;
 let GR = { id: GR_PAD, data: null, fout: '', laden: false, maak: null, gemaakt: null };
-if (GR_PAD) { try { localStorage.setItem('mkcGroepsrit', GR_PAD); } catch (e) {} }
-else { try { GR.id = localStorage.getItem('mkcGroepsrit') || null; } catch (e) {} }
+// Welke groepsritten je opende of maakte (17-10-2026), voor het overzicht Groepsritten.
+function ritLijst() { try { return JSON.parse(localStorage.getItem('mkcRitten') || '[]').filter((x) => /^[A-Za-z0-9]{8}$/.test(x)); } catch (e) { return []; } }
+function ritBewaar(id) { try { localStorage.setItem('mkcRitten', JSON.stringify([id, ...ritLijst().filter((x) => x !== id)].slice(0, 20))); } catch (e) {} }
+if (GR_PAD) { ritBewaar(GR_PAD); try { localStorage.setItem('mkcGroepsrit', GR_PAD); } catch (e) {} }
+else { try { GR.id = localStorage.getItem('mkcGroepsrit') || null; if (GR.id) ritBewaar(GR.id); } catch (e) {} }
 function grDag(ms) { return new Date(ms).toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Amsterdam' }); }
 function grTijd(ms) { return new Date(ms).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Amsterdam' }); }
 async function grLaad() {
@@ -5513,13 +5537,13 @@ async function grLaad() {
     if (j.ok) {
       GR.data = j;
       // Na de rit (plus een dag) niet meer bovenaan tonen, behalve via de link zelf.
-      if (!GR_PAD && j.rit.start + j.rit.duur * 3600e3 + 864e5 < Date.now()) { GR.data = null; try { localStorage.removeItem('mkcGroepsrit'); } catch (e) {} }
+      if (!GR_PAD && VIEW !== 'rit' && j.rit.start + j.rit.duur * 3600e3 + 864e5 < Date.now()) { GR.data = null; try { localStorage.removeItem('mkcGroepsrit'); } catch (e) {} }
       if (GR_PAD && !GR.geteld) { GR.geteld = true; if (D && D.gast) gastStat('groepsrit'); else statEens('groepsrit'); }
     } else { GR.fout = j.fout || ''; if (!GR_PAD) { GR.id = null; try { localStorage.removeItem('mkcGroepsrit'); } catch (e) {} } }
   } catch (e) { GR.fout = 'De rit laden lukte niet.'; }
   GR.laden = false; grTeken();
 }
-function grTeken() { const el = document.getElementById('groepsrit'); if (el) el.innerHTML = grHtml(); setTimeout(grKaartLaad, 0); }
+function grTeken() { const el = document.getElementById('groepsrit'); if (el) el.innerHTML = grHtml(); const hk = document.getElementById('grHome'); if (hk) hk.innerHTML = grHomeKnopHtml(); setTimeout(grKaartLaad, 0); }
 // Echte kaart onder de route (17-10-2026): Leaflet + OpenStreetMap, pas geladen als er een route is.
 let GR_KAART = null, LEAFLET = null;
 function grLeaflet() {
@@ -5601,7 +5625,9 @@ function grHtml() {
     ${grRouteHtml(rit, voorbij ? null : uren)}
     ${voorbij ? '<p class="klein" style="margin-top:10px">Deze rit is al gereden.</p>' : !uren ? '<p class="klein" style="margin-top:10px">Het weer voor deze rit verschijnt zodra hij binnen twee weken valt.</p>' : weer
       + (wind && !(rit.route && wind.kracht >= 10) ? `<div class="sb-wind">${KOMPAS}<span>${esc(wind.tekst)}</span></div>` : '') + grGroepTip(wind) + bandenBlok + lidBlok}
-    ${voorbij ? '' : `<button type="button" class="knop ${GR.data.ikMee ? '' : 'leeg'}" data-gr="mee" style="margin-top:14px">${GR.data.ikMee ? '&#10003; Je rijdt mee' : 'Ik rijd mee'}</button>`}
+    ${voorbij || GR.data.ikMee || grMijnNaam() ? '' : `<input id="grMeeNaam" type="text" maxlength="30" placeholder="Je voornaam" value="${esc(grGastNaam())}" style="width:100%;margin-top:14px" autocomplete="given-name">`}
+    ${voorbij ? '' : `<button type="button" class="knop ${GR.data.ikMee ? '' : 'leeg'}" data-gr="mee" style="margin-top:${GR.data.ikMee || grMijnNaam() ? 14 : 8}px">${GR.data.ikMee ? '&#10003; Je rijdt mee' : 'Ik rijd mee'}</button>`}
+    ${grNamenHtml(GR.data)}
     <div class="gr-kijk">${[GR.data.mee ? `${GR.data.mee} ${GR.data.mee === 1 ? 'rijdt' : 'rijden'} mee` : '', kijkers >= 2 ? `${kijkers} keken al` : ''].filter(Boolean).join(' &middot; ')}</div>
     ${voorbij ? '' : '<button type="button" class="knop" data-gr="deel" style="margin-top:14px">Deel deze rit</button>'}
     ${!voorbij ? grVriendHtml(d) : ''}
@@ -5714,8 +5740,11 @@ document.addEventListener('click', async (e) => {
   e.preventDefault();
   const a = k.dataset.gr;
   if (a === 'mee' && GR.data) {
-    const mee = !GR.data.ikMee; k.disabled = true;
-    try { const j = await (await fetch(API + '?actie=groepsritmee', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: GR.data.rit.id, k: gastAnon(), mee }) })).json(); if (j.ok) { GR.data.ikMee = mee; GR.data.mee = j.mee; } } catch (er) {}
+    const mee = !GR.data.ikMee;
+    let naam = grMijnNaam();
+    if (mee && !naam) { const inp = document.getElementById('grMeeNaam'); naam = inp ? inp.value.trim() : ''; if (!naam) { if (inp) { inp.focus(); inp.placeholder = 'Vul je voornaam in, dan ziet de groep wie er komt'; } return; } try { localStorage.setItem('mkcGastNaam', naam); } catch (er) {} }
+    k.disabled = true;
+    try { const j = await (await fetch(API + '?actie=groepsritmee', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: GR.data.rit.id, k: gastAnon(), mee, naam }) })).json(); if (j.ok) { GR.data.ikMee = mee; GR.data.mee = j.mee; const ns = (GR.data.namen || []).filter((x) => x !== naam); GR.data.namen = mee ? [...ns, naam] : ns; } } catch (er) {}
     return grTeken();
   }
   if (a === 'deel' && GR.data) return grDeel(location.origin + '/rit/' + GR.data.rit.id, GR.data.rit.naam);
@@ -5744,12 +5773,12 @@ document.addEventListener('click', async (e) => {
       const r = await fetch(API + '?actie=groepsrit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: leesToken(), naam: m.naam, door: m.door, datum: m.datum, tijd: m.tijd, duur: Number(m.duur), tempo: m.tempo, plaats: m.plaats, route: m.route || null }) });
       const j = await r.json();
       if (!j.ok) throw new Error(j.fout || 'Maken lukte niet.');
-      GR.gemaakt = { id: j.id, url: j.url, naam: m.naam || 'Groepsrit' };
+      GR.gemaakt = { id: j.id, url: j.url, naam: m.naam || 'Groepsrit' }; ritBewaar(j.id);
     } catch (er) { m.fout = er.message || 'Maken lukte niet.'; }
     m.bezig = false; return grMaakTeken();
   }
   if (a === 'deelnieuw' && GR.gemaakt) return grDeel(GR.gemaakt.url, GR.gemaakt.naam);
-  if (a === 'bekijk' && GR.gemaakt) { location.href = '/rit/' + GR.gemaakt.id; }
+  if (a === 'bekijk' && GR.gemaakt) return ritOpen(GR.gemaakt.id);
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.id === 'grZoek') { e.preventDefault(); const b = document.querySelector('[data-gr="zoek"]'); if (b) b.click(); } });
 
@@ -6441,6 +6470,64 @@ function grGpxBestand(rit) {
   const blob = new Blob([tekst], { type: 'application/gpx+xml' }), naam = (rit.naam || 'groepsrit').replace(/[^a-z0-9 _-]/gi, '').trim().replace(/\s+/g, '-') + '.gpx';
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = naam; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
+
+// ---- Groepsritten-overzicht (17-10-2026) ----
+const RITTEN = { lijst: null, laden: false };
+function grMijnNaam() { return D && !D.gast ? String((zicht() || {}).naam || '').trim().split(' ')[0] : ''; }
+function grGastNaam() { try { return localStorage.getItem('mkcGastNaam') || ''; } catch (e) { return ''; } }
+function grNamenHtml(g) {
+  const namen = (g && g.namen) || [], rest = Math.max(0, ((g && g.mee) || 0) - namen.length);
+  if (!namen.length && !rest) return '';
+  return '<div class="gr-namen"><b>Wie rijdt mee</b><div>' + namen.map((n) => '<span>' + esc(n) + '</span>').join('') + (rest ? '<span class="gr-anoniem">+' + rest + (namen.length ? (rest === 1 ? ' andere' : ' anderen') : (rest === 1 ? ' renner' : ' renners')) + '</span>' : '') + '</div></div>';
+}
+function grHomeKnopHtml() {
+  const g = GR.data, n = ritLijst().length;
+  if (g && g.rit && g.rit.start + g.rit.duur * 3600e3 > Date.now()) {
+    const r = g.rit;
+    return '<button type="button" class="gr-homeknop" data-gr="ritten"><span class="gr-hk-ic">' + IC_GROEP_KLEIN + '</span><span><b>' + esc(r.naam) + '</b><em>' + esc(grDag(r.start).replace(/^./, (c) => c.toUpperCase())) + ' ' + grTijd(r.start) + (g.mee ? ' &middot; ' + g.mee + ' ' + (g.mee === 1 ? 'rijdt' : 'rijden') + ' mee' : '') + '</em></span><i>&#8250;</i></button>';
+  }
+  return n ? '<button type="button" class="gr-homeknop" data-gr="ritten"><span class="gr-hk-ic">' + IC_GROEP_KLEIN + '</span><span><b>Je groepsritten</b><em>Wie er komt, de route en het weer</em></span><i>&#8250;</i></button>' : '';
+}
+const IC_GROEP_KLEIN = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M15 14.5c3 0 6 2 6 5.5"/></svg>';
+async function rittenLaad() {
+  if (RITTEN.laden) return; RITTEN.laden = true;
+  try {
+    const t = D && !D.gast ? leesToken() : '';
+    const j = await (await fetch(API + '?actie=groepsritten&ids=' + ritLijst().join(',') + '&k=' + encodeURIComponent(gastAnon()) + (t ? '&t=' + encodeURIComponent(t) : ''))).json();
+    if (j.ok) RITTEN.lijst = j.ritten;
+  } catch (e) {}
+  RITTEN.laden = false;
+  if (VIEW === 'ritten') { const el = document.getElementById('rittenlijst'); if (el) el.outerHTML = rittenLijstHtml(); }
+}
+function rittenKaart(r) {
+  const voorbij = r.start + r.duur * 3600e3 < Date.now();
+  const wie = r.namen.length ? r.namen.slice(0, 4).map(esc).join(', ') + (r.mee > 4 ? ' en ' + (r.mee - 4) + ' anderen' : r.mee > r.namen.length ? ' +' + (r.mee - r.namen.length) : '') : r.mee ? r.mee + (r.mee === 1 ? ' renner' : ' renners') : 'nog niemand';
+  return '<button type="button" class="rit-kaart' + (voorbij ? ' voorbij' : '') + '" data-gr="ritopen" data-id="' + r.id + '"><div class="rk-kop"><b>' + esc(r.naam) + '</b>' + (r.eigen ? '<i>jouw rit</i>' : '') + '</div>'
+    + '<div class="rk-wanneer">' + esc(grDag(r.start).replace(/^./, (c) => c.toUpperCase())) + ' &middot; ' + grTijd(r.start) + ' &middot; vanuit ' + esc(r.plaats.naam || 'de start') + '</div>'
+    + (r.route ? '<div class="rk-route">' + String(r.route.km).replace('.', ',') + ' km' + (r.route.hm ? ' &middot; ' + r.route.hm + ' hm' : '') + ' &middot; route erbij</div>' : '')
+    + '<div class="rk-wie">' + (voorbij ? 'Reden mee: ' : 'Rijden mee: ') + wie + (r.ikMee ? ' &middot; <span style="color:var(--groen)">jij ook</span>' : '') + '</div><span class="rk-pijl">&#8250;</span></button>';
+}
+function rittenLijstHtml() {
+  if (!RITTEN.lijst) return '<div id="rittenlijst"><p class="klein">Even je ritten ophalen...</p></div>';
+  const nu = RITTEN.lijst.filter((r) => r.start + r.duur * 3600e3 >= Date.now()), oud = RITTEN.lijst.filter((r) => r.start + r.duur * 3600e3 < Date.now()).reverse();
+  if (!nu.length && !oud.length) return '<div id="rittenlijst"><p>Nog geen groepsritten. Plan er een, of open de link die je van iemand kreeg.</p></div>';
+  return '<div id="rittenlijst">' + (nu.length ? '<div class="groepkop" style="margin-left:0">Komende ritten</div>' + nu.map(rittenKaart).join('') : '') + (oud.length ? '<div class="groepkop" style="margin-left:0">Gereden</div>' + oud.map(rittenKaart).join('') : '') + '</div>';
+}
+function rittenHtml() {
+  return '<div class="kaart actief"><div class="kaart-in"><span class="tag open">Gratis</span><div class="label">Groepsritten</div><h2>Je ritten</h2><p class="klein" style="margin-top:0">Ritten die je plande en ritten waarvan je de link kreeg. Tik op een rit voor de route, het weer en wie er komt.</p>'
+    + (D && !D.gast ? '<button type="button" class="knop" data-view="groep" style="margin-top:6px">Plan een nieuwe rit</button>' : '') + '</div></div>' + rittenLijstHtml();
+}
+function ritOpen(id) {
+  if (GR.id !== id) { GR.id = id; GR.data = null; GR.fout = ''; }
+  ritBewaar(id); try { localStorage.setItem('mkcGroepsrit', id); } catch (e) {}
+  naar('rit');
+}
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-gr="ritten"], [data-gr="ritopen"]'); if (!k) return;
+  e.preventDefault(); e.stopPropagation();
+  if (k.dataset.gr === 'ritten') { RITTEN.lijst = null; return naar('ritten'); }
+  ritOpen(k.dataset.id);
+}, true);
 </script>
 </body>
 </html>
