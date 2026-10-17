@@ -3953,7 +3953,7 @@ function paginaHtml(d) {
   if (VIEW === 'pacing') return appBalkHtml('Pacingplan') + `<div class="kaarten">${pacingKaart()}</div>` + voet;
   if (VIEW === 'palmares') return appBalkHtml() + palmaresHtml(d) + voet;
   if (VIEW === 'ritten') { setTimeout(rittenLaad, 0); return appBalkHtml() + `<div class="kaarten">${rittenHtml()}</div>` + voet; }
-  if (VIEW === 'rit') { if (GR.id && !GR.data) setTimeout(grLaad, 0); return appBalkHtml() + `<div class="kaarten"><div id="groepsrit">${grHtml()}</div></div>` + voet; }
+  if (VIEW === 'rit') { if (GR.id && !GR.data) setTimeout(grLaad, 0); else setTimeout(grKaartLaad, 0); return appBalkHtml() + `<div class="kaarten"><div id="groepsrit">${grHtml()}</div></div>` + voet; }
   if (VIEW === 'logboek' || VIEW === 'logmaand') return appBalkHtml() + `<div class="kaarten">${logboekPagina()}</div>` + voet;
   if (VIEW === 'volgende') { const r = routeHtml(d, true); return r ? appBalkHtml() + r + voet : null; }
   if (VIEW === 'coaching') return appBalkHtml() + coachingPaginaHtml(dz) + voet;
