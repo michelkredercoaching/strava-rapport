@@ -421,6 +421,9 @@
   .thema-knoppen { display:flex; gap:6px; }
   .thema-knoppen button { flex:1; padding:10px 6px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--white); font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
   .thema-knoppen button.aan { border-color:var(--accent); background:var(--accent-dim); color:var(--accent); }
+
+  .thema-wissel { margin-left:auto; flex:none; width:38px; height:38px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--border); background:rgba(var(--ink-rgb),.06); color:var(--white); cursor:pointer; }
+  .thema-wissel:active { transform:scale(.94); }
 </style>
 </head>
 <body>
@@ -565,7 +568,7 @@ function kopHtml(d) {
     : d.klaar ? 'Knap gedaan. Met Pro beweegt de app gewoon met je mee.' : d.opSlot ? (d.week > 12 ? 'Niveau 12 bereikt. De app beweegt met je mee met Pro.' : 'Je gratis niveau zit erop.') : `Fase: ${esc(d.faseNaam)} &middot; ${d.gedaanDezeWeek.length} van ${d.frequentie} sessies gedaan${d.bijstel > 0 ? ' &middot; iets zwaarder gemaakt' : d.bijstel < 0 ? ' &middot; iets lichter gemaakt' : ''}`;
   // Terug naar de MKC-startpagina (/app). ?ct= ruilt deze Core-link in voor een
   // app-login, zodat je niet opnieuw hoeft in te loggen.
-  const naarApp = `<a class="naarapp" href="/app?ct=${encodeURIComponent(token)}"><span class="tg"><span>&#8249;</span>Terug</span><span class="av"><img src="/icoon-192.png" alt=""></span><span class="tx"><span class="nm" style="display:block">MKC-Core</span><span class="st">Core stability voor wielrenners</span></span></a>`;
+  const naarApp = `<a class="naarapp" href="/app?ct=${encodeURIComponent(token)}"><span class="tg"><span>&#8249;</span>Terug</span><span class="av"><img src="/icoon-192.png" alt=""></span><span class="tx"><span class="nm" style="display:block">MKC-Core</span><span class="st">Core stability voor wielrenners</span></span>${themaWisselHtml()}</a>`;
   return `${naarApp}<div class="kop"><div class="eyebrow">Mijn Core${d.naam ? ' &middot; ' + esc(d.naam.split(' ')[0]) : ''}</div>
     <h1>${d.intakeNodig ? 'Welkom' + (d.naam ? ' ' + esc(d.naam.split(' ')[0]) : '') : d.klaar ? 'Niveau 12 bereikt' : 'Niveau ' + d.week}</h1>
     <div class="sub">${sub}</div>${doel}${d.reeks >= 2 ? `<div class="pil reekspil"><b>${d.reeks} weken</b> op rij</div>` : ''}${d.intakeNodig ? '' : modusHtml(d)}</div>`;
@@ -2151,12 +2154,24 @@ function themaZet(t) {
   const licht = t === 'licht' || (t === 'systeem' && matchMedia('(prefers-color-scheme: light)').matches);
   const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', licht ? '#F4F1EC' : '#0A0A0A');
   document.querySelectorAll('[data-thema-kies]').forEach((b) => b.classList.toggle('aan', b.dataset.themaKies === t));
+  themaWisselBij();
 }
 function themaHtml() {
   const t = themaNu(), k = (w, n) => '<button type="button" data-thema-kies="' + w + '" class="' + (t === w ? 'aan' : '') + '">' + n + '</button>';
   return '<div class="thema-kies"><div class="thema-lab">Weergave</div><div class="thema-knoppen">' + k('donker', 'Donker') + k('licht', 'Licht') + k('systeem', 'Zoals je telefoon') + '</div></div>';
 }
 document.addEventListener('click', (e) => { const k = e.target.closest('[data-thema-kies]'); if (k) themaZet(k.dataset.themaKies); });
+
+// Wisselknop in de bovenbalk (17-10-2026): lampje = naar licht, maantje = naar donker.
+function themaIsLicht() { const t = themaNu(); return t === 'licht' || (t === 'systeem' && matchMedia('(prefers-color-scheme: light)').matches); }
+function themaIcoon() {
+  return themaIsLicht()
+    ? '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>'
+    : '<svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z"/></svg>';
+}
+function themaWisselHtml() { return '<span class="thema-wissel" role="button" tabindex="0" data-thema-wissel aria-label="' + (themaIsLicht() ? 'Donkere weergave' : 'Lichte weergave') + '">' + themaIcoon() + '</span>'; }
+function themaWisselBij() { document.querySelectorAll('[data-thema-wissel]').forEach((b) => { b.innerHTML = themaIcoon(); b.setAttribute('aria-label', themaIsLicht() ? 'Donkere weergave' : 'Lichte weergave'); }); }
+document.addEventListener('click', (e) => { const k = e.target.closest('[data-thema-wissel]'); if (!k) return; e.preventDefault(); e.stopPropagation(); themaZet(themaIsLicht() ? 'donker' : 'licht'); }, true);
 </script>
 </body>
 </html>
