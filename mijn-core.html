@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
+<script>(function(){try{var t=localStorage.getItem('mkcThema')||'donker';document.documentElement.setAttribute('data-thema',t);var l=t==='licht'||(t==='systeem'&&matchMedia('(prefers-color-scheme: light)').matches);if(l){var m=document.querySelector('meta[name=theme-color]');if(m)m.setAttribute('content','#F4F1EC');}}catch(e){document.documentElement.setAttribute('data-thema','donker');}})();</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
@@ -30,14 +31,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
 <style>
   :root { --black:#0A0A0A; --offblack:#111; --surface:#161616; --surface2:#1c1c1c;
-          --border:rgba(255,255,255,0.08); --white:#F5F3EF; --muted:rgba(245,243,239,0.6);
+          --border:rgba(var(--ink-rgb),0.08); --white:#F5F3EF; --muted:rgba(var(--tekst-rgb),0.6);
           --accent:#FF6B1A; --accent-dim:rgba(255,107,26,0.12); --groen:#4CC38A; --rood:#ff8a5c; }
   * { box-sizing:border-box; margin:0; padding:0; }
   html, body { background:var(--black); }
   body { font-family:'DM Sans',sans-serif; color:var(--white); -webkit-font-smoothing:antialiased; font-size:15px; line-height:1.6; }
   button, input, select, textarea { font-family:inherit; font-size:inherit; color:inherit; }
   .wrap { max-width:760px; margin:0 auto; padding:calc(26px + env(safe-area-inset-top)) 16px 90px; }
-  .freqkeuze { display:flex; border:1px solid rgba(255,255,255,.18); border-radius:6px; overflow:hidden; flex-shrink:0; }
+  .freqkeuze { display:flex; border:1px solid rgba(var(--ink-rgb),.18); border-radius:6px; overflow:hidden; flex-shrink:0; }
   .freqkeuze button { background:transparent; border:none; color:var(--muted); padding:7px 11px; font-weight:600; cursor:pointer; font-size:13px; }
   .freqkeuze button.aan { background:var(--accent); color:#0A0A0A; }
   .aftel { font-family:'Bebas Neue',sans-serif; font-size:46px; line-height:1; color:var(--accent); margin:8px 0 6px; }
@@ -47,7 +48,7 @@
   .appkaart .stap { font-size:13px; color:var(--muted); margin-top:4px; }
   .deelicoon { display:inline-block; vertical-align:-3px; width:15px; height:17px; }
   .dagen { display:grid; grid-template-columns:repeat(7, 1fr); gap:5px; margin:10px 0; }
-  .dagen button { width:100%; height:40px; border-radius:6px; border:1px solid rgba(255,255,255,.18); background:var(--surface2); color:var(--white); cursor:pointer; font-weight:600; }
+  .dagen button { width:100%; height:40px; border-radius:6px; border:1px solid rgba(var(--ink-rgb),.18); background:var(--surface2); color:var(--white); cursor:pointer; font-weight:600; }
   .dagen button.aan { background:var(--accent); color:#0A0A0A; border-color:var(--accent); }
   .dagen button.zwaar { opacity:.45; }
   h1 { font-family:'Bebas Neue',sans-serif; font-size:clamp(34px,7vw,50px); line-height:1; letter-spacing:.01em; }
@@ -66,19 +67,19 @@
   .db-kop { display:flex; flex-direction:column; gap:2px; margin-bottom:8px; font-size:14px; }
   .db-kop span { color:var(--muted); font-size:13.5px; }
   .db-balken { display:grid; grid-template-columns:repeat(auto-fill, minmax(70px, 1fr)); gap:8px; }
-  .db-balk { position:relative; background:rgba(255,255,255,.06); border-radius:4px; height:40px; overflow:hidden; }
+  .db-balk { position:relative; background:rgba(var(--ink-rgb),.06); border-radius:4px; height:40px; overflow:hidden; }
   .db-balk span { position:absolute; left:0; top:0; bottom:0; background:rgba(255,107,26,.55); }
   .db-balk b { position:absolute; left:8px; top:4px; font-size:13.5px; line-height:1.2; }
-  .db-balk small { position:absolute; left:8px; bottom:4px; font-size:10px; line-height:1.1; color:rgba(245,243,239,.75); }
+  .db-balk small { position:absolute; left:8px; bottom:4px; font-size:10px; line-height:1.1; color:rgba(var(--tekst-rgb),.75); }
   .keuze4 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .keuze4 button { padding:12px 8px; font-size:14px; }
   .gevoel3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:12px; }
-  .gevoel3 button { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.2); color:#fff; border-radius:6px; padding:12px 6px; font-size:15px; cursor:pointer; }
+  .gevoel3 button { background:rgba(var(--ink-rgb),.06); border:1px solid rgba(var(--ink-rgb),.2); color:#fff; border-radius:6px; padding:12px 6px; font-size:15px; cursor:pointer; }
   .kaart { background:var(--surface); border:1px solid var(--border); padding:20px; border-radius:6px; }
   .kaart.accent { border-color:rgba(255,107,26,.4); background:linear-gradient(180deg, rgba(255,107,26,.07), var(--surface)); }
   .knop { display:inline-block; background:var(--accent); color:#0A0A0A; border:none; font-family:'Bebas Neue',sans-serif; font-size:20px; letter-spacing:.06em; padding:13px 22px 10px; border-radius:5px; cursor:pointer; text-decoration:none; }
   .knop:disabled { opacity:.45; cursor:default; }
-  .knop.leeg { background:transparent; color:var(--white); border:1px solid rgba(255,255,255,.25); }
+  .knop.leeg { background:transparent; color:var(--white); border:1px solid rgba(var(--ink-rgb),.25); }
   .knop.breed { width:100%; }
   .fout { color:var(--rood); font-size:13px; margin-top:8px; min-height:1em; }
   label.optie { display:flex; gap:10px; align-items:flex-start; padding:11px 13px; border:1px solid var(--border); border-radius:5px; margin-bottom:7px; cursor:pointer; background:var(--surface2); }
@@ -88,14 +89,14 @@
   .vraag > .v { font-weight:600; margin-bottom:8px; }
   /* Donkere modus voor de ingebouwde kiezers van iOS en Android (tijd, datum). */
   html { color-scheme:dark; }
-  input[type=text], input[type=date], input[type=time], input[type=number], select, textarea { width:100%; background:var(--surface2); border:1px solid rgba(255,255,255,.14); border-radius:5px; padding:12px 13px; color:var(--white); -webkit-appearance:none; appearance:none; min-height:46px; }
+  input[type=text], input[type=date], input[type=time], input[type=number], select, textarea { width:100%; background:var(--surface2); border:1px solid rgba(var(--ink-rgb),.14); border-radius:5px; padding:12px 13px; color:var(--white); -webkit-appearance:none; appearance:none; min-height:46px; }
   input[type=date]::-webkit-date-and-time-value, input[type=time]::-webkit-date-and-time-value { text-align:left; color:var(--white); }
   input:focus, select:focus, textarea:focus { outline:none; border-color:var(--accent); }
   /* Datumveld: iOS toont een leeg datumveld als zwart vlak. Daarom een eigen
      vakje met tekst, met de echte datumkiezer onzichtbaar eroverheen. */
-  .datum { position:relative; display:flex; align-items:center; gap:8px; min-height:46px; padding:12px 13px; background:var(--surface2); border:1px solid rgba(255,255,255,.14); border-radius:5px; color:var(--white); }
+  .datum { position:relative; display:flex; align-items:center; gap:8px; min-height:46px; padding:12px 13px; background:var(--surface2); border:1px solid rgba(var(--ink-rgb),.14); border-radius:5px; color:var(--white); }
   .datum .tekst { flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .datum .tekst.leeg { color:rgba(245,243,239,.4); }
+  .datum .tekst.leeg { color:rgba(var(--tekst-rgb),.4); }
   .datum svg { flex-shrink:0; }
   .datum input { position:absolute; inset:0; width:100%; height:100%; opacity:0; border:0; padding:0; margin:0; min-height:0; cursor:pointer; }
   .datum:focus-within { border-color:var(--accent); }
@@ -103,9 +104,9 @@
   .rij2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
   /* Keuzelijsten herkenbaar als keuzelijst (16-10-2026, Luus): pijltje rechts. */
   select:not([multiple]) { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23FF6B1A' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important; background-repeat:no-repeat !important; background-position:right 12px center !important; padding-right:34px !important; cursor:pointer; }
-  .sp-appmuziek { display:block; width:100%; text-align:left; margin-top:12px; padding:10px 12px; border-radius:8px; background:var(--surface2); border:1px solid rgba(255,255,255,.14); color:inherit; font-family:inherit; cursor:pointer; } .sp-appmuziek b { display:block; font-size:14px; } .sp-appmuziek span { font-size:12.5px; color:var(--muted, #9b978f); } .sp-appmuziek.aan { border-color:#FF6B1A; background:rgba(255,107,26,.1); }
-  .sp-muziek { display:flex; align-items:center; gap:10px; margin-top:12px; padding:10px 12px; border-radius:8px; background:rgba(30,215,96,.1); border:1px solid rgba(30,215,96,.4); color:#1ED760; text-decoration:none; font-size:13px; } .sp-muziek span { color:rgba(245,243,239,.8); } .sp-muziek b { display:block; color:#f5f3ef; font-size:14px; }
-  .dk2 { display:grid; grid-template-columns:64px 1fr; gap:6px; } .dk2 select { width:100%; min-height:46px; padding:10px 8px; background:var(--surface2); border:1px solid rgba(255,255,255,.14); border-radius:5px; color:var(--white); font-size:16px; font-family:inherit; } .dk2-tekst { grid-column:1 / -1; font-size:12px; color:#FF6B1A; }
+  .sp-appmuziek { display:block; width:100%; text-align:left; margin-top:12px; padding:10px 12px; border-radius:8px; background:var(--surface2); border:1px solid rgba(var(--ink-rgb),.14); color:inherit; font-family:inherit; cursor:pointer; } .sp-appmuziek b { display:block; font-size:14px; } .sp-appmuziek span { font-size:12.5px; color:var(--muted, #9b978f); } .sp-appmuziek.aan { border-color:#FF6B1A; background:rgba(255,107,26,.1); }
+  .sp-muziek { display:flex; align-items:center; gap:10px; margin-top:12px; padding:10px 12px; border-radius:8px; background:rgba(30,215,96,.1); border:1px solid rgba(30,215,96,.4); color:#1ED760; text-decoration:none; font-size:13px; } .sp-muziek span { color:rgba(var(--tekst-rgb),.8); } .sp-muziek b { display:block; color:var(--white); font-size:14px; }
+  .dk2 { display:grid; grid-template-columns:64px 1fr; gap:6px; } .dk2 select { width:100%; min-height:46px; padding:10px 8px; background:var(--surface2); border:1px solid rgba(var(--ink-rgb),.14); border-radius:5px; color:var(--white); font-size:16px; font-family:inherit; } .dk2-tekst { grid-column:1 / -1; font-size:12px; color:#FF6B1A; }
   /* Sessies */
   .sessies { display:grid; gap:12px; }
   .sessie { background:var(--surface); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
@@ -121,10 +122,10 @@
   .oefmini svg { max-width:100%; max-height:58px; width:auto; height:auto; display:block; }
   .oefmini span { display:block; font-size:10.5px; line-height:1.3; color:var(--muted); padding:3px 3px 2px; }
   .sessie .onder { padding:0 18px 16px; }
-  .naarapp { position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:0; margin:-26px -16px 16px; padding:14px 16px 12px; background:linear-gradient(180deg, rgba(40,20,8,.97), rgba(14,12,10,.96)) !important; background:rgba(10,10,10,.92); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-bottom:1px solid var(--border); color:var(--white); text-decoration:none; font-size:15px; font-weight:600; }
+  .naarapp { position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:0; margin:-26px -16px 16px; padding:14px 16px 12px; background:var(--balk-bg) !important; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border-bottom:1px solid var(--border); color:var(--white); text-decoration:none; font-size:15px; font-weight:600; }
   .naarapp .tg { display:flex; align-items:center; gap:4px; padding:6px 8px 6px 0; }
   .naarapp .tg span { color:var(--accent); font-size:22px; line-height:1; }
-  .naarapp .av { width:44px; height:44px; border-radius:50%; border:2px solid var(--accent); overflow:hidden; flex:none; margin-left:8px; background:#0A0A0A; }
+  .naarapp .av { width:44px; height:44px; border-radius:50%; border:2px solid var(--accent); overflow:hidden; flex:none; margin-left:8px; background:var(--black); }
   .naarapp .av img { width:100%; height:100%; display:block; }
   .naarapp .tx { margin-left:12px; min-width:0; }
   .naarapp .nm { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.04em; line-height:1; font-weight:400; text-transform:uppercase; }
@@ -134,7 +135,7 @@
   .oefmini { flex:0 0 136px; }
   .oefmini > div { height:80px; }
   .oefmini svg { width:100%; height:80px; max-height:none; }  /* vaste maat: Safari tekent een svg met width:auto op 0 breed */
-  .oefmini span { font-size:11.5px; color:rgba(245,243,239,.8); }
+  .oefmini span { font-size:11.5px; color:rgba(var(--tekst-rgb),.8); }
   .spierblok { display:grid; grid-template-columns:46% 1fr; gap:14px; align-items:center; padding:2px 18px 14px; }
   .spierblok svg { width:100%; height:auto; display:block; }
   .spierblok .spierkop { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:600; margin-bottom:6px; }
@@ -148,14 +149,14 @@
   .sessie.nieuwopen { animation:ontgrendel 1.6s ease-out 1; border-color:var(--accent); }
   @keyframes ontgrendel { 0% { box-shadow:0 0 0 0 rgba(255,107,26,.7); } 70% { box-shadow:0 0 0 14px rgba(255,107,26,0); } 100% { box-shadow:0 0 0 0 rgba(255,107,26,0); } }
   .ontgrendeld { display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); }
-  .speler .spieren { font-size:13px; color:rgba(245,243,239,.7); margin-top:6px; }
+  .speler .spieren { font-size:13px; color:rgba(var(--tekst-rgb),.7); margin-top:6px; }
   .speler .spieren b { color:var(--accent); font-weight:600; }
   
   /* Voortgang */
   .vakjes { display:grid; grid-template-columns:repeat(12, 1fr); gap:4px; }
   .vakje { aspect-ratio:1; border-radius:3px; background:var(--surface2); border:1px solid var(--border); }
   .vakje.aan { background:var(--accent); border-color:var(--accent); }
-  .vakje.nu { outline:1px solid rgba(255,255,255,.5); }
+  .vakje.nu { outline:1px solid rgba(var(--ink-rgb),.5); }
   .weeklabels { display:grid; grid-template-columns:repeat(12, 1fr); gap:4px; font-size:10px; color:var(--muted); text-align:center; margin-top:4px; }
   .badges { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:16px; }
   .badge { text-align:center; padding:12px 6px; border:1px solid var(--border); border-radius:5px; background:var(--surface2); opacity:.45; }
@@ -175,15 +176,15 @@
   .test .stop { font-family:'Bebas Neue',sans-serif; font-size:30px; width:64px; text-align:right; }
   .test input { width:80px; padding:8px; text-align:center; }
   .testknoppen { display:flex; gap:6px; align-items:center; }
-  .klokknop { background:var(--surface2); border:1px solid rgba(255,255,255,.2); color:var(--white); border-radius:5px; padding:8px 12px; cursor:pointer; font-weight:600; }
+  .klokknop { background:var(--surface2); border:1px solid rgba(var(--ink-rgb),.2); color:var(--white); border-radius:5px; padding:8px 12px; cursor:pointer; font-weight:600; }
   .klokknop.loopt { background:var(--accent); color:#0A0A0A; border-color:var(--accent); }
   .schaal { display:flex; gap:4px; flex-wrap:wrap; }
-  .schaal button { width:36px; height:36px; border-radius:5px; border:1px solid rgba(255,255,255,.18); background:var(--surface2); color:var(--white); cursor:pointer; }
+  .schaal button { width:36px; height:36px; border-radius:5px; border:1px solid rgba(var(--ink-rgb),.18); background:var(--surface2); color:var(--white); cursor:pointer; }
   .schaal button.aan { background:var(--accent); color:#0A0A0A; border-color:var(--accent); }
   .keuze3 { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
-  .keuze3 button { padding:14px 6px; border-radius:5px; border:1px solid rgba(255,255,255,.18); background:var(--surface2); color:var(--white); cursor:pointer; font-weight:600; }
+  .keuze3 button { padding:14px 6px; border-radius:5px; border:1px solid rgba(var(--ink-rgb),.18); background:var(--surface2); color:var(--white); cursor:pointer; font-weight:600; }
   .keuze3 button.aan { background:var(--accent); color:#0A0A0A; border-color:var(--accent); }
-  .tip { border-left:3px solid var(--accent); padding:4px 0 4px 14px; margin-bottom:12px; color:rgba(245,243,239,.85); }
+  .tip { border-left:3px solid var(--accent); padding:4px 0 4px 14px; margin-bottom:12px; color:rgba(var(--tekst-rgb),.85); }
   .bericht { padding:11px 14px; border-radius:6px; margin-bottom:8px; max-width:88%; }
   .bericht.klant { background:var(--surface2); margin-left:auto; }
   .bericht.michel { background:var(--accent-dim); border:1px solid rgba(255,107,26,.3); }
@@ -196,14 +197,14 @@
   .cc-fab .cc-av { width:38px; height:38px; }
   /* Op de telefoon alleen het rondje, zodat de knop geen knoppen in je sessie afdekt (13-10-2026) */
   @media (max-width:600px) { .cc-fab { padding:5px; } .cc-fab .cc-av { width:44px; height:44px; } .cc-fab .cc-tekst { display:none; } body { padding-bottom:80px; } }
-  .cc-av { border-radius:50%; background:#0A0A0A; border:2px solid var(--accent); overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .cc-av { border-radius:50%; background:var(--black); border:2px solid var(--accent); overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .cc-av svg { width:150%; height:auto; transform:translateY(8%); }
   .cc-paneel { position:fixed; right:16px; bottom:16px; z-index:45; width:min(400px, calc(100vw - 32px)); height:min(620px, calc(100vh - 32px)); background:#101010; border:1px solid rgba(255,107,26,.35); border-radius:14px; display:none; flex-direction:column; overflow:hidden; box-shadow:0 24px 70px rgba(0,0,0,.7); }
   .cc-paneel.open { display:flex; }
   .cc-kop { display:flex; align-items:center; gap:12px; padding:14px 14px 12px; border-bottom:1px solid var(--border); background:linear-gradient(180deg, rgba(255,107,26,.09), transparent); }
   .cc-kop .cc-av { width:44px; height:44px; }
   .cc-kop .nm { font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.04em; line-height:1; display:flex; align-items:center; gap:8px; }
-  .cc-kop .ai { font-family:'DM Sans',sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.12em; color:var(--muted); border:1px solid rgba(255,255,255,.2); border-radius:4px; padding:1px 5px; }
+  .cc-kop .ai { font-family:'DM Sans',sans-serif; font-size:9.5px; font-weight:700; letter-spacing:.12em; color:var(--muted); border:1px solid rgba(var(--ink-rgb),.2); border-radius:4px; padding:1px 5px; }
   .cc-kop .st { font-size:12px; color:var(--muted); margin-top:3px; display:flex; align-items:center; gap:6px; }
   .cc-kop .st::before { content:''; width:7px; height:7px; border-radius:50%; background:var(--groen); }
   /* Het kruisje is vervangen door de Terug-knop links. */
@@ -211,10 +212,10 @@
   .cc-lijst { flex:1; overflow-y:auto; padding:16px 14px 8px; display:flex; flex-direction:column; gap:10px; }
   .cc-b { max-width:86%; padding:10px 13px; border-radius:14px; font-size:14.5px; line-height:1.55; white-space:pre-wrap; }
   .cc-b.ik { align-self:flex-end; background:var(--accent); color:#0A0A0A; border-bottom-right-radius:4px; }
-  .cc-b.coach { align-self:flex-start; background:#1c1c1c; border:1px solid var(--border); border-bottom-left-radius:4px; }
+  .cc-b.coach { align-self:flex-start; background:var(--surface2); border:1px solid var(--border); border-bottom-left-radius:4px; }
   .cc-b.let { border-color:rgba(255,138,92,.5); }
   .cc-tijd { font-size:10.5px; color:var(--muted); margin-top:3px; }
-  .cc-typen { align-self:flex-start; background:#1c1c1c; border:1px solid var(--border); border-radius:14px; padding:12px 14px; display:flex; gap:5px; }
+  .cc-typen { align-self:flex-start; background:var(--surface2); border:1px solid var(--border); border-radius:14px; padding:12px 14px; display:flex; gap:5px; }
   .cc-typen i { width:7px; height:7px; border-radius:50%; background:var(--muted); animation:ccPunt 1.2s infinite ease-in-out; }
   .cc-typen i:nth-child(2) { animation-delay:.15s; } .cc-typen i:nth-child(3) { animation-delay:.3s; }
   @keyframes ccPunt { 0%,60%,100% { opacity:.3; transform:translateY(0); } 30% { opacity:1; transform:translateY(-4px); } }
@@ -222,10 +223,10 @@
   .cc-chips::-webkit-scrollbar { display:none; }
   .cc-chips button { flex-shrink:0; background:transparent; border:1px solid rgba(255,107,26,.45); color:var(--white); border-radius:99px; padding:7px 12px; font-size:13px; cursor:pointer; }
   .cc-invoer { display:flex; gap:8px; align-items:flex-end; padding:10px 12px max(12px, env(safe-area-inset-bottom)); border-top:1px solid var(--border); }
-  .cc-invoer textarea { flex:1; min-height:44px; max-height:120px; resize:none; border-radius:22px; padding:11px 16px; background:#1a1a1a; border:1px solid rgba(255,255,255,.14); }
+  .cc-invoer textarea { flex:1; min-height:44px; max-height:120px; resize:none; border-radius:22px; padding:11px 16px; background:var(--surface); border:1px solid rgba(var(--ink-rgb),.14); }
   .cc-invoer button { width:44px; height:44px; border-radius:50%; border:none; background:var(--accent); color:#0A0A0A; font-size:20px; cursor:pointer; flex-shrink:0; }
   .cc-invoer button:disabled { opacity:.45; }
-  .cc-voet { font-size:10.5px; color:rgba(245,243,239,.4); text-align:center; padding:0 14px 8px; }
+  .cc-voet { font-size:10.5px; color:rgba(var(--tekst-rgb),.4); text-align:center; padding:0 14px 8px; }
   /* Op de telefoon schermvullend, en onder de statusbalk (app-modus op iPhone). */
   @media (max-width:560px) { .cc-paneel { right:0; bottom:0; width:100vw; height:100dvh; border-radius:0; border:none; padding-top:env(safe-area-inset-top); } }
   .cc-terug { background:none; border:none; color:var(--white); font-size:15px; font-weight:600; display:flex; align-items:center; gap:4px; padding:6px 8px 6px 0; cursor:pointer; flex-shrink:0; }
@@ -238,12 +239,12 @@
   .dash-kop { font-family:'Bebas Neue',sans-serif; font-size:30px; line-height:1.05; margin:4px 0 2px; }
   .dash-sub { font-size:13.5px; color:var(--muted); margin-bottom:12px; }
   .dash-cijfers { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px; }
-  .dash-cel { background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:10px; padding:10px 6px; text-align:center; }
-  .dash-cel b { display:block; font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1; color:#F5F3EF; }
+  .dash-cel { background:rgba(var(--ink-rgb),.04); border:1px solid var(--border); border-radius:10px; padding:10px 6px; text-align:center; }
+  .dash-cel b { display:block; font-family:'Bebas Neue',sans-serif; font-size:28px; line-height:1; color:var(--white); }
   .dash-cel b small { font-size:15px; color:var(--muted); font-family:'DM Sans',sans-serif; font-weight:600; margin-left:1px; }
   .dash-cel span { display:block; font-size:11px; color:var(--muted); margin-top:3px; }
   .dash-cel em { display:block; font-style:normal; font-size:11px; color:#4CC38A; font-weight:700; margin-top:1px; }
-  .dash-balk { height:7px; border-radius:4px; background:rgba(255,255,255,.08); margin-top:12px; overflow:hidden; }
+  .dash-balk { height:7px; border-radius:4px; background:rgba(var(--ink-rgb),.08); margin-top:12px; overflow:hidden; }
   .dash-balk i { display:block; height:100%; background:#FF6B1A; border-radius:4px; }
   .dash-balktekst { font-size:12px; color:var(--muted); margin-top:5px; }
   .dash-sec { font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); font-weight:700; margin:18px 0 6px; }
@@ -253,16 +254,18 @@
   .dash-naam { flex:1; } .dash-naam small { display:block; font-size:12px; color:var(--muted); }
   .dash-st { font-size:12px; font-weight:700; white-space:nowrap; } .dash-st.ok { color:#4CC38A; } .dash-st.nu { color:#FF6B1A; } .dash-st.slot { color:var(--muted); }
   .dash-extra { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .dash-extra button { text-align:left; background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:10px; padding:11px 12px; color:inherit; font-family:inherit; cursor:pointer; }
+  .dash-extra button { text-align:left; background:rgba(var(--ink-rgb),.04); border:1px solid var(--border); border-radius:10px; padding:11px 12px; color:inherit; font-family:inherit; cursor:pointer; }
   .dash-extra b { display:block; font-size:14px; } .dash-extra span { display:block; font-size:12px; color:var(--muted); margin-top:2px; }
   .speler, .speler button, .speler a { touch-action:manipulation; }
   .speler { overscroll-behavior:contain; -webkit-user-select:none; user-select:none; }
+  /* De speler en de testmodus blijven altijd donker: goed leesbaar vanaf de mat (17-10-2026). */
+  .speler, .testmodus { --black:#0A0A0A; --off:#111; --offblack:#111; --surface:#161616; --surface2:#1c1c1c; --border:rgba(255,255,255,0.08); --white:#F5F3EF; --muted:rgba(245,243,239,0.6); --accent:#FF6B1A; --accent-dim:rgba(255,107,26,0.12); --groen:#4CC38A; --rood:#ff8a5c; --ink-rgb:255,255,255; --tekst-rgb:245,243,239; --diep-rgb:0,0,0; color:#F5F3EF; color-scheme:dark; }
   .speler { position:fixed; inset:0; background:#050505; z-index:50; display:flex; flex-direction:column; padding:max(14px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); }
   .speler .balk { display:flex; justify-content:space-between; align-items:center; gap:10px; }
   .speler .balk .t { font-size:13px; color:var(--muted); }
-  .speler .sluit { background:none; border:1px solid rgba(255,255,255,.2); color:var(--white); border-radius:5px; padding:6px 12px; cursor:pointer; }
+  .speler .sluit { background:none; border:1px solid rgba(var(--ink-rgb),.2); color:var(--white); border-radius:5px; padding:6px 12px; cursor:pointer; }
   .speler .vg-tekst { display:flex; justify-content:space-between; gap:10px; margin:6px 0 0; font-size:12px; color:var(--muted); } .speler .vg-tekst b { color:var(--white); font-weight:600; } .speler .vg-tekst span { margin-left:auto; }
-  .speler .voortgang { height:6px; background:rgba(255,255,255,.08); border-radius:2px; margin:10px 0 0; overflow:hidden; }
+  .speler .voortgang { height:6px; background:rgba(var(--ink-rgb),.08); border-radius:2px; margin:10px 0 0; overflow:hidden; }
   .speler .voortgang i { display:block; height:100%; background:var(--accent); width:0; transition:width .4s; }
   .speler .midden { flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; max-width:640px; width:100%; margin:0 auto; }
   /* 16-10-2026: lange uitleg (rust voor heupscharnier) drukte de voortgangsbalk plat en de knoppen onder het scherm.
@@ -279,27 +282,27 @@
   .speler .beeld.gedimd { opacity:.45; }
   .speler .beeld svg { width:100%; height:auto; display:block; }
   .speler .klok { font-family:'Bebas Neue',sans-serif; font-size:clamp(70px,22vw,120px); line-height:.9; letter-spacing:.02em; }
-  .speler .cue { color:rgba(245,243,239,.78); max-width:460px; margin-top:6px; font-size:15px; }
+  .speler .cue { color:rgba(var(--tekst-rgb),.78); max-width:460px; margin-top:6px; font-size:15px; }
   .speler .straks { color:var(--muted); font-size:13px; margin-top:8px; min-height:1.3em; }
   .testspeler.tikstop .midden { cursor:pointer; }
   .modusbalk { margin-top:14px; padding:12px 14px; border-radius:8px; border:1px solid rgba(76,195,138,.45); background:rgba(76,195,138,.08); }
   .modusbalk b { display:block; font-size:14.5px; color:#4CC38A; }
-  .modusbalk span { display:block; font-size:13.5px; color:rgba(245,243,239,.85); margin-top:4px; line-height:1.5; }
+  .modusbalk span { display:block; font-size:13.5px; color:rgba(var(--tekst-rgb),.85); margin-top:4px; line-height:1.5; }
   .focusregel { background:rgba(255,107,26,.07); border:1px solid rgba(255,107,26,.3); border-radius:8px; padding:10px 12px; margin:0 0 12px; }
   .focusregel p { font-size:13.5px; margin:0; line-height:1.5; } .focusregel p + p { margin-top:6px; }
   .focusregel b { color:var(--accent); }
-  .waarom2 { font-size:13px; color:rgba(245,243,239,.82); margin-top:4px; } .waarom2 b { color:var(--accent); font-weight:600; }
+  .waarom2 { font-size:13px; color:rgba(var(--tekst-rgb),.82); margin-top:4px; } .waarom2 b { color:var(--accent); font-weight:600; }
   .pijnschaal { display:grid; grid-template-columns:repeat(11, 1fr); gap:4px; width:100%; max-width:440px; margin-top:16px; }
-  .pijnschaal button { padding:12px 0; border-radius:6px; border:1px solid var(--border); background:#111; color:var(--white); font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; }
+  .pijnschaal button { padding:12px 0; border-radius:6px; border:1px solid var(--border); background:var(--off); color:var(--white); font-family:inherit; font-size:15px; font-weight:700; cursor:pointer; }
   .pijnschaal button.pm { border-color:rgba(255,190,80,.5); } .pijnschaal button.ph { border-color:rgba(255,120,90,.6); }
   .pijnlabels { display:flex; justify-content:space-between; width:100%; max-width:440px; font-size:12px; color:var(--muted); margin-top:6px; }
   .pijnkeuze { display:grid; gap:8px; width:100%; max-width:440px; margin-top:14px; }
-  .pijnkeuze button { padding:13px; border-radius:8px; border:1px solid var(--border); background:#111; color:var(--white); font-family:inherit; font-size:14.5px; cursor:pointer; text-align:left; }
+  .pijnkeuze button { padding:13px; border-radius:8px; border:1px solid var(--border); background:var(--off); color:var(--white); font-family:inherit; font-size:14.5px; cursor:pointer; text-align:left; }
   .pijnlaag { z-index:60; }
   .speler .bediening .hoofd.klaarzet { background:var(--accent); color:#fff; }
   .hervat { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; background:rgba(76,195,138,.08); border:1px solid rgba(76,195,138,.5); border-radius:10px; padding:14px 16px; margin:14px 0; }
   .hervat b { display:block; font-size:15px; color:#4CC38A; }
-  .hervat span { display:block; font-size:13px; color:rgba(245,243,239,.85); margin-top:3px; }
+  .hervat span { display:block; font-size:13px; color:rgba(var(--tekst-rgb),.85); margin-top:3px; }
   .hervat-knoppen { display:flex; gap:8px; }
   .hervat-knoppen .knop { width:auto; margin:0; padding:10px 14px 8px; font-size:16px; }
   .vervangknop { background:none; border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:5px 10px; font-family:inherit; font-size:12.5px; margin-top:8px; cursor:pointer; }
@@ -320,7 +323,7 @@
   .speler .balk .t { margin-right:auto; }
   .speler .spk { background:rgba(255,107,26,.1); border:1px solid rgba(255,107,26,.6); color:#FF6B1A; border-radius:99px; padding:7px 14px; font-family:inherit; font-size:13px; font-weight:700; cursor:pointer; }
   .strava-knop { display:inline-flex; align-items:center; gap:8px; margin:14px auto 0; background:#FF6B1A; color:#fff; border:0; border-radius:8px; padding:10px 16px; font-weight:700; font-size:14px; cursor:pointer; }
-  .strava-kaart { margin:16px auto 0; max-width:360px; border:1px solid rgba(255,107,26,.45); background:rgba(255,107,26,.07); border-radius:12px; padding:14px; text-align:center; } .strava-kaart b { display:block; font-size:16px; } .strava-kaart span { display:block; font-size:13px; color:rgba(245,243,239,.78); margin:4px 0 2px; line-height:1.45; }
+  .strava-kaart { margin:16px auto 0; max-width:360px; border:1px solid rgba(255,107,26,.45); background:rgba(255,107,26,.07); border-radius:12px; padding:14px; text-align:center; } .strava-kaart b { display:block; font-size:16px; } .strava-kaart span { display:block; font-size:13px; color:rgba(var(--tekst-rgb),.78); margin:4px 0 2px; line-height:1.45; }
   .deel-rij { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:14px; }
   .deel-rij .strava-knop { margin:0; }
   .plaatje-knop { display:inline-flex; align-items:center; gap:6px; background:none; border:1px solid rgba(255,107,26,.6); color:#FF6B1A; border-radius:8px; padding:10px 16px; font-weight:700; font-size:14px; cursor:pointer; }
@@ -333,41 +336,41 @@
   .speler .stemklap summary b { color:#FF6B1A; font-weight:700; }
   .speler .stemkeuze { display:flex; align-items:center; gap:6px; margin-top:10px; }
   .speler .stemkeuze span { font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-right:4px; }
-  .speler .stemkeuze button { flex:1; max-width:110px; background:none; border:1px solid rgba(255,107,26,.45); color:rgba(245,243,239,.8); border-radius:99px; padding:7px 0; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  .speler .stemkeuze button { flex:1; max-width:110px; background:none; border:1px solid rgba(255,107,26,.45); color:rgba(var(--tekst-rgb),.8); border-radius:99px; padding:7px 0; font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; }
   .speler .stemhint { font-size:12px; color:var(--muted); margin-top:6px; line-height:1.4; min-height:0; }
-  .speler .stemhint b { color:rgba(245,243,239,.9); font-weight:600; }
+  .speler .stemhint b { color:rgba(var(--tekst-rgb),.9); font-weight:600; }
   .speler .stemkeuze button.aan { background:#FF6B1A; border-color:#FF6B1A; color:#0A0A0A; }
-  .speler .stemknop { background:none; border:1px solid rgba(255,255,255,.2); color:var(--white); border-radius:5px; padding:6px 10px; cursor:pointer; margin-left:auto; margin-right:8px; font-size:12.5px; }
+  .speler .stemknop { background:none; border:1px solid rgba(var(--ink-rgb),.2); color:var(--white); border-radius:5px; padding:6px 10px; cursor:pointer; margin-left:auto; margin-right:8px; font-size:12.5px; }
   .ts-score { display:flex; flex-direction:column; align-items:center; margin:6px 0 4px; }
   .ts-score span { font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); }
   .ts-score b { font-family:'Bebas Neue',sans-serif; font-size:clamp(80px,26vw,130px); line-height:.9; color:var(--accent); }
   .ts-score em, .ts-rij em { font-style:normal; font-size:13px; font-weight:700; }
   .ts-score em.op, .ts-rij em.op { color:#4CC38A; } .ts-score em.neer, .ts-rij em.neer { color:#ff8a5c; }
   .ts-lijst { width:100%; max-width:420px; margin-top:12px; text-align:left; }
-  .ts-rij { display:flex; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.08); font-size:14px; }
-  .ts-rij span { color:rgba(245,243,239,.8); }
-  .is-balk { height:4px; background:rgba(255,255,255,.08); border-radius:2px; overflow:hidden; margin:4px 0 14px; }
+  .ts-rij { display:flex; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid rgba(var(--ink-rgb),.08); font-size:14px; }
+  .ts-rij span { color:rgba(var(--tekst-rgb),.8); }
+  .is-balk { height:4px; background:rgba(var(--ink-rgb),.08); border-radius:2px; overflow:hidden; margin:4px 0 14px; }
   .is-balk i { display:block; height:100%; background:var(--accent); transition:width .3s; }
   .is-rij { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:14px; }
   .is-rij .knop { width:auto; margin:0; }
   .testkort { display:flex; gap:10px; align-items:center; margin:12px 0 4px; flex-wrap:wrap; }
-  .speler .uitleg { max-width:460px; width:100%; text-align:left; margin-top:10px; font-size:14px; color:rgba(245,243,239,.85); }
+  .speler .uitleg { max-width:460px; width:100%; text-align:left; margin-top:10px; font-size:14px; color:rgba(var(--tekst-rgb),.85); }
   .speler .uitleg:empty { display:none; }
   .speler .uitleg ol { margin:0; padding-left:20px; }
   .speler .uitleg li { margin-bottom:3px; }
   .speler .uitleg .kop { font-size:11px; font-weight:700; letter-spacing:.15em; text-transform:uppercase; color:var(--accent); margin-bottom:6px; }
   .speler .uitleg .waarom { margin-top:8px; color:var(--muted); font-size:13px; }
-  .speler .uitleg.klein { font-size:13px; color:rgba(245,243,239,.65); }
+  .speler .uitleg.klein { font-size:13px; color:rgba(var(--tekst-rgb),.65); }
   .speler .uitleg.klein .kop { display:none; }
   .uitlegknop { background:none; border:none; color:var(--accent); font-size:13px; font-weight:600; cursor:pointer; padding:0 18px 12px; }
   .uitleglijst { padding:0 18px 14px; display:none; }
   .uitleglijst.open { display:block; }
-  .uitleglijst .oef { border-top:1px solid rgba(255,255,255,.08); padding:10px 0; font-size:14px; }
+  .uitleglijst .oef { border-top:1px solid rgba(var(--ink-rgb),.08); padding:10px 0; font-size:14px; }
   .uitleglijst .oef b { display:block; margin-bottom:4px; }
-  .uitleglijst ol { margin:0; padding-left:20px; color:rgba(245,243,239,.85); }
+  .uitleglijst ol { margin:0; padding-left:20px; color:rgba(var(--tekst-rgb),.85); }
   .uitleglijst .waarom { color:var(--muted); font-size:13px; margin-top:4px; }
   .speler .bediening { display:flex; justify-content:center; gap:10px; }
-  .speler .bediening button { min-width:64px; padding:14px 16px; border-radius:6px; border:1px solid rgba(255,255,255,.2); background:var(--surface); color:var(--white); cursor:pointer; font-weight:600; }
+  .speler .bediening button { min-width:64px; padding:14px 16px; border-radius:6px; border:1px solid rgba(var(--ink-rgb),.2); background:var(--surface); color:var(--white); cursor:pointer; font-weight:600; }
   .speler .bediening button:not(.hoofd) { display:inline-flex; align-items:center; justify-content:center; color:var(--accent); border-color:rgba(255,107,26,.45); background:transparent; } .speler .bediening button svg { display:block; }
   .speler .bediening button.hoofd { background:var(--accent); color:#0A0A0A; border-color:var(--accent); min-width:120px; font-family:'Bebas Neue',sans-serif; font-size:22px; letter-spacing:.05em; }
   /* Proefweek */
@@ -380,15 +383,44 @@
   .muurkaart { background:rgba(17,17,17,.96); border:1px solid rgba(255,107,26,.5); border-radius:8px; padding:24px 22px; max-width:440px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,.6); text-align:center; }
   .muurkaart .prijs { font-family:'Bebas Neue',sans-serif; font-size:60px; line-height:.9; margin:14px 0 4px; }
   .muurkaart ul { list-style:none; text-align:left; margin:14px 0 18px; }
-  .muurkaart li { padding-left:16px; position:relative; font-size:14px; margin-bottom:6px; color:rgba(245,243,239,.85); }
+  .muurkaart li { padding-left:16px; position:relative; font-size:14px; margin-bottom:6px; color:rgba(var(--tekst-rgb),.85); }
   .muurkaart li::before { content:''; position:absolute; left:0; top:8px; width:5px; height:5px; border-radius:50%; background:var(--accent); }
   @media (max-width:560px) { .test { grid-template-columns:72px 1fr; } .test .testknoppen { grid-column:1 / -1; } .badges { grid-template-columns:repeat(2,1fr); } }
   .vg-deel { background:transparent !important; border:1.5px solid var(--accent, #FF6B1A) !important; color:var(--accent, #FF6B1A) !important; }
-  .sk { display:grid; gap:6px; } .sk-rij { display:grid; grid-template-columns:78px 1fr 40px; align-items:center; gap:8px; font-size:13px; } .sk-balk { height:8px; border-radius:4px; background:rgba(255,255,255,.08); overflow:hidden; } .sk-balk span { display:block; height:100%; background:#7fe0a0; } .sk-rij.zwak .sk-balk span { background:#FF6B1A; } .sk-rij.zwak b { color:#FF6B1A; } .sk-rij small { text-align:right; color:var(--muted, #999); }
+  .sk { display:grid; gap:6px; } .sk-rij { display:grid; grid-template-columns:78px 1fr 40px; align-items:center; gap:8px; font-size:13px; } .sk-balk { height:8px; border-radius:4px; background:rgba(var(--ink-rgb),.08); overflow:hidden; } .sk-balk span { display:block; height:100%; background:#7fe0a0; } .sk-rij.zwak .sk-balk span { background:#FF6B1A; } .sk-rij.zwak b { color:#FF6B1A; } .sk-rij small { text-align:right; color:var(--muted, #999); }
   .kaart-x { position:absolute; top:8px; right:10px; background:none; border:0; color:var(--muted, #999); font-size:22px; cursor:pointer; } .blok.kaart { position:relative; }
   .vd-oef { padding:4px 0 12px; margin:0 -2px; }
   .sp-ovz { position:absolute; inset:0; z-index:5; background:rgba(5,5,5,.97); overflow-y:auto; padding:70px 18px 24px; } .sp-ovz-in { max-width:460px; margin:0 auto; }
-  .sp-ovz-lijst { display:grid; gap:8px; } .sp-ovz-rij { display:grid; grid-template-columns:96px 1fr; gap:10px; align-items:center; background:var(--surface2, #1a1a1a); border-radius:6px; padding:6px; } .sp-ovz-beeld { height:56px; display:flex; align-items:center; justify-content:center; } .sp-ovz-beeld svg { max-height:56px; max-width:100%; } .sp-ovz-rij b { display:block; font-size:14px; } .sp-ovz-rij span { display:block; font-size:12px; color:var(--muted, #999); line-height:1.4; margin-top:2px; }
+  .sp-ovz-lijst { display:grid; gap:8px; } .sp-ovz-rij { display:grid; grid-template-columns:96px 1fr; gap:10px; align-items:center; background:var(--surface2, var(--surface)); border-radius:6px; padding:6px; } .sp-ovz-beeld { height:56px; display:flex; align-items:center; justify-content:center; } .sp-ovz-beeld svg { max-height:56px; max-width:100%; } .sp-ovz-rij b { display:block; font-size:14px; } .sp-ovz-rij span { display:block; font-size:12px; color:var(--muted, #999); line-height:1.4; margin-top:2px; }
+
+  /* Twee schermen (17-10-2026) */
+  .dash-kort .dash-vandaag { padding-bottom:6px; }
+  .dash-start { font-size:20px; padding:18px; margin-top:14px; }
+  .dash-waar { display:flex; flex-wrap:wrap; gap:6px 14px; margin:14px 2px 10px; font-size:13px; color:var(--muted); }
+  .dash-waar b { color:var(--white); }
+  .naar-vg { display:flex; align-items:center; justify-content:space-between; gap:12px; width:100%; margin:18px 0 6px; padding:16px 18px; background:var(--surface); border:1px solid var(--border); border-radius:12px; color:var(--white); font:inherit; text-align:left; cursor:pointer; }
+  .naar-vg span { display:flex; flex-direction:column; gap:3px; }
+  .naar-vg b { font-size:16px; }
+  .naar-vg em { font-style:normal; font-size:13px; color:var(--muted); }
+  .naar-vg i { font-style:normal; font-size:26px; color:var(--accent); }
+  .vg-terug { background:none; border:0; color:var(--accent); font:inherit; font-size:15px; padding:6px 0; cursor:pointer; }
+  .vg-titel { margin:6px 0 14px; }
+
+  /* Licht of donker (17-10-2026). Keuze in Mijn Pro / Core: data-thema op <html>. */
+  :root { --diep-rgb:0,0,0; --ink-rgb:255,255,255; --tekst-rgb:245,243,239; color-scheme:dark; --balk-bg:linear-gradient(180deg, rgba(40,20,8,.97), rgba(14,12,10,.96)); }
+  html[data-thema="licht"] { --black:#F4F1EC; --off:#FBFAF8; --offblack:#FBFAF8; --surface:#FFFFFF; --surface2:#F1EDE7; --border:rgba(20,20,20,0.10);
+    --white:#151515; --muted:rgba(20,20,20,0.62); --accent:#E8600F; --accent-dim:rgba(232,96,15,0.10); --groen:#1E9A61; --rood:#D4572A;
+    --diep-rgb:150,120,90; --ink-rgb:20,20,20; --tekst-rgb:20,20,20; color-scheme:light; --balk-bg:rgba(244,241,236,.96); }
+  @media (prefers-color-scheme: light) { html[data-thema="systeem"] { --black:#F4F1EC; --off:#FBFAF8; --offblack:#FBFAF8; --surface:#FFFFFF; --surface2:#F1EDE7; --border:rgba(20,20,20,0.10);
+    --white:#151515; --muted:rgba(20,20,20,0.62); --accent:#E8600F; --accent-dim:rgba(232,96,15,0.10); --groen:#1E9A61; --rood:#D4572A;
+    --diep-rgb:150,120,90; --ink-rgb:20,20,20; --tekst-rgb:20,20,20; color-scheme:light; --balk-bg:rgba(244,241,236,.96); } }
+  html[data-thema="licht"] body, html[data-thema="systeem"] body { background:var(--black); color:var(--white); }
+
+  .thema-kies { margin:18px 0 6px; padding:14px 16px; background:var(--surface); border:1px solid var(--border); border-radius:12px; }
+  .thema-lab { font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-bottom:10px; font-weight:700; }
+  .thema-knoppen { display:flex; gap:6px; }
+  .thema-knoppen button { flex:1; padding:10px 6px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--white); font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+  .thema-knoppen button.aan { border-color:var(--accent); background:var(--accent-dim); color:var(--accent); }
 </style>
 </head>
 <body>
@@ -452,6 +484,18 @@ async function laad() {
 // ===========================================================================
 // TEKENEN
 // ===========================================================================
+// Twee schermen (17-10-2026): 'vandaag' (standaard) en 'vooruitgang' (#vooruitgang).
+let PAGINA = location.hash === '#vooruitgang' ? 'vooruitgang' : 'vandaag', NA_SESSIE = false;
+function naarPagina(p) {
+  PAGINA = p;
+  try { history.pushState({ p }, '', location.pathname + location.search + (p === 'vooruitgang' ? '#vooruitgang' : '')); } catch (e) {}
+  teken(); window.scrollTo(0, 0);
+}
+window.addEventListener('popstate', () => { const p = location.hash === '#vooruitgang' ? 'vooruitgang' : 'vandaag'; if (p !== PAGINA && S && !speler) { PAGINA = p; teken(); window.scrollTo(0, 0); } });
+document.addEventListener('click', (e) => {
+  const k = e.target.closest('[data-actie="vooruitgang"], [data-actie="naarstart"]'); if (!k) return;
+  e.preventDefault(); naarPagina(k.dataset.actie === 'vooruitgang' ? 'vooruitgang' : 'vandaag');
+});
 function teken() {
   const d = S;
   let h = kopHtml(d);
@@ -463,42 +507,53 @@ function teken() {
       <label class="optie" style="margin-top:14px"><input type="checkbox" id="groenlicht"><span>Mijn huisarts of fysiotherapeut heeft gezegd dat ik met deze oefeningen mag beginnen.</span></label>
       <button class="knop" data-actie="groenlicht" style="margin-top:6px">Open mijn programma</button><div class="fout" id="groenfout"></div></div>`;
   else {
-    h += appHtml();
     const testEerst = d.testNodig === 0 && (d.gedaanDezeWeek.length > 0 || d.afgerond > 0);
     const metDash = !d.opSlot && !d.klaar && d.sessies.length;
-    if (metDash) h += pijnAdviesHtml(d) + onderhoudVoorstelHtml(d) + dashHtml(d);
-    if (testEerst && !metDash) h += testHtml(d, true);
     const meterLater = d.meterNodig != null && !d.afgerond && d.sessies.length;
-    if (d.meterNodig != null && !meterLater) h += meterHtml(d);
-    if (d.testNodig != null && d.testNodig !== 0) h += testHtml(d, false);
-    if (!d.betaald && !d.opSlot) h += `<div class="proefbalk proefweek"><b>Je gratis week</b><ul><li>${d.frequentie || 3} sessies op jouw niveau, thuis op de timer</li><li>Je starttest: je Rompscore als nulmeting</li><li>Elke sessie met één tik op Strava, met je eigen deelplaatje</li></ul><span class="klein">Daarna ga je met Pro door naar niveau 2 en verder. Alles wat je deze week doet, blijft staan.</span></div>`;
-    if (d.opSlot) h += muurHtml(d);
-    else if (d.klaar) h += `<div class="blok kaart accent"><h2>Niveau 12 bereikt</h2><p>Knap gedaan. ${d.testNodig != null ? 'Doe hierboven je romptest en kijk wat het je heeft opgeleverd.' : 'Je Rompscore staat in je voortgang hieronder.'}</p>${d.magDoorlopen ? '' : `<p style="margin-top:10px">Wil je verder? De app beweegt met je mee: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller. Doorgaan doe je met Pro van de MKC-app: &euro;9,99 per maand, maandelijks opzegbaar, of &euro;89 per jaar met elk jaar een gratis Strava-analyse.</p><a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word Pro en ga door</a>`}</div>`;
-    else {
-      if (d.weekRond) h += weekklaarHtml(d);
-      if (d.kracht == null && d.week > 1) h += krachtVraagHtml();
-      h += rustDagHtml(d);
-      h += hervatHtml(d);
-      if (d.sessies.length) h += metDash ? klap('sessies', 'Oefeningen per sessie', 'met het mannetje en de uitleg', sessiesHtml(d), false) : sessiesHtml(d);
-      if (meterLater) h += meterHtml(d);
-      if (d.testNodig === 0 && (!testEerst || metDash)) h += metDash ? '<div id="testklap">' + klap('test', 'Je starttest', 'nog doen &middot; 15 min', testHtml(d, true), false) + '</div>' : testHtml(d, true);
-      h += fietstipHtml(d);
-      h += klap('tips', 'Tip bij dit niveau', '', tipsHtml(d), d.week === 1);
-    }
     const laatsteTest = d.tests[d.tests.length - 1];
-    h += klap('voortgang', 'Je voortgang', [laatsteTest ? 'Rompscore ' + laatsteTest.score : '', d.reeks ? d.reeks + (d.reeks === 1 ? ' week' : ' weken') + ' op rij' : ''].filter(Boolean).join(' &middot; '), voortgangHtml(d));
-    if (!d.opSlot) h += klap('agenda', 'Herinnering en agenda', d.herinner ? 'aan &middot; ' + esc(d.herinner.tijd) : 'nog niet ingesteld', agendaHtml(d));
-    h += klap('klachten', 'Klachten en wat je niet kunt', (d.klachten.length ? d.klachten.map((x) => ({ onderrug: 'rug', bekkenbodem: 'bekkenbodem' }[x] || x)).join(', ') : 'geen klachten') + (d.beperkingen.length ? ' &middot; ' + d.beperkingen.length + ' aangepast' : ''), klachtenHtml(d));
-    h += klap('doel', 'Je doel', d.doel && d.doel.dagenTotDoel > 0 ? esc(d.doel.naam) + ' &middot; nog ' + d.doel.dagenTotDoel + ' d' : 'geen', doelHtml(d));
-
-    h += vraagHtml(d);
+    if (PAGINA !== 'vooruitgang') {
+      // ---- Vandaag: alleen wat je nu moet doen ----
+      h += appHtml();
+      if (metDash) h += pijnAdviesHtml(d);
+      if (d.opSlot) h += muurHtml(d);
+      else if (d.klaar) h += `<div class="blok kaart accent"><h2>Niveau 12 bereikt</h2><p>Knap gedaan. ${d.testNodig != null ? 'Doe hierboven je romptest en kijk wat het je heeft opgeleverd.' : 'Je Rompscore staat in je voortgang hieronder.'}</p>${d.magDoorlopen ? '' : `<p style="margin-top:10px">Wil je verder? De app beweegt met je mee: elk niveau een stap zwaarder, en gaat het makkelijk, dan ga je sneller. Doorgaan doe je met Pro van de MKC-app: &euro;9,99 per maand, maandelijks opzegbaar, of &euro;89 per jaar met elk jaar een gratis Strava-analyse.</p><a class="knop breed" href="/app?ct=${encodeURIComponent(token)}" style="margin-top:14px">Word Pro en ga door</a>`}</div>`;
+      else {
+        h += hervatHtml(d);
+        if (metDash) h += dashHtml(d, 'vandaag');
+        if (testEerst && !metDash) h += testHtml(d, true);
+        if (d.testNodig != null && d.testNodig !== 0) h += testHtml(d, false);
+        if (d.meterNodig != null && !meterLater) h += meterHtml(d);
+        if (d.weekRond) h += weekklaarHtml(d);
+      }
+      if (!d.betaald && !d.opSlot) h += `<div class="proefbalk proefweek"><b>Je gratis week</b><ul><li>${d.frequentie || 3} sessies op jouw niveau, thuis op de timer</li><li>Je starttest: je Rompscore als nulmeting</li><li>Elke sessie met één tik op Strava, met je eigen deelplaatje</li></ul><span class="klein">Daarna ga je met Pro door naar niveau 2 en verder. Alles wat je deze week doet, blijft staan.</span></div>`;
+      h += `<button type="button" class="naar-vg" data-actie="vooruitgang"><span><b>Bekijk je vooruitgang</b><em>${[laatsteTest ? 'Rompscore ' + laatsteTest.score : 'Je sessies, tests en tips', d.reeks ? d.reeks + (d.reeks === 1 ? ' week' : ' weken') + ' op rij' : ''].filter(Boolean).join(' &middot; ')}</em></span><i>&#8250;</i></button>`;
+    } else {
+      // ---- Vooruitgang: al de rest ----
+      h += '<button type="button" class="vg-terug" data-actie="naarstart">&#8249; Terug naar vandaag</button><h2 class="vg-titel">Je vooruitgang</h2>';
+      if (metDash) h += onderhoudVoorstelHtml(d) + dashHtml(d, 'rest');
+      if (!d.opSlot && !d.klaar) {
+        if (d.kracht == null && d.week > 1) h += krachtVraagHtml();
+        h += rustDagHtml(d);
+        if (d.sessies.length) h += metDash ? klap('sessies', 'Oefeningen per sessie', 'met het mannetje en de uitleg', sessiesHtml(d), false) : sessiesHtml(d);
+        if (meterLater) h += meterHtml(d);
+        if (d.testNodig === 0 && (!testEerst || metDash)) h += metDash ? '<div id="testklap">' + klap('test', 'Je starttest', 'nog doen &middot; 15 min', testHtml(d, true), false) + '</div>' : testHtml(d, true);
+        h += fietstipHtml(d);
+        h += klap('tips', 'Tip bij dit niveau', '', tipsHtml(d), d.week === 1);
+      }
+      h += klap('voortgang', 'Je voortgang', [laatsteTest ? 'Rompscore ' + laatsteTest.score : '', d.reeks ? d.reeks + (d.reeks === 1 ? ' week' : ' weken') + ' op rij' : ''].filter(Boolean).join(' &middot; '), voortgangHtml(d), true);
+      if (!d.opSlot) h += klap('agenda', 'Herinnering en agenda', d.herinner ? 'aan &middot; ' + esc(d.herinner.tijd) : 'nog niet ingesteld', agendaHtml(d));
+      h += klap('klachten', 'Klachten en wat je niet kunt', (d.klachten.length ? d.klachten.map((x) => ({ onderrug: 'rug', bekkenbodem: 'bekkenbodem' }[x] || x)).join(', ') : 'geen klachten') + (d.beperkingen.length ? ' &middot; ' + d.beperkingen.length + ' aangepast' : ''), klachtenHtml(d));
+      h += klap('doel', 'Je doel', d.doel && d.doel.dagenTotDoel > 0 ? esc(d.doel.naam) + ' &middot; nog ' + d.doel.dagenTotDoel + ' d' : 'geen', doelHtml(d));
+      h += vraagHtml(d);
+      h += themaHtml();
+    }
   }
   h += `<p class="klein muted" style="margin-top:30px">Voel je pijn tijdens een oefening (niet hetzelfde als vermoeidheid)? Tik in de speler op <b>Pijn?</b>. Dan maak je hem lichter of sla je hem over, en Michel krijgt een seintje.</p>`;
   $('#app').innerHTML = h;
   if (d.intakeNodig) intakeStappen();
   else setTimeout(() => { if (!document.querySelector('.speler')) faseIntro(d); }, 400);
   if (!d.intakeNodig && !d.geblokkeerd) coachBouw();
-  if (location.hash === '#vandaag' && !d.intakeNodig) { setTimeout(() => { const s = document.querySelector('.sessie:not(.gedaan):not(.opslot)') || document.getElementById('test'); if (s) { s.scrollIntoView({ behavior: 'smooth', block: 'center' }); s.classList.add('nieuwopen'); } try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }, 300); }
+  if (location.hash === '#vandaag' && !d.intakeNodig && PAGINA !== 'vandaag') { setTimeout(() => { const s = document.querySelector('.sessie:not(.gedaan):not(.opslot)') || document.getElementById('test'); if (s) { s.scrollIntoView({ behavior: 'smooth', block: 'center' }); s.classList.add('nieuwopen'); } try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }, 300); }
   // Mini-animaties in de sessiekaarten laten lopen.
   document.querySelectorAll('[data-anim]').forEach((el) => { const a = A[el.dataset.anim]; if (a) F.speel(el, a); });
 }
@@ -687,7 +742,7 @@ function spierHtml(oefeningen) {
   return `<div class="spierblok"><div>${K.svg(kaart)}</div><div><div class="spierkop">Dit train je</div>${n.hoofd.map((x) => `<span class="spier">${esc(x)}</span>`).join('')}${n.mee.length ? `<div class="helpt">Helpt mee: ${n.mee.map(esc).join(', ').toLowerCase()}</div>` : ''}</div></div>`;
 }
 // Dashboard (14-10-2026): bovenaan wat je vandaag doet, je cijfers, je week en de extra's.
-function dashHtml(d) {
+function dashHtml(d, deel = 'alles') {
   const K = window.CoreSpierkaart, wib = d.weekInBlok || d.week, blok = d.blok || 1;
   const t = (d.tests || []).filter((x) => x.score != null), romp = t.length ? t[t.length - 1].score : null, plus = t.length > 1 ? t[t.length - 1].score - t[0].score : 0;
   const slot = d.testNodig === 0 && (d.gedaanDezeWeek.length > 0 || d.afgerond > 0);
@@ -697,7 +752,7 @@ function dashHtml(d) {
   let vandaag;
   if (slot) vandaag = kaart('Eerst je starttest', '15 minuten · je nulmeting, daar vergelijk je straks alles mee', '<button class="knop breed" data-actie="starttest">Start de starttest</button>');
   else if (d.weekRond || !volgende) vandaag = kaart('Dit niveau zit erop', d.gedaanDezeWeek.length + ' van ' + d.frequentie + ' sessies gedaan. Vertel hoe het ging, dan gaat je volgende niveau open.', '<button class="knop breed" data-actie="naarweekklaar">Rond niveau ' + wib + ' af</button>');
-  else vandaag = kaart('Sessie ' + NR[volgende.letter] + ': ' + esc(volgende.naam), volgende.minuten + ' min' + (spieren(volgende) ? ' · ' + esc(spieren(volgende)) : ''), `<div class="oefrij vd-oef">${volgende.oefeningen.map((o) => `<div class="oefmini"><div data-anim="${o.id}"></div><span>${esc(o.naam)}${o.perKant ? ' (per kant)' : ''}</span></div>`).join('')}</div><button class="knop breed" data-actie="start" data-letter="${volgende.letter}">Start sessie ${NR[volgende.letter]}</button>`);
+  else vandaag = kaart('Sessie ' + NR[volgende.letter] + ': ' + esc(volgende.naam), volgende.minuten + ' min' + (spieren(volgende) ? ' · ' + esc(spieren(volgende)) : ''), `<button class="knop breed dash-start" data-actie="start" data-letter="${volgende.letter}">Start sessie ${NR[volgende.letter]}</button>`);
   const cel = (n, max, lab, extra) => `<div class="dash-cel"><b>${n}${max ? '<small>/' + max + '</small>' : ''}</b><span>${lab}</span>${extra ? '<em>' + extra + '</em>' : ''}</div>`;
   const nodig = d.nodigVoorWeek || d.frequentie || 1, pct = Math.min(100, Math.round(d.gedaanDezeWeek.length / nodig * 100));
   const nog = Math.max(0, nodig - d.gedaanDezeWeek.length);
@@ -707,7 +762,9 @@ function dashHtml(d) {
     return `<button type="button" class="dash-rij" ${!opslot && !slot ? `data-actie="start" data-letter="${x.letter}"` : 'disabled'}><span class="dash-nr">${NR[x.letter]}</span><span class="dash-naam">${esc(x.naam)}<small>${x.minuten} min</small></span>${st}</button>`;
   }).join('');
   const testLab = d.testNodig === 0 ? 'Starttest' : 'Romptest', testSub = d.testNodig === 0 && !slot ? 'Vóór sessie 2' : d.testNodig != null ? 'Nu doen' : t.length ? 'Laatste: ' + romp + '/100' : 'Later';
-  return `<div class="dash">${vandaag}
+  // Vandaag-scherm: de startknop met een klein overzicht van waar je bent.
+  if (deel === 'vandaag') return `<div class="dash dash-kort">${vandaag}<div class="dash-waar"><span>Niveau <b>${Math.min(d.week, 50)}</b></span><span>Deze week <b>${d.gedaanDezeWeek.length}/${d.frequentie || nodig}</b></span>${romp != null ? `<span>Rompscore <b>${romp}</b></span>` : ''}${d.reeks ? `<span><b>${d.reeks}</b> ${d.reeks === 1 ? 'week' : 'weken'} op rij</span>` : ''}</div><div class="dash-balk"><i style="width:${pct}%"></i></div></div>`;
+  return `<div class="dash">${deel === 'rest' ? '' : vandaag}
     <div class="dash-cijfers">${cel(Math.min(d.week, 50), 50, 'Niveau')}${cel(romp != null ? romp : '&ndash;', 100, 'Rompscore', plus > 0 ? '+' + plus : '')}${cel(d.gedaanDezeWeek.length, d.frequentie || nodig, 'Deze week')}${cel(d.reeks || 0, '', (d.reeks || 0) === 1 ? 'week op rij' : 'weken op rij')}</div>
     <div class="dash-balk"><i style="width:${pct}%"></i></div><div class="dash-balktekst">${nog ? 'Nog ' + nog + (nog === 1 ? ' sessie' : ' sessies') + ', dan kun je niveau ' + wib + ' afronden' : 'Klaar om niveau ' + wib + ' af te ronden'}</div>
     <div class="dash-sec">Deze week</div><div class="dash-rijen">${rijen}</div>
@@ -745,7 +802,7 @@ function sessiesHtml(d) {
           <div><div class="titel">${esc(s.naam)}</div><div class="meta">${s.minuten} min &middot; ${s.werk}s werk, ${s.rust}s rust &middot; ${s.rondes} rondes${s.finisher ? ' + finisher' : ''}</div></div></div>
           ${klaar ? '<div class="vink">Gedaan</div>' : nieuwOpen === s.letter ? '<div class="ontgrendeld">Ontgrendeld</div>' : opslot ? `<div class="slotlabel" style="color:var(--muted)">${SLOT_SVG}</div>` : ''}</div>
         ${spierHtml(s.oefeningen)}
-        <div class="oefrij">${s.oefeningen.map((o) => `<div class="oefmini"><div data-anim="${o.id}"></div><span>${esc(o.naam)}${o.perKant ? (o.zwak ? ` (${o.zwak.toLowerCase()} eerst, +${o.extra} s)` : ' (L+R)') : ''}</span></div>`).join('')}</div>
+        <div class="oefrij">${s.oefeningen.map((o) => `<div class="oefmini"><div data-anim="${o.id}"></div><span>${esc(o.naam)}${o.perKant ? (o.zwak ? ` (${o.zwak.toLowerCase()} eerst, +${o.extra} s)` : ' (L+R)') : ''}${o.eigen ? ` &middot; ${o.eigen.werk} s` : ''}</span></div>`).join('')}</div>${s.oefeningen.some((o) => o.eigen) ? `<p class="klein muted eigen-noot">Werktijden afgestemd op je romptest: een houdgreep is hooguit zo'n 60% van wat je in de test volhield${s.oefeningen.some((o) => o.eigen && !o.eigen.korter) ? ', en waar je de richtwaarde haalde werk je 5 s langer' : ''}.</p>` : ''}
         <button class="uitlegknop" data-actie="uitleg">Bekijk de oefeningen</button>
         <div class="uitleglijst">${s.oefeningen.map((o) => `<div class="oef">${o.vervangt ? `<div class="klein muted" style="margin-bottom:2px">In plaats van ${esc(o.vervangt)} &middot; <a href="#" data-actie="vervangterug" data-id="${esc(o.origId || '')}" style="color:var(--accent)">zet terug</a></div>` : ''}<b>${esc(o.naam)}${o.perKant ? (o.zwak ? ` (begin ${o.zwak.toLowerCase()}, je zwakke kant: ${o.extra} s langer)` : ' (links en rechts)') : ''}</b><ol>${(o.stappen || []).map((z) => `<li>${esc(z)}</li>`).join('')}</ol>${o.waarom ? `<div class="waarom">Op de fiets: ${esc(o.waarom)}</div>` : ''}${o.waaromDoel ? `<div class="waarom2"><b>Voor je ${esc(soortKort(d))}:</b> ${esc(o.waaromDoel)}</div>` : ''}${o.waaromKlacht ? `<div class="waarom2"><b>Voor je klacht:</b> ${esc(o.waaromKlacht)}</div>` : ''}${s.extra ? '' : `<button class="vervangknop" data-actie="vervang" data-id="${esc(o.id)}">Kan ik niet? Vervang hem</button>`}</div>`).join('')}</div>
         <div class="onder">${knop}</div>
@@ -1077,6 +1134,7 @@ document.addEventListener('click', async (e) => {
     const open = k.nextElementSibling.classList.toggle('open');
     k.textContent = open ? 'Verberg de uitleg' : 'Bekijk de oefeningen';
   }
+  if ((actie === 'naartest') && PAGINA !== 'vooruitgang' && !document.getElementById('test')) { naarPagina('vooruitgang'); setTimeout(() => { const w = document.getElementById('testklap'); if (w) { const dt = w.querySelector('details'); if (dt) dt.open = true; w.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }, 80); return; }
   if (actie === 'naarweekklaar') { const w = document.getElementById('weekklaar'); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
   if (actie === 'naartest') { const w = document.getElementById('test') || document.getElementById('testklap'); if (w) { const dt = w.querySelector('details'); if (dt) dt.open = true; w.scrollIntoView({ behavior: 'smooth', block: 'start' }); } return; }
   if (actie === 'mobiliteit' && S.mobiliteit) { zegWakker(); return startSpeler(S.mobiliteit); }
@@ -1874,6 +1932,7 @@ function sluitSpeler() {
   clearInterval(sp.iv); if (sp.stopAnim) sp.stopAnim();
   try { sp.wakeLock?.release(); } catch {}
   sp.el.remove(); laatPaginaLos(); speler = null;
+  if (NA_SESSIE) { NA_SESSIE = false; nieuwOpen = null; naarPagina('vooruitgang'); return; }
   if (nieuwOpen) { teken(); const kaart = document.querySelector('.sessie.nieuwopen'); if (kaart) kaart.scrollIntoView({ behavior: 'smooth', block: 'center' }); const n = nieuwOpen; setTimeout(() => { if (nieuwOpen === n) { nieuwOpen = null; } }, 2500); }
 }
 
@@ -1982,6 +2041,7 @@ async function klaarSpeler() {
   }
   wisVoortgang();
   const j = await post('afvink', { letter: sp.sessie.letter, finisher });
+  if (j.ok) NA_SESSIE = true;
   if (j.ok) {
     const t = S.tests || [], winst = t.length > 1 ? t[t.length - 1].score - t[0].score : null;
     const extraRegel = [S.doel && S.doel.dagenTotDoel > 0 ? `Nog ${S.doel.dagenTotDoel >= 14 ? Math.floor(S.doel.dagenTotDoel / 7) + ' weken' : S.doel.dagenTotDoel + ' dagen'} tot ${esc(S.doel.naam)}.` : '', winst > 0 ? `Je Rompscore is ${winst} punten hoger dan bij je start.` : ''].filter(Boolean).join(' ');
@@ -2082,6 +2142,21 @@ async function coachStuur(tekst) {
 }
 
 laad().then(() => { if (S && !S.intakeNodig && !S.geblokkeerd) coachBouw(); });
+
+// Licht of donker (17-10-2026). Zelfde sleutel in de app en in Core.
+function themaNu() { try { return localStorage.getItem('mkcThema') || 'donker'; } catch (e) { return 'donker'; } }
+function themaZet(t) {
+  try { localStorage.setItem('mkcThema', t); } catch (e) {}
+  document.documentElement.setAttribute('data-thema', t);
+  const licht = t === 'licht' || (t === 'systeem' && matchMedia('(prefers-color-scheme: light)').matches);
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', licht ? '#F4F1EC' : '#0A0A0A');
+  document.querySelectorAll('[data-thema-kies]').forEach((b) => b.classList.toggle('aan', b.dataset.themaKies === t));
+}
+function themaHtml() {
+  const t = themaNu(), k = (w, n) => '<button type="button" data-thema-kies="' + w + '" class="' + (t === w ? 'aan' : '') + '">' + n + '</button>';
+  return '<div class="thema-kies"><div class="thema-lab">Weergave</div><div class="thema-knoppen">' + k('donker', 'Donker') + k('licht', 'Licht') + k('systeem', 'Zoals je telefoon') + '</div></div>';
+}
+document.addEventListener('click', (e) => { const k = e.target.closest('[data-thema-kies]'); if (k) themaZet(k.dataset.themaKies); });
 </script>
 </body>
 </html>

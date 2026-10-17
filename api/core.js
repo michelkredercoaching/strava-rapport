@@ -450,7 +450,7 @@ async function metToken(req, res) {
 function planIntake(d) {
   const start = (d.tests || []).find((t) => t.moment === 0);
   const laatste = (d.tests || []).filter((t) => t.uitslag).slice(-1)[0];
-  return { ...(d.intake || {}), verlicht: !!d.verlicht, bijstel: d.bijstel || 0, startScore: start ? start.score : null, disbalans: laatste ? disbalansUit(laatste.uitslag) : null, zwakst: laatste ? ((zwakkeSchakel(laatste.uitslag) || {}).zwak || null) : null, overgang: !!d.overgang, onderhoud: !!d.onderhoud,
+  return { ...(d.intake || {}), verlicht: !!d.verlicht, bijstel: d.bijstel || 0, startScore: start ? start.score : null, eigenTijd: laatste ? laatste.uitslag : null, disbalans: laatste ? disbalansUit(laatste.uitslag) : null, zwakst: laatste ? ((zwakkeSchakel(laatste.uitslag) || {}).zwak || null) : null, overgang: !!d.overgang, onderhoud: !!d.onderhoud,
     discipline: soortVan(d), doelModus: modusVan(d), bevrorenWeek: d.bevroren || null, vervang: d.vervang || {} };
 }
 // Periodisering (12-10-2026)
